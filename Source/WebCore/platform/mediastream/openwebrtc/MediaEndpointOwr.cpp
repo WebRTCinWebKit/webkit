@@ -231,7 +231,7 @@ void MediaEndpointOwr::dispatchDtlsCertificate(unsigned sessionIndex, const Stri
     m_client->gotDtlsCertificate(sessionIndex, certificate);
 }
 
-void MediaEndpointOwr::dispatchSendSSRC(unsigned sessionIndex, const String& ssrc, const String& cname)
+void MediaEndpointOwr::dispatchSendSSRC(unsigned sessionIndex, unsigned ssrc, const String& cname)
 {
     m_client->gotSendSSRC(sessionIndex, ssrc, cname);
 }
@@ -324,11 +324,19 @@ void MediaEndpointOwr::internalAddRemoteCandidate(OwrSession* session, IceCandid
         //return;
 
     ASSERT(candidateTypes.find(candidate.type()) != notFound);
-    ASSERT(candidateTcpTypes.find(candidate.tcpType()) != notFound);
+    printf("ASSERT: %d\n", (candidateTypes.find(candidate.type()) != notFound));
 
     OwrCandidateType candidateType = static_cast<OwrCandidateType>(candidateTypes.find(candidate.type()));
     OwrComponentType componentId = static_cast<OwrComponentType>(candidate.componentId());
-    OwrTransportType transportType = static_cast<OwrTransportType>(candidateTcpTypes.find(candidate.tcpType()));
+    OwrTransportType transportType;
+
+    if (candidate.transport().upper() == "UDP")
+        transportType = OWR_TRANSPORT_TYPE_UDP;
+    else {
+        ASSERT(candidateTcpTypes.find(candidate.tcpType()) != notFound);
+        printf("ASSERT: %d\n", (candidateTcpTypes.find(candidate.tcpType()) != notFound));
+        transportType = static_cast<OwrTransportType>(candidateTcpTypes.find(candidate.tcpType()));
+    }
 
     OwrCandidate* owrCandidate = owr_candidate_new(candidateType, componentId);
     g_object_set(owrCandidate, "transport-type", transportType,
@@ -390,7 +398,7 @@ static void gotCandidate(OwrSession* session, OwrCandidate* candidate, MediaEndp
         iceCandidate->setTcpType(candidateTcpTypes[transportType]);
     }
 
-    if (candidateType == OWR_CANDIDATE_TYPE_HOST) {
+    if (candidateType != OWR_CANDIDATE_TYPE_HOST) {
         iceCandidate->setRelatedAddress(relatedAddress);
         iceCandidate->setRelatedPort(relatedPort);
     }
@@ -422,11 +430,11 @@ static void gotDtlsCertificate(OwrSession* session, GParamSpec*, MediaEndpointOw
 
 static void gotSendSsrc(OwrMediaSession* mediaSession, GParamSpec*, MediaEndpointOwr* mediaEndpoint)
 {
+    guint ssrc;
     gchar* cname;
-    g_object_get(mediaSession, "cname", &cname, nullptr);
+    g_object_get(mediaSession, "send-ssrc", &ssrc, "cname", &cname, nullptr);
 
-    // FIXME: fix send-ssrc
-    mediaEndpoint->dispatchSendSSRC(mediaEndpoint->sessionIndex(OWR_SESSION(mediaSession)), "fix me", String(cname));
+    mediaEndpoint->dispatchSendSSRC(mediaEndpoint->sessionIndex(OWR_SESSION(mediaSession)), ssrc, String(cname));
 
     g_free(cname);
 }

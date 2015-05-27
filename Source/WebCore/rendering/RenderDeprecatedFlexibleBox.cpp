@@ -151,14 +151,14 @@ static bool childDoesNotAffectWidthOrFlexing(RenderObject* child)
 
 static LayoutUnit contentWidthForChild(RenderBox* child)
 {
-    if (child->hasOverrideWidth())
+    if (child->hasOverrideLogicalContentWidth())
         return child->overrideLogicalContentWidth();
     return child->logicalWidth() - child->borderAndPaddingLogicalWidth();
 }
 
 static LayoutUnit contentHeightForChild(RenderBox* child)
 {
-    if (child->hasOverrideHeight())
+    if (child->hasOverrideLogicalContentHeight())
         return child->overrideLogicalContentHeight();
     return child->logicalHeight() - child->borderAndPaddingLogicalHeight();
 }
@@ -934,7 +934,7 @@ void RenderDeprecatedFlexibleBox::applyLineClamp(FlexBoxIterator& iterator, bool
             continue;
 
         child->clearOverrideSize();
-        if (relayoutChildren || (child->isReplaced() && (child->style().width().isPercent() || child->style().height().isPercent()))
+        if (relayoutChildren || (child->isReplaced() && (child->style().width().isPercentOrCalculated() || child->style().height().isPercentOrCalculated()))
             || (child->style().height().isAuto() && is<RenderBlockFlow>(*child))) {
             child->setChildNeedsLayout(MarkOnlyThis);
 
@@ -1034,7 +1034,7 @@ void RenderDeprecatedFlexibleBox::clearLineClamp()
             continue;
 
         child->clearOverrideSize();
-        if ((child->isReplaced() && (child->style().width().isPercent() || child->style().height().isPercent()))
+        if ((child->isReplaced() && (child->style().width().isPercentOrCalculated() || child->style().height().isPercentOrCalculated()))
             || (child->style().height().isAuto() && is<RenderBlockFlow>(*child))) {
             child->setChildNeedsLayout();
 

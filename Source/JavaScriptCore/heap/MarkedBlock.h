@@ -25,6 +25,7 @@
 #include "HeapBlock.h"
 
 #include "HeapOperation.h"
+#include "IterationStatus.h"
 #include "WeakSet.h"
 #include <wtf/Bitmap.h>
 #include <wtf/DataLog.h>
@@ -163,6 +164,7 @@ namespace JSC {
         bool testAndSetMarked(const void*);
         bool isLive(const JSCell*);
         bool isLiveCell(const void*);
+        bool isMarkedOrNewlyAllocated(const JSCell*);
         void setMarked(const void*);
         void clearMarked(const void*);
 
@@ -175,13 +177,14 @@ namespace JSC {
         void setNewlyAllocated(const void*);
         void clearNewlyAllocated(const void*);
 
+        bool isAllocated() const;
         bool needsSweeping();
         void didRetireBlock(const FreeList&);
         void willRemoveBlock();
 
-        template <typename Functor> void forEachCell(Functor&);
-        template <typename Functor> void forEachLiveCell(Functor&);
-        template <typename Functor> void forEachDeadCell(Functor&);
+        template <typename Functor> IterationStatus forEachCell(Functor&);
+        template <typename Functor> IterationStatus forEachLiveCell(Functor&);
+        template <typename Functor> IterationStatus forEachDeadCell(Functor&);
 
         static ptrdiff_t offsetOfMarks() { return OBJECT_OFFSETOF(MarkedBlock, m_marks); }
 
@@ -409,6 +412,12 @@ namespace JSC {
         return false;
     }
 
+    inline bool MarkedBlock::isMarkedOrNewlyAllocated(const JSCell* cell)
+    {
+        ASSERT(m_state == Retired || m_state == Marked);
+        return m_marks.get(atomNumber(cell)) || (m_newlyAllocated && isNewlyAllocated(cell));
+    }
+
     inline bool MarkedBlock::isLive(const JSCell* cell)
     {
         switch (m_state) {
@@ -417,7 +426,7 @@ namespace JSC {
 
         case Retired:
         case Marked:
-            return m_marks.get(atomNumber(cell)) || (m_newlyAllocated && isNewlyAllocated(cell));
+            return isMarkedOrNewlyAllocated(cell);
 
         case New:
         case FreeListed:
@@ -444,39 +453,50 @@ namespace JSC {
         return isLive(static_cast<const JSCell*>(p));
     }
 
-    template <typename Functor> inline void MarkedBlock::forEachCell(Functor& functor)
+    template <typename Functor> inline IterationStatus MarkedBlock::forEachCell(Functor& functor)
     {
         for (size_t i = firstAtom(); i < m_endAtom; i += m_atomsPerCell) {
             JSCell* cell = reinterpret_cast_ptr<JSCell*>(&atoms()[i]);
-            functor(cell);
+            if (functor(cell) == IterationStatus::Done)
+                return IterationStatus::Done;
         }
+        return IterationStatus::Continue;
     }
 
-    template <typename Functor> inline void MarkedBlock::forEachLiveCell(Functor& functor)
+    template <typename Functor> inline IterationStatus MarkedBlock::forEachLiveCell(Functor& functor)
     {
         for (size_t i = firstAtom(); i < m_endAtom; i += m_atomsPerCell) {
             JSCell* cell = reinterpret_cast_ptr<JSCell*>(&atoms()[i]);
             if (!isLive(cell))
                 continue;
 
-            functor(cell);
+            if (functor(cell) == IterationStatus::Done)
+                return IterationStatus::Done;
         }
+        return IterationStatus::Continue;
     }
 
-    template <typename Functor> inline void MarkedBlock::forEachDeadCell(Functor& functor)
+    template <typename Functor> inline IterationStatus MarkedBlock::forEachDeadCell(Functor& functor)
     {
         for (size_t i = firstAtom(); i < m_endAtom; i += m_atomsPerCell) {
             JSCell* cell = reinterpret_cast_ptr<JSCell*>(&atoms()[i]);
             if (isLive(cell))
                 continue;
 
-            functor(cell);
+            if (functor(cell) == IterationStatus::Done)
+                return IterationStatus::Done;
         }
+        return IterationStatus::Continue;
     }
 
     inline bool MarkedBlock::needsSweeping()
     {
         return m_state == Marked;
+    }
+
+    inline bool MarkedBlock::isAllocated() const
+    {
+        return m_state == Allocated;
     }
 
 } // namespace JSC

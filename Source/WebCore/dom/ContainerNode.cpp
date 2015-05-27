@@ -52,6 +52,7 @@
 #include "SVGNames.h"
 #include "SelectorQuery.h"
 #include "TemplateContentDocumentFragment.h"
+#include <algorithm>
 #include <wtf/CurrentTime.h>
 
 namespace WebCore {
@@ -799,7 +800,7 @@ static void dispatchChildInsertionEvents(Node& child)
     if (child.isInShadowTree())
         return;
 
-    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
 
     RefPtr<Node> c = &child;
     Ref<Document> document(child.document());
@@ -821,7 +822,7 @@ static void dispatchChildRemovalEvents(Node& child)
         return;
     }
 
-    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
 
     willCreatePossiblyOrphanedTreeByRemoval(&child);
     InspectorInstrumentation::willRemoveDOMNode(child.document(), child);
@@ -909,6 +910,28 @@ RefPtr<RadioNodeList> ContainerNode::radioNodeList(const AtomicString& name)
 {
     ASSERT(hasTagName(HTMLNames::formTag) || hasTagName(HTMLNames::fieldsetTag));
     return ensureRareData().ensureNodeLists().addCacheWithAtomicName<RadioNodeList>(*this, name);
+}
+
+Element* ContainerNode::firstElementChild() const
+{
+    ASSERT(is<Document>(*this) || is<DocumentFragment>(*this) || is<Element>(*this));
+
+    return ElementTraversal::firstChild(*this);
+}
+
+Element* ContainerNode::lastElementChild() const
+{
+    ASSERT(is<Document>(*this) || is<DocumentFragment>(*this) || is<Element>(*this));
+
+    return ElementTraversal::lastChild(*this);
+}
+
+unsigned ContainerNode::childElementCount() const
+{
+    ASSERT(is<Document>(*this) || is<DocumentFragment>(*this) || is<Element>(*this));
+
+    auto children = childrenOfType<Element>(*this);
+    return std::distance(children.begin(), children.end());
 }
 
 } // namespace WebCore

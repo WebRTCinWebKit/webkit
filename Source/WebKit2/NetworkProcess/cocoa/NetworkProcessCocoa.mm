@@ -33,9 +33,9 @@
 #import "NetworkResourceLoader.h"
 #import "SandboxExtension.h"
 #import <WebCore/CFNetworkSPI.h>
-#import <mach/host_info.h>
-#import <mach/mach.h>
-#import <mach/mach_error.h>
+#import <WebCore/ResourceRequestCFNet.h>
+#import <WebKitSystemInterface.h>
+#import <wtf/RAMSize.h>
 
 namespace WebKit {
 
@@ -43,6 +43,23 @@ void NetworkProcess::platformLowMemoryHandler(bool)
 {
     CFURLConnectionInvalidateConnectionCache();
     _CFURLCachePurgeMemoryCache(adoptCF(CFURLCacheCopySharedURLCache()).get());
+}
+
+static void initializeNetworkSettings()
+{
+    static const unsigned preferredConnectionCount = 6;
+
+    WKInitializeMaximumHTTPConnectionCountPerHost(preferredConnectionCount);
+
+    Boolean keyExistsAndHasValidFormat = false;
+    Boolean prefValue = CFPreferencesGetAppBooleanValue(CFSTR("WebKitEnableHTTPPipelining"), kCFPreferencesCurrentApplication, &keyExistsAndHasValidFormat);
+    if (keyExistsAndHasValidFormat)
+        WebCore::ResourceRequest::setHTTPPipeliningEnabled(prefValue);
+
+    if (WebCore::ResourceRequest::resourcePrioritiesEnabled()) {
+        WKSetHTTPRequestMaximumPriority(toPlatformRequestPriority(WebCore::ResourceLoadPriority::Highest));
+        WKSetHTTPRequestMinimumFastLanePriority(toPlatformRequestPriority(WebCore::ResourceLoadPriority::Medium));
+    }
 }
 
 void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessCreationParameters& parameters)
@@ -56,6 +73,12 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
 
 #if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
     _CFNetworkSetATSContext(parameters.networkATSContext.get());
+#endif
+
+    initializeNetworkSettings();
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
+    setSharedHTTPCookieStorage(parameters.uiProcessCookieStorageIdentifier);
 #endif
 
     // FIXME: Most of what this function does for cache size gets immediately overridden by setCacheModel().
@@ -94,24 +117,6 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
     _CFURLCacheSetMinSizeForVMCachedResource(cache.get(), NetworkResourceLoader::fileBackedResourceMinimumSize());
 }
 
-static uint64_t memorySize()
-{
-    static host_basic_info_data_t hostInfo;
-
-    static dispatch_once_t once;
-    dispatch_once(&once, ^() {
-        mach_port_t host = mach_host_self();
-        mach_msg_type_number_t count = HOST_BASIC_INFO_COUNT;
-        kern_return_t r = host_info(host, HOST_BASIC_INFO, (host_info_t)&hostInfo, &count);
-        mach_port_deallocate(mach_task_self(), host);
-
-        if (r != KERN_SUCCESS)
-            LOG_ERROR("%s : host_info(%d) : %s.\n", __FUNCTION__, r, mach_error_string(r));
-    });
-
-    return hostInfo.max_mem;
-}
-
 static uint64_t volumeFreeSize(const String& path)
 {
     NSDictionary *fileSystemAttributesDictionary = [[NSFileManager defaultManager] attributesOfFileSystemForPath:(NSString *)path error:NULL];
@@ -120,9 +125,10 @@ static uint64_t volumeFreeSize(const String& path)
 
 void NetworkProcess::platformSetCacheModel(CacheModel cacheModel)
 {
+    uint64_t memSize = ramSize() / 1024 / 1024;
+
     // As a fudge factor, use 1000 instead of 1024, in case the reported byte
     // count doesn't align exactly to a megabyte boundary.
-    uint64_t memSize = memorySize() / 1024 / 1000;
     uint64_t diskFreeSize = volumeFreeSize(m_diskCacheDirectory) / 1024 / 1000;
 
     unsigned cacheTotalCapacity = 0;
@@ -153,16 +159,9 @@ void NetworkProcess::platformSetCacheModel(CacheModel cacheModel)
         [nsurlCache setDiskCapacity:std::max<unsigned long>(urlCacheDiskCapacity, [nsurlCache diskCapacity])]; // Don't shrink a big disk cache, since that would cause churn.
 }
 
-void NetworkProcess::clearDiskCache(std::chrono::system_clock::time_point modifiedSince, std::function<void ()> completionHandler)
+static void clearNSURLCache(dispatch_group_t group, std::chrono::system_clock::time_point modifiedSince, const std::function<void ()>& completionHandler)
 {
-#if ENABLE(NETWORK_CACHE)
-    NetworkCache::singleton().clear();
-#endif
-
-    if (!m_clearCacheDispatchGroup)
-        m_clearCacheDispatchGroup = dispatch_group_create();
-
-    dispatch_group_async(m_clearCacheDispatchGroup, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), [modifiedSince, completionHandler] {
+    dispatch_group_async(group, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), [modifiedSince, completionHandler] {
         NSURLCache *cache = [NSURLCache sharedURLCache];
 
 #if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
@@ -176,6 +175,24 @@ void NetworkProcess::clearDiskCache(std::chrono::system_clock::time_point modifi
             completionHandler();
         });
     });
+}
+
+void NetworkProcess::clearDiskCache(std::chrono::system_clock::time_point modifiedSince, std::function<void ()> completionHandler)
+{
+    if (!m_clearCacheDispatchGroup)
+        m_clearCacheDispatchGroup = dispatch_group_create();
+
+#if ENABLE(NETWORK_CACHE)
+    auto group = m_clearCacheDispatchGroup;
+    dispatch_group_async(group, dispatch_get_main_queue(), [group, modifiedSince, completionHandler] {
+        NetworkCache::singleton().clear(modifiedSince, [group, modifiedSince, completionHandler] {
+            // FIXME: Probably not necessary.
+            clearNSURLCache(group, modifiedSince, completionHandler);
+        });
+    });
+#else
+    clearNSURLCache(m_clearCacheDispatchGroup, modifiedSince, completionHandler);
+#endif
 }
 
 }

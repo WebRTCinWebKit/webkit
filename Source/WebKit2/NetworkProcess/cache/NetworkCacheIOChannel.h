@@ -34,6 +34,10 @@
 #include <wtf/WorkQueue.h>
 #include <wtf/text/WTFString.h>
 
+#if USE(SOUP)
+#include <wtf/gobject/GRefPtr.h>
+#endif
+
 namespace WebKit {
 namespace NetworkCache {
 
@@ -56,12 +60,23 @@ public:
 private:
     IOChannel(const String& filePath, IOChannel::Type);
 
+#if USE(SOUP)
+    void read(size_t offset, size_t, std::function<void (Data&, int error)>);
+    void readSync(size_t offset, size_t, std::function<void (Data&, int error)>);
+    void write(size_t offset, const Data&, std::function<void (int error)>);
+#endif
+
     String m_path;
     Type m_type;
 
     int m_fileDescriptor { 0 };
 #if PLATFORM(COCOA)
     DispatchPtr<dispatch_io_t> m_dispatchIO;
+#endif
+#if USE(SOUP)
+    GRefPtr<GInputStream> m_inputStream;
+    GRefPtr<GOutputStream> m_outputStream;
+    GRefPtr<GFileIOStream> m_ioStream;
 #endif
 };
 

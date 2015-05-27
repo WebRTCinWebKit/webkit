@@ -32,12 +32,13 @@
 #include "Interpreter.h"
 #include "JIT.h"
 #include "JSArrayIterator.h"
+#include "JSCBuiltins.h"
+#include "JSCInlines.h"
 #include "JSStringBuilder.h"
 #include "JSStringJoiner.h"
 #include "Lookup.h"
 #include "ObjectConstructor.h"
 #include "ObjectPrototype.h"
-#include "JSCInlines.h"
 #include "StringRecursionChecker.h"
 #include <algorithm>
 #include <wtf/Assertions.h>
@@ -54,7 +55,6 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncPush(ExecState*);
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncReverse(ExecState*);
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncShift(ExecState*);
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncSlice(ExecState*);
-EncodedJSValue JSC_HOST_CALL arrayProtoFuncSort(ExecState*);
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncSplice(ExecState*);
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncUnShift(ExecState*);
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncIndexOf(ExecState*);
@@ -64,62 +64,9 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncLastIndexOf(ExecState*);
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncKeys(ExecState*);
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncEntries(ExecState*);
 
-}
-
-#include "ArrayPrototype.lut.h"
-
-namespace JSC {
-
-static inline bool isNumericCompareFunction(ExecState* exec, JSValue function, CallType callType, const CallData& callData)
-{
-    if (callType != CallTypeJS)
-        return false;
-
-    FunctionExecutable* executable = callData.js.functionExecutable;
-    JSScope* scope = callData.js.scope;
-
-    JSObject* error = executable->prepareForExecution(exec, jsCast<JSFunction*>(function), scope, CodeForCall);
-    if (error)
-        return false;
-
-    return executable->codeBlockForCall()->isNumericCompareFunction();
-}
-
 // ------------------------------ ArrayPrototype ----------------------------
 
-const ClassInfo ArrayPrototype::s_info = {"Array", &JSArray::s_info, &arrayPrototypeTable, CREATE_METHOD_TABLE(ArrayPrototype)};
-
-/* Source for ArrayPrototype.lut.h
-@begin arrayPrototypeTable 16
-  toString       arrayProtoFuncToString       DontEnum|Function 0
-  toLocaleString arrayProtoFuncToLocaleString DontEnum|Function 0
-  concat         arrayProtoFuncConcat         DontEnum|Function 1
-  fill           arrayProtoFuncFill           DontEnum|Function 1
-  join           arrayProtoFuncJoin           DontEnum|Function 1
-  pop            arrayProtoFuncPop            DontEnum|Function 0
-  push           arrayProtoFuncPush           DontEnum|Function 1
-  reverse        arrayProtoFuncReverse        DontEnum|Function 0
-  shift          arrayProtoFuncShift          DontEnum|Function 0
-  slice          arrayProtoFuncSlice          DontEnum|Function 2
-  sort           arrayProtoFuncSort           DontEnum|Function 1
-  splice         arrayProtoFuncSplice         DontEnum|Function 2
-  unshift        arrayProtoFuncUnShift        DontEnum|Function 1
-  every          arrayProtoFuncEvery          DontEnum|Function 1
-  forEach        arrayProtoFuncForEach        DontEnum|Function 1
-  some           arrayProtoFuncSome           DontEnum|Function 1
-  indexOf        arrayProtoFuncIndexOf        DontEnum|Function 1
-  lastIndexOf    arrayProtoFuncLastIndexOf    DontEnum|Function 1
-  filter         arrayProtoFuncFilter         DontEnum|Function 1
-  reduce         arrayProtoFuncReduce         DontEnum|Function 1
-  reduceRight    arrayProtoFuncReduceRight    DontEnum|Function 1
-  map            arrayProtoFuncMap            DontEnum|Function 1
-  entries        arrayProtoFuncEntries        DontEnum|Function 0
-  keys           arrayProtoFuncKeys           DontEnum|Function 0
-  find           arrayProtoFuncFind           DontEnum|Function 1
-  findIndex      arrayProtoFuncFindIndex      DontEnum|Function 1
-  includes       arrayProtoFuncIncludes       DontEnum|Function 1
-@end
-*/
+const ClassInfo ArrayPrototype::s_info = {"Array", &JSArray::s_info, nullptr, CREATE_METHOD_TABLE(ArrayPrototype)};
 
 ArrayPrototype* ArrayPrototype::create(VM& vm, JSGlobalObject* globalObject, Structure* structure)
 {
@@ -142,7 +89,35 @@ void ArrayPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
 
     putDirectWithoutTransition(vm, vm.propertyNames->values, globalObject->arrayProtoValuesFunction(), DontEnum);
     putDirectWithoutTransition(vm, vm.propertyNames->iteratorSymbol, globalObject->arrayProtoValuesFunction(), DontEnum);
-
+    
+    JSC_NATIVE_FUNCTION(vm.propertyNames->toString, arrayProtoFuncToString, DontEnum, 0);
+    JSC_NATIVE_FUNCTION(vm.propertyNames->toLocaleString, arrayProtoFuncToLocaleString, DontEnum, 0);
+    JSC_NATIVE_FUNCTION("concat", arrayProtoFuncConcat, DontEnum, 1);
+    JSC_BUILTIN_FUNCTION("fill", arrayPrototypeFillCodeGenerator, DontEnum);
+    JSC_NATIVE_FUNCTION(vm.propertyNames->join, arrayProtoFuncJoin, DontEnum, 1);
+    JSC_NATIVE_INTRINSIC_FUNCTION("pop", arrayProtoFuncPop, DontEnum, 0, ArrayPopIntrinsic);
+    JSC_NATIVE_INTRINSIC_FUNCTION("push", arrayProtoFuncPush, DontEnum, 1, ArrayPushIntrinsic);
+    JSC_NATIVE_FUNCTION("reverse", arrayProtoFuncReverse, DontEnum, 0);
+    JSC_NATIVE_FUNCTION("shift", arrayProtoFuncShift, DontEnum, 0);
+    JSC_NATIVE_FUNCTION(vm.propertyNames->slice, arrayProtoFuncSlice, DontEnum, 2);
+    JSC_BUILTIN_FUNCTION("sort", arrayPrototypeSortCodeGenerator, DontEnum);
+    JSC_NATIVE_FUNCTION("splice", arrayProtoFuncSplice, DontEnum, 2);
+    JSC_NATIVE_FUNCTION("unshift", arrayProtoFuncUnShift, DontEnum, 1);
+    JSC_BUILTIN_FUNCTION("every", arrayPrototypeEveryCodeGenerator, DontEnum);
+    JSC_BUILTIN_FUNCTION("forEach", arrayPrototypeForEachCodeGenerator, DontEnum);
+    JSC_BUILTIN_FUNCTION("some", arrayPrototypeSomeCodeGenerator, DontEnum);
+    JSC_NATIVE_FUNCTION("indexOf", arrayProtoFuncIndexOf, DontEnum, 1);
+    JSC_NATIVE_FUNCTION("lastIndexOf", arrayProtoFuncLastIndexOf, DontEnum, 1);
+    JSC_BUILTIN_FUNCTION("filter", arrayPrototypeFilterCodeGenerator, DontEnum);
+    JSC_NATIVE_FUNCTION("reduce", arrayProtoFuncReduce, DontEnum, 1);
+    JSC_NATIVE_FUNCTION("reduceRight", arrayProtoFuncReduceRight, DontEnum, 1);
+    JSC_BUILTIN_FUNCTION("map", arrayPrototypeMapCodeGenerator, DontEnum);
+    JSC_NATIVE_FUNCTION(vm.propertyNames->entries, arrayProtoFuncEntries, DontEnum, 0);
+    JSC_NATIVE_FUNCTION(vm.propertyNames->keys, arrayProtoFuncKeys, DontEnum, 0);
+    JSC_BUILTIN_FUNCTION("find", arrayPrototypeFindCodeGenerator, DontEnum);
+    JSC_BUILTIN_FUNCTION("findIndex", arrayPrototypeFindIndexCodeGenerator, DontEnum);
+    JSC_BUILTIN_FUNCTION("includes", arrayPrototypeIncludesCodeGenerator, DontEnum);
+    
     if (!globalObject->runtimeFlags().isSymbolDisabled()) {
         JSObject* unscopables = constructEmptyObject(globalObject->globalExec(), globalObject->nullPrototypeObjectStructure());
         const char* unscopableNames[] = {
@@ -158,11 +133,6 @@ void ArrayPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
             unscopables->putDirect(vm, Identifier::fromString(&vm, unscopableName), jsBoolean(true));
         putDirectWithoutTransition(vm, vm.propertyNames->unscopablesSymbol, unscopables, DontEnum | ReadOnly);
     }
-}
-
-bool ArrayPrototype::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
-{
-    return getStaticFunctionSlot<JSArray>(exec, arrayPrototypeTable, jsCast<ArrayPrototype*>(object), propertyName, slot);
 }
 
 // ------------------------------ Array Functions ----------------------------
@@ -631,6 +601,12 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncSlice(ExecState* exec)
     unsigned begin = argumentClampedIndexFromStartOrEnd(exec, 0, length);
     unsigned end = argumentClampedIndexFromStartOrEnd(exec, 1, length, length);
 
+    if (isJSArray(thisObj)) {
+        EncodedJSValue result;
+        if (asArray(thisObj)->fastSlice(*exec, begin, end - begin, result))
+            return result;
+    }
+
     JSArray* result = constructEmptyArray(exec, nullptr, end - begin);
 
     unsigned n = 0;
@@ -652,155 +628,6 @@ inline JSValue getOrHole(JSObject* obj, ExecState* exec, unsigned propertyName)
         return slot.getValue(exec, propertyName);
 
     return JSValue();
-}
-
-static bool attemptFastSort(ExecState* exec, JSObject* thisObj, JSValue function, CallData& callData, CallType& callType)
-{
-    if (thisObj->classInfo() != JSArray::info()
-        || asArray(thisObj)->hasSparseMap()
-        || shouldUseSlowPut(thisObj->indexingType()))
-        return false;
-    
-    if (isNumericCompareFunction(exec, function, callType, callData))
-        asArray(thisObj)->sortNumeric(exec, function, callType, callData);
-    else if (callType != CallTypeNone)
-        asArray(thisObj)->sort(exec, function, callType, callData);
-    else
-        asArray(thisObj)->sort(exec);
-    return true;
-}
-
-static bool performSlowSort(ExecState* exec, JSObject* thisObj, unsigned length, JSValue function, CallData& callData, CallType& callType)
-{
-    // "Min" sort. Not the fastest, but definitely less code than heapsort
-    // or quicksort, and much less swapping than bubblesort/insertionsort.
-    for (unsigned i = 0; i < length - 1; ++i) {
-        JSValue iObj = getOrHole(thisObj, exec, i);
-        if (exec->hadException())
-            return false;
-        unsigned themin = i;
-        JSValue minObj = iObj;
-        for (unsigned j = i + 1; j < length; ++j) {
-            JSValue jObj = getOrHole(thisObj, exec, j);
-            if (exec->hadException())
-                return false;
-            double compareResult;
-            if (!jObj)
-                compareResult = 1;
-            else if (!minObj)
-                compareResult = -1;
-            else if (jObj.isUndefined())
-                compareResult = 1; // don't check minObj because there's no need to differentiate == (0) from > (1)
-            else if (minObj.isUndefined())
-                compareResult = -1;
-            else if (callType != CallTypeNone) {
-                MarkedArgumentBuffer l;
-                l.append(jObj);
-                l.append(minObj);
-                compareResult = call(exec, function, callType, callData, jsUndefined(), l).toNumber(exec);
-            } else
-                compareResult = codePointCompareLessThan(jObj.toWTFStringInline(exec), minObj.toWTFStringInline(exec)) ? -1 : 1;
-
-            if (compareResult < 0) {
-                themin = j;
-                minObj = jObj;
-            }
-        }
-        // Swap themin and i
-        if (themin > i) {
-            if (minObj) {
-                thisObj->methodTable(exec->vm())->putByIndex(thisObj, exec, i, minObj, true);
-                if (exec->hadException())
-                    return false;
-            } else if (!thisObj->methodTable(exec->vm())->deletePropertyByIndex(thisObj, exec, i)) {
-                throwTypeError(exec, ASCIILiteral("Unable to delete property."));
-                return false;
-            }
-            if (iObj) {
-                thisObj->methodTable(exec->vm())->putByIndex(thisObj, exec, themin, iObj, true);
-                if (exec->hadException())
-                    return false;
-            } else if (!thisObj->methodTable(exec->vm())->deletePropertyByIndex(thisObj, exec, themin)) {
-                throwTypeError(exec, ASCIILiteral("Unable to delete property."));
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
-EncodedJSValue JSC_HOST_CALL arrayProtoFuncSort(ExecState* exec)
-{
-    JSObject* thisObj = exec->thisValue().toThis(exec, StrictMode).toObject(exec);
-    unsigned length = getLength(exec, thisObj);
-    if (!length || exec->hadException())
-        return JSValue::encode(thisObj);
-
-    JSValue function = exec->argument(0);
-    CallData callData;
-    CallType callType = getCallData(function, callData);
-
-    if (attemptFastSort(exec, thisObj, function, callData, callType))
-        return JSValue::encode(thisObj);
-    
-    // Assume that for small-ish arrays, doing the slow sort directly is better.
-    if (length < 1000)
-        return performSlowSort(exec, thisObj, length, function, callData, callType) ? JSValue::encode(thisObj) : JSValue::encode(jsUndefined());
-    
-    JSGlobalObject* globalObject = JSGlobalObject::create(
-        exec->vm(), JSGlobalObject::createStructure(exec->vm(), jsNull()));
-    JSArray* flatArray = constructEmptyArray(globalObject->globalExec(), nullptr);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
-    
-    PropertyNameArray nameArray(exec);
-    thisObj->methodTable(exec->vm())->getPropertyNames(thisObj, exec, nameArray, EnumerationMode(DontEnumPropertiesMode::Include));
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
-
-    Vector<uint32_t, 0, UnsafeVectorOverflow> keys;
-    for (size_t i = 0; i < nameArray.size(); ++i) {
-        PropertyName name = nameArray[i];
-        Optional<uint32_t> optionalIndex = parseIndex(name);
-        if (!optionalIndex)
-            continue;
-
-        uint32_t index = optionalIndex.value();
-        JSValue value = getOrHole(thisObj, exec, index);
-        if (exec->hadException())
-            return JSValue::encode(jsUndefined());
-        if (!value)
-            continue;
-        keys.append(index);
-        flatArray->push(exec, value);
-        if (exec->hadException())
-            return JSValue::encode(jsUndefined());
-    }
-    
-    if (!attemptFastSort(exec, flatArray, function, callData, callType)
-        && !performSlowSort(exec, flatArray, flatArray->length(), function, callData, callType))
-        return JSValue::encode(jsUndefined());
-    
-    for (size_t i = 0; i < keys.size(); ++i) {
-        size_t index = keys[i];
-        if (index < flatArray->length())
-            continue;
-        
-        if (!thisObj->methodTable(exec->vm())->deletePropertyByIndex(thisObj, exec, index)) {
-            throwTypeError(exec, ASCIILiteral("Unable to delete property."));
-            return JSValue::encode(jsUndefined());
-        }
-    }
-    
-    for (size_t i = flatArray->length(); i--;) {
-        JSValue value = getOrHole(flatArray, exec, i);
-        RELEASE_ASSERT(value);
-        thisObj->methodTable(exec->vm())->putByIndex(thisObj, exec, i, value, true);
-        if (exec->hadException())
-            return JSValue::encode(jsUndefined());
-    }
-    
-    return JSValue::encode(thisObj);
 }
 
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncSplice(ExecState* exec)

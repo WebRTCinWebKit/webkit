@@ -28,12 +28,14 @@
 
 #if ENABLE(CONTENT_EXTENSIONS)
 
+#include "ContentExtensionsDebugging.h"
 #include "NFA.h"
 #include <unicode/utypes.h>
 #include <wtf/ASCIICType.h>
-#include <wtf/BitVector.h>
 #include <wtf/HashMap.h>
 #include <wtf/Vector.h>
+#include <wtf/text/StringBuilder.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -84,7 +86,7 @@ public:
 
     void quantify(const AtomQuantifier&);
 
-    unsigned generateGraph(NFA&, unsigned start, const ActionSet& finalActions) const;
+    unsigned generateGraph(NFA&, unsigned start, const ActionList& finalActions) const;
 
     bool isEndOfLineAssertion() const;
 
@@ -107,6 +109,10 @@ public:
     bool isEmptyValue() const;
     bool isDeletedValue() const;
 
+#if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
+    String toString() const;
+#endif
+    
 private:
     // This is exact for character sets but conservative for groups.
     // The return value can be false for a group equivalent to a universal transition.
@@ -126,19 +132,47 @@ private:
     TermType m_termType { TermType::Empty };
     AtomQuantifier m_quantifier { AtomQuantifier::One };
 
-    struct CharacterSet {
-        bool inverted { false };
-        BitVector characters { 128 };
-
+    class CharacterSet {
+    public:
+        void set(UChar character)
+        {
+            RELEASE_ASSERT(character < 128);
+            m_characters[character / 64] |= (uint64_t(1) << (character % 64));
+        }
+        
+        bool get(UChar character) const
+        {
+            RELEASE_ASSERT(character < 128);
+            return m_characters[character / 64] & (uint64_t(1) << (character % 64));
+        }
+        
+        void invert()
+        {
+            ASSERT(!m_inverted);
+            m_inverted = true;
+        }
+        
+        bool inverted() const { return m_inverted; }
+        
+        unsigned bitCount() const
+        {
+            return WTF::bitCount(m_characters[0]) + WTF::bitCount(m_characters[1]);
+        }
+        
         bool operator==(const CharacterSet& other) const
         {
-            return other.inverted == inverted && other.characters == characters;
+            return other.m_inverted == m_inverted
+                && other.m_characters[0] == m_characters[0]
+                && other.m_characters[1] == m_characters[1];
         }
 
         unsigned hash() const
         {
-            return WTF::pairIntHash(inverted, characters.hash());
+            return WTF::pairIntHash(WTF::pairIntHash(WTF::intHash(m_characters[0]), WTF::intHash(m_characters[1])), m_inverted);
         }
+    private:
+        bool m_inverted { false };
+        uint64_t m_characters[2] { 0, 0 };
     };
 
     struct Group {
@@ -176,6 +210,59 @@ private:
     } m_atomData;
 };
 
+#if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
+inline String quantifierToString(AtomQuantifier quantifier)
+{
+    switch (quantifier) {
+    case AtomQuantifier::One:
+        return "";
+    case AtomQuantifier::ZeroOrOne:
+        return "?";
+    case AtomQuantifier::ZeroOrMore:
+        return "*";
+    case AtomQuantifier::OneOrMore:
+        return "+";
+    }
+}
+    
+inline String Term::toString() const
+{
+    switch (m_termType) {
+    case TermType::Empty:
+        return "(Empty)";
+    case TermType::Deleted:
+        return "(Deleted)";
+    case TermType::CharacterSet: {
+        StringBuilder builder;
+        builder.append('[');
+        for (UChar c = 0; c < 128; c++) {
+            if (m_atomData.characterSet.get(c)) {
+                if (isASCIIPrintable(c) && !isASCIISpace(c))
+                    builder.append(c);
+                else {
+                    builder.append('\\');
+                    builder.append('u');
+                    builder.appendNumber(c);
+                }
+            }
+        }
+        builder.append(']');
+        builder.append(quantifierToString(m_quantifier));
+        return builder.toString();
+    }
+    case TermType::Group: {
+        StringBuilder builder;
+        builder.append('(');
+        for (const Term& term : m_atomData.group.terms)
+            builder.append(term.toString());
+        builder.append(')');
+        builder.append(quantifierToString(m_quantifier));
+        return builder.toString();
+    }
+    }
+}
+#endif
+    
 struct TermHash {
     static unsigned hash(const Term& term) { return term.hash(); }
     static bool equal(const Term& a, const Term& b) { return a == b; }
@@ -195,20 +282,20 @@ inline Term::Term(char character, bool isCaseSensitive)
     addCharacter(character, isCaseSensitive);
 }
 
-enum UniversalTransitionTag { UniversalTransition };
 inline Term::Term(UniversalTransitionTag)
     : m_termType(TermType::CharacterSet)
 {
     new (NotNull, &m_atomData.characterSet) CharacterSet();
-    for (unsigned i = 0; i < 128; ++i)
-        m_atomData.characterSet.characters.set(i);
+    for (UChar i = 0; i < 128; ++i)
+        m_atomData.characterSet.set(i);
 }
 
 inline Term::Term(CharacterSetTermTag, bool isInverted)
     : m_termType(TermType::CharacterSet)
 {
     new (NotNull, &m_atomData.characterSet) CharacterSet();
-    m_atomData.characterSet.inverted = isInverted;
+    if (isInverted)
+        m_atomData.characterSet.invert();
 }
 
 inline Term::Term(GroupTermTag)
@@ -220,7 +307,7 @@ inline Term::Term(GroupTermTag)
 inline Term::Term(EndOfLineAssertionTermTag)
     : Term(CharacterSetTerm, false)
 {
-    m_atomData.characterSet.characters.set(0);
+    m_atomData.characterSet.set(0);
 }
 
 inline Term::Term(const Term& other)
@@ -287,10 +374,10 @@ inline void Term::addCharacter(UChar character, bool isCaseSensitive)
         return;
 
     if (isCaseSensitive || !isASCIIAlpha(character))
-        m_atomData.characterSet.characters.set(character);
+        m_atomData.characterSet.set(character);
     else {
-        m_atomData.characterSet.characters.set(toASCIIUpper(character));
-        m_atomData.characterSet.characters.set(toASCIILower(character));
+        m_atomData.characterSet.set(toASCIIUpper(character));
+        m_atomData.characterSet.set(toASCIILower(character));
     }
 }
 
@@ -308,7 +395,7 @@ inline void Term::quantify(const AtomQuantifier& quantifier)
     m_quantifier = quantifier;
 }
 
-inline unsigned Term::Term::generateGraph(NFA& nfa, unsigned start, const ActionSet& finalActions) const
+inline unsigned Term::Term::generateGraph(NFA& nfa, unsigned start, const ActionList& finalActions) const
 {
     ASSERT(isValid());
 
@@ -356,7 +443,7 @@ inline unsigned Term::Term::generateGraph(NFA& nfa, unsigned start, const Action
 
 inline bool Term::isEndOfLineAssertion() const
 {
-    return m_termType == TermType::CharacterSet && m_atomData.characterSet.characters.bitCount() == 1 && m_atomData.characterSet.characters.get(0);
+    return m_termType == TermType::CharacterSet && m_atomData.characterSet.bitCount() == 1 && m_atomData.characterSet.get(0);
 }
 
 inline bool Term::matchesAtLeastOneCharacter() const
@@ -517,8 +604,8 @@ inline bool Term::isUniversalTransition() const
         ASSERT_NOT_REACHED();
         break;
     case TermType::CharacterSet:
-        return (m_atomData.characterSet.inverted && !m_atomData.characterSet.characters.bitCount())
-            || (!m_atomData.characterSet.inverted && m_atomData.characterSet.characters.bitCount() == 128);
+        return (m_atomData.characterSet.inverted() && !m_atomData.characterSet.bitCount())
+            || (!m_atomData.characterSet.inverted() && m_atomData.characterSet.bitCount() == 128);
     case TermType::Group:
         return m_atomData.group.terms.size() == 1 && m_atomData.group.terms.first().isUniversalTransition();
     }
@@ -537,14 +624,15 @@ inline unsigned Term::generateSubgraphForAtom(NFA& nfa, unsigned source) const
         if (isUniversalTransition())
             nfa.addTransitionsOnAnyCharacter(source, target);
         else {
-            if (!m_atomData.characterSet.inverted) {
-                for (const auto& characterIterator : m_atomData.characterSet.characters.setBits())
-                    nfa.addTransition(source, target, static_cast<char>(characterIterator));
+            if (!m_atomData.characterSet.inverted()) {
+                for (UChar i = 0; i < 128; ++i) {
+                    if (m_atomData.characterSet.get(i))
+                        nfa.addTransition(source, target, static_cast<char>(i));
+                }
             } else {
-                for (unsigned i = 1; i < m_atomData.characterSet.characters.size(); ++i) {
-                    if (m_atomData.characterSet.characters.get(i))
-                        continue;
-                    nfa.addTransition(source, target, static_cast<char>(i));
+                for (UChar i = 1; i < 128; ++i) {
+                    if (!m_atomData.characterSet.get(i))
+                        nfa.addTransition(source, target, static_cast<char>(i));
                 }
             }
         }
@@ -553,7 +641,7 @@ inline unsigned Term::generateSubgraphForAtom(NFA& nfa, unsigned source) const
     case TermType::Group: {
         unsigned lastTarget = source;
         for (const Term& term : m_atomData.group.terms)
-            lastTarget = term.generateGraph(nfa, lastTarget, ActionSet());
+            lastTarget = term.generateGraph(nfa, lastTarget, ActionList());
         return lastTarget;
     }
     }

@@ -94,7 +94,7 @@ public:
 
     WEBCORE_EXPORT GraphicsContext* context() const;
 
-    WEBCORE_EXPORT PassRefPtr<Image> copyImage(BackingStoreCopy = CopyBackingStore, ScaleBehavior = Scaled) const;
+    WEBCORE_EXPORT RefPtr<Image> copyImage(BackingStoreCopy = CopyBackingStore, ScaleBehavior = Scaled) const;
     // Give hints on the faster copyImage Mode, return DontCopyBackingStore if it supports the DontCopyBackingStore behavior
     // or return CopyBackingStore if it doesn't.  
     static BackingStoreCopy fastCopyImageMode();
@@ -123,10 +123,14 @@ public:
     bool copyToPlatformTexture(GraphicsContext3D&, Platform3DObject, GC3Denum, bool, bool);
 
     FloatSize spaceSize() const { return m_space; }
-    void setSpaceSize(const FloatSize& space)
-    {
-        m_space = space;
-    }
+    void setSpaceSize(const FloatSize& space) { m_space = space; }
+
+    // These functions are used when clamping the ImageBuffer which is created for filter, masker or clipper.
+    static bool sizeNeedsClamping(const FloatSize&);
+    static bool sizeNeedsClamping(const FloatSize&, FloatSize& scale);
+    static FloatSize clampedSize(const FloatSize&);
+    static FloatSize clampedSize(const FloatSize&, FloatSize& scale);
+    static FloatRect clampedRect(const FloatRect&);
 
 private:
 #if USE(CG)

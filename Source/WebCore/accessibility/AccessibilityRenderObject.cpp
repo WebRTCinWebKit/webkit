@@ -1111,7 +1111,10 @@ bool AccessibilityRenderObject::isAllowedChildOfTree() const
     // Determine if this is in a tree. If so, we apply special behavior to make it work like an AXOutline.
     AccessibilityObject* axObj = parentObject();
     bool isInTree = false;
+    bool isTreeItemDescendant = false;
     while (axObj) {
+        if (axObj->roleValue() == TreeItemRole)
+            isTreeItemDescendant = true;
         if (axObj->isTree()) {
             isInTree = true;
             break;
@@ -1122,7 +1125,7 @@ bool AccessibilityRenderObject::isAllowedChildOfTree() const
     // If the object is in a tree, only tree items should be exposed (and the children of tree items).
     if (isInTree) {
         AccessibilityRole role = roleValue();
-        if (role != TreeItemRole && role != StaticTextRole)
+        if (role != TreeItemRole && role != StaticTextRole && !isTreeItemDescendant)
             return false;
     }
     return true;
@@ -1348,7 +1351,12 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
         // Otherwise fall through; use presence of help text, title, or description to decide.
     }
 
-    if (isWebArea() || m_renderer->isListMarker())
+    if (m_renderer->isListMarker()) {
+        AccessibilityObject* parent = parentObjectUnignored();
+        return parent && !parent->isListItem();
+    }
+
+    if (isWebArea())
         return false;
     
     // Using the presence of an accessible name to decide an element's visibility is not
@@ -1485,17 +1493,29 @@ PlainTextRange AccessibilityRenderObject::selectedTextRange() const
     return documentBasedSelectedTextRange();
 }
 
+static void setTextSelectionIntent(const AccessibilityRenderObject& renderObject, AXTextStateChangeType type)
+{
+    AXObjectCache* cache = renderObject.axObjectCache();
+    if (!cache)
+        return;
+    AXTextStateChangeIntent intent(type, AXTextSelection { AXTextSelectionDirectionDiscontiguous, AXTextSelectionGranularityUnknown });
+    cache->setTextSelectionIntent(intent);
+    cache->setIsSynchronizingSelection(true);
+}
+
 void AccessibilityRenderObject::setSelectedTextRange(const PlainTextRange& range)
 {
     if (isNativeTextControl()) {
+        setTextSelectionIntent(*this, range.length ? AXTextStateChangeTypeSelectionExtend : AXTextStateChangeTypeSelectionMove);
         HTMLTextFormControlElement& textControl = downcast<RenderTextControl>(*m_renderer).textFormControlElement();
         textControl.setSelectionRange(range.start, range.start + range.length);
         return;
     }
 
     Node* node = m_renderer->node();
-    m_renderer->frame().selection().setSelection(VisibleSelection(Position(node, range.start, Position::PositionIsOffsetInAnchor),
-        Position(node, range.start + range.length, Position::PositionIsOffsetInAnchor), DOWNSTREAM));
+    VisibleSelection newSelection(Position(node, range.start, Position::PositionIsOffsetInAnchor), Position(node, range.start + range.length, Position::PositionIsOffsetInAnchor), DOWNSTREAM);
+    setTextSelectionIntent(*this, range.length ? AXTextStateChangeTypeSelectionExtend : AXTextStateChangeTypeSelectionMove);
+    m_renderer->frame().selection().setSelection(newSelection, FrameSelection::defaultSetSelectionOptions());
 }
 
 URL AccessibilityRenderObject::url() const
@@ -1649,6 +1669,7 @@ void AccessibilityRenderObject::setFocused(bool on)
     if (document->focusedElement() == node)
         document->setFocusedElement(nullptr);
 
+    setTextSelectionIntent(*this, AXTextStateChangeTypeSelectionMove);
     downcast<Element>(*node).focus();
 }
 
@@ -1960,13 +1981,16 @@ void AccessibilityRenderObject::setSelectedVisiblePositionRange(const VisiblePos
 {
     if (range.start.isNull() || range.end.isNull())
         return;
-    
+
     // make selection and tell the document to use it. if it's zero length, then move to that position
-    if (range.start == range.end)
+    if (range.start == range.end) {
+        setTextSelectionIntent(*this, AXTextStateChangeTypeSelectionMove);
         m_renderer->frame().selection().moveTo(range.start, UserTriggered);
+    }
     else {
+        setTextSelectionIntent(*this, AXTextStateChangeTypeSelectionExtend);
         VisibleSelection newSelection = VisibleSelection(range.start, range.end);
-        m_renderer->frame().selection().setSelection(newSelection);
+        m_renderer->frame().selection().setSelection(newSelection, FrameSelection::defaultSetSelectionOptions());
     }
 }
 
@@ -2554,28 +2578,15 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
     if (node && (node->hasTagName(rpTag) || node->hasTagName(rtTag)))
         return AnnotationRole;
 
+    // This return value is what will be used if AccessibilityTableCell determines
+    // the cell should not be treated as a cell (e.g. because it is a layout table.
+    // In ATK, there is a distinction between generic text block elements and other
+    // generic containers; AX API does not make this distinction.
+    if (node && (node->hasTagName(tdTag) || node->hasTagName(thTag)))
 #if PLATFORM(GTK) || PLATFORM(EFL)
-    // Gtk ATs expect all tables, data and layout, to be exposed as tables.
-    if (node && (node->hasTagName(tdTag)))
-        return CellRole;
-
-    if (node && (node->hasTagName(thTag))) {
-        for (Node* parentNode = node->parentNode(); parentNode; parentNode = parentNode->parentNode()) {
-            if (parentNode->hasTagName(theadTag))
-                return ColumnHeaderRole;
-            if (parentNode->hasTagName(tbodyTag) || parentNode->hasTagName(tfootTag))
-                return RowHeaderRole;
-            if (parentNode->hasTagName(tableTag))
-                return CellRole;
-        }
-        return CellRole;
-    }
-
-    if (node && node->hasTagName(trTag))
-        return RowRole;
-
-    if (is<HTMLTableElement>(node))
-        return TableRole;
+        return DivRole;
+#else
+        return GroupRole;
 #endif
 
     // Table sections should be ignored.
@@ -2623,6 +2634,9 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
 
     if (node && node->hasTagName(captionTag))
         return CaptionRole;
+
+    if (node && node->hasTagName(preTag))
+        return PreRole;
 
 #if ENABLE(VIDEO)
     if (is<HTMLVideoElement>(node))

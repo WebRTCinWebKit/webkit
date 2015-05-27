@@ -637,6 +637,7 @@ editing/selection/click-outside-editable-div.html [ Failure ]
 editing/selection/collapse-selection-in-bidi.html [ Failure ]
 editing/selection/context-menu-on-text.html [ Failure ]
 editing/selection/context-menu-text-selection.html [ Failure ]
+editing/selection/context-menu-text-selection-lookup.html [ Failure ]
 editing/selection/directionality-after-undo-replace.html [ Failure ]
 editing/selection/double-click-selection-with-dom-mutation.html [ Failure ]
 editing/selection/doubleclick-beside-cr-span.html [ Failure ]
@@ -1438,3 +1439,10 @@ security/block-test.html
 # Animation tests that fail:
 animations/combo-transform-translate+scale.html [ Failure ]
 animations/suspend-resume-animation-events.html [ Failure ]
+
+# IndexedDB is not supported on iOS WK1.
+storage/indexeddb
+crypto/subtle/rsa-indexeddb-non-exportable.html
+crypto/subtle/rsa-indexeddb.html
+fast/history/page-cache-indexed-closed-db.html
+fast/history/page-cache-indexed-opened-db.html

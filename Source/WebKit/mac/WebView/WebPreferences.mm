@@ -45,6 +45,7 @@
 #import <WebCore/NetworkStorageSession.h>
 #import <WebCore/PlatformCookieJar.h>
 #import <WebCore/ResourceHandle.h>
+#import <WebCore/Settings.h>
 #import <WebCore/TextEncodingRegistry.h>
 #import <runtime/InitializeThreading.h>
 #import <wtf/MainThread.h>
@@ -417,7 +418,7 @@ public:
         @"0",                           WebKitMinimumFontSizePreferenceKey,
         @"9",                           WebKitMinimumLogicalFontSizePreferenceKey, 
         @"16",                          WebKitDefaultFontSizePreferenceKey,
-        @(YES),                         WebKitAntialiasedFontDilationEnabledKey,
+        @(NO),                          WebKitAntialiasedFontDilationEnabledKey,
         @"13",                          WebKitDefaultFixedFontSizePreferenceKey,
         @"ISO-8859-1",                  WebKitDefaultTextEncodingNamePreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitUsesEncodingDetectorPreferenceKey,
@@ -443,6 +444,7 @@ public:
 #endif
         [NSNumber numberWithBool:YES],  WebKitPluginsEnabledPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitDatabasesEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES],  WebKitMetaRefreshEnabledPreferenceKey,
 #if PLATFORM(IOS)
         [NSNumber numberWithBool:NO],   WebKitStorageTrackerEnabledPreferenceKey,
 #endif
@@ -567,7 +569,7 @@ public:
 #endif
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheTotalQuota,
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheDefaultOriginQuota,
-        [NSNumber numberWithBool:YES],  WebKitQTKitEnabledPreferenceKey,
+        [NSNumber numberWithBool:Settings::isQTKitEnabled()], WebKitQTKitEnabledPreferenceKey,
         [NSNumber numberWithBool:NO], WebKitHiddenPageDOMTimerThrottlingEnabledPreferenceKey,
         [NSNumber numberWithBool:NO], WebKitHiddenPageCSSAnimationSuspensionEnabledPreferenceKey,
         [NSNumber numberWithBool:NO], WebKitLowPowerVideoAudioBufferSizeEnabledPreferenceKey,
@@ -2493,6 +2495,16 @@ static NSString *classIBCreatorID = nil;
 - (BOOL)antialiasedFontDilationEnabled
 {
     return [self _boolValueForKey:WebKitAntialiasedFontDilationEnabledKey];
+}
+
+- (void)setMetaRefreshEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitMetaRefreshEnabledPreferenceKey];
+}
+
+- (BOOL)metaRefreshEnabled
+{
+    return [self _boolValueForKey:WebKitMetaRefreshEnabledPreferenceKey];
 }
 
 - (BOOL)javaScriptMarkupEnabled

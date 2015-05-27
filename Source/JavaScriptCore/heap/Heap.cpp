@@ -240,11 +240,16 @@ static inline bool isValidThreadState(VM* vm)
 }
 
 struct MarkObject : public MarkedBlock::VoidFunctor {
-    void operator()(JSCell* cell)
+    inline void visit(JSCell* cell)
     {
         if (cell->isZapped())
             return;
         Heap::heap(cell)->setMarked(cell);
+    }
+    IterationStatus operator()(JSCell* cell)
+    {
+        visit(cell);
+        return IterationStatus::Continue;
     }
 };
 
@@ -253,12 +258,18 @@ struct Count : public MarkedBlock::CountFunctor {
 };
 
 struct CountIfGlobalObject : MarkedBlock::CountFunctor {
-    void operator()(JSCell* cell) {
+    inline void visit(JSCell* cell)
+    {
         if (!cell->isObject())
             return;
         if (!asObject(cell)->isGlobalObject())
             return;
         count(1);
+    }
+    IterationStatus operator()(JSCell* cell)
+    {
+        visit(cell);
+        return IterationStatus::Continue;
     }
 };
 
@@ -267,7 +278,7 @@ public:
     typedef std::unique_ptr<TypeCountSet> ReturnType;
 
     RecordType();
-    void operator()(JSCell*);
+    IterationStatus operator()(JSCell*);
     ReturnType returnValue();
 
 private:
@@ -288,9 +299,10 @@ inline const char* RecordType::typeName(JSCell* cell)
     return info->className;
 }
 
-inline void RecordType::operator()(JSCell* cell)
+inline IterationStatus RecordType::operator()(JSCell* cell)
 {
     m_typeCountSet->add(typeName(cell));
+    return IterationStatus::Continue;
 }
 
 inline std::unique_ptr<TypeCountSet> RecordType::returnValue()
@@ -302,7 +314,7 @@ inline std::unique_ptr<TypeCountSet> RecordType::returnValue()
 
 Heap::Heap(VM* vm, HeapType heapType)
     : m_heapType(heapType)
-    , m_ramSize(ramSize())
+    , m_ramSize(Options::forceRAMSize() ? Options::forceRAMSize() : ramSize())
     , m_minBytesPerCycle(minHeapSize(m_heapType, m_ramSize))
     , m_sizeAfterLastCollect(0)
     , m_sizeAfterLastFullCollect(0)
@@ -357,6 +369,8 @@ Heap::Heap(VM* vm, HeapType heapType)
 
 Heap::~Heap()
 {
+    for (WeakBlock* block : m_logicallyEmptyWeakBlocks)
+        WeakBlock::destroy(block);
 }
 
 bool Heap::isPagedOut(double deadline)
@@ -469,17 +483,6 @@ void Heap::addReference(JSCell* cell, ArrayBuffer* buffer)
     }
 }
 
-void Heap::pushTempSortVector(Vector<ValueStringPair, 0, UnsafeVectorOverflow>* tempVector)
-{
-    m_tempSortingVectors.append(tempVector);
-}
-
-void Heap::popTempSortVector(Vector<ValueStringPair, 0, UnsafeVectorOverflow>* tempVector)
-{
-    ASSERT_UNUSED(tempVector, tempVector == m_tempSortingVectors.last());
-    m_tempSortingVectors.removeLast();
-}
-
 void Heap::harvestWeakReferences()
 {
     m_slotVisitor.harvestWeakReferences();
@@ -559,7 +562,6 @@ void Heap::markRoots(double gcStartTime, void* stackOrigin, void* stackTop, Mach
         visitSmallStrings();
         visitConservativeRoots(conservativeRoots);
         visitProtectedObjects(heapRootVisitor);
-        visitTempSortVectors(heapRootVisitor);
         visitArgumentBuffers(heapRootVisitor);
         visitException(heapRootVisitor);
         visitStrongHandles(heapRootVisitor);
@@ -698,23 +700,6 @@ void Heap::visitProtectedObjects(HeapRootVisitor& heapRootVisitor)
     m_slotVisitor.donateAndDrain();
 }
 
-void Heap::visitTempSortVectors(HeapRootVisitor& heapRootVisitor)
-{
-    GCPHASE(VisitTempSortVectors);
-
-    for (auto* vector : m_tempSortingVectors) {
-        for (auto& valueStringPair : *vector) {
-            if (valueStringPair.first)
-                heapRootVisitor.visit(&valueStringPair.first);
-        }
-    }
-
-    if (Options::logGC() == GCLogging::Verbose)
-        dataLog("Temp Sort Vectors:\n", m_slotVisitor);
-
-    m_slotVisitor.donateAndDrain();
-}
-
 void Heap::visitArgumentBuffers(HeapRootVisitor& visitor)
 {
     GCPHASE(MarkingArgumentBuffers);
@@ -833,15 +818,18 @@ void Heap::updateObjectCounts(double gcStartTime)
 #endif
         dataLogF("\nNumber of live Objects after GC %lu, took %.6f secs\n", static_cast<unsigned long>(visitCount), WTF::monotonicallyIncreasingTime() - gcStartTime);
     }
-
-    if (m_operationInProgress == EdenCollection) {
-        m_totalBytesVisited += m_slotVisitor.bytesVisited();
-        m_totalBytesCopied += m_slotVisitor.bytesCopied();
-    } else {
-        ASSERT(m_operationInProgress == FullCollection);
-        m_totalBytesVisited = m_slotVisitor.bytesVisited();
-        m_totalBytesCopied = m_slotVisitor.bytesCopied();
-    }
+    
+    size_t bytesRemovedFromOldSpaceDueToReallocation =
+        m_storageSpace.takeBytesRemovedFromOldSpaceDueToReallocation();
+    
+    if (m_operationInProgress == FullCollection) {
+        m_totalBytesVisited = 0;
+        m_totalBytesCopied = 0;
+    } else
+        m_totalBytesCopied -= bytesRemovedFromOldSpaceDueToReallocation;
+    
+    m_totalBytesVisited += m_slotVisitor.bytesVisited();
+    m_totalBytesCopied += m_slotVisitor.bytesCopied();
 #if ENABLE(PARALLEL_GC)
     m_totalBytesVisited += m_sharedData.childBytesVisited();
     m_totalBytesCopied += m_sharedData.childBytesCopied();
@@ -1422,7 +1410,7 @@ void Heap::addCompiledCode(ExecutableBase* executable)
 
 class Zombify : public MarkedBlock::VoidFunctor {
 public:
-    void operator()(JSCell* cell)
+    inline void visit(JSCell* cell)
     {
         void** current = reinterpret_cast<void**>(cell);
 
@@ -1434,6 +1422,11 @@ public:
         void* limit = static_cast<void*>(reinterpret_cast<char*>(cell) + MarkedBlock::blockFor(cell)->cellSize());
         for (; current < limit; current++)
             *current = zombifiedBits;
+    }
+    IterationStatus operator()(JSCell* cell)
+    {
+        visit(cell);
+        return IterationStatus::Continue;
     }
 };
 

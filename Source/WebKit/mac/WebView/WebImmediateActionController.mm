@@ -64,6 +64,13 @@ SOFT_LINK_CLASS(QuickLookUI, QLPreviewMenuItem)
 @interface WebImmediateActionController () <QLPreviewMenuItemDelegate>
 @end
 
+@interface WebAnimationController : NSObject <NSImmediateActionAnimationController> {
+}
+@end
+
+@implementation WebAnimationController
+@end
+
 using namespace WebCore;
 
 @implementation WebImmediateActionController
@@ -94,15 +101,11 @@ using namespace WebCore;
     _currentActionContext = nil;
 }
 
-- (void)webView:(WebView *)webView willHandleMouseDown:(NSEvent *)event
-{
-    [self _clearImmediateActionState];
-}
-
 - (void)webView:(WebView *)webView didHandleScrollWheel:(NSEvent *)event
 {
     [_currentQLPreviewMenuItem close];
     [self _clearImmediateActionState];
+    [_webView _clearTextIndicatorWithAnimation:TextIndicatorDismissalAnimation::None];
 }
 
 - (NSImmediateActionGestureRecognizer *)immediateActionRecognizer
@@ -117,11 +120,11 @@ using namespace WebCore;
     [_immediateActionRecognizer setEnabled:YES];
 
     [self _clearImmediateActionState];
+    [_webView _clearTextIndicatorWithAnimation:TextIndicatorDismissalAnimation::FadeOut];
 }
 
 - (void)_clearImmediateActionState
 {
-    [_webView _clearTextIndicator];
     DDActionsManager *actionsManager = [getDDActionsManagerClass() sharedManager];
     if ([actionsManager respondsToSelector:@selector(requestBubbleClosureUnanchorOnFailure:)])
         [actionsManager requestBubbleClosureUnanchorOnFailure:YES];
@@ -134,6 +137,7 @@ using namespace WebCore;
     _type = WebImmediateActionNone;
     _currentActionContext = nil;
     _currentQLPreviewMenuItem = nil;
+    _contentPreventsDefault = NO;
 }
 
 - (void)performHitTestAtPoint:(NSPoint)viewPoint
@@ -142,6 +146,10 @@ using namespace WebCore;
     if (!coreFrame)
         return;
     _hitTestResult = coreFrame->eventHandler().hitTestResultAtPoint(IntPoint(viewPoint));
+    coreFrame->eventHandler().setImmediateActionStage(ImmediateActionStage::PerformedHitTest);
+
+    if (Element* element = _hitTestResult.innerElement())
+        _contentPreventsDefault = element->dispatchMouseForceWillBegin();
 }
 
 #pragma mark NSImmediateActionGestureRecognizerDelegate
@@ -186,6 +194,13 @@ using namespace WebCore;
     if (immediateActionRecognizer != _immediateActionRecognizer)
         return;
 
+    Frame* coreFrame = core([[[[_webView _selectedOrMainFrame] frameView] documentView] _frame]);
+    if (!coreFrame)
+        return;
+    coreFrame->eventHandler().setImmediateActionStage(ImmediateActionStage::ActionUpdated);
+    if (_contentPreventsDefault)
+        return;
+
     [_webView _setTextIndicatorAnimationProgress:[immediateActionRecognizer animationProgress]];
 }
 
@@ -194,8 +209,13 @@ using namespace WebCore;
     if (immediateActionRecognizer != _immediateActionRecognizer)
         return;
 
+    Frame* coreFrame = core([[[[_webView _selectedOrMainFrame] frameView] documentView] _frame]);
+    if (coreFrame)
+        coreFrame->eventHandler().setImmediateActionStage(ImmediateActionStage::ActionCancelled);
+
     [_webView _setTextIndicatorAnimationProgress:0];
     [self _clearImmediateActionState];
+    [_webView _clearTextIndicatorWithAnimation:TextIndicatorDismissalAnimation::None];
     [_webView _setMaintainsInactiveSelection:NO];
 }
 
@@ -203,6 +223,11 @@ using namespace WebCore;
 {
     if (immediateActionRecognizer != _immediateActionRecognizer)
         return;
+
+    Frame* coreFrame = core([[[[_webView _selectedOrMainFrame] frameView] documentView] _frame]);
+    if (!coreFrame)
+        return;
+    coreFrame->eventHandler().setImmediateActionStage(ImmediateActionStage::ActionCompleted);
 
     [_webView _setTextIndicatorAnimationProgress:1];
     [_webView _setMaintainsInactiveSelection:NO];
@@ -212,6 +237,11 @@ using namespace WebCore;
 
 - (id <NSImmediateActionAnimationController>)_defaultAnimationController
 {
+    if (_contentPreventsDefault) {
+        RetainPtr<WebAnimationController> dummyController = [[WebAnimationController alloc] init];
+        return dummyController.get();
+    }
+
     NSURL *url = _hitTestResult.absoluteLinkURL();
     NSString *absoluteURLString = [url absoluteString];
     if (url && _hitTestResult.URLElement()) {
@@ -230,7 +260,8 @@ using namespace WebCore;
 
             RefPtr<Range> linkRange = rangeOfContents(*_hitTestResult.URLElement());
             RefPtr<TextIndicator> indicator = TextIndicator::createWithRange(*linkRange, TextIndicatorPresentationTransition::FadeIn);
-            [_webView _setTextIndicator:indicator.get() fadeOut:NO];
+            if (indicator)
+                [_webView _setTextIndicator:*indicator withLifetime:TextIndicatorLifetime::Permanent];
 
             QLPreviewMenuItem *item = [NSMenuItem standardQuickLookMenuItem];
             item.previewStyle = QLPreviewStylePopover;
@@ -261,6 +292,11 @@ using namespace WebCore;
     _type = WebImmediateActionNone;
 
     id <NSImmediateActionAnimationController> defaultAnimationController = [self _defaultAnimationController];
+
+    if (_contentPreventsDefault) {
+        [_immediateActionRecognizer setAnimationController:defaultAnimationController];
+        return;
+    }
 
     // Allow clients the opportunity to override the default immediate action.
     id customClientAnimationController = nil;
@@ -303,6 +339,7 @@ using namespace WebCore;
 - (void)menuItemDidClose:(NSMenuItem *)menuItem
 {
     [self _clearImmediateActionState];
+    [_webView _clearTextIndicatorWithAnimation:TextIndicatorDismissalAnimation::FadeOut];
 }
 
 static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
@@ -383,9 +420,10 @@ static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
 
     _currentActionContext = [actionContext contextForView:_webView altMode:YES interactionStartedHandler:^() {
     } interactionChangedHandler:^() {
-        [_webView _setTextIndicator:detectedDataTextIndicator.get() fadeOut:NO];
+        if (detectedDataTextIndicator)
+            [_webView _setTextIndicator:*detectedDataTextIndicator withLifetime:TextIndicatorLifetime::Permanent];
     } interactionStoppedHandler:^() {
-        [_webView _clearTextIndicator];
+        [_webView _clearTextIndicatorWithAnimation:TextIndicatorDismissalAnimation::FadeOut];
     }];
 
     [_currentActionContext setHighlightFrame:[_webView.window convertRectToScreen:detectedDataBoundingBox]];
@@ -414,9 +452,10 @@ static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
 
     _currentActionContext = [actionContext contextForView:_webView altMode:YES interactionStartedHandler:^() {
     } interactionChangedHandler:^() {
-        [_webView _setTextIndicator:indicator.get() fadeOut:NO];
+        if (indicator)
+            [_webView _setTextIndicator:*indicator withLifetime:TextIndicatorLifetime::Permanent];
     } interactionStoppedHandler:^() {
-        [_webView _clearTextIndicator];
+        [_webView _clearTextIndicatorWithAnimation:TextIndicatorDismissalAnimation::FadeOut];
     }];
 
     [_currentActionContext setHighlightFrame:[_webView.window convertRectToScreen:elementBoundingBoxInWindowCoordinatesFromNode(_hitTestResult.URLElement())]];

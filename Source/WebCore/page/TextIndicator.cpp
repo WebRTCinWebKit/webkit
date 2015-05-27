@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -85,12 +85,12 @@ static bool textIndicatorsForTextRectsOverlap(const Vector<FloatRect>& textRects
     return false;
 }
 
-PassRefPtr<TextIndicator> TextIndicator::create(const TextIndicatorData& data)
+Ref<TextIndicator> TextIndicator::create(const TextIndicatorData& data)
 {
-    return adoptRef(new TextIndicator(data));
+    return adoptRef(*new TextIndicator(data));
 }
 
-PassRefPtr<TextIndicator> TextIndicator::createWithRange(const Range& range, TextIndicatorPresentationTransition presentationTransition)
+RefPtr<TextIndicator> TextIndicator::createWithRange(const Range& range, TextIndicatorPresentationTransition presentationTransition)
 {
     Frame* frame = range.startContainer()->document().frame();
 
@@ -98,7 +98,7 @@ PassRefPtr<TextIndicator> TextIndicator::createWithRange(const Range& range, Tex
         return nullptr;
 
     VisibleSelection oldSelection = frame->selection().selection();
-    frame->selection().setSelection(&range);
+    frame->selection().setSelection(range);
 
     RefPtr<TextIndicator> indicator = TextIndicator::createWithSelectionInFrame(*frame, presentationTransition);
 
@@ -109,7 +109,7 @@ PassRefPtr<TextIndicator> TextIndicator::createWithRange(const Range& range, Tex
 
 // FIXME (138889): Ideally the FrameSnapshotting functions would be more flexible
 // and we wouldn't have to implement this here.
-static PassRefPtr<Image> snapshotSelectionWithHighlight(Frame& frame)
+static RefPtr<Image> snapshotSelectionWithHighlight(Frame& frame)
 {
     auto& selection = frame.selection();
 
@@ -130,7 +130,7 @@ static PassRefPtr<Image> snapshotSelectionWithHighlight(Frame& frame)
     return snapshot->copyImage(CopyBackingStore, Unscaled);
 }
 
-PassRefPtr<TextIndicator> TextIndicator::createWithSelectionInFrame(Frame& frame, TextIndicatorPresentationTransition presentationTransition)
+RefPtr<TextIndicator> TextIndicator::createWithSelectionInFrame(Frame& frame, TextIndicatorPresentationTransition presentationTransition)
 {
     IntRect selectionRect = enclosingIntRect(frame.selection().selectionBounds());
     std::unique_ptr<ImageBuffer> indicatorBuffer = snapshotSelection(frame, SnapshotOptionsForceBlackText);

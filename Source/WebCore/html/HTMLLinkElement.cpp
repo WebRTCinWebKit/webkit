@@ -240,7 +240,7 @@ void HTMLLinkElement::process()
         // Load stylesheets that are not needed for the rendering immediately with low priority.
         Optional<ResourceLoadPriority> priority;
         if (!isActive)
-            priority = ResourceLoadPriorityVeryLow;
+            priority = ResourceLoadPriority::VeryLow;
         CachedResourceRequest request(ResourceRequest(document().completeURL(url)), charset, priority);
         request.setInitiator(this);
         m_cachedSheet = document().cachedResourceLoader().requestCSSStyleSheet(request);
@@ -321,8 +321,9 @@ void HTMLLinkElement::setCSSStyleSheet(const String& href, const URL& baseURL, c
     Ref<HTMLLinkElement> protect(*this);
 
     CSSParserContext parserContext(document(), baseURL, charset);
+    auto cachePolicy = document().frame()->loader().subresourceCachePolicy();
 
-    if (RefPtr<StyleSheetContents> restoredSheet = const_cast<CachedCSSStyleSheet*>(cachedStyleSheet)->restoreParsedStyleSheet(parserContext)) {
+    if (RefPtr<StyleSheetContents> restoredSheet = const_cast<CachedCSSStyleSheet*>(cachedStyleSheet)->restoreParsedStyleSheet(parserContext, cachePolicy)) {
         ASSERT(restoredSheet->isCacheable());
         ASSERT(!restoredSheet->isLoading());
 

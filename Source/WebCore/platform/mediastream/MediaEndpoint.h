@@ -47,7 +47,8 @@ class MediaEndpoint;
 class MediaEndpointConfiguration;
 class RTCDataChannelHandler;
 class RTCDataChannelHandlerClient;
-class RealTimeMediaSource; // not implemented
+class RealTimeMediaSource; 
+
 
 
 struct RTCDataChannelInit_Endpoint {
@@ -68,7 +69,7 @@ public:
 
 class MediaEndpointClient {
 public:
-    virtual void gotSendSSRC(unsigned mdescIndex, const String& ssrc, const String& cname) = 0;
+    virtual void gotSendSSRC(unsigned mdescIndex, unsigned ssrc, const String& cname) = 0;
     virtual void gotDtlsCertificate(unsigned mdescIndex, const String& certificate) = 0;
     virtual void gotIceCandidate(unsigned mdescIndex, RefPtr<IceCandidate>&&, const String& ufrag, const String& password) = 0;
     virtual void doneGatheringCandidates(unsigned mdescIndex) = 0;

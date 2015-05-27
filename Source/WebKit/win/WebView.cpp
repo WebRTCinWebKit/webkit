@@ -155,6 +155,7 @@
 #include <WebCore/WindowsTouch.h>
 #include <bindings/ScriptValue.h>
 #include <wtf/MainThread.h>
+#include <wtf/RAMSize.h>
 
 #if USE(CG)
 #include <CoreGraphics/CGContext.h>
@@ -521,9 +522,10 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
     long cacheDiskCapacity = 0;
 #endif
 
+    unsigned long long memSize = ramSize() / 1024 / 1024;
+
     // As a fudge factor, use 1000 instead of 1024, in case the reported byte 
     // count doesn't align exactly to a megabyte boundary.
-    unsigned long long memSize = WebMemorySize() / 1024 / 1000;
     unsigned long long diskFreeSize = WebVolumeFreeSize(cacheDirectory) / 1024 / 1000;
 
     unsigned cacheTotalCapacity = 0;
@@ -3963,7 +3965,7 @@ HRESULT STDMETHODCALLTYPE WebView::canGoBack(
         /* [in] */ IUnknown* /*sender*/,
         /* [retval][out] */ BOOL* result)
 {
-    *result = !!(m_page->backForward().client()->backItem() && !m_page->defersLoading());
+    *result = !!(m_page->backForward().backItem() && !m_page->defersLoading());
     return S_OK;
 }
     
@@ -3978,7 +3980,7 @@ HRESULT STDMETHODCALLTYPE WebView::canGoForward(
         /* [in] */ IUnknown* /*sender*/,
         /* [retval][out] */ BOOL* result)
 {
-    *result = !!(m_page->backForward().client()->forwardItem() && !m_page->defersLoading());
+    *result = !!(m_page->backForward().forwardItem() && !m_page->defersLoading());
     return S_OK;
 }
     
@@ -5489,30 +5491,30 @@ HRESULT STDMETHODCALLTYPE WebView::loadBackForwardListFromOtherView(
     // It turns out the right combination of behavior is done with the back/forward load
     // type.  (See behavior matrix at the top of WebFramePrivate.)  So we copy all the items
     // in the back forward list, and go to the current one.
-    BackForwardClient* backForwardClient = m_page->backForward().client();
-    ASSERT(!backForwardClient->currentItem()); // destination list should be empty
+    BackForwardController& backForward = m_page->backForward();
+    ASSERT(!backForward.currentItem()); // destination list should be empty
 
     COMPtr<WebView> otherWebView;
     if (FAILED(otherView->QueryInterface(&otherWebView)))
         return E_FAIL;
-    BackForwardClient* otherBackForwardClient = otherWebView->m_page->backForward().client();
-    if (!otherBackForwardClient->currentItem())
+    BackForwardController& otherBackForward = otherWebView->m_page->backForward();
+    if (!otherBackForward.currentItem())
         return S_OK; // empty back forward list, bail
     
     HistoryItem* newItemToGoTo = 0;
 
-    int lastItemIndex = otherBackForwardClient->forwardListCount();
-    for (int i = -otherBackForwardClient->backListCount(); i <= lastItemIndex; ++i) {
+    int lastItemIndex = otherBackForward.forwardCount();
+    for (int i = -otherBackForward.backCount(); i <= lastItemIndex; ++i) {
         if (!i) {
             // If this item is showing , save away its current scroll and form state,
             // since that might have changed since loading and it is normally not saved
             // until we leave that page.
             otherWebView->m_page->mainFrame().loader().history().saveDocumentAndScrollState();
         }
-        Ref<HistoryItem> newItem = otherBackForwardClient->itemAtIndex(i)->copy();
+        Ref<HistoryItem> newItem = otherBackForward.itemAtIndex(i)->copy();
         if (!i) 
             newItemToGoTo = newItem.ptr();
-        backForwardClient->addItem(WTF::move(newItem));
+        backForward.client()->addItem(WTF::move(newItem));
     }
     
     ASSERT(newItemToGoTo);

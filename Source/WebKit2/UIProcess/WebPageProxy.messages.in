@@ -129,7 +129,8 @@ messages -> WebPageProxy {
     # Frame load messages
     DidStartProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, String url, String unreachableURL, WebKit::UserData userData)
     DidReceiveServerRedirectForProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, String url, WebKit::UserData userData)
-    DidFailProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, WebCore::ResourceError error, WebKit::UserData userData)
+    DidChangeProvisionalURLForFrame(uint64_t frameID, uint64_t navigationID, String url)
+    DidFailProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, String provisionalURL, WebCore::ResourceError error, WebKit::UserData userData)
     DidCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, String mimeType, bool hasCustomContentProvider, uint32_t loadType, WebCore::CertificateInfo certificateInfo, WebKit::UserData userData)
     DidFailLoadForFrame(uint64_t frameID, uint64_t navigationID, WebCore::ResourceError error, WebKit::UserData userData)
     DidFinishDocumentLoadForFrame(uint64_t frameID, uint64_t navigationID, WebKit::UserData userData)
@@ -194,6 +195,9 @@ messages -> WebPageProxy {
 #if PLATFORM(GTK)
     PrintFinishedCallback(WebCore::ResourceError error, uint64_t callbackID)
 #endif
+#if PLATFORM(COCOA)
+    MachSendRightCallback(WebCore::MachSendRight sendRight, uint64_t callbackID)
+#endif
 
     PageScaleFactorDidChange(double scaleFactor)
     PluginScaleFactorDidChange(double zoomFactor)
@@ -236,7 +240,7 @@ messages -> WebPageProxy {
 
     # Find messages
     DidCountStringMatches(String string, uint32_t matchCount)
-    SetTextIndicator(struct WebCore::TextIndicatorData indicator, bool fadeOut)
+    SetTextIndicator(struct WebCore::TextIndicatorData indicator, uint64_t lifetime)
     ClearTextIndicator()
     DidFindString(String string, uint32_t matchCount, int32_t matchIndex)
     DidFailToFindString(String string)
@@ -432,9 +436,10 @@ messages -> WebPageProxy {
     HandleAutoFillButtonClick(WebKit::UserData userData);
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
-    ShowPlaybackTargetPicker(WebCore::FloatRect pickerLocation, bool hasVideo)
-    StartingMonitoringPlaybackTargets()
-    StopMonitoringPlaybackTargets()
+    AddPlaybackTargetPickerClient(uint64_t contextId)
+    RemovePlaybackTargetPickerClient(uint64_t contextId)
+    ShowPlaybackTargetPicker(uint64_t clientId, WebCore::FloatRect pickerLocation, bool hasVideo)
+    PlaybackTargetPickerClientStateDidChange(uint64_t contextId, unsigned mediaState)
 #endif
 
 }

@@ -165,7 +165,7 @@ public:
     // Disconnect the process from the context.
     void disconnectProcess(WebProcessProxy*);
 
-    API::WebsiteDataStore& websiteDataStore() const { return *m_websiteDataStore; }
+    API::WebsiteDataStore* websiteDataStore() const { return m_websiteDataStore.get(); }
 
     PassRefPtr<WebPageProxy> createWebPage(PageClient&, WebPageConfiguration);
 
@@ -300,6 +300,7 @@ public:
 
 #if ENABLE(DATABASE_PROCESS)
     void ensureDatabaseProcess();
+    DatabaseProcessProxy* databaseProcess() { return m_databaseProcess.get(); }
     void getDatabaseProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply>);
     void databaseProcessCrashed(DatabaseProcessProxy*);
 #endif
@@ -346,6 +347,7 @@ public:
 #endif
 
     void setMemoryCacheDisabled(bool);
+    void setFontWhitelist(API::Array*);
 
     UserObservablePageToken userObservablePageCount()
     {
@@ -399,8 +401,9 @@ private:
     String diskCacheDirectory() const;
     String platformDefaultDiskCacheDirectory() const;
 
+#if PLATFORM(IOS) || ENABLE(SECCOMP_FILTERS)
     String cookieStorageDirectory() const;
-    String platformDefaultCookieStorageDirectory() const;
+#endif
 
 #if PLATFORM(IOS)
     String parentBundleDirectory() const;
@@ -470,6 +473,8 @@ private:
     bool m_alwaysUsesComplexTextCodePath;
     bool m_shouldUseFontSmoothing;
 
+    Vector<String> m_fontWhitelist;
+
     // Messages that were posted before any pages were created.
     // The client should use initialization messages instead, so that a restarted process would get the same state.
     Vector<std::pair<String, RefPtr<API::Object>>> m_messagesToInjectedBundlePostedToEmptyContext;
@@ -485,7 +490,7 @@ private:
     RefPtr<WebPluginSiteDataManager> m_pluginSiteDataManager;
 #endif
 
-    RefPtr<API::WebsiteDataStore> m_websiteDataStore;
+    const RefPtr<API::WebsiteDataStore> m_websiteDataStore;
 
     typedef HashMap<const char*, RefPtr<WebContextSupplement>, PtrHash<const char*>> WebContextSupplementMap;
     WebContextSupplementMap m_supplements;

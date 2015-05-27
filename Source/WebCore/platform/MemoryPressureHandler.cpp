@@ -39,7 +39,6 @@
 #include "WorkerThread.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/FastMalloc.h>
-#include <wtf/Functional.h>
 #include <wtf/StdLibExtras.h>
 
 namespace WebCore {
@@ -129,6 +128,11 @@ void MemoryPressureHandler::releaseCriticalMemory()
     {
         ReliefLogger log("Discard all JIT-compiled code");
         gcController().discardAllCompiledCode();
+    }
+
+    {
+        ReliefLogger log("Invalidate font cache");
+        FontCache::singleton().invalidate();
     }
 }
 

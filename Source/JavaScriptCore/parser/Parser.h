@@ -653,9 +653,9 @@ private:
         return m_token.m_location;
     }
 
-    void setErrorMessage(String msg)
+    void setErrorMessage(const String& message)
     {
-        m_errorMessage = msg;
+        m_errorMessage = message;
     }
     
     NEVER_INLINE void logError(bool);
@@ -667,9 +667,9 @@ private:
     template <typename A, typename B, typename C, typename D, typename E, typename F> NEVER_INLINE void logError(bool, const A&, const B&, const C&, const D&, const E&, const F&);
     template <typename A, typename B, typename C, typename D, typename E, typename F, typename G> NEVER_INLINE void logError(bool, const A&, const B&, const C&, const D&, const E&, const F&, const G&);
     
-    NEVER_INLINE void updateErrorWithNameAndMessage(const char* beforeMsg, String name, const char* afterMsg)
+    NEVER_INLINE void updateErrorWithNameAndMessage(const char* beforeMessage, const String& name, const char* afterMessage)
     {
-        m_errorMessage = makeString(beforeMsg, " '", name, "' ", afterMsg);
+        m_errorMessage = makeString(beforeMessage, " '", name, "' ", afterMessage);
     }
     
     NEVER_INLINE void updateErrorMessage(const char* msg)
@@ -772,9 +772,13 @@ private:
     template <class TreeBuilder> NEVER_INLINE TreeDeconstructionPattern parseDeconstructionPattern(TreeBuilder&, DeconstructionKind, int depth = 0);
     template <class TreeBuilder> NEVER_INLINE TreeDeconstructionPattern tryParseDeconstructionPatternExpression(TreeBuilder&);
 
-    template <class TreeBuilder> NEVER_INLINE bool parseFunctionInfo(TreeBuilder&, FunctionRequirements, FunctionParseMode, bool nameIsInContainingScope, ConstructorKind, int functionKeywordStart, ParserFunctionInfo<TreeBuilder>&);
+    template <class TreeBuilder> NEVER_INLINE bool parseFunctionInfo(TreeBuilder&, FunctionRequirements, FunctionParseMode, bool nameIsInContainingScope, ConstructorKind, SuperBinding, int functionKeywordStart, ParserFunctionInfo<TreeBuilder>&);
 #if ENABLE(ES6_CLASS_SYNTAX)
     template <class TreeBuilder> NEVER_INLINE TreeClassExpression parseClass(TreeBuilder&, FunctionRequirements, ParserClassInfo<TreeBuilder>&);
+#endif
+#if ENABLE(ES6_TEMPLATE_LITERAL_SYNTAX)
+    template <class TreeBuilder> NEVER_INLINE typename TreeBuilder::TemplateString parseTemplateString(TreeBuilder& context, bool isTemplateHead, bool& elementIsTail);
+    template <class TreeBuilder> NEVER_INLINE typename TreeBuilder::TemplateLiteral parseTemplateLiteral(TreeBuilder&);
 #endif
 
     ALWAYS_INLINE int isBinaryOperator(JSTokenType);

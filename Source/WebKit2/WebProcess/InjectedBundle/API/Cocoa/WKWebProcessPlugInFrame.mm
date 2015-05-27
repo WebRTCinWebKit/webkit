@@ -90,7 +90,7 @@ using namespace WebKit;
 
 - (NSArray *)childFrames
 {
-    return [wrapper(*_frame->childFrames().leakRef()) autorelease];
+    return [wrapper(_frame->childFrames().leakRef()) autorelease];
 }
 
 - (BOOL)containsAnyFormElements
@@ -101,6 +101,12 @@ using namespace WebKit;
 - (_WKFrameHandle *)handle
 {
     return [wrapper(API::FrameHandle::create(_frame->frameID()).leakRef()) autorelease];
+}
+
+- (WKWebProcessPlugInFrame *)_parentFrame
+{
+    WebFrame *parentFrame = _frame->parentFrame();
+    return parentFrame ? wrapper(*parentFrame) : nil;
 }
 
 - (BOOL)_hasCustomContentProvider

@@ -461,10 +461,10 @@ LLINT_SLOW_PATH_DECL(stack_check)
     dataLogF("Num callee registers = %u.\n", exec->codeBlock()->m_numCalleeRegisters);
     dataLogF("Num vars = %u.\n", exec->codeBlock()->m_numVars);
 
-#if ENABLE(LLINT_C_LOOP)
-    dataLogF("Current end is at %p.\n", exec->vm().jsStackLimit());
-#else
+#if ENABLE(JIT)
     dataLogF("Current end is at %p.\n", exec->vm().stackLimit());
+#else
+    dataLogF("Current end is at %p.\n", exec->vm().jsStackLimit());
 #endif
 
 #endif
@@ -859,6 +859,32 @@ LLINT_SLOW_PATH_DECL(slow_path_put_by_index)
     JSValue arrayValue = LLINT_OP_C(1).jsValue();
     ASSERT(isJSArray(arrayValue));
     asArray(arrayValue)->putDirectIndex(exec, pc[2].u.operand, LLINT_OP_C(3).jsValue());
+    LLINT_END();
+}
+
+LLINT_SLOW_PATH_DECL(slow_path_put_getter_by_id)
+{
+    LLINT_BEGIN();
+    ASSERT(LLINT_OP(1).jsValue().isObject());
+    JSObject* baseObj = asObject(LLINT_OP(1).jsValue());
+    
+    JSValue getter = LLINT_OP(3).jsValue();
+    ASSERT(getter.isObject());
+    
+    baseObj->putGetter(exec, exec->codeBlock()->identifier(pc[2].u.operand), asObject(getter));
+    LLINT_END();
+}
+
+LLINT_SLOW_PATH_DECL(slow_path_put_setter_by_id)
+{
+    LLINT_BEGIN();
+    ASSERT(LLINT_OP(1).jsValue().isObject());
+    JSObject* baseObj = asObject(LLINT_OP(1).jsValue());
+    
+    JSValue setter = LLINT_OP(3).jsValue();
+    ASSERT(setter.isObject());
+    
+    baseObj->putSetter(exec, exec->codeBlock()->identifier(pc[2].u.operand), asObject(setter));
     LLINT_END();
 }
 

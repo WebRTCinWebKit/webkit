@@ -112,7 +112,7 @@ private:
     virtual void invalidateContentsAndRootView(const WebCore::IntRect&) override;
     virtual void invalidateContentsForSlowScroll(const WebCore::IntRect&) override;
     virtual void scroll(const WebCore::IntSize& scrollDelta, const WebCore::IntRect& scrollRect, const WebCore::IntRect& clipRect) override;
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
     virtual void delegatedScrollRequested(const WebCore::IntPoint& scrollOffset) override;
 #endif
     virtual WebCore::IntPoint screenToRootView(const WebCore::IntPoint&) const override;
@@ -276,6 +276,8 @@ private:
     virtual void notifyScrollerThumbIsVisibleInRect(const WebCore::IntRect&) override;
     virtual void recommendedScrollbarStyleDidChange(WebCore::ScrollbarStyle newStyle) override;
 
+    virtual WTF::Optional<WebCore::ScrollbarOverlayStyle> preferredScrollbarOverlayStyle() override;
+
     virtual WebCore::Color underlayColor() const override;
 
     virtual void pageExtendedBackgroundColorDidChange(WebCore::Color) const override;
@@ -292,7 +294,7 @@ private:
 
     virtual bool shouldUseTiledBackingForFrameView(const WebCore::FrameView*) const override;
 
-    virtual void isPlayingMediaDidChange(MediaStateFlags) override;
+    virtual void isPlayingMediaDidChange(WebCore::MediaProducer::MediaStateFlags) override;
     virtual void setPageActivityState(WebCore::PageActivityState::Flags) override;
 
 #if ENABLE(SUBTLE_CRYPTO)
@@ -313,9 +315,10 @@ private:
     virtual void handleAutoFillButtonClick(WebCore::HTMLInputElement&) override;
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
-    virtual void showPlaybackTargetPicker(const WebCore::IntPoint&, bool) override;
-    virtual void startingMonitoringPlaybackTargets() override;
-    virtual void stopMonitoringPlaybackTargets() override;
+    virtual void addPlaybackTargetPickerClient(uint64_t /*contextId*/) override;
+    virtual void removePlaybackTargetPickerClient(uint64_t /*contextId*/) override;
+    virtual void showPlaybackTargetPicker(uint64_t contextId, const WebCore::IntPoint&, bool) override;
+    virtual void playbackTargetPickerClientStateDidChange(uint64_t, WebCore::MediaProducer::MediaStateFlags) override;
 #endif
 
     String m_cachedToolTip;

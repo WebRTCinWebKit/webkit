@@ -28,6 +28,7 @@
 
 #include "PlatformWheelEvent.h"
 #include "WebCoreSystemInterface.h"
+#include "WheelEventTestTrigger.h"
 #include <sys/sysctl.h>
 #include <sys/time.h>
 
@@ -129,10 +130,6 @@ ScrollController::ScrollController(ScrollControllerClient& client)
     , m_horizontalScrollSnapTimer(RunLoop::current(), this, &ScrollController::horizontalScrollSnapTimerFired)
     , m_verticalScrollSnapTimer(RunLoop::current(), this, &ScrollController::verticalScrollSnapTimerFired)
 #endif
-    , m_inScrollGesture(false)
-    , m_momentumScrollInProgress(false)
-    , m_ignoreMomentumScrolls(false)
-    , m_snapRubberbandTimerIsActive(false)
 {
 }
 
@@ -411,6 +408,8 @@ void ScrollController::startSnapRubberbandTimer()
 {
     m_client.startSnapRubberbandTimer();
     m_snapRubberbandTimer.startRepeating(1.0 / 60.0);
+
+    m_client.deferTestsForReason(reinterpret_cast<WheelEventTestTrigger::ScrollableAreaIdentifier>(this), WheelEventTestTrigger::RubberbandInProgress);
 }
 
 void ScrollController::stopSnapRubberbandTimer()
@@ -418,6 +417,8 @@ void ScrollController::stopSnapRubberbandTimer()
     m_client.stopSnapRubberbandTimer();
     m_snapRubberbandTimer.stop();
     m_snapRubberbandTimerIsActive = false;
+    
+    m_client.removeTestDeferralForReason(reinterpret_cast<WheelEventTestTrigger::ScrollableAreaIdentifier>(this), WheelEventTestTrigger::RubberbandInProgress);
 }
 
 void ScrollController::snapRubberBand()
@@ -613,6 +614,11 @@ void ScrollController::startScrollSnapTimer(ScrollEventAxis axis)
         m_client.startScrollSnapTimer(axis);
         scrollSnapTimer.startRepeating(1.0 / 60.0);
     }
+
+    if (!m_horizontalScrollSnapTimer.isActive() && !m_verticalScrollSnapTimer.isActive())
+        return;
+
+    m_client.deferTestsForReason(reinterpret_cast<WheelEventTestTrigger::ScrollableAreaIdentifier>(this), WheelEventTestTrigger::ScrollSnapInProgress);
 }
 
 void ScrollController::stopScrollSnapTimer(ScrollEventAxis axis)
@@ -620,6 +626,11 @@ void ScrollController::stopScrollSnapTimer(ScrollEventAxis axis)
     m_client.stopScrollSnapTimer(axis);
     RunLoop::Timer<ScrollController>& scrollSnapTimer = axis == ScrollEventAxis::Horizontal ? m_horizontalScrollSnapTimer : m_verticalScrollSnapTimer;
     scrollSnapTimer.stop();
+    
+    if (m_horizontalScrollSnapTimer.isActive() || m_verticalScrollSnapTimer.isActive())
+        return;
+
+    m_client.removeTestDeferralForReason(reinterpret_cast<WheelEventTestTrigger::ScrollableAreaIdentifier>(this), WheelEventTestTrigger::ScrollSnapInProgress);
 }
 
 void ScrollController::horizontalScrollSnapTimerFired()
@@ -674,6 +685,26 @@ void ScrollController::initializeGlideParameters(ScrollEventAxis axis, bool shou
     snapState.m_glidePhaseShift = acos((snapState.m_glideInitialWheelDelta - targetFinalWheelDelta) / (snapState.m_glideInitialWheelDelta + targetFinalWheelDelta));
 }
 
+unsigned ScrollController::activeScrollSnapIndexForAxis(ScrollEventAxis axis) const
+{
+    if ((axis == ScrollEventAxis::Horizontal) && !m_horizontalScrollSnapState)
+        return 0;
+    if ((axis == ScrollEventAxis::Vertical) && !m_verticalScrollSnapState)
+        return 0;
+    
+    const ScrollSnapAnimatorState& snapState = scrollSnapPointState(axis);
+    return snapState.m_activeSnapIndex;
+}
+
+void ScrollController::setActiveScrollSnapIndexForAxis(ScrollEventAxis axis, unsigned index)
+{
+    auto* snapState = (axis == ScrollEventAxis::Horizontal) ? m_horizontalScrollSnapState.get() : m_verticalScrollSnapState.get();
+    if (!snapState)
+        return;
+
+    snapState->m_activeSnapIndex = index;
+}
+
 void ScrollController::beginScrollSnapAnimation(ScrollEventAxis axis, ScrollSnapState newState)
 {
     ASSERT(newState == ScrollSnapState::Gliding || newState == ScrollSnapState::Snapping);
@@ -690,10 +721,12 @@ void ScrollController::beginScrollSnapAnimation(ScrollEventAxis axis, ScrollSnap
     
     projectedScrollDestination = std::min(std::max(LayoutUnit(projectedScrollDestination / scaleFactor), snapState.m_snapOffsets.first()), snapState.m_snapOffsets.last());
     snapState.m_initialOffset = offset;
-    snapState.m_targetOffset = scaleFactor * closestSnapOffset<LayoutUnit, float>(snapState.m_snapOffsets, projectedScrollDestination, initialWheelDelta);
+    m_activeScrollSnapIndexDidChange = false;
+    snapState.m_targetOffset = scaleFactor * closestSnapOffset<LayoutUnit, float>(snapState.m_snapOffsets, projectedScrollDestination, initialWheelDelta, snapState.m_activeSnapIndex);
     if (snapState.m_initialOffset == snapState.m_targetOffset)
         return;
     
+    m_activeScrollSnapIndexDidChange = true;
     snapState.m_currentState = newState;
     if (newState == ScrollSnapState::Gliding) {
         snapState.m_shouldOverrideWheelEvent = true;

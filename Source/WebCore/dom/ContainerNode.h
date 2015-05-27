@@ -27,12 +27,8 @@
 #include "ExceptionCodePlaceholder.h"
 #include "Node.h"
 
-#include <wtf/OwnPtr.h>
-#include <wtf/Vector.h>
-
 namespace WebCore {
 
-class FloatPoint;
 class QualifiedName;
 class RenderElement;
 
@@ -148,6 +144,11 @@ public:
     RefPtr<NodeList> getElementsByName(const String& elementName);
     RefPtr<NodeList> getElementsByClassName(const AtomicString& classNames);
     RefPtr<RadioNodeList> radioNodeList(const AtomicString&);
+
+    // From the ParentNode interface - https://dom.spec.whatwg.org/#interface-parentnode
+    Element* firstElementChild() const;
+    Element* lastElementChild() const;
+    unsigned childElementCount() const;
 
 protected:
     explicit ContainerNode(Document&, ConstructionType = CreateContainer);

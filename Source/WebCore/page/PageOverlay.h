@@ -69,7 +69,7 @@ public:
         Document, // Scales and scrolls with the document.
     };
 
-    WEBCORE_EXPORT static PassRefPtr<PageOverlay> create(Client&, OverlayType = OverlayType::View);
+    WEBCORE_EXPORT static Ref<PageOverlay> create(Client&, OverlayType = OverlayType::View);
     WEBCORE_EXPORT virtual ~PageOverlay();
 
     WEBCORE_EXPORT PageOverlayController* controller() const;
@@ -104,6 +104,8 @@ public:
     WEBCORE_EXPORT IntRect bounds() const;
     WEBCORE_EXPORT IntRect frame() const;
     WEBCORE_EXPORT void setFrame(IntRect);
+
+    WEBCORE_EXPORT IntSize viewToOverlayOffset() const;
 
     RGBA32 backgroundColor() const { return m_backgroundColor; }
     void setBackgroundColor(RGBA32);

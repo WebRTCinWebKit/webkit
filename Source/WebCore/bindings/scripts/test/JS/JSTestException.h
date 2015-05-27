@@ -28,7 +28,7 @@
 
 namespace WebCore {
 
-class WEBCORE_EXPORT JSTestException : public JSDOMWrapper {
+class JSTestException : public JSDOMWrapper {
 public:
     typedef JSDOMWrapper Base;
     static JSTestException* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestException>&& impl)
@@ -54,15 +54,7 @@ public:
 
     static JSC::JSValue getConstructor(JSC::VM&, JSC::JSGlobalObject*);
     TestException& impl() const { return *m_impl; }
-    void releaseImpl() { m_impl->deref(); m_impl = 0; }
-
-    void releaseImplIfNotNull()
-    {
-        if (m_impl) {
-            m_impl->deref();
-            m_impl = 0;
-        }
-    }
+    void releaseImpl() { std::exchange(m_impl, nullptr)->deref(); }
 
 private:
     TestException* m_impl;
@@ -91,7 +83,7 @@ inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld&, TestException*)
     return &owner.get();
 }
 
-WEBCORE_EXPORT JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestException*);
+JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestException*);
 inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, TestException& impl) { return toJS(exec, globalObject, &impl); }
 
 

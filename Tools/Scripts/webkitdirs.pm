@@ -716,7 +716,7 @@ sub determinePassedConfiguration
         $passedConfiguration = "Profiling";
     }
 
-    $passedConfiguration .= "_WinCairo" if (defined($passedConfiguration) && isWinCairo() && isCygwin());
+    $passedConfiguration .= "_WinCairo" if (defined($passedConfiguration) && isWinCairo());
 }
 
 sub passedConfiguration
@@ -1366,7 +1366,7 @@ sub launcherPath()
 {
     my $relativeScriptsPath = relativeScriptsDir();
     if (isGtk() || isEfl()) {
-        return "$relativeScriptsPath/run-launcher";
+        return "$relativeScriptsPath/run-minibrowser";
     } elsif (isAppleWebKit()) {
         return "$relativeScriptsPath/run-safari";
     }
@@ -2115,16 +2115,17 @@ sub relaunchIOSSimulator($)
     my ($simulatedDevice) = @_;
     quitIOSSimulator($simulatedDevice->{UDID});
 
-    chomp(my $developerDirectory = $ENV{DEVELOPER_DIR} || `xcode-select --print-path`);
-    my $iosSimulatorPath = File::Spec->catfile($developerDirectory, "Applications", "iOS Simulator.app");
+    # FIXME: <rdar://problem/20916140> Switch to using CoreSimulator.framework for launching and quitting iOS Simulator
+    my $iosSimulatorBundleID = "com.apple.iphonesimulator";
+    system("open", "-b", $iosSimulatorBundleID, "--args", "-CurrentDeviceUDID", $simulatedDevice->{UDID}) == 0 or die "Failed to open $iosSimulatorBundleID: $!";
 
-    system("open", "-a", $iosSimulatorPath, "--args", "-CurrentDeviceUDID", $simulatedDevice->{UDID}) == 0 or die "Failed to open $iosSimulatorPath: $!";
     waitUntilIOSSimulatorDeviceIsInState($simulatedDevice->{UDID}, SIMULATOR_DEVICE_STATE_BOOTED);
 }
 
 sub quitIOSSimulator(;$)
 {
     my ($waitForShutdownOfSimulatedDeviceUDID) = @_;
+    # FIXME: <rdar://problem/20916140> Switch to using CoreSimulator.framework for launching and quitting iOS Simulator
     exitStatus(system {"osascript"} "osascript", "-e", 'tell application id "com.apple.iphonesimulator" to quit') == 0 or die "Failed to quit iOS Simulator: $!";
     if (!defined($waitForShutdownOfSimulatedDeviceUDID)) {
         return;
@@ -2351,7 +2352,7 @@ sub execMacWebKitAppForDebugging($)
         exec { $debuggerPath } $debuggerPath, @architectureFlags, $argumentsSeparator, $appPath, argumentsForRunAndDebugMacWebKitApp() or die;
     } else {
         if (shouldUseXPCServiceForWebProcess()) {
-            die "Targetting the Web Process is not compatible with using an XPC Service for the Web Process at this time.";
+            die "Targeting the Web Process is not compatible with using an XPC Service for the Web Process at this time.";
         }
         
         my $webProcessShimPath = File::Spec->catfile($productDir, "SecItemShim.dylib");

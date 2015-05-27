@@ -108,7 +108,7 @@ static void registerUserDefaultsIfNeeded()
 
 #if ENABLE(NETWORK_CACHE)
     [registrationDictionary setObject:[NSNumber numberWithBool:YES] forKey:WebKitNetworkCacheEnabledDefaultsKey];
-    [registrationDictionary setObject:[NSNumber numberWithBool:YES] forKey:WebKitNetworkCacheEfficacyLoggingEnabledDefaultsKey];
+    [registrationDictionary setObject:[NSNumber numberWithBool:NO] forKey:WebKitNetworkCacheEfficacyLoggingEnabledDefaultsKey];
 #endif
 
     [[NSUserDefaults standardUserDefaults] registerDefaults:registrationDictionary];
@@ -175,6 +175,19 @@ String WebProcessPool::platformDefaultApplicationCacheDirectory() const
     return stringByResolvingSymlinksInPath([cachePath stringByStandardizingPath]);
 }
 
+#if PLATFORM(IOS)
+String WebProcessPool::cookieStorageDirectory() const
+{
+    String path = pathForProcessContainer();
+    if (path.isEmpty())
+        path = NSHomeDirectory();
+
+    path = path + "/Library/Cookies";
+    path = stringByResolvingSymlinksInPath(path);
+    return path;
+}
+#endif
+
 void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& parameters)
 {
     parameters.presenterApplicationPid = getpid();
@@ -218,6 +231,8 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
     }
 #endif
 
+    parameters.fontWhitelist = m_fontWhitelist;
+
     if (m_bundleParameters) {
         auto data = adoptNS([[NSMutableData alloc] init]);
         auto keyedArchiver = adoptNS([[NSKeyedArchiver alloc] initForWritingWithMutableData:data.get()]);
@@ -237,6 +252,12 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
     }
 #if (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
     parameters.networkATSContext = adoptCF(_CFNetworkCopyATSContext());
+#endif
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
+    RetainPtr<CFDataRef> cookieStorageData = adoptCF(CFHTTPCookieStorageCreateIdentifyingData(kCFAllocatorDefault, [[NSHTTPCookieStorage sharedHTTPCookieStorage] _cookieStorage]));
+    ASSERT(parameters.uiProcessCookieStorageIdentifier.isEmpty());
+    parameters.uiProcessCookieStorageIdentifier.append(CFDataGetBytePtr(cookieStorageData.get()), CFDataGetLength(cookieStorageData.get()));
 #endif
 }
 
@@ -265,6 +286,12 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
     parameters.shouldEnableNetworkCache = [defaults boolForKey:WebKitNetworkCacheEnabledDefaultsKey] && ![defaults boolForKey:WebKitNetworkCacheTemporarilyDisabledForTestingKey];
     parameters.shouldEnableNetworkCacheEfficacyLogging = [defaults boolForKey:WebKitNetworkCacheEfficacyLoggingEnabledDefaultsKey];
 #endif
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
+    RetainPtr<CFDataRef> cookieStorageData = adoptCF(CFHTTPCookieStorageCreateIdentifyingData(kCFAllocatorDefault, [[NSHTTPCookieStorage sharedHTTPCookieStorage] _cookieStorage]));
+    ASSERT(parameters.uiProcessCookieStorageIdentifier.isEmpty());
+    parameters.uiProcessCookieStorageIdentifier.append(CFDataGetBytePtr(cookieStorageData.get()), CFDataGetLength(cookieStorageData.get()));
+#endif
 }
 #endif
 
@@ -279,22 +306,6 @@ String WebProcessPool::platformDefaultDiskCacheDirectory() const
     if (!cachePath)
         cachePath = @"~/Library/Caches/com.apple.WebKit.WebProcess";
     return stringByResolvingSymlinksInPath([cachePath stringByStandardizingPath]);
-}
-
-String WebProcessPool::platformDefaultCookieStorageDirectory() const
-{
-#if PLATFORM(IOS)
-    String path = pathForProcessContainer();
-    if (path.isEmpty())
-        path = NSHomeDirectory();
-
-    path = path + "/Library/Cookies";
-    path = stringByResolvingSymlinksInPath(path);
-    return path;
-#else
-    notImplemented();
-    return [@"" stringByStandardizingPath];
-#endif
 }
 
 #if PLATFORM(IOS)

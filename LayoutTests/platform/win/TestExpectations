@@ -239,7 +239,6 @@ http/tests/security/cross-origin-worker-indexeddb-allowed.html [ Skip ]
 http/tests/security/cross-origin-worker-indexeddb.html [ Skip ]
 http/tests/security/no-indexeddb-from-sandbox.html [ Skip ]
 crypto/subtle/rsa-indexeddb.html [ Skip ]
-inspector-protocol/indexeddb/basics.html [ Skip ]
 fast/history/page-cache-indexed-closed-db.html [ Skip ]
 fast/history/page-cache-indexed-opened-db.html [ Skip ]
 fast/history/page-cache-webdatabase-no-transaction-db.html [ Skip ]
@@ -501,9 +500,6 @@ http/tests/pointer-lock/ [ Skip ]
 
 # TODO Vibration API is not implemented.
 vibration/ [ Skip ]
-
-# Touch adjustment not enabled on Windows (or mac)
-webkit.org/b/78801 touchadjustment/ [ Skip ]
 
 # Needs BatteryClient implementation.
 webkit.org/b/62698 batterystatus/ [ Skip ]
@@ -840,6 +836,9 @@ media/encrypted-media/encrypted-media-can-play-type-webm.html [ Skip ] # [ WontF
 media/encrypted-media/encrypted-media-events.html [ Skip ] # [ WontFix ]
 media/encrypted-media/encrypted-media-not-loaded.html [ Skip ] # [ WontFix ]
 media/encrypted-media/encrypted-media-syntax.html [ Skip ] # [ WontFix ]
+
+# New page cache test introduced in r182901 that often crashes on Windows only.
+webkit.org/b/144057 http/tests/websocket/tests/hybi/stop-on-resume-in-error-handler.html [ Crash Pass ]
 
 webkit.org/b/103442 media/W3C/video/networkState/networkState_during_progress.html [ Skip ]
 
@@ -1840,6 +1839,7 @@ webkit.org/b/140705 imported/mozilla/svg/stroke-width-percentage-02a.svg [ Image
 webkit.org/b/116564 transitions/svg-text-shadow-transition.html [ Failure ]
 webkit.org/b/117322 svg/animations/mozilla/animateMotion-mpath-targetChange-1.svg [ ImageOnlyFailure ]
 webkit.org/b/117322 svg/filters/feDisplacementMap-filterUnits.svg [ ImageOnlyFailure ]
+webkit.org/b/144417 svg/filters/sourceAlpha-input-filter-effect.html [ ImageOnlyFailure ]
 
 # Subpixel rendering: borders are reporting float values.
 webkit.org/b/128061 svg/zoom/page/zoom-img-preserveAspectRatio-support-1.html [ Failure ]
@@ -1882,6 +1882,7 @@ svg/text/lengthAdjust-text-metrics.html [ Failure ]
 ################             WebGL Issues                   ####################
 ################################################################################
 # Skip all webgl tests on Windows for now since they don't seem to work consistently
+webkit.org/b/144292 fast/events/constructors/webgl-context-event-constructor.html [ Skip ]
 webgl/ [ Skip ]
 fast/canvas/webgl/ [ Skip ]
 http/tests/webgl/ [ Skip ]
@@ -2239,6 +2240,7 @@ http/tests/cache/disk-cache
 
 # The following are unreviewed:
 http/tests/cache/content-type-ignored-during-revalidation.html [ Failure ]
+http/tests/cache/main-resource-304-reload.html [ Failure ]
 http/tests/cache/partitioned-cache.html [ Failure ]
 http/tests/cache/partitioned-cache-iframe.html [ Failure ]
 http/tests/cache/post-redirect-get.php [ Failure ] # Easy
@@ -2428,6 +2430,7 @@ webkit.org/b/59062 [ Release ] fast/images/animated-gif-restored-from-bfcache.ht
 webkit.org/b/59062 [ Debug ] fast/images/animated-gif-restored-from-bfcache.html [ Skip ] # Timeout
 [ Debug ] fast/images/animated-gif-iframe-webkit-transform.html [ Skip ] # Timeout
 [ Debug ] fast/images/animated-gif-webkit-transform.html [ Skip ] # Timeout
+fast/images/animated-gif-body-outside-viewport.html [ Skip ] # Timeout
 fast/images/animated-gif-window-resizing.html [ Skip ] # Timeout
 fast/images/animated-gif-zooming.html [ Skip ] # Timeout
 webkit.org/b/140211 fast/xsl/sort-locale.xml [ Failure ]
@@ -2492,6 +2495,10 @@ webkit.org/b/140250 fast/loader/stateobjects/replacestate-in-iframe.html [ Failu
 
 webkit.org/b/138676 imported/w3c/canvas/2d.line.join.parallel.html [ Failure ]
 webkit.org/b/138676 imported/w3c/canvas/2d.strokeRect.zero.5.html [ Failure ]
+
+# requestAnimationFrame throttling does not work on Windows because USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR) is disabled.
+webkit.org/b/144718 fast/animation/request-animation-frame-throttle-subframe-display-none.html [ Skip ]
+webkit.org/b/144718 fast/animation/request-animation-frame-throttle-subframe.html [ Skip ]
 
 ################################################################################
 ######################### Start list of UNREVIEWED failures ########################
@@ -2677,7 +2684,6 @@ fast/filter-image/filter-image.html [ ImageOnlyFailure ]
 
 fast/flexbox/001.html [ Pass Failure ]
 
-webkit.org/b/140517 [ Debug ] fast/forms/button-first-line-first-letter.html [ Skip ]  # Crashing
 webkit.org/b/140506 fast/forms/textfield-lastchange-was-useredit.html [ Skip ]  # Crashing
 webkit.org/b/140519 [ Debug ] fast/flexbox/flexing-overflow-scroll-item.html [ Skip ]  # Crashing
 
@@ -3046,6 +3052,11 @@ webkit.org/b/139968 fast/inline/hidpi-pixel-gap-between-adjacent-selection-inlin
 webkit.org/b/139968 fast/inline/hidpi-select-inline-on-subpixel-position.html [ ImageOnlyFailure ]
 webkit.org/b/139968 fast/regions/overflow/overflow-first-and-last-regions.html [ ImageOnlyFailure ]
 
+# rdar://problem/20656948
+accessibility/treeitem-child-exposed.html [ Failure ]
+
+webkit.org/b/144673 fast/forms/button-line-height.html [ ImageOnlyFailure ]
+
 ################################################################################
 ######################### End list of UNREVIEWED failures ##########################
 ################################################################################
@@ -3075,6 +3086,9 @@ http/tests/contentfiltering [ Skip ]
 [ Release ] inspector-protocol/layers/layers-for-node.html [ Skip ] # Timeouts
 [ Release ] inspector-protocol/layers/layers-generated-content.html  [ Skip ] # Timeouts
 
+# Windows doesn't have API for disabling meta refresh
+loader/meta-refresh-disabled.html [ Skip ]
+
 # Started failing recently.
 webkit.org/b/143275 accessibility/aria-hidden-hides-all-elements.html [ Pass Failure ]
 
@@ -3086,3 +3100,6 @@ webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-4.html [ ImageOnlyFailure ]
 webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-5.html [ ImageOnlyFailure ]
 
 webkit.org/b/143420 fast/fixed-layout/fixed-layout.html [ Skip ]
+
+# Seems to be font metrics dependent.
+fast/text/simple-line-layout-text-stroke-width.html [ Failure ]

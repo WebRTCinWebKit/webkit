@@ -189,12 +189,12 @@ bool HTMLPlugInImageElement::wouldLoadAsNetscapePlugin(const String& url, const 
     return false;
 }
 
-RenderPtr<RenderElement> HTMLPlugInImageElement::createElementRenderer(Ref<RenderStyle>&& style)
+RenderPtr<RenderElement> HTMLPlugInImageElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition& insertionPosition)
 {
     ASSERT(!document().inPageCache());
 
     if (displayState() >= PreparingPluginReplacement)
-        return HTMLPlugInElement::createElementRenderer(WTF::move(style));
+        return HTMLPlugInElement::createElementRenderer(WTF::move(style), insertionPosition);
 
     // Once a PlugIn Element creates its renderer, it needs to be told when the Document goes
     // inactive or reactivates so it can clear the renderer before going into the page cache.
@@ -218,7 +218,7 @@ RenderPtr<RenderElement> HTMLPlugInImageElement::createElementRenderer(Ref<Rende
     if (isImageType())
         return createRenderer<RenderImage>(*this, WTF::move(style));
 
-    return HTMLPlugInElement::createElementRenderer(WTF::move(style));
+    return HTMLPlugInElement::createElementRenderer(WTF::move(style), insertionPosition);
 }
 
 bool HTMLPlugInImageElement::childShouldCreateRenderer(const Node& child) const
@@ -379,7 +379,7 @@ void HTMLPlugInImageElement::didAddUserAgentShadowRoot(ShadowRoot* root)
     DOMWrapperWorld& isolatedWorld = plugInImageElementIsolatedWorld();
     document().ensurePlugInsInjectedScript(isolatedWorld);
 
-    ScriptController& scriptController = page->mainFrame().script();
+    ScriptController& scriptController = document().frame()->script();
     JSDOMGlobalObject* globalObject = JSC::jsCast<JSDOMGlobalObject*>(scriptController.globalObject(isolatedWorld));
     JSC::ExecState* exec = globalObject->globalExec();
 
@@ -571,7 +571,7 @@ void HTMLPlugInImageElement::checkSizeChangeForSnapshotting()
 
 static inline bool is100Percent(Length length)
 {
-    return length.isPercentNotCalculated() && length.percent() == 100;
+    return length.isPercent() && length.percent() == 100;
 }
     
 static inline bool isSmallerThanTinySizingThreshold(const RenderEmbeddedObject& renderer)

@@ -16,6 +16,7 @@ function ControllerIOS(root, video, host)
 
     this._timelineIsHidden = false;
     this._currentDisplayWidth = 0;
+    this._potentiallyScrubbing = false;
     this.scheduleUpdateLayoutForDisplayedWidth();
 
     host.controlsDependOnPageScaleFactor = true;
@@ -115,6 +116,15 @@ ControllerIOS.prototype = {
         spacer.setAttribute('pseudo', '-webkit-media-controls-spacer');
         spacer.classList.add(this.ClassNames.hidden);
 
+        var inlinePlaybackPlaceholderText = this.controls.inlinePlaybackPlaceholderText = document.createElement('div');
+        inlinePlaybackPlaceholderText.setAttribute('pseudo', '-webkit-media-controls-wireless-playback-text');
+
+        var inlinePlaybackPlaceholderTextTop = this.controls.inlinePlaybackPlaceholderTextTop = document.createElement('p');
+        inlinePlaybackPlaceholderTextTop.setAttribute('pseudo', '-webkit-media-controls-wireless-playback-text-top');
+
+        var inlinePlaybackPlaceholderTextBottom = this.controls.inlinePlaybackPlaceholderTextBottom = document.createElement('p');
+        inlinePlaybackPlaceholderTextBottom.setAttribute('pseudo', '-webkit-media-controls-wireless-playback-text-bottom');
+
         var wirelessTargetPicker = this.controls.wirelessTargetPicker
         this.listenFor(wirelessTargetPicker, 'touchstart', this.handleWirelessPickerButtonTouchStart);
         this.listenFor(wirelessTargetPicker, 'touchend', this.handleWirelessPickerButtonTouchEnd);
@@ -136,6 +146,7 @@ ControllerIOS.prototype = {
         this.listenFor(this.controls.optimizedFullscreenButton, 'touchstart', this.handleOptimizedFullscreenTouchStart);
         this.listenFor(this.controls.optimizedFullscreenButton, 'touchend', this.handleOptimizedFullscreenTouchEnd);
         this.listenFor(this.controls.optimizedFullscreenButton, 'touchcancel', this.handleOptimizedFullscreenTouchCancel);
+        this.listenFor(this.controls.timeline, 'touchstart', this.handleTimelineTouchStart);
         this.stopListeningFor(this.controls.playButton, 'click', this.handlePlayButtonClicked);
 
         this.controls.timeline.style.backgroundImage = '-webkit-canvas(' + this.timelineContextName + ')';
@@ -170,6 +181,9 @@ ControllerIOS.prototype = {
     },
 
     configureInlineControls: function() {
+        this.controls.inlinePlaybackPlaceholder.appendChild(this.controls.inlinePlaybackPlaceholderText);
+        this.controls.inlinePlaybackPlaceholderText.appendChild(this.controls.inlinePlaybackPlaceholderTextTop);
+        this.controls.inlinePlaybackPlaceholderText.appendChild(this.controls.inlinePlaybackPlaceholderTextBottom);
         this.controls.panel.appendChild(this.controls.playButton);
         this.controls.panel.appendChild(this.controls.statusDisplay);
         this.controls.panel.appendChild(this.controls.spacer);
@@ -240,8 +254,9 @@ ControllerIOS.prototype = {
             buffered = Math.max(bufferedRanges.end(bufferedRanges.length - 1), buffered);
 
         buffered /= this.video.duration;
+        buffered = Math.max(buffered, played);
 
-        var ctx = this.video.ownerDocument.getCSSCanvasContext('2d', this.timelineContextName, width, height);
+        var ctx = document.getCSSCanvasContext('2d', this.timelineContextName, width, height);
 
         ctx.clearRect(0, 0, width, height);
 
@@ -288,11 +303,6 @@ ControllerIOS.prototype = {
             return sign + intHours + ':' + String('0' + intMinutes).slice(-2) + ":" + String('0' + intSeconds).slice(-2);
 
         return sign + String('0' + intMinutes).slice(intMinutes >= 10 ? -2 : -1) + ":" + String('0' + intSeconds).slice(-2);
-    },
-
-    handleTimelineChange: function(event) {
-        Controller.prototype.handleTimelineChange.call(this);
-        this.updateProgress();
     },
 
     handlePlayButtonTouchStart: function() {
@@ -368,6 +378,8 @@ ControllerIOS.prototype = {
             this.hideTimer = setTimeout(this.hideControls.bind(this), this.HideControlsDelay);
         } else if (!this.canPlay())
             this.hideControls();
+
+        return true;
     },
 
     handlePanelTouchStart: function(event) {
@@ -479,6 +491,34 @@ ControllerIOS.prototype = {
     handleStartPlaybackButtonTouchCancel: function(event) {
         this.controls.startPlaybackButton.classList.remove('active');
         return true;
+    },
+
+    handleTimelineInput: function(event) {
+        if (this._potentiallyScrubbing)
+            this.video.pause();
+        Controller.prototype.handleTimelineInput.call(this, event);
+    },
+
+    handleTimelineChange: function(event) {
+        Controller.prototype.handleTimelineChange.call(this, event);
+        this.updateProgress();
+    },
+
+    handleTimelineTouchStart: function(event) {
+        this._potentiallyScrubbing = true;
+        this.wasPlayingWhenScrubbingStarted = !this.video.paused;
+        this.listenFor(this.controls.timeline, 'touchend', this.handleTimelineTouchEnd);
+        this.listenFor(this.controls.timeline, 'touchcancel', this.handleTimelineTouchEnd);
+    },
+
+    handleTimelineTouchEnd: function(event) {
+        this.stopListeningFor(this.controls.timeline, 'touchend', this.handleTimelineTouchEnd);
+        this.stopListeningFor(this.controls.timeline, 'touchcancel', this.handleTimelineTouchEnd);
+        this._potentiallyScrubbing = false;
+        if (this.wasPlayingWhenScrubbingStarted && this.video.paused) {
+            this.video.play();
+            this.resetHideControlsTimer();
+        }
     },
 
     handleReadyStateChange: function(event) {

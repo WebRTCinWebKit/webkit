@@ -95,14 +95,30 @@ const String& RTCIceCandidate::candidate() const
     return m_candidate;
 }
 
+void RTCIceCandidate::setCandidate(const String& candidate)
+{
+    m_candidate = candidate;
+}
+
+
 const String& RTCIceCandidate::sdpMid() const
 {
     return m_sdpMid;
 }
 
+void RTCIceCandidate::setSdpMid(const String& sdpMid)
+{
+    m_sdpMid = sdpMid;
+}
+
 unsigned short RTCIceCandidate::sdpMLineIndex() const
 {
     return m_sdpMLineIndex;
+}
+
+void RTCIceCandidate::setSdpMLineIndex(unsigned short sdpMLineIndex)
+{
+    m_sdpMLineIndex = sdpMLineIndex;
 }
 
 } // namespace WebCore

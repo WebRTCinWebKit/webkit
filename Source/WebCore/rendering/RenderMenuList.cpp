@@ -118,10 +118,10 @@ void RenderMenuList::adjustInnerStyle()
     // Use margin:auto instead of align-items:center to get safe centering, i.e.
     // when the content overflows, treat it the same as align-items: flex-start.
     // But we only do that for the cases where html.css would otherwise use center.
-    if (style().alignItems() == ItemPositionCenter) {
+    if (style().alignItemsPosition() == ItemPositionCenter) {
         innerStyle.setMarginTop(Length());
         innerStyle.setMarginBottom(Length());
-        innerStyle.setAlignSelf(ItemPositionFlexStart);
+        innerStyle.setAlignSelfPosition(ItemPositionFlexStart);
     }
 
     innerStyle.setPaddingLeft(Length(theme().popupInternalPaddingLeft(style()), Fixed));
@@ -324,7 +324,7 @@ LayoutRect RenderMenuList::controlClipRect(const LayoutPoint& additionalOffset) 
 void RenderMenuList::computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const
 {
     maxLogicalWidth = std::max(m_optionsWidth, theme().minimumMenuListSize(style())) + m_innerBlock->paddingLeft() + m_innerBlock->paddingRight();
-    if (!style().width().isPercent())
+    if (!style().width().isPercentOrCalculated())
         minLogicalWidth = maxLogicalWidth;
 }
 

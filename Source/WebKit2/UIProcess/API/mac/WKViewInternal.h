@@ -85,7 +85,9 @@ struct WebPageConfiguration;
 - (void)_setIntrinsicContentSize:(NSSize)intrinsicContentSize;
 - (NSRect)_convertToDeviceSpace:(NSRect)rect;
 - (NSRect)_convertToUserSpace:(NSRect)rect;
-- (void)_setTextIndicator:(PassRefPtr<WebCore::TextIndicator>)textIndicator fadeOut:(BOOL)fadeOut;
+- (void)_setTextIndicator:(WebCore::TextIndicator&)textIndicator;
+- (void)_setTextIndicator:(WebCore::TextIndicator&)textIndicator withLifetime:(WebCore::TextIndicatorLifetime)lifetime;
+- (void)_clearTextIndicatorWithAnimation:(WebCore::TextIndicatorDismissalAnimation)animation;
 - (void)_setTextIndicatorAnimationProgress:(float)progress;
 - (void)_selectionChanged;
 
@@ -138,6 +140,8 @@ struct WebPageConfiguration;
 @property (readonly) WKFullScreenWindowController *_fullScreenWindowController;
 - (void)_closeFullScreenWindowController;
 
+- (void)_prepareForDictionaryLookup;
+
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 - (void)_didPerformActionMenuHitTest:(const WebKit::WebHitTestResult::Data&)hitTestResult forImmediateAction:(BOOL)forImmediateAction contentPreventsDefault:(BOOL)contentPreventsDefault userData:(API::Object*)userData;
 #endif
@@ -146,7 +150,9 @@ struct WebPageConfiguration;
 
 @property (readonly) NSWindow *_targetWindowForMovePreparation;
 
-@property (nonatomic, setter=_setAutomaticallyComputesFixedLayoutSizeFromViewScale:) BOOL _automaticallyComputesFixedLayoutSizeFromViewScale;
-- (void)_updateAutomaticallyComputedFixedLayoutSize;
+// For WKViewLayoutStrategy and subclasses:
+- (void)_setDrawingAreaSize:(NSSize)size;
+- (void)_updateViewExposedRect;
+- (CALayer *)_rootLayer;
 
 @end

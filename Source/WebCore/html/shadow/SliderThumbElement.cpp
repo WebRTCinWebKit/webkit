@@ -214,7 +214,7 @@ void SliderThumbElement::setPositionFromValue()
         renderer()->setNeedsLayout();
 }
 
-RenderPtr<RenderElement> SliderThumbElement::createElementRenderer(Ref<RenderStyle>&& style)
+RenderPtr<RenderElement> SliderThumbElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderSliderThumb>(*this, WTF::move(style));
 }
@@ -610,12 +610,12 @@ inline SliderContainerElement::SliderContainerElement(Document& document)
 {
 }
 
-PassRefPtr<SliderContainerElement> SliderContainerElement::create(Document& document)
+Ref<SliderContainerElement> SliderContainerElement::create(Document& document)
 {
-    return adoptRef(new SliderContainerElement(document));
+    return adoptRef(*new SliderContainerElement(document));
 }
 
-RenderPtr<RenderElement> SliderContainerElement::createElementRenderer(Ref<RenderStyle>&& style)
+RenderPtr<RenderElement> SliderContainerElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderSliderContainer>(*this, WTF::move(style));
 }

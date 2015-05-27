@@ -51,8 +51,13 @@ public:
     virtual ~RTCIceCandidate();
 
     const String& candidate() const;
+    void setCandidate(const String&);
+
     const String& sdpMid() const;
+    void setSdpMid(const String&);
+
     unsigned short sdpMLineIndex() const;
+    void setSdpMLineIndex(unsigned short);
 
 private:
     explicit RTCIceCandidate(const String& candidate, const String& sdpMid, unsigned short sdpMLineIndex);

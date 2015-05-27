@@ -43,6 +43,7 @@
 #include "DocumentType.h"
 #include "ElementIterator.h"
 #include "ElementRareData.h"
+#include "ElementTraversal.h"
 #include "EventDispatcher.h"
 #include "EventException.h"
 #include "EventHandler.h"
@@ -427,6 +428,20 @@ Node* Node::firstDescendant() const
     while (n && n->firstChild())
         n = n->firstChild();
     return n;
+}
+
+Element* Node::previousElementSibling() const
+{
+    ASSERT(is<CharacterData>(*this) || is<Element>(*this));
+
+    return ElementTraversal::previousSibling(*this);
+}
+
+Element* Node::nextElementSibling() const
+{
+    ASSERT(is<CharacterData>(*this) || is<Element>(*this));
+
+    return ElementTraversal::nextSibling(*this);
 }
 
 bool Node::insertBefore(PassRefPtr<Node> newChild, Node* refChild, ExceptionCode& ec)
@@ -2005,7 +2020,7 @@ void Node::dispatchSubtreeModifiedEvent()
     if (isInShadowTree())
         return;
 
-    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
 
     if (!document().hasListenerType(Document::DOMSUBTREEMODIFIED_LISTENER))
         return;
@@ -2018,7 +2033,7 @@ void Node::dispatchSubtreeModifiedEvent()
 
 bool Node::dispatchDOMActivateEvent(int detail, PassRefPtr<Event> underlyingEvent)
 {
-    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
     RefPtr<UIEvent> event = UIEvent::create(eventNames().DOMActivateEvent, true, true, document().defaultView(), detail);
     event->setUnderlyingEvent(underlyingEvent);
     dispatchScopedEvent(event);

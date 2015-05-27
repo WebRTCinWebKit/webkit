@@ -51,12 +51,12 @@ TextControlInnerContainer::TextControlInnerContainer(Document& document)
 {
 }
 
-PassRefPtr<TextControlInnerContainer> TextControlInnerContainer::create(Document& document)
+Ref<TextControlInnerContainer> TextControlInnerContainer::create(Document& document)
 {
-    return adoptRef(new TextControlInnerContainer(document));
+    return adoptRef(*new TextControlInnerContainer(document));
 }
     
-RenderPtr<RenderElement> TextControlInnerContainer::createElementRenderer(Ref<RenderStyle>&& style)
+RenderPtr<RenderElement> TextControlInnerContainer::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderTextControlInnerContainer>(*this, WTF::move(style));
 }
@@ -67,9 +67,9 @@ TextControlInnerElement::TextControlInnerElement(Document& document)
     setHasCustomStyleResolveCallbacks();
 }
 
-PassRefPtr<TextControlInnerElement> TextControlInnerElement::create(Document& document)
+Ref<TextControlInnerElement> TextControlInnerElement::create(Document& document)
 {
-    return adoptRef(new TextControlInnerElement(document));
+    return adoptRef(*new TextControlInnerElement(document));
 }
 
 RefPtr<RenderStyle> TextControlInnerElement::customStyleForRenderer(RenderStyle&)
@@ -86,9 +86,9 @@ inline TextControlInnerTextElement::TextControlInnerTextElement(Document& docume
     setHasCustomStyleResolveCallbacks();
 }
 
-PassRefPtr<TextControlInnerTextElement> TextControlInnerTextElement::create(Document& document)
+Ref<TextControlInnerTextElement> TextControlInnerTextElement::create(Document& document)
 {
-    return adoptRef(new TextControlInnerTextElement(document));
+    return adoptRef(*new TextControlInnerTextElement(document));
 }
 
 void TextControlInnerTextElement::defaultEventHandler(Event* event)
@@ -110,7 +110,7 @@ void TextControlInnerTextElement::defaultEventHandler(Event* event)
         HTMLDivElement::defaultEventHandler(event);
 }
 
-RenderPtr<RenderElement> TextControlInnerTextElement::createElementRenderer(Ref<RenderStyle>&& style)
+RenderPtr<RenderElement> TextControlInnerTextElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderTextControlInnerBlock>(*this, WTF::move(style));
 }
@@ -133,9 +133,9 @@ inline SearchFieldResultsButtonElement::SearchFieldResultsButtonElement(Document
 {
 }
 
-PassRefPtr<SearchFieldResultsButtonElement> SearchFieldResultsButtonElement::create(Document& document)
+Ref<SearchFieldResultsButtonElement> SearchFieldResultsButtonElement::create(Document& document)
 {
-    return adoptRef(new SearchFieldResultsButtonElement(document));
+    return adoptRef(*new SearchFieldResultsButtonElement(document));
 }
 
 void SearchFieldResultsButtonElement::defaultEventHandler(Event* event)
@@ -176,9 +176,9 @@ inline SearchFieldCancelButtonElement::SearchFieldCancelButtonElement(Document& 
     setHasCustomStyleResolveCallbacks();
 }
 
-PassRefPtr<SearchFieldCancelButtonElement> SearchFieldCancelButtonElement::create(Document& document)
+Ref<SearchFieldCancelButtonElement> SearchFieldCancelButtonElement::create(Document& document)
 {
-    return adoptRef(new SearchFieldCancelButtonElement(document));
+    return adoptRef(*new SearchFieldCancelButtonElement(document));
 }
 
 void SearchFieldCancelButtonElement::willDetachRenderers()

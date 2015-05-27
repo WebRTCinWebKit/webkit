@@ -76,7 +76,7 @@ public:
 
     static void registerMediaEngine(MediaEngineRegistrar);
 
-    void setAsset(id);
+    void setAsset(RetainPtr<id>);
     virtual void tracksChanged() override;
 
 #if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP)
@@ -255,6 +255,8 @@ private:
     AVMediaSelectionGroup* safeMediaSelectionGroupForVisualMedia();
 #endif
 
+    NSArray* safeAVAssetTracksForAudibleMedia();
+
 #if ENABLE(DATACUE_VALUE)
     void processMetadataTrack();
 #endif
@@ -283,8 +285,7 @@ private:
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
     virtual void setWirelessPlaybackTarget(Ref<MediaPlaybackTarget>&&) override;
-    virtual void startPlayingToPlaybackTarget() override;
-    virtual void stopPlayingToPlaybackTarget() override;
+    virtual void setShouldPlayToPlaybackTarget(bool) override;
     virtual bool isPlayingToWirelessPlaybackTarget();
 #endif
 
@@ -380,6 +381,7 @@ private:
     bool m_cachedCanPlayFastReverse;
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     mutable bool m_allowsWirelessVideoPlayback;
+    bool m_shouldPlayToPlaybackTarget { false };
 #endif
 };
 

@@ -26,7 +26,7 @@
 #ifndef DFGForAllKills_h
 #define DFGForAllKills_h
 
-#include "BytecodeKills.h"
+#include "DFGCombinedLiveness.h"
 #include "DFGGraph.h"
 #include "DFGOSRAvailabilityAnalysisPhase.h"
 #include "FullBytecodeLiveness.h"
@@ -39,42 +39,32 @@ namespace JSC { namespace DFG {
 // node is killed. A prerequisite to using these utilities is having liveness and OSR availability
 // computed.
 
+// This tells you those things that die on the boundary between nodeBefore and nodeAfter. It is
+// conservative in the sense that it might resort to telling you some things that are still live at
+// nodeAfter.
 template<typename Functor>
-void forAllLiveNodesAtTail(Graph& graph, BasicBlock* block, const Functor& functor)
+void forAllKilledOperands(Graph& graph, Node* nodeBefore, Node* nodeAfter, const Functor& functor)
 {
-    HashSet<Node*> seen;
-    for (Node* node : block->ssa->liveAtTail) {
-        if (seen.add(node).isNewEntry)
-            functor(node);
-    }
-    
-    DFG_ASSERT(graph, block->last(), block->last()->origin.forExit.isSet());
-    
-    AvailabilityMap& availabilityMap = block->ssa->availabilityAtTail;
-    for (unsigned i = availabilityMap.m_locals.size(); i--;) {
-        VirtualRegister reg = availabilityMap.m_locals.virtualRegisterForIndex(i);
-        
-        if (!graph.isLiveInBytecode(reg, block->last()->origin.forExit))
-            continue;
-        
-        availabilityMap.closeStartingWithLocal(
-            reg,
-            [&] (Node* node) -> bool {
-                return seen.contains(node);
-            },
-            [&] (Node* node) -> bool {
-                if (!seen.add(node).isNewEntry)
-                    return false;
-                functor(node);
-                return true;
-            });
-    }
-}
+    CodeOrigin before = nodeBefore->origin.forExit;
 
-template<typename Functor>
-void forAllKilledOperands(Graph& graph, CodeOrigin before, Node* nodeAfter, const Functor& functor)
-{
+    if (!nodeAfter) {
+        graph.forAllLiveInBytecode(before, functor);
+        return;
+    }
+    
     CodeOrigin after = nodeAfter->origin.forExit;
+    
+    VirtualRegister alreadyNoted;
+    if (!!after) {
+        // If we MovHint something that is live at the time, then we kill the old value.
+        if (nodeAfter->containsMovHint()) {
+            VirtualRegister reg = nodeAfter->unlinkedLocal();
+            if (graph.isLiveInBytecode(reg, after)) {
+                functor(reg);
+                alreadyNoted = reg;
+            }
+        }
+    }
     
     if (!before) {
         if (!after)
@@ -82,22 +72,8 @@ void forAllKilledOperands(Graph& graph, CodeOrigin before, Node* nodeAfter, cons
         // The true before-origin is the origin at predecessors that jump to us. But there can be
         // many such predecessors and they will likely all have a different origin. So, it's better
         // to do the conservative thing.
-        for (unsigned i = graph.block(0)->variablesAtHead.numberOfLocals(); i--;) {
-            VirtualRegister reg = virtualRegisterForLocal(i);
-            if (graph.isLiveInBytecode(reg, after))
-                functor(reg);
-        }
+        graph.forAllLocalsLiveInBytecode(after, functor);
         return;
-    }
-    
-    // If we MovHint something that is live at the time, then we kill the old value.
-    VirtualRegister alreadyNoted;
-    if (nodeAfter->containsMovHint()) {
-        VirtualRegister reg = nodeAfter->unlinkedLocal();
-        if (graph.isLiveInBytecode(reg, after)) {
-            functor(reg);
-            alreadyNoted = reg;
-        }
     }
     
     if (before == after)
@@ -106,14 +82,34 @@ void forAllKilledOperands(Graph& graph, CodeOrigin before, Node* nodeAfter, cons
     // before could be unset even if after is, but the opposite cannot happen.
     ASSERT(!!after);
     
-    // Detect kills the super conservative way: it is killed if it was live before and dead after.
-    for (unsigned i = graph.block(0)->variablesAtHead.numberOfLocals(); i--;) {
-        VirtualRegister reg = virtualRegisterForLocal(i);
-        if (reg == alreadyNoted)
-            continue;
-        if (graph.isLiveInBytecode(reg, before) && !graph.isLiveInBytecode(reg, after))
-            functor(reg);
+    // It's easier to do this if the inline call frames are the same. This is way faster than the
+    // other loop, below.
+    if (before.inlineCallFrame == after.inlineCallFrame) {
+        int stackOffset = before.inlineCallFrame ? before.inlineCallFrame->stackOffset : 0;
+        CodeBlock* codeBlock = graph.baselineCodeBlockFor(before.inlineCallFrame);
+        FullBytecodeLiveness& fullLiveness = graph.livenessFor(codeBlock);
+        const FastBitVector& liveBefore = fullLiveness.getLiveness(before.bytecodeIndex);
+        const FastBitVector& liveAfter = fullLiveness.getLiveness(after.bytecodeIndex);
+        
+        for (unsigned relativeLocal = codeBlock->m_numCalleeRegisters; relativeLocal--;) {
+            if (liveBefore.get(relativeLocal) && !liveAfter.get(relativeLocal))
+                functor(virtualRegisterForLocal(relativeLocal) + stackOffset);
+        }
+        
+        return;
     }
+    
+    // Detect kills the super conservative way: it is killed if it was live before and dead after.
+    BitVector liveAfter = graph.localsLiveInBytecode(after);
+    graph.forAllLocalsLiveInBytecode(
+        before,
+        [&] (VirtualRegister reg) {
+            if (reg == alreadyNoted)
+                return;
+            if (liveAfter.get(reg.toLocal()))
+                return;
+            functor(reg);
+        });
 }
     
 // Tells you all of the nodes that would no longer be live across the node at this nodeIndex.
@@ -140,9 +136,9 @@ void forAllKilledNodesAtNodeIndex(
             }
         });
 
-    CodeOrigin before;
+    Node* before = nullptr;
     if (nodeIndex)
-        before = block->at(nodeIndex - 1)->origin.forExit;
+        before = block->at(nodeIndex - 1);
 
     forAllKilledOperands(
         graph, before, node,
@@ -167,13 +163,12 @@ void forAllKilledNodesAtNodeIndex(
 // the value is either no longer live. This pretends that nodes are dead at the end of the block, so that
 // you can use this to do per-basic-block analyses.
 template<typename Functor>
-void forAllKillsInBlock(Graph& graph, BasicBlock* block, const Functor& functor)
+void forAllKillsInBlock(
+    Graph& graph, const CombinedLiveness& combinedLiveness, BasicBlock* block,
+    const Functor& functor)
 {
-    forAllLiveNodesAtTail(
-        graph, block,
-        [&] (Node* node) {
-            functor(block->size(), node);
-        });
+    for (Node* node : combinedLiveness.liveAtTail[block])
+        functor(block->size(), node);
     
     LocalOSRAvailabilityCalculator localAvailability;
     localAvailability.beginBlock(block);

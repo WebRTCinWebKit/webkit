@@ -115,7 +115,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         
     case Identity:
     case Phantom:
-    case HardPhantom:
     case Check:
     case ExtractOSREntryLocal:
     case CheckStructureImmediate:
@@ -129,11 +128,13 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case BitURShift:
     case ArithIMul:
     case ArithAbs:
+    case ArithClz32:
     case ArithMin:
     case ArithMax:
     case ArithPow:
     case ArithSqrt:
     case ArithFRound:
+    case ArithRound:
     case ArithSin:
     case ArithCos:
     case ArithLog:
@@ -159,6 +160,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ValueToInt32:
     case GetExecutable:
     case BottomValue:
+    case TypeOf:
         def(PureValue(node));
         return;
         
@@ -352,11 +354,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         def(HeapLocation(VarInjectionWatchpointLoc, MiscFields), node);
         return;
 
-    case AllocationProfileWatchpoint:
-        read(MiscFields);
-        def(HeapLocation(AllocationProfileWatchpointLoc, MiscFields), node);
-        return;
-        
     case IsObjectOrNull:
         read(MiscFields);
         def(HeapLocation(IsObjectOrNullLoc, MiscFields, node->child1()), node);
@@ -367,11 +364,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         def(HeapLocation(IsFunctionLoc, MiscFields, node->child1()), node);
         return;
         
-    case TypeOf:
-        read(MiscFields);
-        def(HeapLocation(TypeOfLoc, MiscFields, node->child1()), node);
-        return;
-
     case GetById:
     case GetByIdFlush:
     case PutById:
@@ -862,6 +854,9 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case NewStringObject:
     case PhantomNewObject:
     case MaterializeNewObject:
+    case PhantomNewFunction:
+    case PhantomCreateActivation:
+    case MaterializeCreateActivation:
         read(HeapObjectCount);
         write(HeapObjectCount);
         return;

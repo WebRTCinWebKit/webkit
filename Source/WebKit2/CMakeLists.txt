@@ -147,27 +147,30 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source"
 )
 
-if (WTF_USE_3D_GRAPHICS)
+if (ENABLE_GRAPHICS_CONTEXT_3D)
     list(APPEND WebKit2_INCLUDE_DIRECTORIES
         "${THIRDPARTY_DIR}/ANGLE"
         "${THIRDPARTY_DIR}/ANGLE/include/KHR"
     )
 endif ()
 
-set(NetworkProcess_SOURCES
+set(NetworkProcess_COMMON_SOURCES
     NetworkProcess/NetworkConnectionToWebProcess.cpp
     NetworkProcess/NetworkProcess.cpp
     NetworkProcess/NetworkProcessPlatformStrategies.cpp
-    NetworkProcess/NetworkResourceLoadScheduler.cpp
     NetworkProcess/NetworkResourceLoader.cpp
 
     NetworkProcess/FileAPI/NetworkBlobRegistry.cpp
 
     NetworkProcess/cache/NetworkCache.cpp
+    NetworkProcess/cache/NetworkCacheBlobStorage.cpp
     NetworkProcess/cache/NetworkCacheCoders.cpp
-    NetworkProcess/cache/NetworkCacheEncoder.cpp
     NetworkProcess/cache/NetworkCacheDecoder.cpp
+    NetworkProcess/cache/NetworkCacheEncoder.cpp
+    NetworkProcess/cache/NetworkCacheEntry.cpp
     NetworkProcess/cache/NetworkCacheKey.cpp
+    NetworkProcess/cache/NetworkCacheStatistics.cpp
+    NetworkProcess/cache/NetworkCacheStorage.cpp
 )
 
 set(WebKit2_SOURCES
@@ -622,7 +625,7 @@ set(WebKit2_SOURCES
     WebProcess/WebPage/VisitedLinkTableController.cpp
     WebProcess/WebPage/WebUndoStep.cpp
 
-    ${NetworkProcess_SOURCES}
+    ${NetworkProcess_COMMON_SOURCES}
 )
 
 set(WebKit2_MESSAGES_IN_FILES

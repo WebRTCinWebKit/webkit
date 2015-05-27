@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2012, 2013, 2014 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2009, 2012-2015 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -364,10 +364,15 @@ public:
             RELEASE_ASSERT_NOT_REACHED();
         }
     }
-        
+
     void initializeIndex(VM& vm, unsigned i, JSValue v)
     {
-        switch (indexingType()) {
+        initializeIndex(vm, i, v, indexingType());
+    }
+
+    void initializeIndex(VM& vm, unsigned i, JSValue v, IndexingType indexingType)
+    {
+        switch (indexingType) {
         case ALL_UNDECIDED_INDEXING_TYPES: {
             setIndexQuicklyToUndecided(vm, i, v);
             break;
@@ -461,6 +466,9 @@ public:
     void putDirectNonIndexAccessor(VM&, PropertyName, JSValue, unsigned attributes);
     void putDirectAccessor(ExecState*, PropertyName, JSValue, unsigned attributes);
     JS_EXPORT_PRIVATE void putDirectCustomAccessor(VM&, PropertyName, JSValue, unsigned attributes);
+
+    void putGetter(ExecState*, PropertyName, JSValue);
+    void putSetter(ExecState*, PropertyName, JSValue);
 
     JS_EXPORT_PRIVATE bool hasProperty(ExecState*, PropertyName) const;
     JS_EXPORT_PRIVATE bool hasProperty(ExecState*, unsigned propertyName) const;
@@ -684,18 +692,7 @@ public:
             
         return ensureContiguousSlow(vm);
     }
-        
-    // Same as ensureContiguous(), except that if the indexed storage is in
-    // double mode, then it does a rage conversion to contiguous: it
-    // attempts to convert each double to an int32.
-    ContiguousJSValues rageEnsureContiguous(VM& vm)
-    {
-        if (LIKELY(hasContiguous(indexingType())))
-            return m_butterfly->contiguous();
-            
-        return rageEnsureContiguousSlow(vm);
-    }
-        
+
     // Ensure that the object is in a mode where it has array storage. Use
     // this if you're about to perform actions that would have required the
     // object to be converted to have array storage, if it didn't have it
@@ -792,7 +789,6 @@ protected:
     ArrayStorage* convertInt32ToArrayStorage(VM&);
     
     ContiguousJSValues convertDoubleToContiguous(VM&);
-    ContiguousJSValues rageConvertDoubleToContiguous(VM&);
     ArrayStorage* convertDoubleToArrayStorage(VM&, NonPropertyTransition);
     ArrayStorage* convertDoubleToArrayStorage(VM&);
         
@@ -978,14 +974,8 @@ private:
     ContiguousJSValues ensureInt32Slow(VM&);
     ContiguousDoubles ensureDoubleSlow(VM&);
     ContiguousJSValues ensureContiguousSlow(VM&);
-    ContiguousJSValues rageEnsureContiguousSlow(VM&);
     JS_EXPORT_PRIVATE ArrayStorage* ensureArrayStorageSlow(VM&);
-    
-    enum DoubleToContiguousMode { EncodeValueAsDouble, RageConvertDoubleToValue };
-    template<DoubleToContiguousMode mode>
-    ContiguousJSValues genericConvertDoubleToContiguous(VM&);
-    ContiguousJSValues ensureContiguousSlow(VM&, DoubleToContiguousMode);
-    
+
 protected:
     CopyWriteBarrier<Butterfly> m_butterfly;
 #if USE(JSVALUE32_64)
@@ -1331,8 +1321,12 @@ inline bool JSObject::putDirectInternal(VM& vm, PropertyName propertyName, JSVal
 
             putDirect(vm, offset, value);
             structure->didReplaceProperty(offset);
-            
             slot.setExistingProperty(this, offset);
+
+            if ((attributes & Accessor) != (currentAttributes & Accessor)) {
+                ASSERT(!(attributes & ReadOnly));
+                setStructure(vm, Structure::attributeChangeTransition(vm, structure, propertyName, attributes));
+            }
             return true;
         }
 
@@ -1382,6 +1376,11 @@ inline bool JSObject::putDirectInternal(VM& vm, PropertyName propertyName, JSVal
         structure->didReplaceProperty(offset);
         slot.setExistingProperty(this, offset);
         putDirect(vm, offset, value);
+
+        if ((attributes & Accessor) != (currentAttributes & Accessor)) {
+            ASSERT(!(attributes & ReadOnly));
+            setStructure(vm, Structure::attributeChangeTransition(vm, structure, propertyName, attributes));
+        }
         return true;
     }
 
@@ -1465,18 +1464,15 @@ inline JSValue JSObject::toPrimitive(ExecState* exec, PreferredPrimitiveType pre
     return methodTable()->defaultValue(this, exec, preferredType);
 }
 
-ALWAYS_INLINE JSObject* Register::function() const
+ALWAYS_INLINE JSObject* Register::object() const
 {
-    if (!jsValue())
-        return 0;
     return asObject(jsValue());
 }
 
-ALWAYS_INLINE Register Register::withCallee(JSObject* callee)
+ALWAYS_INLINE Register& Register::operator=(JSObject* object)
 {
-    Register r;
-    r = JSValue(callee);
-    return r;
+    u.value = JSValue::encode(JSValue(object));
+    return *this;
 }
 
 inline size_t offsetInButterfly(PropertyOffset offset)
@@ -1572,6 +1568,12 @@ ALWAYS_INLINE Identifier makeIdentifier(VM&, const Identifier& name)
 // intrinsic.
 #define JSC_NATIVE_FUNCTION(jsName, cppName, attributes, length) \
     JSC_NATIVE_INTRINSIC_FUNCTION(jsName, cppName, (attributes), (length), NoIntrinsic)
+
+// Identical helpers but for builtins. Note that currently, we don't support builtins that are
+// also intrinsics, but we probably will do that eventually.
+#define JSC_BUILTIN_FUNCTION(jsName, generatorName, attributes) \
+    putDirectBuiltinFunction(\
+        vm, globalObject, makeIdentifier(vm, (jsName)), (generatorName)(vm), (attributes))
 
 } // namespace JSC
 

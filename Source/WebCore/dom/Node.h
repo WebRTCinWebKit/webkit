@@ -112,6 +112,8 @@ private:
 };
 
 class Node : public EventTarget, public ScriptWrappable {
+    WTF_MAKE_FAST_ALLOCATED;
+
     friend class Document;
     friend class TreeScope;
     friend class TreeScopeAdopter;
@@ -220,6 +222,10 @@ public:
     
     Node* lastDescendant() const;
     Node* firstDescendant() const;
+
+    // From the NonDocumentTypeChildNode - https://dom.spec.whatwg.org/#nondocumenttypechildnode
+    Element* previousElementSibling() const;
+    Element* nextElementSibling() const;
 
     // Other methods (not part of DOM)
 
@@ -442,7 +448,7 @@ public:
     }
 
     // Use these two methods with caution.
-    RenderBox* renderBox() const;
+    WEBCORE_EXPORT RenderBox* renderBox() const;
     RenderBoxModelObject* renderBoxModelObject() const;
     
     // Wrapper for nodes that don't have a renderer, but still cache the style (like HTMLOptionElement).
@@ -717,7 +723,7 @@ inline void adopted(Node* node)
 }
 #endif
 
-inline void Node::ref()
+ALWAYS_INLINE void Node::ref()
 {
     ASSERT(isMainThread());
     ASSERT(!m_deletionHasBegun);
@@ -726,7 +732,7 @@ inline void Node::ref()
     ++m_refCount;
 }
 
-inline void Node::deref()
+ALWAYS_INLINE void Node::deref()
 {
     ASSERT(isMainThread());
     ASSERT(m_refCount >= 0);
@@ -741,14 +747,14 @@ inline void Node::deref()
     }
 }
 
-inline bool Node::hasOneRef() const
+ALWAYS_INLINE bool Node::hasOneRef() const
 {
     ASSERT(!m_deletionHasBegun);
     ASSERT(!m_inRemovedLastRefFunction);
     return m_refCount == 1;
 }
 
-inline int Node::refCount() const
+ALWAYS_INLINE int Node::refCount() const
 {
     return m_refCount;
 }

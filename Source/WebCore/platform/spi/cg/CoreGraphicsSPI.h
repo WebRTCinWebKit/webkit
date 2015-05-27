@@ -113,6 +113,19 @@ static inline CGFloat CGFloatMin(CGFloat a, CGFloat b) { return isnan(a) ? b : (
 
 typedef struct CGFontCache CGFontCache;
 
+#if PLATFORM(MAC)
+typedef uint32_t CGSConnectionID;
+typedef uint32_t CGSWindowID;
+typedef uint32_t CGSWindowCount;
+typedef CGSWindowID *CGSWindowIDList;
+
+enum {
+    kCGSWindowCaptureNominalResolution = 0x0200,
+    kCGSCaptureIgnoreGlobalClipShape = 0x0800,
+};
+typedef uint32_t CGSWindowCaptureOptions;
+#endif
+
 #endif // USE(APPLE_INTERNAL_SDK)
 
 WTF_EXTERN_C_BEGIN
@@ -131,6 +144,7 @@ void CGContextSetCompositeOperation(CGContextRef, CGCompositeOperation);
 void CGContextSetShouldAntialiasFonts(CGContextRef, bool shouldAntialiasFonts);
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
 void CGContextSetFontDilation(CGContextRef, CGSize);
+void CGContextSetFontRenderingStyle(CGContextRef, CGFontRenderingStyle);
 #endif
 
 CFStringRef CGFontCopyFamilyName(CGFontRef);
@@ -160,6 +174,11 @@ CGError CGSReleaseRegionEnumerator(const CGSRegionEnumeratorObj);
 CGFontCache* CGFontCacheGetLocalCache();
 void CGFontCacheSetShouldAutoExpire(CGFontCache*, bool);
 void CGFontCacheSetMaxSize(CGFontCache*, size_t);
+#endif
+
+#if PLATFORM(MAC)
+CGSConnectionID CGSMainConnectionID(void);
+CFArrayRef CGSHWCaptureWindowList(CGSConnectionID cid, CGSWindowIDList windowList, CGSWindowCount windowCount, CGSWindowCaptureOptions options);
 #endif
 
 WTF_EXTERN_C_END

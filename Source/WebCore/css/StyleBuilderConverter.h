@@ -29,6 +29,7 @@
 
 #include "BasicShapeFunctions.h"
 #include "CSSCalculationValue.h"
+#include "CSSContentDistributionValue.h"
 #include "CSSFontFeatureValue.h"
 #include "CSSFunctionValue.h"
 #include "CSSGridLineNamesValue.h"
@@ -121,9 +122,12 @@ public:
     static float convertOpacity(StyleResolver&, CSSValue&);
     static String convertSVGURIReference(StyleResolver&, CSSValue&);
     static Color convertSVGColor(StyleResolver&, CSSValue&);
+    static StyleSelfAlignmentData convertSelfOrDefaultAlignmentData(StyleResolver&, CSSValue&);
+    static StyleContentAlignmentData convertContentAlignmentData(StyleResolver&, CSSValue&);
     static EGlyphOrientation convertGlyphOrientation(StyleResolver&, CSSValue&);
     static EGlyphOrientation convertGlyphOrientationOrAuto(StyleResolver&, CSSValue&);
     static Optional<Length> convertLineHeight(StyleResolver&, CSSValue&, float multiplier = 1.f);
+    static FontSynthesis convertFontSynthesis(StyleResolver&, CSSValue&);
 
 private:
     friend class StyleBuilderCustom;
@@ -1169,6 +1173,36 @@ inline Color StyleBuilderConverter::convertSVGColor(StyleResolver& styleResolver
     return svgColor.colorType() == SVGColor::SVG_COLORTYPE_CURRENTCOLOR ? styleResolver.style()->color() : svgColor.color();
 }
 
+inline StyleSelfAlignmentData StyleBuilderConverter::convertSelfOrDefaultAlignmentData(StyleResolver&, CSSValue& value)
+{
+    StyleSelfAlignmentData alignmentData = RenderStyle::initialSelfAlignment();
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    if (Pair* pairValue = primitiveValue.getPairValue()) {
+        if (pairValue->first()->getValueID() == CSSValueLegacy) {
+            alignmentData.setPositionType(LegacyPosition);
+            alignmentData.setPosition(*pairValue->second());
+        } else {
+            alignmentData.setPosition(*pairValue->first());
+            alignmentData.setOverflow(*pairValue->second());
+        }
+    } else
+        alignmentData.setPosition(primitiveValue);
+    return alignmentData;
+}
+
+inline StyleContentAlignmentData StyleBuilderConverter::convertContentAlignmentData(StyleResolver&, CSSValue& value)
+{
+    StyleContentAlignmentData alignmentData = RenderStyle::initialContentAlignment();
+    auto& contentValue = downcast<CSSContentDistributionValue>(value);
+    if (contentValue.distribution()->getValueID() != CSSValueInvalid)
+        alignmentData.setDistribution(contentValue.distribution().get());
+    if (contentValue.position()->getValueID() != CSSValueInvalid)
+        alignmentData.setPosition(contentValue.position().get());
+    if (contentValue.overflow()->getValueID() != CSSValueInvalid)
+        alignmentData.setOverflow(contentValue.overflow().get());
+    return alignmentData;
+}
+
 inline EGlyphOrientation StyleBuilderConverter::convertGlyphOrientation(StyleResolver&, CSSValue& value)
 {
     float angle = fabsf(fmodf(downcast<CSSPrimitiveValue>(value).getFloatValue(), 360.0f));
@@ -1209,6 +1243,32 @@ inline Optional<Length> StyleBuilderConverter::convertLineHeight(StyleResolver& 
         return Length(primitiveValue.getDoubleValue() * multiplier * 100.0, Percent);
     }
     return Nullopt;
+}
+
+FontSynthesis StyleBuilderConverter::convertFontSynthesis(StyleResolver&, CSSValue& value)
+{
+    if (is<CSSPrimitiveValue>(value)) {
+        ASSERT(downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueNone);
+        return FontSynthesisNone;
+    }
+
+    FontSynthesis result = FontSynthesisNone;
+    ASSERT(is<CSSValueList>(value));
+    for (CSSValue& v : downcast<CSSValueList>(value)) {
+        switch (downcast<CSSPrimitiveValue>(v).getValueID()) {
+        case CSSValueWeight:
+            result |= FontSynthesisWeight;
+            break;
+        case CSSValueStyle:
+            result |= FontSynthesisStyle;
+            break;
+        default:
+            ASSERT_NOT_REACHED();
+            break;
+        }
+    }
+
+    return result;
 }
 
 } // namespace WebCore

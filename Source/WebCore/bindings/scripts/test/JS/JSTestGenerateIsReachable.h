@@ -27,7 +27,7 @@
 
 namespace WebCore {
 
-class WEBCORE_EXPORT JSTestGenerateIsReachable : public JSDOMWrapper {
+class JSTestGenerateIsReachable : public JSDOMWrapper {
 public:
     typedef JSDOMWrapper Base;
     static JSTestGenerateIsReachable* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestGenerateIsReachable>&& impl)
@@ -52,15 +52,7 @@ public:
 
     static JSC::JSValue getConstructor(JSC::VM&, JSC::JSGlobalObject*);
     TestGenerateIsReachable& impl() const { return *m_impl; }
-    void releaseImpl() { m_impl->deref(); m_impl = 0; }
-
-    void releaseImplIfNotNull()
-    {
-        if (m_impl) {
-            m_impl->deref();
-            m_impl = 0;
-        }
-    }
+    void releaseImpl() { std::exchange(m_impl, nullptr)->deref(); }
 
 private:
     TestGenerateIsReachable* m_impl;
@@ -87,7 +79,7 @@ inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld&, TestGenerateIsReacha
     return &owner.get();
 }
 
-WEBCORE_EXPORT JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestGenerateIsReachable*);
+JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestGenerateIsReachable*);
 inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, TestGenerateIsReachable& impl) { return toJS(exec, globalObject, &impl); }
 
 

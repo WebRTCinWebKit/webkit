@@ -38,7 +38,7 @@ shouldBe('x = class extends null { constructor() { } }; x.__proto__', 'Function.
 shouldBe('x.__proto__', 'Function.prototype');
 shouldThrow('x = class extends 3 { constructor() { } }; x.__proto__', '"TypeError: The superclass is not an object."');
 shouldThrow('x = class extends "abc" { constructor() { } }; x.__proto__', '"TypeError: The superclass is not an object."');
-shouldNotThrow('baseWithBadPrototype = class { constructor() { } }; baseWithBadPrototype.prototype = 3');
+shouldNotThrow('baseWithBadPrototype = function () {}; baseWithBadPrototype.prototype = 3; new baseWithBadPrototype');
 shouldThrow('x = class extends baseWithBadPrototype { constructor() { } }', '"TypeError: The superclass\'s prototype is not an object."');
 shouldNotThrow('baseWithBadPrototype.prototype = "abc"');
 shouldThrow('x = class extends baseWithBadPrototype { constructor() { } }', '"TypeError: The superclass\'s prototype is not an object."');
@@ -70,10 +70,8 @@ shouldBe('x = 1; namespace = {}; namespace.A = class { constructor() { } }; try 
 
 shouldBe('Object.getPrototypeOf((class { constructor () { } }).prototype)', 'Object.prototype');
 shouldBe('Object.getPrototypeOf((class extends null { constructor () { super(); } }).prototype)', 'null');
-shouldThrow('new (class extends undefined { constructor () { this } })', '"ReferenceError: Cannot access uninitialized variable."');
-shouldThrow('new (class extends undefined { constructor () { super(); } })', '"TypeError: undefined is not an object (evaluating \'super()\')"');
-shouldBe('x = {}; new (class extends undefined { constructor () { return x; } })', 'x');
-shouldThrow('y = 12; new (class extends undefined { constructor () { return y; } })', '"TypeError: Cannot return a non-object type in the constructor of a derived class."');
+shouldThrow('new (class extends undefined { constructor () { this } })', '"TypeError: The superclass is not an object."');
+shouldThrow('x = undefined; new (class extends x { constructor () { super(); } })', '"TypeError: The superclass is not an object."');
 shouldBeTrue ('class x {}; new (class extends null { constructor () { return new x; } }) instanceof x');
 shouldThrow('new (class extends null { constructor () { this; } })', '"ReferenceError: Cannot access uninitialized variable."');
 shouldThrow('new (class extends null { constructor () { super(); } })', '"TypeError: undefined is not an object (evaluating \'super()\')"');

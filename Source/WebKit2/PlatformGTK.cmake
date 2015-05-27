@@ -1,3 +1,9 @@
+set(WebKit2_OUTPUT_NAME webkit2gtk-${WEBKITGTK_API_VERSION})
+set(WebKit2_WebProcess_OUTPUT_NAME WebKitWebProcess)
+set(WebKit2_NetworkProcess_OUTPUT_NAME WebKitNetworkProcess)
+set(WebKit2_PluginProcess_OUTPUT_NAME WebKitPluginProcess)
+set(WebKit2_DatabaseProcess_OUTPUT_NAME WebKitDatabaseProcess)
+
 file(MAKE_DIRECTORY ${DERIVED_SOURCES_WEBKIT2_DIR})
 file(MAKE_DIRECTORY ${DERIVED_SOURCES_WEBKIT2GTK_API_DIR})
 file(MAKE_DIRECTORY ${FORWARDING_HEADERS_WEBKIT2GTK_DIR})
@@ -18,12 +24,12 @@ set(WebKit2_USE_PREFIX_HEADER ON)
 list(APPEND WebKit2_SOURCES
     DatabaseProcess/gtk/DatabaseProcessMainGtk.cpp
 
-    NetworkProcess/cache/NetworkCacheStorageSoup.cpp
+    NetworkProcess/cache/NetworkCacheDataSoup.cpp
+    NetworkProcess/cache/NetworkCacheIOChannelSoup.cpp
 
     NetworkProcess/gtk/NetworkProcessMainGtk.cpp
 
     NetworkProcess/soup/NetworkProcessSoup.cpp
-    NetworkProcess/soup/NetworkResourceLoadSchedulerSoup.cpp
     NetworkProcess/soup/RemoteNetworkingContextSoup.cpp
 
     Platform/IPC/unix/AttachmentUnix.cpp
@@ -208,8 +214,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/gtk/WebKitSettings.cpp
     UIProcess/API/gtk/WebKitSettings.h
     UIProcess/API/gtk/WebKitSettingsPrivate.h
-    UIProcess/API/gtk/WebKitTextChecker.cpp
-    UIProcess/API/gtk/WebKitTextChecker.h
     UIProcess/API/gtk/WebKitUIClient.cpp
     UIProcess/API/gtk/WebKitUIClient.h
     UIProcess/API/gtk/WebKitURIRequest.cpp
@@ -451,6 +455,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/gtk"
     "${WEBCORE_DIR}/platform/graphics/cairo"
     "${WEBCORE_DIR}/platform/graphics/opentype"
+    "${WEBCORE_DIR}/platform/graphics/x11"
     "${WEBCORE_DIR}/platform/network/soup"
     "${WEBCORE_DIR}/platform/text/enchant"
     "${WEBKIT2_DIR}/DatabaseProcess/unix"
@@ -489,7 +494,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     ${LIBSOUP_INCLUDE_DIRS}
 )
 
-if (LIBNOTIFY_FOUND)
+if (USE_LIBNOTIFY)
 list(APPEND WebKit2_INCLUDE_DIRECTORIES
     ${LIBNOTIFY_INCLUDE_DIRS}
 )

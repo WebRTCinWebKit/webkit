@@ -34,6 +34,30 @@
 
 namespace JSC {
 double JIT_OPERATION operationMathPow(double x, double y) WTF_INTERNAL;
+
+inline int clz32(uint32_t number)
+{
+#if COMPILER(GCC) || COMPILER(CLANG)
+    int zeroCount = 32;
+    if (number)
+        zeroCount = __builtin_clz(number);
+    return zeroCount;
+#else
+    int zeroCount = 0;
+    for (int i = 31; i >= 0; i--) {
+        if (!(number >> i))
+            zeroCount++;
+        else
+            break;
+    }
+    return zeroCount;
+#endif
+}
+
+extern "C" {
+double JIT_OPERATION jsRound(double value) REFERENCED_FROM_ASM WTF_INTERNAL;
+}
+
 }
 
 #endif // MathCommon_h

@@ -29,7 +29,6 @@
 
 .object-tree-property > .titles {
     position: relative;
-    top: 2px;
     line-height: normal;
     padding-bottom: 1px;
     text-overflow: ellipsis;
@@ -43,9 +42,10 @@
     display: inline-block;
     vertical-align: top;
 
-    width: 16px;
+    width: 15px;
     height: 16px;
 
+    margin-left: -1px;
     border: 0;
     background: none;
     -webkit-appearance: none;

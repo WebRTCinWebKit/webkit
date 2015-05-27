@@ -259,7 +259,14 @@ private:
             node->child2()->mergeFlags(flags);
             break;
         }
-            
+
+        case ArithClz32: {
+            flags &= ~(NodeBytecodeUsesAsNumber | NodeBytecodeNeedsNegZero | NodeBytecodeUsesAsOther | ~NodeBytecodeUsesAsArrayIndex);
+            flags |= NodeBytecodeUsesAsInt;
+            node->child1()->mergeFlags(flags);
+            break;
+        }
+
         case ArithSub: {
             if (isNotNegZero(node->child1().node()) || isNotPosZero(node->child2().node()))
                 flags &= ~NodeBytecodeNeedsNegZero;
@@ -312,11 +319,11 @@ private:
         }
             
         case ArithMod: {
-            flags |= NodeBytecodeUsesAsNumber | NodeBytecodeNeedsNegZero;
+            flags |= NodeBytecodeUsesAsNumber;
             flags &= ~NodeBytecodeUsesAsOther;
 
             node->child1()->mergeFlags(flags);
-            node->child2()->mergeFlags(flags);
+            node->child2()->mergeFlags(flags & ~NodeBytecodeNeedsNegZero);
             break;
         }
             

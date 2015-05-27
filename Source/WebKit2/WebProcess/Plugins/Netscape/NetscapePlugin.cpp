@@ -58,7 +58,8 @@ PassRefPtr<NetscapePlugin> NetscapePlugin::create(PassRefPtr<NetscapePluginModul
 }
     
 NetscapePlugin::NetscapePlugin(PassRefPtr<NetscapePluginModule> pluginModule)
-    : m_nextRequestID(0)
+    : Plugin(NetscapePluginType)
+    , m_nextRequestID(0)
     , m_pluginModule(pluginModule)
     , m_npWindow()
     , m_isStarted(false)
@@ -759,8 +760,10 @@ void NetscapePlugin::geometryDidChange(const IntSize& pluginSize, const IntRect&
     m_clipRect = clipRect;
     m_pluginToRootViewTransform = pluginToRootViewTransform;
 
+#if PLUGIN_ARCHITECTURE(X11)
     IntPoint frameRectLocationInWindowCoordinates = m_pluginToRootViewTransform.mapPoint(IntPoint());
     m_frameRectInWindowCoordinates = IntRect(frameRectLocationInWindowCoordinates, m_pluginSize);
+#endif
 
     platformGeometryDidChange();
 

@@ -42,7 +42,7 @@ static const AtomicString& summaryQuerySelector()
 
 class DetailsContentElement final : public InsertionPoint {
 public:
-    static RefPtr<DetailsContentElement> create(Document&);
+    static Ref<DetailsContentElement> create(Document&);
 
 private:
     DetailsContentElement(Document& document)
@@ -58,9 +58,9 @@ private:
     }
 };
 
-RefPtr<DetailsContentElement> DetailsContentElement::create(Document& document)
+Ref<DetailsContentElement> DetailsContentElement::create(Document& document)
 {
-    return adoptRef(new DetailsContentElement(document));
+    return adoptRef(*new DetailsContentElement(document));
 }
 
 class DetailsSummaryElement final : public InsertionPoint {
@@ -111,7 +111,7 @@ HTMLDetailsElement::HTMLDetailsElement(const QualifiedName& tagName, Document& d
     ASSERT(hasTagName(detailsTag));
 }
 
-RenderPtr<RenderElement> HTMLDetailsElement::createElementRenderer(Ref<RenderStyle>&& style)
+RenderPtr<RenderElement> HTMLDetailsElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderBlockFlow>(*this, WTF::move(style));
 }

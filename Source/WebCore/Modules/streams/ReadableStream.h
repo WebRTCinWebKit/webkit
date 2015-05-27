@@ -68,6 +68,10 @@ public:
     State internalState() { return m_state; }
 
     void start();
+    void changeStateToClosed();
+    void changeStateToErrored();
+
+    ReadableStreamSource& source() { return m_source.get(); }
 
 protected:
     ReadableStream(ScriptExecutionContext&, Ref<ReadableStreamSource>&&);

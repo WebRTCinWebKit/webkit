@@ -486,7 +486,7 @@ void WebInspectorProxy::createInspectorPage(IPC::Attachment connectionIdentifier
         return;
 
     m_underTest = underTest;
-    m_connectionIdentifier = connectionIdentifier;
+    m_connectionIdentifier = WTF::move(connectionIdentifier);
 
     m_inspectorPage->process().send(Messages::WebInspectorUI::EstablishConnection(m_connectionIdentifier, m_inspectedPage->pageID(), m_underTest), m_inspectorPage->pageID());
 
@@ -509,6 +509,8 @@ void WebInspectorProxy::createInspectorPage(IPC::Attachment connectionIdentifier
             }
         } else
             m_inspectorPage->process().send(Messages::WebInspectorUI::Detached(), m_inspectorPage->pageID());
+
+        m_inspectorPage->process().send(Messages::WebInspectorUI::SetDockingUnavailable(!m_canAttach), m_inspectorPage->pageID());
     }
 
     m_inspectorPage->loadRequest(URL(URL(), m_underTest ? inspectorTestPageURL() : inspectorPageURL()));
@@ -571,6 +573,9 @@ void WebInspectorProxy::attachAvailabilityChanged(bool available)
 
     if (previousCanAttach == m_canAttach)
         return;
+
+    if (m_inspectorPage && !m_underTest)
+        m_inspectorPage->process().send(Messages::WebInspectorUI::SetDockingUnavailable(!m_canAttach), m_inspectorPage->pageID());
 
     platformAttachAvailabilityChanged(m_canAttach);
 }

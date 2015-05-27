@@ -681,7 +681,7 @@ public:
         }
 
         // Check if the lastNode is a branch on this node.
-        Node* lastNode = m_block->last();
+        Node* lastNode = m_block->terminal();
         return lastNode->op() == Branch && lastNode->child1() == m_currentNode ? m_block->size() - 1 : UINT_MAX;
     }
     
@@ -792,13 +792,7 @@ public:
 #if USE(JSVALUE64)
         jsValueResult(reg, node, DataFormatJSBoolean, mode);
 #else
-        if (mode == CallUseChildren)
-            useChildren(node);
-
-        VirtualRegister virtualRegister = node->virtualRegister();
-        m_gprs.retain(reg, virtualRegister, SpillOrderBoolean);
-        GenerationInfo& info = generationInfoFromVirtualRegister(virtualRegister);
-        info.initBoolean(node, node->refCount(), reg);
+        booleanResult(reg, node, mode);
 #endif
     }
     void unblessedBooleanResult(GPRReg reg, Node* node, UseChildrenMode mode = CallUseChildren)
@@ -1057,6 +1051,18 @@ public:
     JITCompiler::Call callOperation(S_JITOperation_ECC operation, GPRReg result, GPRReg arg1, GPRReg arg2)
     {
         m_jit.setupArgumentsWithExecState(arg1, arg2);
+        return appendCallWithExceptionCheckSetResult(operation, result);
+    }
+
+    JITCompiler::Call callOperation(S_JITOperation_EGC operation, GPRReg result, JSGlobalObject* globalObject, GPRReg arg2)
+    {
+        m_jit.setupArgumentsWithExecState(TrustedImmPtr(globalObject), arg2);
+        return appendCallWithExceptionCheckSetResult(operation, result);
+    }
+
+    JITCompiler::Call callOperation(C_JITOperation_EGC operation, GPRReg result, JSGlobalObject* globalObject, GPRReg arg2)
+    {
+        m_jit.setupArgumentsWithExecState(TrustedImmPtr(globalObject), arg2);
         return appendCallWithExceptionCheckSetResult(operation, result);
     }
 
@@ -2103,6 +2109,7 @@ public:
     void compileMiscStrictEq(Node*);
 
     void emitObjectOrOtherBranch(Edge value, BasicBlock* taken, BasicBlock* notTaken);
+    void emitStringBranch(Edge value, BasicBlock* taken, BasicBlock* notTaken);
     void emitBranch(Node*);
     
     struct StringSwitchCase {
@@ -2114,7 +2121,10 @@ public:
         {
         }
         
-        bool operator<(const StringSwitchCase& other) const;
+        bool operator<(const StringSwitchCase& other) const
+        {
+            return stringLessThan(*string, *other.string);
+        }
         
         StringImpl* string;
         BasicBlock* target;
@@ -2182,12 +2192,14 @@ public:
     void compileDoubleAsInt32(Node*);
     void compileAdd(Node*);
     void compileMakeRope(Node*);
+    void compileArithClz32(Node*);
     void compileArithSub(Node*);
     void compileArithNegate(Node*);
     void compileArithMul(Node*);
     void compileArithDiv(Node*);
     void compileArithMod(Node*);
     void compileArithPow(Node*);
+    void compileArithRound(Node*);
     void compileArithSqrt(Node*);
     void compileArithLog(Node*);
     void compileConstantStoragePointer(Node*);
@@ -2209,15 +2221,9 @@ public:
     void compileCreateClonedArguments(Node*);
     void compileNotifyWrite(Node*);
     bool compileRegExpExec(Node*);
-    
-    JITCompiler::Jump branchIsCell(JSValueRegs);
-    JITCompiler::Jump branchNotCell(JSValueRegs);
-    JITCompiler::Jump branchIsOther(JSValueRegs, GPRReg tempGPR);
-    JITCompiler::Jump branchNotOther(JSValueRegs, GPRReg tempGPR);
-    JITCompiler::Jump branchIsObject(GPRReg cellGPR);
-    JITCompiler::Jump branchNotObject(GPRReg cellGPR);
-    JITCompiler::Jump branchIsString(GPRReg cellGPR);
-    JITCompiler::Jump branchNotString(GPRReg cellGPR);
+    void compileIsObjectOrNull(Node*);
+    void compileIsFunction(Node*);
+    void compileTypeOf(Node*);
     
     void moveTrueTo(GPRReg);
     void moveFalseTo(GPRReg);

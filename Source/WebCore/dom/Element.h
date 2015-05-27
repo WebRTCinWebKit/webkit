@@ -49,6 +49,7 @@ class PlatformMouseEvent;
 class PlatformWheelEvent;
 class PseudoElement;
 class RenderNamedFlowFragment;
+class RenderTreePosition;
 class ShadowRoot;
 
 enum SpellcheckAttributeState {
@@ -242,7 +243,7 @@ public:
 
     virtual void copyNonAttributePropertiesFromElement(const Element&) { }
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&);
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&);
     virtual bool rendererIsNeeded(const RenderStyle&);
 
     WEBCORE_EXPORT ShadowRoot* shadowRoot() const;
@@ -369,13 +370,6 @@ public:
     WEBCORE_EXPORT PseudoElement* afterPseudoElement() const;
     bool childNeedsShadowWalker() const;
     void didShadowTreeAwareChildrenChange();
-
-    // ElementTraversal API
-    Element* firstElementChild() const;
-    Element* lastElementChild() const;
-    Element* previousElementSibling() const;
-    Element* nextElementSibling() const;
-    unsigned childElementCount() const;
 
     virtual bool matchesReadWritePseudoClass() const;
     bool matches(const String& selectors, ExceptionCode&);
@@ -543,8 +537,11 @@ private:
     void updateName(const AtomicString& oldName, const AtomicString& newName);
     void updateNameForTreeScope(TreeScope&, const AtomicString& oldName, const AtomicString& newName);
     void updateNameForDocument(HTMLDocument&, const AtomicString& oldName, const AtomicString& newName);
-    void updateId(const AtomicString& oldId, const AtomicString& newId);
-    void updateIdForTreeScope(TreeScope&, const AtomicString& oldId, const AtomicString& newId);
+
+    enum class NotifyObservers { No, Yes };
+    void updateId(const AtomicString& oldId, const AtomicString& newId, NotifyObservers = NotifyObservers::Yes);
+    void updateIdForTreeScope(TreeScope&, const AtomicString& oldId, const AtomicString& newId, NotifyObservers = NotifyObservers::Yes);
+
     enum HTMLDocumentNamedItemMapsUpdatingCondition { AlwaysUpdateHTMLDocumentNamedItemMaps, UpdateHTMLDocumentNamedItemMapsOnlyIfDiffersFromNameAttribute };
     void updateIdForDocument(HTMLDocument&, const AtomicString& oldId, const AtomicString& newId, HTMLDocumentNamedItemMapsUpdatingCondition);
     void updateLabel(TreeScope&, const AtomicString& oldForAttributeValue, const AtomicString& newForAttributeValue);

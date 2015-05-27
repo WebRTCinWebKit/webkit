@@ -108,6 +108,20 @@ bool DatabaseServer::deleteDatabase(SecurityOrigin* origin, const String& name)
     return DatabaseTracker::tracker().deleteDatabase(origin, name);
 }
 
+void DatabaseServer::setPauseAllDatabases(bool pauseAllDatabases)
+{
+#if PLATFORM(IOS)
+    DatabaseTracker::tracker().setDatabasesPaused(pauseAllDatabases);
+#else
+    UNUSED_PARAM(pauseAllDatabases);
+#endif
+}
+
+void DatabaseServer::closeAllDatabases()
+{
+    DatabaseTracker::tracker().closeAllDatabases();
+}
+
 void DatabaseServer::interruptAllDatabasesForContext(const DatabaseContext* context)
 {
     DatabaseTracker::tracker().interruptAllDatabasesForContext(context);

@@ -234,7 +234,7 @@ const AtomicString& VTTCueBox::vttCueBoxShadowPseudoId()
     return trackDisplayBoxShadowPseudoId;
 }
 
-RenderPtr<RenderElement> VTTCueBox::createElementRenderer(Ref<RenderStyle>&& style)
+RenderPtr<RenderElement> VTTCueBox::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderVTTCue>(*this, WTF::move(style));
 }
@@ -247,9 +247,9 @@ const AtomicString& VTTCue::cueBackdropShadowPseudoId()
     return cueBackdropShadowPseudoId;
 }
 
-PassRefPtr<VTTCue> VTTCue::create(ScriptExecutionContext& context, const WebVTTCueData& data)
+Ref<VTTCue> VTTCue::create(ScriptExecutionContext& context, const WebVTTCueData& data)
 {
-    return adoptRef(new VTTCue(context, data));
+    return adoptRef(*new VTTCue(context, data));
 }
 
 VTTCue::VTTCue(ScriptExecutionContext& context, const MediaTime& start, const MediaTime& end, const String& content)

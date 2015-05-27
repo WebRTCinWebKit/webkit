@@ -552,6 +552,27 @@ bool AccessibilityNodeObject::isPasswordField() const
     return inputElement->isPasswordField();
 }
 
+AccessibilityObject* AccessibilityNodeObject::passwordFieldOrContainingPasswordField()
+{
+    Node* node = this->node();
+    if (!node)
+        return nullptr;
+
+    if (HTMLInputElement* inputElement = node->toInputElement()) {
+        if (inputElement->isPasswordField())
+            return this;
+    }
+
+    Element* element = node->shadowHost();
+    if (!element || !is<HTMLInputElement>(element))
+        return nullptr;
+
+    if (AXObjectCache* cache = axObjectCache())
+        return cache->getOrCreate(element);
+
+    return nullptr;
+}
+
 bool AccessibilityNodeObject::isInputImage() const
 {
     Node* node = this->node();
@@ -772,6 +793,7 @@ bool AccessibilityNodeObject::supportsRequiredAttribute() const
     case ButtonRole:
         return isFileUploadButton();
     case CellRole:
+    case ColumnHeaderRole:
     case CheckBoxRole:
     case ComboBoxRole:
     case GridRole:

@@ -501,6 +501,25 @@ static bool hasVisibleTextNode(RenderText& renderer)
     return false;
 }
 
+static unsigned textNodeOffsetInFlow(const Text& firstTextNodeInRange)
+{
+    // Calculate the text offset for simple lines.
+    RenderObject* renderer = firstTextNodeInRange.renderer();
+    if (!renderer)
+        return 0;
+    unsigned textOffset = 0;
+    for (renderer = renderer->previousSibling(); renderer; renderer = renderer->previousSibling()) {
+        if (is<RenderText>(renderer))
+            textOffset += downcast<RenderText>(renderer)->textLength();
+    }
+    return textOffset;
+}
+
+static bool isNewLineOrTabCharacter(UChar character)
+{
+    return character == '\n' || character == '\t';
+}
+
 bool TextIterator::handleTextNode()
 {
     Text& textNode = downcast<Text>(*m_node);
@@ -551,8 +570,8 @@ bool TextIterator::handleTextNode()
         unsigned endPosition = (m_node == m_endContainer) ? static_cast<unsigned>(m_endOffset) : rendererText.length();
         const auto& blockFlow = downcast<RenderBlockFlow>(*renderer.parent());
         if (!m_flowRunResolverCache || &m_flowRunResolverCache->flow() != &blockFlow) {
+            m_previousTextLengthInFlow = m_flowRunResolverCache ? 0 : textNodeOffsetInFlow(textNode);
             m_flowRunResolverCache = std::make_unique<SimpleLineLayout::RunResolver>(blockFlow, *layout);
-            m_previousTextLengthInFlow = 0;
         } else if (previousTextNode && previousTextNode != &textNode) {
             // Simple line layout run positions are all absolute to the parent flow.
             // Offsetting is required when multiple renderers are present.
@@ -593,16 +612,21 @@ bool TextIterator::handleTextNode()
                 return false;
             }
         }
-        // \n \t single whitespace characters need replacing so that the new line/tab character won't show up.
+        // \n \t single whitespace characters need replacing so that the new line/tab characters don't show up.
         unsigned stopPosition = contentStart;
-        while (stopPosition < contentEnd) {
-            if (rendererText[stopPosition] == '\n' || rendererText[stopPosition] == '\t') {
-                emitText(textNode, renderer, contentStart, stopPosition);
-                m_offset = stopPosition + 1;
-                m_nextRunNeedsWhitespace = true;
+        while (stopPosition < contentEnd && !isNewLineOrTabCharacter(rendererText[stopPosition]))
+            ++stopPosition;
+        // Emit the text up to the new line/tab character.
+        if (stopPosition < contentEnd) {
+            if (stopPosition == contentStart) {
+                emitCharacter(' ', textNode, nullptr, contentStart, contentStart + 1);
+                m_offset = contentStart + 1;
                 return false;
             }
-            ++stopPosition;
+            emitText(textNode, renderer, contentStart, stopPosition);
+            m_offset = stopPosition + 1;
+            m_nextRunNeedsWhitespace = true;
+            return false;
         }
         emitText(textNode, renderer, contentStart, contentEnd);
         // When line ending with collapsed whitespace is present, we need to carry over one whitespace: foo(end of line)bar -> foo bar (otherwise we would end up with foobar).

@@ -33,37 +33,25 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
         WebInspector.Frame.addEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
         WebInspector.Frame.addEventListener(WebInspector.Frame.Event.ResourceWasAdded, this._resourceWasAdded, this);
 
-        this._recordings = [];
-        this._activeRecording = null;
         this._isCapturing = false;
-
-        this._nextRecordingIdentifier = 1;
-
         this._boundStopCapturing = this.stopCapturing.bind(this);
 
-        function delayedWork()
-        {
-            this._loadNewRecording();
-        }
-
-        // Allow other code to set up listeners before firing the initial RecordingLoaded event.
-        setTimeout(delayedWork.bind(this), 0);
-    }
-
-    // Static
-
-    static shouldShowViewForTimeline(timeline)
-    {
-        // COMPATIBILITY (iOS 8): TimelineAgent.EventType.RenderingFrame did not exist,
-        // fallback to displaying all other timelines.
-        if (window.TimelineAgent && !TimelineAgent.EventType.RenderingFrame)
-            return timeline.type !== WebInspector.TimelineRecord.Type.RenderingFrame;
-
-        // Don't show the Layout timeline view when the RenderingFrame timeline exists.
-        return timeline.type !== WebInspector.TimelineRecord.Type.Layout;
+        this.reset();
     }
 
     // Public
+
+    reset()
+    {
+        if (this._isCapturing)
+            this.stopCapturing();
+
+        this._recordings = [];
+        this._activeRecording = null;
+        this._nextRecordingIdentifier = 1;
+
+        this._loadNewRecording();
+    }
 
     // The current recording that new timeline records will be appended to, if any.
     get activeRecording()
@@ -435,13 +423,12 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
         var identifier = this._nextRecordingIdentifier++;
         var newRecording = new WebInspector.TimelineRecording(identifier, WebInspector.UIString("Timeline Recording %d").format(identifier));
         newRecording.addTimeline(WebInspector.Timeline.create(WebInspector.TimelineRecord.Type.Network, newRecording));
+        newRecording.addTimeline(WebInspector.Timeline.create(WebInspector.TimelineRecord.Type.Layout, newRecording));
+        newRecording.addTimeline(WebInspector.Timeline.create(WebInspector.TimelineRecord.Type.Script, newRecording));
 
         // COMPATIBILITY (iOS 8): TimelineAgent.EventType.RenderingFrame did not exist.
         if (window.TimelineAgent && TimelineAgent.EventType.RenderingFrame)
             newRecording.addTimeline(WebInspector.Timeline.create(WebInspector.TimelineRecord.Type.RenderingFrame, newRecording));
-
-        newRecording.addTimeline(WebInspector.Timeline.create(WebInspector.TimelineRecord.Type.Layout, newRecording));
-        newRecording.addTimeline(WebInspector.Timeline.create(WebInspector.TimelineRecord.Type.Script, newRecording));
 
         this._recordings.push(newRecording);
         this.dispatchEventToListeners(WebInspector.TimelineManager.Event.RecordingCreated, {recording: newRecording});
@@ -455,7 +442,6 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
         if (oldRecording)
             oldRecording.unloaded();
 
-        this._legacyFirstRecordedTimestamp = NaN;
         this._activeRecording = newRecording;
         this.dispatchEventToListeners(WebInspector.TimelineManager.Event.RecordingLoaded, {oldRecording});
     }
@@ -465,30 +451,7 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
         if (!payload)
             return null;
 
-        function createCallFrame(payload)
-        {
-            var url = payload.url;
-            var nativeCode = false;
-
-            if (url === "[native code]") {
-                nativeCode = true;
-                url = null;
-            }
-
-            var sourceCode = WebInspector.frameResourceManager.resourceForURL(url);
-            if (!sourceCode)
-                sourceCode = WebInspector.debuggerManager.scriptsForURL(url)[0];
-
-            // The lineNumber is 1-based, but we expect 0-based.
-            var lineNumber = payload.lineNumber - 1;
-
-            var sourceCodeLocation = sourceCode ? sourceCode.createLazySourceCodeLocation(lineNumber, payload.columnNumber) : null;
-            var functionName = payload.functionName !== "global code" ? payload.functionName : null;
-
-            return new WebInspector.CallFrame(null, sourceCodeLocation, functionName, null, null, nativeCode);
-        }
-
-        return payload.map(createCallFrame);
+        return payload.map(WebInspector.CallFrame.fromPayload);
     }
 
     _addRecord(record)

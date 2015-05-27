@@ -31,12 +31,12 @@
 
 namespace WebCore {
 
-FETile::FETile(Filter* filter)
+FETile::FETile(Filter& filter)
     : FilterEffect(filter)
 {
 }
 
-Ref<FETile> FETile::create(Filter* filter)
+Ref<FETile> FETile::create(Filter& filter)
 {
     return adoptRef(*new FETile(filter));
 }
@@ -63,8 +63,8 @@ void FETile::platformApplySoftware()
         tileRect.scale(filter.filterResolution().width(), filter.filterResolution().height());
     }
 
-    std::unique_ptr<ImageBuffer> tileImage;
-    if (!SVGRenderingContext::createImageBufferForPattern(tileRect, tileRect, tileImage, ColorSpaceDeviceRGB, filter().renderingMode()))
+    auto tileImage = SVGRenderingContext::createImageBuffer(tileRect, tileRect, ColorSpaceDeviceRGB, filter().renderingMode());
+    if (!tileImage)
         return;
 
     GraphicsContext* tileImageContext = tileImage->context();

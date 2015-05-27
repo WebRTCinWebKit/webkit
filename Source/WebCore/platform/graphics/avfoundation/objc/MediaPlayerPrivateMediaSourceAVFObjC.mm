@@ -40,7 +40,6 @@
 #import <AVFoundation/AVTime.h>
 #import <QuartzCore/CALayer.h>
 #import <objc_runtime.h>
-#import <wtf/Functional.h>
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
 
@@ -807,36 +806,28 @@ void MediaPlayerPrivateMediaSourceAVFObjC::characteristicsChanged()
 }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-bool MediaPlayerPrivateMediaSourceAVFObjC::isCurrentPlaybackTargetSupported() const
-{
-    if (!m_playbackTarget)
-        return true;
-
-    return !m_playbackTarget->hasActiveRoute();
-}
-
 void MediaPlayerPrivateMediaSourceAVFObjC::setWirelessPlaybackTarget(Ref<MediaPlaybackTarget>&& target)
 {
     m_playbackTarget = WTF::move(target);
 }
 
-void MediaPlayerPrivateMediaSourceAVFObjC::togglePlayingToPlaybackTarget()
+void MediaPlayerPrivateMediaSourceAVFObjC::setShouldPlayToPlaybackTarget(bool shouldPlayToTarget)
 {
-    bool oldSupported = m_currentPlaybackTargetIsSupported;
-    m_currentPlaybackTargetIsSupported = !m_playbackTarget || !m_playbackTarget->hasActiveRoute();
+    if (shouldPlayToTarget == m_shouldPlayToTarget)
+        return;
 
-    if (m_player && oldSupported != m_currentPlaybackTargetIsSupported)
+    m_shouldPlayToTarget = shouldPlayToTarget;
+
+    if (m_player)
         m_player->currentPlaybackTargetIsWirelessChanged();
 }
 
-void MediaPlayerPrivateMediaSourceAVFObjC::startPlayingToPlaybackTarget()
+bool MediaPlayerPrivateMediaSourceAVFObjC::isCurrentPlaybackTargetWireless() const
 {
-    togglePlayingToPlaybackTarget();
-}
+    if (!m_playbackTarget)
+        return false;
 
-void MediaPlayerPrivateMediaSourceAVFObjC::stopPlayingToPlaybackTarget()
-{
-    togglePlayingToPlaybackTarget();
+    return m_shouldPlayToTarget && m_playbackTarget->hasActiveRoute();
 }
 #endif
 

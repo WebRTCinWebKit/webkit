@@ -47,12 +47,12 @@ void MarkedBlock::destroy(MarkedBlock* block)
 MarkedBlock::MarkedBlock(MarkedAllocator* allocator, size_t capacity, size_t cellSize, bool needsDestruction)
     : DoublyLinkedListNode<MarkedBlock>()
     , m_atomsPerCell((cellSize + atomSize - 1) / atomSize)
-    , m_endAtom((allocator->cellSize() ? atomsPerBlock : capacity / atomSize) - m_atomsPerCell + 1)
+    , m_endAtom((allocator->cellSize() ? atomsPerBlock - m_atomsPerCell : firstAtom()) + 1)
     , m_capacity(capacity)
     , m_needsDestruction(needsDestruction)
     , m_allocator(allocator)
     , m_state(New) // All cells start out unmarked.
-    , m_weakSet(allocator->heap()->vm())
+    , m_weakSet(allocator->heap()->vm(), *this)
 {
     ASSERT(allocator);
     HEAP_LOG_BLOCK_STATE_TRANSITION(this);
@@ -157,10 +157,11 @@ public:
     {
     }
 
-    void operator()(JSCell* cell)
+    IterationStatus operator()(JSCell* cell)
     {
         ASSERT(MarkedBlock::blockFor(cell) == m_block);
         m_block->setNewlyAllocated(cell);
+        return IterationStatus::Continue;
     }
 
 private:

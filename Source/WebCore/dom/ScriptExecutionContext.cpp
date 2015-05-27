@@ -81,6 +81,8 @@ ScriptExecutionContext::ScriptExecutionContext()
     , m_timerNestingLevel(0)
 #if !ASSERT_DISABLED
     , m_inScriptExecutionContextDestructor(false)
+#endif
+#if !ASSERT_DISABLED || ENABLE(SECURITY_ASSERTIONS)
     , m_activeDOMObjectRemovalForbidden(false)
 #endif
 {
@@ -181,14 +183,15 @@ bool ScriptExecutionContext::canSuspendActiveDOMObjectsForPageCache(Vector<Activ
     bool canSuspend = true;
 
     m_activeDOMObjectAdditionForbidden = true;
-#if !ASSERT_DISABLED
+#if !ASSERT_DISABLED || ENABLE(SECURITY_ASSERTIONS)
     m_activeDOMObjectRemovalForbidden = true;
 #endif
 
     // We assume that m_activeDOMObjects will not change during iteration: canSuspend
     // functions should not add new active DOM objects, nor execute arbitrary JavaScript.
-    // An ASSERT or RELEASE_ASSERT will fire if this happens, but it's important to code
+    // An ASSERT_WITH_SECURITY_IMPLICATION or RELEASE_ASSERT will fire if this happens, but it's important to code
     // canSuspend functions so it will not happen!
+    NoEventDispatchAssertion assertNoEventDispatch;
     for (auto* activeDOMObject : m_activeDOMObjects) {
         if (!activeDOMObject->canSuspendForPageCache()) {
             canSuspend = false;
@@ -200,7 +203,7 @@ bool ScriptExecutionContext::canSuspendActiveDOMObjectsForPageCache(Vector<Activ
     }
 
     m_activeDOMObjectAdditionForbidden = false;
-#if !ASSERT_DISABLED
+#if !ASSERT_DISABLED || ENABLE(SECURITY_ASSERTIONS)
     m_activeDOMObjectRemovalForbidden = false;
 #endif
 
@@ -219,20 +222,20 @@ void ScriptExecutionContext::suspendActiveDOMObjects(ActiveDOMObject::ReasonForS
 #endif
 
     m_activeDOMObjectAdditionForbidden = true;
-#if !ASSERT_DISABLED
+#if !ASSERT_DISABLED || ENABLE(SECURITY_ASSERTIONS)
     m_activeDOMObjectRemovalForbidden = true;
 #endif
 
     // We assume that m_activeDOMObjects will not change during iteration: suspend
     // functions should not add new active DOM objects, nor execute arbitrary JavaScript.
-    // An ASSERT or RELEASE_ASSERT will fire if this happens, but it's important to code
+    // An ASSERT_WITH_SECURITY_IMPLICATION or RELEASE_ASSERT will fire if this happens, but it's important to code
     // suspend functions so it will not happen!
     NoEventDispatchAssertion assertNoEventDispatch;
     for (auto* activeDOMObject : m_activeDOMObjects)
         activeDOMObject->suspend(why);
 
     m_activeDOMObjectAdditionForbidden = false;
-#if !ASSERT_DISABLED
+#if !ASSERT_DISABLED || ENABLE(SECURITY_ASSERTIONS)
     m_activeDOMObjectRemovalForbidden = false;
 #endif
 
@@ -249,20 +252,20 @@ void ScriptExecutionContext::resumeActiveDOMObjects(ActiveDOMObject::ReasonForSu
     m_activeDOMObjectsAreSuspended = false;
 
     m_activeDOMObjectAdditionForbidden = true;
-#if !ASSERT_DISABLED
+#if !ASSERT_DISABLED || ENABLE(SECURITY_ASSERTIONS)
     m_activeDOMObjectRemovalForbidden = true;
 #endif
 
     // We assume that m_activeDOMObjects will not change during iteration: resume
     // functions should not add new active DOM objects, nor execute arbitrary JavaScript.
-    // An ASSERT or RELEASE_ASSERT will fire if this happens, but it's important to code
+    // An ASSERT_WITH_SECURITY_IMPLICATION or RELEASE_ASSERT will fire if this happens, but it's important to code
     // resume functions so it will not happen!
     NoEventDispatchAssertion assertNoEventDispatch;
     for (auto* activeDOMObject : m_activeDOMObjects)
         activeDOMObject->resume();
 
     m_activeDOMObjectAdditionForbidden = false;
-#if !ASSERT_DISABLED
+#if !ASSERT_DISABLED || ENABLE(SECURITY_ASSERTIONS)
     m_activeDOMObjectRemovalForbidden = false;
 #endif
 }
@@ -283,7 +286,7 @@ void ScriptExecutionContext::stopActiveDOMObjects()
 
     // We assume that new objects will not be added to m_activeDOMObjects during iteration:
     // stop functions should not add new active DOM objects, nor execute arbitrary JavaScript.
-    // A RELEASE_ASSERT will fire if this happens, but it's important to code stop functions
+    // An ASSERT_WITH_SECURITY_IMPLICATION or RELEASE_ASSERT will fire if this happens, but it's important to code stop functions
     // so it will not happen!
     NoEventDispatchAssertion assertNoEventDispatch;
     for (auto* activeDOMObject : possibleActiveDOMObjects) {
@@ -326,7 +329,7 @@ void ScriptExecutionContext::didCreateActiveDOMObject(ActiveDOMObject& activeDOM
 
 void ScriptExecutionContext::willDestroyActiveDOMObject(ActiveDOMObject& activeDOMObject)
 {
-    ASSERT(!m_activeDOMObjectRemovalForbidden);
+    ASSERT_WITH_SECURITY_IMPLICATION(!m_activeDOMObjectRemovalForbidden);
     m_activeDOMObjects.remove(&activeDOMObject);
 }
 

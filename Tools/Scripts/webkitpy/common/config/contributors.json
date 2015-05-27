@@ -179,9 +179,9 @@
       },
       "Andres Gomez" : {
          "emails" : [
+            "agomez@igalia.com",
             "tanty0@gmail.com",
-            "agomez@gnome.org",
-            "agomez@igalia.com"
+            "agomez@gnome.org"
          ],
          "expertise" : "WebKitGTK+",
          "nicks" : [
@@ -347,6 +347,14 @@
          "nicks" : [
             "kbalazs"
          ]
+      },
+      "Basile Clement" : {
+        "emails" : [
+            "basile_clement@apple.com"
+        ],
+        "nicks" : [
+            "elarnon"
+        ]
       },
       "Bear Travis" : {
          "emails" : [
@@ -1837,6 +1845,11 @@
             "marywu"
          ]
       },
+      "Matt Baker" : {
+         "emails" : [
+            "mattbaker@apple.com"
+         ]
+      },
       "Matt Delaney" : {
          "emails" : [
             "mdelaney@apple.com"
@@ -2879,15 +2892,6 @@
          ],
          "expertise" : "JavaScriptCore"
       },
-      "Yusuke Suzuki" : {
-         "emails" : [
-            "utatane.tea@gmail.com"
-         ],
-         "expertise" : "JIT Compilers, CSS JIT, JavaScript/ECMAScript",
-         "nicks" : [
-            "yusukesuzuki"
-         ]
-      },
       "Yuzo Fujishima" : {
          "emails" : [
             "yuzo@google.com"
@@ -3358,6 +3362,15 @@
          ],
          "nicks" : [
             "rmondello"
+         ]
+      },
+      "Sungmann Cho" : {
+         "emails" : [
+            "sungmann.cho@navercorp.com",
+            "sungmann.cho@gmail.com"
+         ],
+         "nicks" : [
+            "mann"
          ]
       },
       "Tab Atkins" : {
@@ -4363,6 +4376,7 @@
       "Mario Sanchez Prada" : {
          "emails" : [
             "mario@webkit.org",
+            "mario@endlessm.com",
             "mario.prada@samsung.com",
             "msanchez@igalia.com"
          ],
@@ -4757,6 +4771,15 @@
          "expertise" : "Developer Tools, Web Inspector",
          "nicks" : [
             "yurys"
+         ]
+      },
+      "Yusuke Suzuki" : {
+         "emails" : [
+            "utatane.tea@gmail.com"
+         ],
+         "expertise" : "JIT Compilers, CSS JIT, JavaScript/ECMAScript",
+         "nicks" : [
+            "yusukesuzuki"
          ]
       },
       "Yuta Kitamura" : {

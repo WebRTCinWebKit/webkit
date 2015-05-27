@@ -2075,12 +2075,14 @@ bool DOMWindow::isInsecureScriptAccess(DOMWindow& activeWindow, const String& ur
 PassRefPtr<Frame> DOMWindow::createWindow(const String& urlString, const AtomicString& frameName, const WindowFeatures& windowFeatures, DOMWindow& activeWindow, Frame* firstFrame, Frame* openerFrame, std::function<void (DOMWindow&)> prepareDialogFunction)
 {
     Frame* activeFrame = activeWindow.frame();
+    if (!activeFrame)
+        return nullptr;
 
     URL completedURL = urlString.isEmpty() ? URL(ParsedURLString, emptyString()) : firstFrame->document()->completeURL(urlString);
     if (!completedURL.isEmpty() && !completedURL.isValid()) {
         // Don't expose client code to invalid URLs.
         activeWindow.printErrorMessage("Unable to open a window with invalid URL '" + completedURL.string() + "'.\n");
-        return 0;
+        return nullptr;
     }
 
     // For whatever reason, Firefox uses the first frame to determine the outgoingReferrer. We replicate that behavior here.
@@ -2088,14 +2090,14 @@ PassRefPtr<Frame> DOMWindow::createWindow(const String& urlString, const AtomicS
 
     ResourceRequest request(completedURL, referrer);
     FrameLoader::addHTTPOriginIfNeeded(request, firstFrame->loader().outgoingOrigin());
-    FrameLoadRequest frameRequest(activeWindow.document()->securityOrigin(), request, frameName);
+    FrameLoadRequest frameRequest(activeWindow.document()->securityOrigin(), request, frameName, LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ReplaceDocumentIfJavaScriptURL);
 
     // We pass the opener frame for the lookupFrame in case the active frame is different from
     // the opener frame, and the name references a frame relative to the opener frame.
     bool created;
-    RefPtr<Frame> newFrame = WebCore::createWindow(activeFrame, openerFrame, frameRequest, windowFeatures, created);
+    RefPtr<Frame> newFrame = WebCore::createWindow(*activeFrame, openerFrame, frameRequest, windowFeatures, created);
     if (!newFrame)
-        return 0;
+        return nullptr;
 
     newFrame->loader().setOpener(openerFrame);
     newFrame->page()->setOpenedByDOM();
@@ -2106,16 +2108,18 @@ PassRefPtr<Frame> DOMWindow::createWindow(const String& urlString, const AtomicS
     if (prepareDialogFunction)
         prepareDialogFunction(*newFrame->document()->domWindow());
 
-    if (created)
-        newFrame->loader().changeLocation(activeWindow.document()->securityOrigin(), completedURL, referrer, LockHistory::No, LockBackForwardList::No);
-    else if (!urlString.isEmpty()) {
+    if (created) {
+        ResourceRequest resourceRequest(completedURL, referrer, UseProtocolCachePolicy);
+        FrameLoadRequest frameRequest(activeWindow.document()->securityOrigin(), resourceRequest, LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow);
+        newFrame->loader().changeLocation(frameRequest);
+    } else if (!urlString.isEmpty()) {
         LockHistory lockHistory = ScriptController::processingUserGesture() ? LockHistory::No : LockHistory::Yes;
         newFrame->navigationScheduler().scheduleLocationChange(activeWindow.document()->securityOrigin(), completedURL, referrer, lockHistory, LockBackForwardList::No);
     }
 
     // Navigating the new frame could result in it being detached from its page by a navigation policy delegate.
     if (!newFrame->page())
-        return 0;
+        return nullptr;
 
     return newFrame.release();
 }

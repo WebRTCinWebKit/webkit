@@ -29,7 +29,7 @@
 
 namespace WebCore {
 
-class WEBCORE_EXPORT JSTestSerializedScriptValueInterface : public JSDOMWrapper {
+class JSTestSerializedScriptValueInterface : public JSDOMWrapper {
 public:
     typedef JSDOMWrapper Base;
     static JSTestSerializedScriptValueInterface* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestSerializedScriptValueInterface>&& impl)
@@ -58,15 +58,7 @@ public:
     static void visitChildren(JSCell*, JSC::SlotVisitor&);
 
     TestSerializedScriptValueInterface& impl() const { return *m_impl; }
-    void releaseImpl() { m_impl->deref(); m_impl = 0; }
-
-    void releaseImplIfNotNull()
-    {
-        if (m_impl) {
-            m_impl->deref();
-            m_impl = 0;
-        }
-    }
+    void releaseImpl() { std::exchange(m_impl, nullptr)->deref(); }
 
 private:
     TestSerializedScriptValueInterface* m_impl;
@@ -93,7 +85,7 @@ inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld&, TestSerializedScript
     return &owner.get();
 }
 
-WEBCORE_EXPORT JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestSerializedScriptValueInterface*);
+JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestSerializedScriptValueInterface*);
 inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, TestSerializedScriptValueInterface& impl) { return toJS(exec, globalObject, &impl); }
 
 

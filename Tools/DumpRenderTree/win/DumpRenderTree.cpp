@@ -96,6 +96,7 @@ static bool gcBetweenTests = false;
 static bool printSeparators = false;
 static bool leakChecking = false;
 static bool printSupportedFeatures = false;
+static bool showWebView = false;
 static RetainPtr<CFStringRef> persistentUserStyleSheetLocation;
 
 volatile bool done;
@@ -1204,8 +1205,8 @@ IWebView* createWebViewAndOffscreenWindow(HWND* webViewWindow)
 {
     int maxViewWidth = TestRunner::viewWidth;
     int maxViewHeight = TestRunner::viewHeight;
-    HWND hostWindow = CreateWindowEx(WS_EX_TOOLWINDOW, kDumpRenderTreeClassName, TEXT("DumpRenderTree"), WS_POPUP,
-      -maxViewWidth, -maxViewHeight, maxViewWidth, maxViewHeight, 0, 0, GetModuleHandle(0), 0);
+    HWND hostWindow = (showWebView) ? CreateWindowEx(WS_EX_TOOLWINDOW, kDumpRenderTreeClassName, TEXT("DumpRenderTree"), WS_POPUP, 100, 100, maxViewWidth, maxViewHeight, 0, 0, ::GetModuleHandle(0), nullptr)
+        : CreateWindowEx(WS_EX_TOOLWINDOW, kDumpRenderTreeClassName, TEXT("DumpRenderTree"), WS_POPUP, -maxViewWidth, -maxViewHeight, maxViewWidth, maxViewHeight, 0, 0, ::GetModuleHandle(0), nullptr);
 
     IWebView* webView = nullptr;
     HRESULT hr = WebKitCreateInstance(CLSID_WebView, 0, IID_IWebView, (void**)&webView);
@@ -1354,6 +1355,11 @@ static Vector<const char*> initializeGlobalsFromCommandLineOptions(int argc, con
             continue;
         }
 
+        if (!stricmp(argv[i], "--show-webview")) {
+            showWebView = true;
+            continue;
+        }
+
         tests.append(argv[i]);
     }
 
@@ -1434,16 +1440,16 @@ int main(int argc, const char* argv[])
         BOOL acceleratedCompositingAvailable;
         standardPreferences->acceleratedCompositingEnabled(&acceleratedCompositingAvailable);
 
-#if ENABLE(3D_RENDERING)
+#if ENABLE(3D_TRANSFORMS)
         // In theory, we could have a software-based 3D rendering implementation that we use when
         // hardware-acceleration is not available. But we don't have any such software
         // implementation, so 3D rendering is only available when hardware-acceleration is.
-        BOOL threeDRenderingAvailable = acceleratedCompositingAvailable;
+        BOOL threeDTransformsAvailable = acceleratedCompositingAvailable;
 #else
-        BOOL threeDRenderingAvailable = FALSE;
+        BOOL threeDTransformsAvailable = FALSE;
 #endif
 
-        printf("SupportedFeatures:%s %s\n", acceleratedCompositingAvailable ? "AcceleratedCompositing" : "", threeDRenderingAvailable ? "3DRendering" : "");
+        printf("SupportedFeatures:%s %s\n", acceleratedCompositingAvailable ? "AcceleratedCompositing" : "", threeDTransformsAvailable ? "3DTransforms" : "");
         return 0;
     }
 

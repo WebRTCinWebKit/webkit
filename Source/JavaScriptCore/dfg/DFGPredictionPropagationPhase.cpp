@@ -178,7 +178,8 @@ private:
         case BitRShift:
         case BitLShift:
         case BitURShift:
-        case ArithIMul: {
+        case ArithIMul:
+        case ArithClz32: {
             changed |= setPrediction(SpecInt32);
             break;
         }
@@ -346,7 +347,15 @@ private:
             changed |= setPrediction(SpecBytecodeDouble);
             break;
         }
-            
+
+        case ArithRound: {
+            if (isInt32OrBooleanSpeculation(node->getHeapPrediction()) && m_graph.roundShouldSpeculateInt32(node, m_pass))
+                changed |= setPrediction(SpecInt32);
+            else
+                changed |= setPrediction(SpecBytecodeDouble);
+            break;
+        }
+
         case ArithAbs: {
             SpeculatedType child = node->child1()->prediction();
             if (isInt32OrBooleanSpeculationForArithmetic(child)
@@ -378,7 +387,7 @@ private:
         }
 
         case TypeOf: {
-            changed |= setPrediction(SpecString);
+            changed |= setPrediction(SpecStringIdent);
             break;
         }
 
@@ -390,7 +399,7 @@ private:
                 m_graph, node,
                 node->child1()->prediction(),
                 node->child2()->prediction(),
-                SpecNone, node->flags());
+                SpecNone);
             
             switch (arrayMode.type()) {
             case Array::Double:
@@ -534,7 +543,6 @@ private:
         case InvalidationPoint:
         case CheckInBounds:
         case ValueToInt32:
-        case HardPhantom:
         case DoubleRep:
         case ValueRep:
         case Int52Rep:
@@ -542,6 +550,8 @@ private:
         case Identity:
         case BooleanToNumber:
         case PhantomNewObject:
+        case PhantomNewFunction:
+        case PhantomCreateActivation:
         case PhantomDirectArguments:
         case PhantomClonedArguments:
         case GetMyArgumentByVal:
@@ -549,6 +559,7 @@ private:
         case PutHint:
         case CheckStructureImmediate:
         case MaterializeNewObject:
+        case MaterializeCreateActivation:
         case PutStack:
         case KillStack:
         case GetStack: {
@@ -637,7 +648,6 @@ private:
         case CheckBadCell:
         case PutStructure:
         case VarInjectionWatchpoint:
-        case AllocationProfileWatchpoint:
         case Phantom:
         case Check:
         case PutGlobalVar:

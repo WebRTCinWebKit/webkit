@@ -31,6 +31,7 @@
 #include "DFGAbstractHeap.h"
 #include "DFGBlockMapInlines.h"
 #include "DFGClobberize.h"
+#include "DFGCombinedLiveness.h"
 #include "DFGGraph.h"
 #include "DFGInsertOSRHintsForUpdate.h"
 #include "DFGInsertionSet.h"
@@ -107,6 +108,7 @@ private:
         m_graph.computeRefCounts();
         performLivenessAnalysis(m_graph);
         performOSRAvailabilityAnalysis(m_graph);
+        m_combinedLiveness = CombinedLiveness(m_graph);
         
         CString graphBeforeSinking;
         if (Options::verboseValidationFailure() && Options::validateGraphAtEachPhase()) {
@@ -189,7 +191,7 @@ private:
                 // So, we prune materialized-at-tail to only include things that are live.
                 Vector<Node*> toRemove;
                 for (auto pair : materialized) {
-                    if (!block->ssa->liveAtTail.contains(pair.key))
+                    if (!m_combinedLiveness.liveAtTail[block].contains(pair.key))
                         toRemove.append(pair.key);
                 }
                 for (Node* key : toRemove)
@@ -227,7 +229,7 @@ private:
                 if (pair.value)
                     continue; // It was materialized.
                 
-                if (block->ssa->liveAtTail.contains(pair.key))
+                if (m_combinedLiveness.liveAtTail[block].contains(pair.key))
                     continue; // It might still get materialized in all of the successors.
                 
                 // We know that it died in this block and it wasn't materialized. That means that
@@ -352,7 +354,7 @@ private:
                     // already handled the case where the predecessor has multiple successors.
                     DFG_ASSERT(m_graph, block, block->numSuccessors() == 1);
                     
-                    createMaterialize(allocation, block->last());
+                    createMaterialize(allocation, block->terminal());
                 }
             }
         }
@@ -391,7 +393,7 @@ private:
         m_ssaCalculator.computePhis(
             [&] (SSACalculator::Variable* variable, BasicBlock* block) -> Node* {
                 Node* allocation = indexToNode[variable->index()];
-                if (!block->ssa->liveAtHead.contains(allocation))
+                if (!m_combinedLiveness.liveAtHead[block].contains(allocation))
                     return nullptr;
                 
                 Node* phiNode = m_graph.addNode(allocation->prediction(), Phi, NodeOrigin());
@@ -405,7 +407,7 @@ private:
         for (BasicBlock* block : m_graph.blocksInNaturalOrder()) {
             HashMap<Node*, Node*> mapping;
             
-            for (Node* candidate : block->ssa->liveAtHead) {
+            for (Node* candidate : m_combinedLiveness.liveAtHead[block]) {
                 SSACalculator::Variable* variable = nodeToVariable.get(candidate);
                 if (!variable)
                     continue;
@@ -461,8 +463,9 @@ private:
                 }
             }
             
-            size_t upsilonInsertionPoint = block->size() - 1;
-            Node* upsilonWhere = block->last();
+            NodeAndIndex terminal = block->findTerminal();
+            size_t upsilonInsertionPoint = terminal.index;
+            Node* upsilonWhere = terminal.node;
             NodeOrigin upsilonOrigin = upsilonWhere->origin;
             for (BasicBlock* successorBlock : block->successors()) {
                 for (SSACalculator::Def* phiDef : m_ssaCalculator.phisForBlock(successorBlock)) {
@@ -470,19 +473,8 @@ private:
                     SSACalculator::Variable* variable = phiDef->variable();
                     Node* allocation = indexToNode[variable->index()];
                     
-                    Node* originalIncoming = mapping.get(allocation);
-                    Node* incoming;
-                    if (originalIncoming == allocation) {
-                        // If we have a Phi that combines materializations with the original
-                        // phantom object, then the path with the phantom object must materialize.
-                        
-                        incoming = createMaterialize(allocation, upsilonWhere);
-                        m_insertionSet.insert(upsilonInsertionPoint, incoming);
-                        insertOSRHintsForUpdate(
-                            m_insertionSet, upsilonInsertionPoint, upsilonOrigin,
-                            availabilityCalculator.m_availability, originalIncoming, incoming);
-                    } else
-                        incoming = originalIncoming;
+                    Node* incoming = mapping.get(allocation);
+                    DFG_ASSERT(m_graph, incoming, incoming != allocation);
                     
                     m_insertionSet.insertNode(
                         upsilonInsertionPoint, SpecNone, Upsilon, upsilonOrigin,
@@ -509,13 +501,27 @@ private:
                 Node* node = block->at(nodeIndex);
                 switch (node->op()) {
                 case PutByOffset: {
-                    if (m_sinkCandidates.contains(node->child2().node()))
+                    Node* target = node->child2().node();
+                    if (m_sinkCandidates.contains(target)) {
+                        ASSERT(target->isPhantomObjectAllocation());
                         node->convertToPutByOffsetHint();
+                    }
+                    break;
+                }
+
+                case PutClosureVar: {
+                    Node* target = node->child1().node();
+                    if (m_sinkCandidates.contains(target)) {
+                        ASSERT(target->isPhantomActivationAllocation());
+                        node->convertToPutClosureVarHint();
+                    }
                     break;
                 }
                     
                 case PutStructure: {
-                    if (m_sinkCandidates.contains(node->child1().node())) {
+                    Node* target = node->child1().node();
+                    if (m_sinkCandidates.contains(target)) {
+                        ASSERT(target->isPhantomObjectAllocation());
                         Node* structure = m_insertionSet.insertConstant(
                             nodeIndex, node->origin, JSValue(node->transition()->next));
                         node->convertToPutStructureHint(structure);
@@ -556,11 +562,63 @@ private:
                     }
                     break;
                 }
-                    
+
+                case NewFunction: {
+                    if (m_sinkCandidates.contains(node)) {
+                        Node* executable = m_insertionSet.insertConstant(
+                            nodeIndex + 1, node->origin, node->cellOperand());
+                        m_insertionSet.insert(
+                            nodeIndex + 1,
+                            PromotedHeapLocation(FunctionExecutablePLoc, node).createHint(
+                                m_graph, node->origin, executable));
+                        m_insertionSet.insert(
+                            nodeIndex + 1,
+                            PromotedHeapLocation(FunctionActivationPLoc, node).createHint(
+                                m_graph, node->origin, node->child1().node()));
+                        node->convertToPhantomNewFunction();
+                    }
+                    break;
+                }
+
+                case CreateActivation: {
+                    if (m_sinkCandidates.contains(node)) {
+                        m_insertionSet.insert(
+                            nodeIndex + 1,
+                            PromotedHeapLocation(ActivationScopePLoc, node).createHint(
+                                m_graph, node->origin, node->child1().node()));
+                        node->convertToPhantomCreateActivation();
+                    }
+                    break;
+                }
+
+                case MaterializeCreateActivation: {
+                    if (m_sinkCandidates.contains(node)) {
+                        m_insertionSet.insert(
+                            nodeIndex + 1,
+                            PromotedHeapLocation(ActivationScopePLoc, node).createHint(
+                                m_graph, node->origin, m_graph.varArgChild(node, 0).node()));
+                        ObjectMaterializationData& data = node->objectMaterializationData();
+                        for (unsigned i = 0; i < data.m_properties.size(); ++i) {
+                            unsigned identifierNumber = data.m_properties[i].m_identifierNumber;
+                            m_insertionSet.insert(
+                                nodeIndex + 1,
+                                PromotedHeapLocation(
+                                    ClosureVarPLoc, node, identifierNumber).createHint(
+                                    m_graph, node->origin,
+                                    m_graph.varArgChild(node, i + 1).node()));
+                        }
+                        node->convertToPhantomCreateActivation();
+                    }
+                    break;
+                }
+
                 case StoreBarrier:
                 case StoreBarrierWithNullCheck: {
-                    if (m_sinkCandidates.contains(node->child1().node()))
-                        node->convertToPhantom();
+                    Node* target = node->child1().node();
+                    if (m_sinkCandidates.contains(target)) {
+                        ASSERT(target->isPhantomAllocation());
+                        node->remove();
+                    }
                     break;
                 }
                     
@@ -615,7 +673,7 @@ private:
         Node* bottom = nullptr;
         for (BasicBlock* block : m_graph.blocksInNaturalOrder()) {
             if (block == m_graph.block(0))
-                bottom = m_insertionSet.insertNode(0, SpecNone, BottomValue, NodeOrigin());
+                bottom = m_insertionSet.insertConstant(0, NodeOrigin(), jsUndefined());
             
             for (unsigned nodeIndex = 0; nodeIndex < block->size(); ++nodeIndex) {
                 Node* node = block->at(nodeIndex);
@@ -658,7 +716,7 @@ private:
         m_ssaCalculator.computePhis(
             [&] (SSACalculator::Variable* variable, BasicBlock* block) -> Node* {
                 PromotedHeapLocation location = m_indexToLocation[variable->index()];
-                if (!block->ssa->liveAtHead.contains(location.base()))
+                if (!m_combinedLiveness.liveAtHead[block].contains(location.base()))
                     return nullptr;
                 
                 Node* phiNode = m_graph.addNode(SpecHeapTop, Phi, NodeOrigin());
@@ -702,14 +760,24 @@ private:
                             m_localMapping.set(location, value.node());
                     },
                     [&] (PromotedHeapLocation location) {
-                        if (m_sinkCandidates.contains(location.base()))
-                            node->replaceWith(resolve(block, location));
+                        if (m_sinkCandidates.contains(location.base())) {
+                            switch (node->op()) {
+                            case CheckStructure:
+                                node->convertToCheckStructureImmediate(resolve(block, location));
+                                break;
+
+                            default:
+                                node->replaceWith(resolve(block, location));
+                                break;
+                            }
+                        }
                     });
             }
             
             // Gotta drop some Upsilons.
-            size_t upsilonInsertionPoint = block->size() - 1;
-            NodeOrigin upsilonOrigin = block->last()->origin;
+            NodeAndIndex terminal = block->findTerminal();
+            size_t upsilonInsertionPoint = terminal.index;
+            NodeOrigin upsilonOrigin = terminal.node->origin;
             for (BasicBlock* successorBlock : block->successors()) {
                 for (SSACalculator::Def* phiDef : m_ssaCalculator.phisForBlock(successorBlock)) {
                     Node* phiNode = phiDef->value();
@@ -750,6 +818,7 @@ private:
         switch (node->op()) {
         case NewObject:
         case MaterializeNewObject:
+        case MaterializeCreateActivation:
             sinkCandidate();
             m_graph.doToChildren(
                 node,
@@ -757,24 +826,67 @@ private:
                     escape(edge.node());
                 });
             break;
-            
+
+        case NewFunction:
+            if (!node->castOperand<FunctionExecutable*>()->singletonFunction()->isStillValid())
+                sinkCandidate();
+            escape(node->child1().node());
+            break;
+
+        case CreateActivation:
+            if (!m_graph.symbolTableFor(node->origin.semantic)->singletonScope()->isStillValid())
+                sinkCandidate();
+            escape(node->child1().node());
+            break;
+
+        case Check:
+            m_graph.doToChildren(
+                node,
+                [&] (Edge edge) {
+                    if (edge.willNotHaveCheck())
+                        return;
+                    
+                    if (alreadyChecked(edge.useKind(), SpecObject))
+                        return;
+                    
+                    escape(edge.node());
+                });
+            break;
+
+        case MovHint:
+        case PutHint:
+        case StoreBarrier:
+        case StoreBarrierWithNullCheck:
+            break;
+
+        case PutStructure:
         case CheckStructure:
         case GetByOffset:
         case MultiGetByOffset:
-        case PutStructure:
-        case GetGetterSetterByOffset:
-        case MovHint:
-        case Phantom:
-        case Check:
-        case HardPhantom:
-        case StoreBarrier:
-        case StoreBarrierWithNullCheck:
-        case PutHint:
+        case GetGetterSetterByOffset: {
+            Node* target = node->child1().node();
+            if (!target->isObjectAllocation())
+                escape(target);
             break;
+        }
             
-        case PutByOffset:
+        case PutByOffset: {
+            Node* target = node->child2().node();
+            if (!target->isObjectAllocation()) {
+                escape(target);
+                escape(node->child1().node());
+            }
             escape(node->child3().node());
             break;
+        }
+
+        case PutClosureVar: {
+            Node* target = node->child1().node();
+            if (!target->isActivationAllocation())
+                escape(target);
+            escape(node->child2().node());
+            break;
+        }
             
         case MultiPutByOffset:
             // FIXME: In the future we should be able to handle this. It's just a matter of
@@ -813,7 +925,30 @@ private:
                 OpInfo(data), OpInfo(), 0, 0);
             break;
         }
-            
+
+        case NewFunction:
+            result = m_graph.addNode(
+                escapee->prediction(), NewFunction,
+                NodeOrigin(
+                    escapee->origin.semantic,
+                    where->origin.forExit),
+                OpInfo(escapee->cellOperand()),
+                escapee->child1());
+            break;
+
+        case CreateActivation:
+        case MaterializeCreateActivation: {
+            ObjectMaterializationData* data = m_graph.m_objectMaterializationData.add();
+
+            result = m_graph.addNode(
+                escapee->prediction(), Node::VarArg, MaterializeCreateActivation,
+                NodeOrigin(
+                    escapee->origin.semantic,
+                    where->origin.forExit),
+                OpInfo(data), OpInfo(), 0, 0);
+            break;
+        }
+
         default:
             DFG_CRASH(m_graph, escapee, "Bad escapee op");
             break;
@@ -872,13 +1007,87 @@ private:
                 firstChild, m_graph.m_varArgChildren.size() - firstChild);
             break;
         }
-            
+
+        case MaterializeCreateActivation: {
+            ObjectMaterializationData& data = node->objectMaterializationData();
+
+            unsigned firstChild = m_graph.m_varArgChildren.size();
+
+            Vector<PromotedHeapLocation> locations = m_locationsForAllocation.get(escapee);
+
+            PromotedHeapLocation scope(ActivationScopePLoc, escapee);
+            ASSERT(locations.contains(scope));
+
+            m_graph.m_varArgChildren.append(Edge(resolve(block, scope), KnownCellUse));
+
+            for (unsigned i = 0; i < locations.size(); ++i) {
+                switch (locations[i].kind()) {
+                case ActivationScopePLoc: {
+                    ASSERT(locations[i] == scope);
+                    break;
+                }
+
+                case ClosureVarPLoc: {
+                    Node* value = resolve(block, locations[i]);
+                    if (value->op() == BottomValue)
+                        break;
+
+                    data.m_properties.append(PhantomPropertyValue(locations[i].info()));
+                    m_graph.m_varArgChildren.append(value);
+                    break;
+                }
+
+                default:
+                    DFG_CRASH(m_graph, node, "Bad location kind");
+                }
+            }
+
+            node->children = AdjacencyList(
+                AdjacencyList::Variable,
+                firstChild, m_graph.m_varArgChildren.size() - firstChild);
+            break;
+        }
+
+        case NewFunction: {
+            if (!ASSERT_DISABLED) {
+                Vector<PromotedHeapLocation> locations = m_locationsForAllocation.get(escapee);
+
+                ASSERT(locations.size() == 2);
+
+                PromotedHeapLocation executable(FunctionExecutablePLoc, escapee);
+                ASSERT(locations.contains(executable));
+
+                PromotedHeapLocation activation(FunctionActivationPLoc, escapee);
+                ASSERT(locations.contains(activation));
+
+                for (unsigned i = 0; i < locations.size(); ++i) {
+                    switch (locations[i].kind()) {
+                    case FunctionExecutablePLoc: {
+                        ASSERT(locations[i] == executable);
+                        break;
+                    }
+
+                    case FunctionActivationPLoc: {
+                        ASSERT(locations[i] == activation);
+                        break;
+                    }
+
+                    default:
+                        DFG_CRASH(m_graph, node, "Bad location kind");
+                    }
+                }
+            }
+
+            break;
+        }
+
         default:
             DFG_CRASH(m_graph, node, "Bad materialize op");
             break;
         }
     }
     
+    CombinedLiveness m_combinedLiveness;
     SSACalculator m_ssaCalculator;
     HashSet<Node*> m_sinkCandidates;
     HashMap<Node*, Node*> m_materializationToEscapee;

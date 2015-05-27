@@ -64,7 +64,7 @@ public:
 protected:
     VTTCueBox(Document&, VTTCue&);
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override final;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override final;
 
     VTTCue& m_cue;
     int m_fontSizeFromCaptionUserPrefs;
@@ -74,17 +74,17 @@ protected:
 
 class VTTCue : public TextTrackCue {
 public:
-    static PassRefPtr<VTTCue> create(ScriptExecutionContext& context, double start, double end, const String& content)
+    static Ref<VTTCue> create(ScriptExecutionContext& context, double start, double end, const String& content)
     {
         return create(context, MediaTime::createWithDouble(start), MediaTime::createWithDouble(end), content);
     }
 
-    static PassRefPtr<VTTCue> create(ScriptExecutionContext& context, const MediaTime& start, const MediaTime& end, const String& content)
+    static Ref<VTTCue> create(ScriptExecutionContext& context, const MediaTime& start, const MediaTime& end, const String& content)
     {
-        return adoptRef(new VTTCue(context, start, end, content));
+        return adoptRef(*new VTTCue(context, start, end, content));
     }
 
-    static PassRefPtr<VTTCue> create(ScriptExecutionContext&, const WebVTTCueData&);
+    static Ref<VTTCue> create(ScriptExecutionContext&, const WebVTTCueData&);
 
     static const AtomicString& cueBackdropShadowPseudoId();
 

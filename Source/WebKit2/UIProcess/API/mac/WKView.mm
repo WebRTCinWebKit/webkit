@@ -65,6 +65,7 @@
 #import "WKStringCF.h"
 #import "WKTextInputWindowController.h"
 #import "WKViewInternal.h"
+#import "WKViewLayoutStrategy.h"
 #import "WKViewPrivate.h"
 #import "WKWebView.h"
 #import "WebBackForwardList.h"
@@ -240,7 +241,6 @@ struct WKViewInterpretKeyEventsParameters {
 
     NSRect _windowBottomCornerIntersectionRect;
     
-    unsigned _frameSizeUpdatesDisabledCount;
     BOOL _shouldDeferViewInWindowChanges;
     NSWindow *_targetWindowForMovePreparation;
 
@@ -268,7 +268,9 @@ struct WKViewInterpretKeyEventsParameters {
     BOOL _ignoresNonWheelEvents;
     BOOL _ignoresAllEvents;
     BOOL _allowsBackForwardNavigationGestures;
-    BOOL _automaticallyComputesFixedLayoutSizeFromViewScale;
+
+    RetainPtr<WKViewLayoutStrategy> _layoutStrategy;
+    CGSize _minimumViewSize;
 
     RetainPtr<CALayer> _rootLayer;
 
@@ -277,6 +279,8 @@ struct WKViewInterpretKeyEventsParameters {
     CGFloat _totalHeightOfBanners;
 
     CGFloat _overrideDeviceScaleFactor;
+
+    BOOL _didRegisterForLookupPopoverCloseNotifications;
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     BOOL _automaticallyAdjustsContentInsets;
@@ -386,6 +390,7 @@ struct WKViewInterpretKeyEventsParameters {
     [_data->_actionMenuController willDestroyView:self];
     [_data->_immediateActionController willDestroyView:self];
 #endif
+    [_data->_layoutStrategy willDestroyView:self];
 
     _data->_page->close();
 
@@ -514,11 +519,15 @@ struct WKViewInterpretKeyEventsParameters {
 - (void)viewWillStartLiveResize
 {
     _data->_page->viewWillStartLiveResize();
+
+    [_data->_layoutStrategy willStartLiveResize];
 }
 
 - (void)viewDidEndLiveResize
 {
     _data->_page->viewWillEndLiveResize();
+
+    [_data->_layoutStrategy didEndLiveResize];
 }
 
 - (BOOL)isFlipped
@@ -554,20 +563,7 @@ struct WKViewInterpretKeyEventsParameters {
 {
     [super setFrameSize:size];
 
-    if (![self frameSizeUpdatesDisabled]) {
-        if (_data->_clipsToVisibleRect)
-            [self _updateViewExposedRect];
-        [self _setDrawingAreaSize:size];
-        if (_data->_automaticallyComputesFixedLayoutSizeFromViewScale)
-            [self _updateAutomaticallyComputedFixedLayoutSize];
-    }
-}
-
-- (void)_updateAutomaticallyComputedFixedLayoutSize
-{
-    ASSERT(_data->_automaticallyComputesFixedLayoutSizeFromViewScale);
-    CGFloat inverseScale = 1 / _data->_page->viewScaleFactor();
-    [self _setFixedLayoutSize:CGSizeMake(self.frame.size.width * inverseScale, self.frame.size.height * inverseScale)];
+    [_data->_layoutStrategy didChangeFrameSize];
 }
 
 - (void)_updateWindowAndViewFrames
@@ -601,8 +597,8 @@ struct WKViewInterpretKeyEventsParameters {
 
 - (void)renewGState
 {
-    // Hide the find indicator.
-    _data->_textIndicatorWindow = nullptr;
+    if (_data->_textIndicatorWindow)
+        [self _dismissContentRelativeChildWindowsWithAnimation:NO];
 
     // Update the view frame.
     if ([self window])
@@ -2760,7 +2756,7 @@ static void* keyValueObservingContext = &keyValueObservingContext;
         [NSEvent removeMonitor:_data->_flagsChangedEventMonitor];
         _data->_flagsChangedEventMonitor = nil;
 
-        [self _dismissContentRelativeChildWindows];
+        [self _dismissContentRelativeChildWindowsWithAnimation:NO];
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
         if (_data->_immediateActionGestureRecognizer)
@@ -2894,9 +2890,20 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     _data->_page->viewStateDidChange(ViewState::IsVisible);
 }
 
+- (void)_prepareForDictionaryLookup
+{
+    if (_data->_didRegisterForLookupPopoverCloseNotifications)
+        return;
+
+    _data->_didRegisterForLookupPopoverCloseNotifications = YES;
+
+    if (canLoadLUNotificationPopoverWillClose())
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_dictionaryLookupPopoverWillClose:) name:getLUNotificationPopoverWillClose() object:nil];
+}
+
 - (void)_dictionaryLookupPopoverWillClose:(NSNotification *)notification
 {
-    [self _setTextIndicator:nil fadeOut:NO];
+    [self _clearTextIndicatorWithAnimation:TextIndicatorDismissalAnimation::None];
 }
 
 - (void)_accessibilityRegisterUIProcessTokens
@@ -3282,18 +3289,25 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     }
 }
 
-- (void)_setTextIndicator:(PassRefPtr<TextIndicator>)textIndicator fadeOut:(BOOL)fadeOut
+- (void)_setTextIndicator:(TextIndicator&)textIndicator
 {
-    if (!textIndicator) {
-        _data->_textIndicatorWindow = nullptr;
-        return;
-    }
+    [self _setTextIndicator:textIndicator withLifetime:TextIndicatorLifetime::Permanent];
+}
 
+- (void)_setTextIndicator:(TextIndicator&)textIndicator withLifetime:(TextIndicatorLifetime)lifetime
+{
     if (!_data->_textIndicatorWindow)
         _data->_textIndicatorWindow = std::make_unique<TextIndicatorWindow>(self);
 
-    NSRect textBoundingRectInScreenCoordinates = [self.window convertRectToScreen:[self convertRect:textIndicator->textBoundingRectInRootViewCoordinates() toView:nil]];
-    _data->_textIndicatorWindow->setTextIndicator(textIndicator, NSRectToCGRect(textBoundingRectInScreenCoordinates), fadeOut);
+    NSRect textBoundingRectInScreenCoordinates = [self.window convertRectToScreen:[self convertRect:textIndicator.textBoundingRectInRootViewCoordinates() toView:nil]];
+    _data->_textIndicatorWindow->setTextIndicator(textIndicator, NSRectToCGRect(textBoundingRectInScreenCoordinates), lifetime);
+}
+
+- (void)_clearTextIndicatorWithAnimation:(TextIndicatorDismissalAnimation)animation
+{
+    if (_data->_textIndicatorWindow)
+        _data->_textIndicatorWindow->clearTextIndicator(animation);
+    _data->_textIndicatorWindow = nullptr;
 }
 
 - (void)_setTextIndicatorAnimationProgress:(float)progress
@@ -3370,12 +3384,22 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     if (!windowID || ![window isVisible])
         return nullptr;
 
-    RetainPtr<CGImageRef> windowSnapshotImage = adoptCF(CGWindowListCreateImage(CGRectNull, kCGWindowListOptionIncludingWindow, windowID, kCGWindowImageBoundsIgnoreFraming | kCGWindowImageShouldBeOpaque));
+    CGSWindowCaptureOptions options = kCGSCaptureIgnoreGlobalClipShape;
+    RetainPtr<CFArrayRef> windowSnapshotImages = adoptCF(CGSHWCaptureWindowList(CGSMainConnectionID(), &windowID, 1, options));
+    if (!windowSnapshotImages || !CFArrayGetCount(windowSnapshotImages.get()))
+        return nullptr;
+
+    RetainPtr<CGImageRef> windowSnapshotImage = (CGImageRef)CFArrayGetValueAtIndex(windowSnapshotImages.get(), 0);
 
     // Work around <rdar://problem/17084993>; re-request the snapshot at kCGWindowImageNominalResolution if it was captured at the wrong scale.
     CGFloat desiredSnapshotWidth = window.frame.size.width * window.screen.backingScaleFactor;
-    if (CGImageGetWidth(windowSnapshotImage.get()) != desiredSnapshotWidth)
-        windowSnapshotImage = adoptCF(CGWindowListCreateImage(CGRectNull, kCGWindowListOptionIncludingWindow, windowID, kCGWindowImageBoundsIgnoreFraming | kCGWindowImageShouldBeOpaque | kCGWindowImageNominalResolution));
+    if (CGImageGetWidth(windowSnapshotImage.get()) != desiredSnapshotWidth) {
+        options |= kCGSWindowCaptureNominalResolution;
+        windowSnapshotImages = adoptCF(CGSHWCaptureWindowList(CGSMainConnectionID(), &windowID, 1, options));
+        if (!windowSnapshotImages || !CFArrayGetCount(windowSnapshotImages.get()))
+            return nullptr;
+        windowSnapshotImage = (CGImageRef)CFArrayGetValueAtIndex(windowSnapshotImages.get(), 0);
+    }
 
     [self _ensureGestureController];
 
@@ -3807,6 +3831,8 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
     _data->_needsViewFrameInWindowCoordinates = _data->_page->preferences().pluginsEnabled();
 
+    _data->_layoutStrategy = [WKViewLayoutStrategy layoutStrategyWithPage:*_data->_page view:self mode:kWKLayoutModeViewSize];
+
     [self _registerDraggedTypes];
 
     self.wantsLayer = YES;
@@ -3819,9 +3845,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     NSNotificationCenter* workspaceNotificationCenter = [[NSWorkspace sharedWorkspace] notificationCenter];
     [workspaceNotificationCenter addObserver:self selector:@selector(_activeSpaceDidChange:) name:NSWorkspaceActiveSpaceDidChangeNotification object:nil];
 
-    if (canLoadLUNotificationPopoverWillClose())
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_dictionaryLookupPopoverWillClose:) name:getLUNotificationPopoverWillClose() object:nil];
-
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     if ([self respondsToSelector:@selector(_setActionMenu:)]) {
         RetainPtr<NSMenu> menu = adoptNS([[NSMenu alloc] init]);
@@ -3832,7 +3855,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     }
 
     if (Class gestureClass = NSClassFromString(@"NSImmediateActionGestureRecognizer")) {
-        _data->_immediateActionGestureRecognizer = adoptNS([(NSImmediateActionGestureRecognizer *)[gestureClass alloc] initWithTarget:nil action:NULL]);
+        _data->_immediateActionGestureRecognizer = adoptNS([(NSImmediateActionGestureRecognizer *)[gestureClass alloc] init]);
         _data->_immediateActionController = adoptNS([[WKImmediateActionController alloc] initWithPage:*_data->_page view:self recognizer:_data->_immediateActionGestureRecognizer.get()]);
         [_data->_immediateActionGestureRecognizer setDelegate:_data->_immediateActionController.get()];
         [_data->_immediateActionGestureRecognizer setDelaysPrimaryMouseButtonEvents:NO];
@@ -3985,24 +4008,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 
-- (void)_setAutomaticallyComputesFixedLayoutSizeFromViewScale:(BOOL)automaticallyComputesFixedLayoutSizeFromViewScale
-{
-    if (_data->_automaticallyComputesFixedLayoutSizeFromViewScale == automaticallyComputesFixedLayoutSizeFromViewScale)
-        return;
-
-    _data->_automaticallyComputesFixedLayoutSizeFromViewScale = automaticallyComputesFixedLayoutSizeFromViewScale;
-
-    if (!_data->_automaticallyComputesFixedLayoutSizeFromViewScale)
-        return;
-
-    [self _updateAutomaticallyComputedFixedLayoutSize];
-}
-
-- (BOOL)_automaticallyComputesFixedLayoutSizeFromViewScale
-{
-    return _data->_automaticallyComputesFixedLayoutSizeFromViewScale;
-}
-
 @end
 
 @implementation WKView (Private)
@@ -4044,12 +4049,20 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     return YES;
 }
 
+- (CGColorRef)_viewBackgroundColor
+{
+    if (self.drawsBackground && !self.drawsTransparentBackground) {
+        if (NSColor *backgroundColor = self._pageExtendedBackgroundColor)
+            return backgroundColor.CGColor;
+        return CGColorGetConstantColor(kCGColorWhite);
+    }
+
+    return CGColorGetConstantColor(kCGColorClear);
+}
+
 - (void)updateLayer
 {
-    if ([self drawsBackground] && ![self drawsTransparentBackground])
-        self.layer.backgroundColor = CGColorGetConstantColor(kCGColorWhite);
-    else
-        self.layer.backgroundColor = CGColorGetConstantColor(kCGColorClear);
+    self.layer.backgroundColor = self._viewBackgroundColor;
 
     // If asynchronous geometry updates have been sent by forceAsyncDrawingAreaSizeUpdate,
     // then subsequent calls to setFrameSize should not result in us waiting for the did
@@ -4097,24 +4110,17 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (void)disableFrameSizeUpdates
 {
-    _data->_frameSizeUpdatesDisabledCount++;
+    [_data->_layoutStrategy disableFrameSizeUpdates];
 }
 
 - (void)enableFrameSizeUpdates
 {
-    if (!_data->_frameSizeUpdatesDisabledCount)
-        return;
-    
-    if (!(--_data->_frameSizeUpdatesDisabledCount)) {
-        if (_data->_clipsToVisibleRect)
-            [self _updateViewExposedRect];
-        [self _setDrawingAreaSize:[self frame].size];
-    }
+    [_data->_layoutStrategy enableFrameSizeUpdates];
 }
 
 - (BOOL)frameSizeUpdatesDisabled
 {
-    return _data->_frameSizeUpdatesDisabledCount > 0;
+    return [_data->_layoutStrategy frameSizeUpdatesDisabled];
 }
 
 + (void)hideWordDefinitionWindow
@@ -4122,40 +4128,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     if (!getLULookupDefinitionModuleClass())
         return;
     [getLULookupDefinitionModuleClass() hideDefinition];
-}
-
-- (CGFloat)minimumLayoutWidth
-{
-    static BOOL loggedDeprecationWarning = NO;
-
-    if (!loggedDeprecationWarning) {
-        NSLog(@"Please use minimumSizeForAutoLayout instead of minimumLayoutWidth.");
-        loggedDeprecationWarning = YES;
-    }
-
-    return self.minimumSizeForAutoLayout.width;
-}
-
-- (void)setMinimumLayoutWidth:(CGFloat)minimumLayoutWidth
-{
-    static BOOL loggedDeprecationWarning = NO;
-
-    if (!loggedDeprecationWarning) {
-        NSLog(@"Please use setMinimumSizeForAutoLayout: instead of setMinimumLayoutWidth:.");
-        loggedDeprecationWarning = YES;
-    }
-
-    [self setMinimumWidthForAutoLayout:minimumLayoutWidth];
-}
-
-- (CGFloat)minimumWidthForAutoLayout
-{
-    return self.minimumSizeForAutoLayout.width;
-}
-
-- (void)setMinimumWidthForAutoLayout:(CGFloat)minimumLayoutWidth
-{
-    self.minimumSizeForAutoLayout = NSMakeSize(minimumLayoutWidth, self.minimumSizeForAutoLayout.height);
 }
 
 - (NSSize)minimumSizeForAutoLayout
@@ -4385,23 +4357,16 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (WKLayoutMode)_layoutMode
 {
-    if (_data->_page->useFixedLayout()) {
-#if PLATFORM(MAC)
-        if (_data->_automaticallyComputesFixedLayoutSizeFromViewScale)
-            return kWKLayoutModeDynamicSizeComputedFromViewScale;
-#endif
-        return kWKLayoutModeFixedSize;
-    }
-    return kWKLayoutModeViewSize;
+    return [_data->_layoutStrategy layoutMode];
 }
 
 - (void)_setLayoutMode:(WKLayoutMode)layoutMode
 {
-    _data->_page->setUseFixedLayout(layoutMode == kWKLayoutModeFixedSize || layoutMode == kWKLayoutModeDynamicSizeComputedFromViewScale);
+    if (layoutMode == [_data->_layoutStrategy layoutMode])
+        return;
 
-#if PLATFORM(MAC)
-    self._automaticallyComputesFixedLayoutSizeFromViewScale = (layoutMode == kWKLayoutModeDynamicSizeComputedFromViewScale);
-#endif
+    [_data->_layoutStrategy willChangeLayoutStrategy];
+    _data->_layoutStrategy = [WKViewLayoutStrategy layoutStrategyWithPage:*_data->_page view:self mode:layoutMode];
 }
 
 - (CGSize)_fixedLayoutSize
@@ -4425,7 +4390,18 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         [NSException raise:NSInvalidArgumentException format:@"View scale should be a positive number"];
 
     _data->_page->scaleView(viewScale);
-    [self _updateAutomaticallyComputedFixedLayoutSize];
+    [_data->_layoutStrategy didChangeViewScale];
+}
+
+- (void)_setMinimumViewSize:(CGSize)minimumViewSize
+{
+    _data->_minimumViewSize = minimumViewSize;
+    [_data->_layoutStrategy didChangeMinimumViewSize];
+}
+
+- (CGSize)_minimumViewSize
+{
+    return _data->_minimumViewSize;
 }
 
 - (void)_dispatchSetTopContentInset
@@ -4464,6 +4440,47 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 - (CGFloat)_totalHeightOfBanners
 {
     return _data->_totalHeightOfBanners;
+}
+
+- (void)_setOverlayScrollbarStyle:(_WKOverlayScrollbarStyle)scrollbarStyle
+{
+    WTF::Optional<WebCore::ScrollbarOverlayStyle> coreScrollbarStyle;
+
+    switch (scrollbarStyle) {
+    case _WKOverlayScrollbarStyleDark:
+        coreScrollbarStyle = ScrollbarOverlayStyleDark;
+        break;
+    case _WKOverlayScrollbarStyleLight:
+        coreScrollbarStyle = ScrollbarOverlayStyleLight;
+        break;
+    case _WKOverlayScrollbarStyleDefault:
+        coreScrollbarStyle = ScrollbarOverlayStyleDefault;
+        break;
+    case _WKOverlayScrollbarStyleAutomatic:
+    default:
+        break;
+    }
+
+    _data->_page->setOverlayScrollbarStyle(coreScrollbarStyle);
+}
+
+- (_WKOverlayScrollbarStyle)_overlayScrollbarStyle
+{
+    WTF::Optional<WebCore::ScrollbarOverlayStyle> coreScrollbarStyle = _data->_page->overlayScrollbarStyle();
+
+    if (!coreScrollbarStyle)
+        return _WKOverlayScrollbarStyleAutomatic;
+
+    switch (coreScrollbarStyle.value()) {
+    case ScrollbarOverlayStyleDark:
+        return _WKOverlayScrollbarStyleDark;
+    case ScrollbarOverlayStyleLight:
+        return _WKOverlayScrollbarStyleLight;
+    case ScrollbarOverlayStyleDefault:
+        return _WKOverlayScrollbarStyleDefault;
+    default:
+        return _WKOverlayScrollbarStyleAutomatic;
+    }
 }
 
 - (NSColor *)_pageExtendedBackgroundColor
@@ -4528,7 +4545,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         return;
     }
 
-    [self _dismissContentRelativeChildWindows];
+    [self _dismissContentRelativeChildWindowsWithAnimation:NO];
 
     [self _ensureGestureController];
 
@@ -4545,7 +4562,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         return;
     }
 
-    [self _dismissContentRelativeChildWindows];
+    [self _dismissContentRelativeChildWindowsWithAnimation:NO];
 
     [self _ensureGestureController];
 
@@ -4557,7 +4574,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     if (magnification <= 0 || isnan(magnification) || isinf(magnification))
         [NSException raise:NSInvalidArgumentException format:@"Magnification should be a positive number"];
 
-    [self _dismissContentRelativeChildWindows];
+    [self _dismissContentRelativeChildWindowsWithAnimation:NO];
 
     _data->_page->scalePageInViewCoordinates(magnification, roundedIntPoint(point));
 }
@@ -4567,7 +4584,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     if (magnification <= 0 || isnan(magnification) || isinf(magnification))
         [NSException raise:NSInvalidArgumentException format:@"Magnification should be a positive number"];
 
-    [self _dismissContentRelativeChildWindows];
+    [self _dismissContentRelativeChildWindowsWithAnimation:NO];
 
     FloatPoint viewCenter(NSMidX([self bounds]), NSMidY([self bounds]));
     _data->_page->scalePageInViewCoordinates(magnification, roundedIntPoint(viewCenter));
@@ -4627,7 +4644,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_gestureController->setDidMoveSwipeSnapshotCallback(callback);
 }
 
-
 - (NSArray *)_actionMenuItemsForHitTestResult:(WKHitTestResultRef)hitTestResult withType:(_WKActionMenuType)type defaultActionMenuItems:(NSArray *)defaultMenuItems
 {
     return defaultMenuItems;
@@ -4657,7 +4673,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (void)_didChangeContentSize:(NSSize)newSize
 {
-
 }
 
 - (void)_dismissContentRelativeChildWindows
@@ -4665,24 +4680,34 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     // FIXME: We don't know which panel we are dismissing, it may not even be in the current page (see <rdar://problem/13875766>).
     if ([[self window] isKeyWindow]
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-    || [_data->_immediateActionController hasActiveImmediateAction]
+        || [_data->_immediateActionController hasActiveImmediateAction]
 #endif
-    ) {
+        ) {
         if (Class lookupDefinitionModuleClass = getLULookupDefinitionModuleClass())
             [lookupDefinitionModuleClass hideDefinition];
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
         DDActionsManager *actionsManager = [getDDActionsManagerClass() sharedManager];
         if ([actionsManager respondsToSelector:@selector(requestBubbleClosureUnanchorOnFailure:)])
             [actionsManager requestBubbleClosureUnanchorOnFailure:YES];
+#endif
     }
 
-    [self _setTextIndicator:nullptr fadeOut:NO];
+    [self _clearTextIndicatorWithAnimation:TextIndicatorDismissalAnimation::FadeOut];
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     [_data->_immediateActionController dismissContentRelativeChildWindows];
 #endif
 
     static_cast<PageClient&>(*_data->_pageClient).dismissCorrectionPanel(ReasonForDismissingAlternativeTextIgnored);
+}
+
+- (void)_dismissContentRelativeChildWindowsWithAnimation:(BOOL)withAnimation
+{
+    // Calling _clearTextIndicatorWithAnimation here will win out over the animated clear in _dismissContentRelativeChildWindows.
+    // We can't invert these because clients can override (and have overridden) _dismissContentRelativeChildWindows, so it needs to be called.
+    [self _clearTextIndicatorWithAnimation:withAnimation ? TextIndicatorDismissalAnimation::FadeOut : TextIndicatorDismissalAnimation::None];
+    [self _dismissContentRelativeChildWindows];
 }
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000

@@ -60,6 +60,7 @@
 #include "RenderScrollbarPart.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
+#include "RenderWidget.h"
 #include "SVGRenderSupport.h"
 #include "Settings.h"
 #include "StyleResolver.h"
@@ -542,7 +543,7 @@ static inline bool objectIsRelayoutBoundary(const RenderElement* object)
     if (!object->hasOverflowClip())
         return false;
 
-    if (object->style().width().isIntrinsicOrAuto() || object->style().height().isIntrinsicOrAuto() || object->style().height().isPercent())
+    if (object->style().width().isIntrinsicOrAuto() || object->style().height().isIntrinsicOrAuto() || object->style().height().isPercentOrCalculated())
         return false;
 
     // Table parts can't be relayout roots since the table is responsible for layouting all the parts.
@@ -1658,7 +1659,7 @@ void RenderObject::mapAbsoluteToLocalPoint(MapCoordinatesFlags mode, TransformSt
 
 bool RenderObject::shouldUseTransformFromContainer(const RenderObject* containerObject) const
 {
-#if ENABLE(3D_RENDERING)
+#if ENABLE(3D_TRANSFORMS)
     return hasTransform() || (containerObject && containerObject->style().hasPerspective());
 #else
     UNUSED_PARAM(containerObject);
@@ -1674,7 +1675,7 @@ void RenderObject::getTransformFromContainer(const RenderObject* containerObject
     if (hasLayer() && (layer = downcast<RenderLayerModelObject>(*this).layer()) && layer->transform())
         transform.multiply(layer->currentTransform());
     
-#if ENABLE(3D_RENDERING)
+#if ENABLE(3D_TRANSFORMS)
     if (containerObject && containerObject->hasLayer() && containerObject->style().hasPerspective()) {
         // Perpsective on the container affects us, so we have to factor it in here.
         ASSERT(containerObject->hasLayer());
@@ -2024,6 +2025,10 @@ void RenderObject::destroy()
 #endif
 
     willBeDestroyed();
+    if (is<RenderWidget>(*this)) {
+        downcast<RenderWidget>(*this).deref();
+        return;
+    }
     delete this;
 }
 

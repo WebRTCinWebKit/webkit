@@ -62,6 +62,7 @@ public:
     void store(const Record&, MappedBodyHandler&&);
 
     void remove(const Key&);
+    void clear(std::chrono::system_clock::time_point modifiedSinceTime, std::function<void ()>&& completionHandler);
 
     struct RecordInfo {
         size_t bodySize { 0 };
@@ -74,12 +75,12 @@ public:
         ShareCount = 1 << 1,
     };
     typedef unsigned TraverseFlags;
+    typedef std::function<void (const Record*, const RecordInfo&)> TraverseHandler;
     // Null record signals end.
-    void traverse(TraverseFlags, std::function<void (const Record*, const RecordInfo&)>&&);
+    void traverse(TraverseFlags, TraverseHandler&&);
 
     void setCapacity(size_t);
     size_t approximateSize() const;
-    void clear();
 
     static const unsigned version = 3;
 
@@ -87,41 +88,31 @@ public:
     String versionPath() const;
     String recordsPath() const;
 
+    ~Storage();
+
 private:
     Storage(const String& directoryPath);
+
+    String partitionPathForKey(const Key&) const;
+    String recordPathForKey(const Key&) const;
+    String bodyPathForKey(const Key&) const;
 
     void synchronize();
     void deleteOldVersions();
     void shrinkIfNeeded();
     void shrink();
 
-    struct ReadOperation {
-        ReadOperation(const Key& key, const RetrieveCompletionHandler& completionHandler)
-            : key(key)
-            , completionHandler(completionHandler)
-        { }
-
-        const Key key;
-        const RetrieveCompletionHandler completionHandler;
-        
-        std::unique_ptr<Record> resultRecord;
-        SHA1::Digest expectedBodyHash;
-        BlobStorage::Blob resultBodyBlob;
-        std::atomic<unsigned> finishedCount { 0 };
-    };
+    struct ReadOperation;
     void dispatchReadOperation(ReadOperation&);
     void dispatchPendingReadOperations();
     void finishReadOperation(ReadOperation&);
 
-    struct WriteOperation {
-        Record record;
-        MappedBodyHandler mappedBodyHandler;
-    };
-    void dispatchWriteOperation(const WriteOperation&);
+    struct WriteOperation;
+    void dispatchWriteOperation(WriteOperation&);
     void dispatchPendingWriteOperations();
-    void finishWriteOperation(const WriteOperation&);
+    void finishWriteOperation(WriteOperation&);
 
-    Optional<BlobStorage::Blob> storeBodyAsBlob(const Record&, const MappedBodyHandler&);
+    Optional<BlobStorage::Blob> storeBodyAsBlob(WriteOperation&);
     Data encodeRecord(const Record&, Optional<BlobStorage::Blob>);
     void readRecord(ReadOperation&, const Data&);
 
@@ -156,8 +147,8 @@ private:
     Deque<std::unique_ptr<ReadOperation>> m_pendingReadOperationsByPriority[maximumRetrievePriority + 1];
     HashSet<std::unique_ptr<ReadOperation>> m_activeReadOperations;
 
-    Deque<std::unique_ptr<const WriteOperation>> m_pendingWriteOperations;
-    HashSet<std::unique_ptr<const WriteOperation>> m_activeWriteOperations;
+    Deque<std::unique_ptr<WriteOperation>> m_pendingWriteOperations;
+    HashSet<std::unique_ptr<WriteOperation>> m_activeWriteOperations;
 
     Ref<WorkQueue> m_ioQueue;
     Ref<WorkQueue> m_backgroundIOQueue;

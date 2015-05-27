@@ -66,6 +66,7 @@ messages -> WebPage LegacyReceiver {
     MoveSelectionByOffset(int32_t offset, uint64_t callbackID)
     SelectTextWithGranularityAtPoint(WebCore::IntPoint point, uint32_t granularity, uint64_t callbackID)
     SelectPositionAtBoundaryWithDirection(WebCore::IntPoint point, uint32_t granularity, uint32_t direction, uint64_t callbackID)
+    MoveSelectionAtBoundaryWithDirection(uint32_t granularity, uint32_t direction, uint64_t callbackID)
     SelectPositionAtPoint(WebCore::IntPoint point, uint64_t callbackID)
     BeginSelectionInDirection(uint32_t direction, uint64_t callbackID)
     UpdateSelectionWithExtentPoint(WebCore::IntPoint point, uint64_t callbackID)
@@ -86,11 +87,15 @@ messages -> WebPage LegacyReceiver {
     SetAssistedNodeValue(String value)
     SetAssistedNodeValueAsNumber(double value)
     SetAssistedNodeSelectedIndex(uint32_t index, bool allowMultipleSelection)
+
     ApplicationWillResignActive()
     ApplicationWillEnterForeground()
+    ApplicationDidEnterBackground(uint64_t callbackID)
     ApplicationDidBecomeActive()
+
     ContentSizeCategoryDidChange(String contentSizeCategory)
     ExecuteEditCommandWithCallback(String name, uint64_t callbackID)
+    GetLookupContextAtPoint(WebCore::IntPoint point, uint64_t callbackID)
 #endif
 
 #if ENABLE(REMOTE_INSPECTOR)
@@ -126,7 +131,7 @@ messages -> WebPage LegacyReceiver {
     LoadRequest(uint64_t navigationID, WebCore::ResourceRequest request, WebKit::SandboxExtension::Handle sandboxExtensionHandle, WebKit::UserData userData)
     LoadData(IPC::DataReference data, String MIMEType, String encoding, String baseURL, WebKit::UserData userData)
     LoadHTMLString(uint64_t navigationID, String htmlString, String baseURL, WebKit::UserData userData)
-    LoadAlternateHTMLString(String htmlString, String baseURL, String unreachableURL, WebKit::UserData userData)
+    LoadAlternateHTMLString(String htmlString, String baseURL, String unreachableURL, String provisionalLoadErrorURL, WebKit::UserData userData)
     LoadPlainTextString(String string, WebKit::UserData userData)
     LoadWebArchiveData(IPC::DataReference webArchiveData, WebKit::UserData userData)
     NavigateToURLWithSimulatedClick(String url, WebCore::IntPoint documentPoint, WebCore::IntPoint screenPoint)
@@ -197,6 +202,9 @@ messages -> WebPage LegacyReceiver {
     ScalePage(double scale, WebCore::IntPoint origin)
     ScalePageInViewCoordinates(double scale, WebCore::IntPoint centerInViewCoordinates)
     ScaleView(double scale)
+#if PLATFORM(COCOA)
+    ScaleViewAndUpdateGeometryFenced(double scale, WebCore::IntSize viewSize, uint64_t callbackID)
+#endif
 
     SetUseFixedLayout(bool fixed)
     SetFixedLayoutSize(WebCore::IntSize size)
@@ -399,6 +407,7 @@ messages -> WebPage LegacyReceiver {
 #endif
 
     SetScrollPinningBehavior(uint32_t pinning)
+    SetScrollbarOverlayStyle(Optional<uint32_t> scrollbarStyle)
 
     GetBytecodeProfile(uint64_t callbackID)
     
@@ -418,8 +427,10 @@ messages -> WebPage LegacyReceiver {
     SetShouldDispatchFakeMouseMoveEvents(bool shouldDispatchFakeMouseMoveEvents)
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
-    PlaybackTargetSelected(struct WebCore::MediaPlaybackTargetContext target)
-    PlaybackTargetAvailabilityDidChange(bool available)
+    PlaybackTargetSelected(uint64_t contextId, struct WebCore::MediaPlaybackTargetContext target)
+    PlaybackTargetAvailabilityDidChange(uint64_t contextId, bool available)
+    SetShouldPlayToPlaybackTarget(uint64_t contextId, bool shouldPlay)
 #endif
 
+    ClearWheelEventTestTrigger()
 }

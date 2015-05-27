@@ -50,7 +50,7 @@ Ref<MathMLMencloseElement> MathMLMencloseElement::create(const QualifiedName& ta
     return adoptRef(*new MathMLMencloseElement(tagName, document));
 }
 
-RenderPtr<RenderElement> MathMLMencloseElement::createElementRenderer(Ref<RenderStyle>&& style)
+RenderPtr<RenderElement> MathMLMencloseElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
 {    
     return createRenderer<RenderMathMLMenclose>(*this, WTF::move(style));
 }
@@ -129,8 +129,8 @@ void MathMLMencloseElement::collectStyleForPresentationAttribute(const Qualified
 String MathMLMencloseElement::longDivLeftPadding() const
 {
     StringBuilder padding;
-    String closingBrace = ")";
-    TextRun run(closingBrace.impl(), closingBrace.length());
+    String closingBrace(")", String::ConstructFromLiteral);
+    TextRun run(closingBrace);
     Node* node = parentNode();
     if (node && node->renderer()) {
         const FontCascade& font = node->renderer()->style().fontCascade();

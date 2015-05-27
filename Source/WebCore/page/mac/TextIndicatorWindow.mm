@@ -72,6 +72,7 @@ using namespace WebCore;
     RetainPtr<NSArray> _bounceLayers;
     NSSize _margin;
     bool _hasCompletedAnimation;
+    BOOL _fadingOut;
 }
 
 - (instancetype)initWithFrame:(NSRect)frame textIndicator:(PassRefPtr<TextIndicator>)textIndicator margin:(NSSize)margin;
@@ -82,9 +83,13 @@ using namespace WebCore;
 - (void)setAnimationProgress:(float)progress;
 - (BOOL)hasCompletedAnimation;
 
+@property (nonatomic, getter=isFadingOut) BOOL fadingOut;
+
 @end
 
 @implementation WebTextIndicatorView
+
+@synthesize fadingOut = _fadingOut;
 
 - (instancetype)initWithFrame:(NSRect)frame textIndicator:(PassRefPtr<TextIndicator>)textIndicator margin:(NSSize)margin
 {
@@ -348,18 +353,13 @@ namespace WebCore {
 
 TextIndicatorWindow::TextIndicatorWindow(NSView *targetView)
     : m_targetView(targetView)
-    , m_startFadeOutTimer(RunLoop::main(), this, &TextIndicatorWindow::startFadeOut)
+    , m_temporaryTextIndicatorTimer(RunLoop::main(), this, &TextIndicatorWindow::startFadeOut)
 {
 }
 
 TextIndicatorWindow::~TextIndicatorWindow()
 {
-    if (m_textIndicator->wantsManualAnimation() && [m_textIndicatorView hasCompletedAnimation]) {
-        startFadeOut();
-        return;
-    }
-
-    closeWindow();
+    clearTextIndicator(TextIndicatorDismissalAnimation::FadeOut);
 }
 
 void TextIndicatorWindow::setAnimationProgress(float progress)
@@ -370,17 +370,29 @@ void TextIndicatorWindow::setAnimationProgress(float progress)
     [m_textIndicatorView setAnimationProgress:progress];
 }
 
-void TextIndicatorWindow::setTextIndicator(PassRefPtr<TextIndicator> textIndicator, CGRect textBoundingRectInScreenCoordinates, bool fadeOut)
+void TextIndicatorWindow::clearTextIndicator(TextIndicatorDismissalAnimation animation)
 {
-    if (m_textIndicator == textIndicator)
+    RefPtr<TextIndicator> textIndicator = WTF::move(m_textIndicator);
+
+    if ([m_textIndicatorView isFadingOut])
         return;
 
-    m_textIndicator = textIndicator;
+    if (textIndicator && textIndicator->wantsManualAnimation() && [m_textIndicatorView hasCompletedAnimation] && animation == TextIndicatorDismissalAnimation::FadeOut) {
+        startFadeOut();
+        return;
+    }
+
+    closeWindow();
+}
+
+void TextIndicatorWindow::setTextIndicator(Ref<TextIndicator> textIndicator, CGRect textBoundingRectInScreenCoordinates, TextIndicatorLifetime lifetime)
+{
+    if (m_textIndicator == textIndicator.ptr())
+        return;
 
     closeWindow();
 
-    if (!m_textIndicator)
-        return;
+    m_textIndicator = textIndicator.ptr();
 
     CGFloat horizontalMargin = dropShadowBlurRadius * 2 + horizontalBorder;
     CGFloat verticalMargin = dropShadowBlurRadius * 2 + verticalBorder;
@@ -410,8 +422,8 @@ void TextIndicatorWindow::setTextIndicator(PassRefPtr<TextIndicator> textIndicat
     if (m_textIndicator->presentationTransition() != TextIndicatorPresentationTransition::None)
         [m_textIndicatorView present];
 
-    if (fadeOut)
-        m_startFadeOutTimer.startOneShot(timeBeforeFadeStarts);
+    if (lifetime == TextIndicatorLifetime::Temporary)
+        m_temporaryTextIndicatorTimer.startOneShot(timeBeforeFadeStarts);
 }
 
 void TextIndicatorWindow::closeWindow()
@@ -419,7 +431,10 @@ void TextIndicatorWindow::closeWindow()
     if (!m_textIndicatorWindow)
         return;
 
-    m_startFadeOutTimer.stop();
+    if ([m_textIndicatorView isFadingOut])
+        return;
+
+    m_temporaryTextIndicatorTimer.stop();
 
     [[m_textIndicatorWindow parentWindow] removeChildWindow:m_textIndicatorWindow.get()];
     [m_textIndicatorWindow close];
@@ -428,6 +443,7 @@ void TextIndicatorWindow::closeWindow()
 
 void TextIndicatorWindow::startFadeOut()
 {
+    [m_textIndicatorView setFadingOut:YES];
     RetainPtr<NSWindow> indicatorWindow = m_textIndicatorWindow;
     [m_textIndicatorView hideWithCompletionHandler:[indicatorWindow] {
         [[indicatorWindow parentWindow] removeChildWindow:indicatorWindow.get()];

@@ -265,7 +265,7 @@ void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageP
                 return;
             }
 
-            RetainPtr<NSURLRequest> nsURLRequest = adoptNS(wrapper(*API::URLRequest::create(localNavigationAction->request()).leakRef()));
+            RetainPtr<NSURLRequest> nsURLRequest = adoptNS(wrapper(API::URLRequest::create(localNavigationAction->request()).leakRef()));
             if ([NSURLConnection canHandleRequest:nsURLRequest.get()]) {
                 localListener->use();
                 return;
@@ -316,6 +316,12 @@ void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageP
         case _WKNavigationActionPolicyDownload:
 #pragma clang diagnostic pop
             localListener->download();
+            break;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wswitch"
+        case _WKNavigationActionPolicyAllowWithoutTryingAppLink:
+#pragma clang diagnostic pop
+            localListener->use();
             break;
         }
     }];

@@ -27,14 +27,11 @@
     width: 16px;
     height: 16px;
     display: inline-block;
+    vertical-align: middle;
 }
 
 .item > .status > .status-button > svg .filled {
     fill: rgb(128, 128, 128);
-}
-
-body.mac-platform.legacy .item > .status > .status-button > svg .filled {
-    fill: rgb(64, 64, 64);
 }
 
 :focus .item.selected > .status > .status-button > svg .filled {
@@ -43,10 +40,6 @@ body.mac-platform.legacy .item > .status > .status-button > svg .filled {
 
 .item > .status > .status-button > svg .stroked {
     stroke: rgb(128, 128, 128);
-}
-
-body.mac-platform.legacy .item > .status > .status-button > svg .stroked {
-    stroke: rgb(64, 64, 64);
 }
 
 :focus .item.selected > .status > .status-button > svg .stroked {

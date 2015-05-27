@@ -35,7 +35,7 @@
 #include "ExceptionCode.h"
 #include "JSDOMPromise.h"
 #include "JSReadableStream.h"
-#include "ReadableStreamJSSource.h"
+#include "ReadableJSStream.h"
 #include <runtime/Error.h>
 #include <wtf/NeverDestroyed.h>
 
@@ -71,13 +71,13 @@ JSValue JSReadableStreamReader::closed(ExecState* exec) const
 {
     JSPromiseDeferred* promiseDeferred = getOrCreatePromiseDeferredFromObject(exec, this, globalObject(), closedPromiseSlotName());
     DeferredWrapper wrapper(exec, globalObject(), promiseDeferred);
-    auto successCallback = [this, wrapper]() mutable {
-        // FIXME: return jsUndefined().
-        wrapper.resolve(&impl());
+
+    RefPtr<ReadableStreamReader> reader = &impl();
+    auto successCallback = [wrapper]() mutable {
+        wrapper.resolve(jsUndefined());
     };
-    auto failureCallback = [this, wrapper]() mutable {
-        // FIXME: return stored error.
-        wrapper.reject(&impl());
+    auto failureCallback = [wrapper, reader]() mutable {
+        wrapper.reject(reader->error());
     };
 
     impl().closed(WTF::move(successCallback), WTF::move(failureCallback));

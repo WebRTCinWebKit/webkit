@@ -33,6 +33,7 @@
 #include "DFGBasicBlockInlines.h"
 #include "DFGBlockMapInlines.h"
 #include "DFGClobberize.h"
+#include "DFGCombinedLiveness.h"
 #include "DFGForAllKills.h"
 #include "DFGGraph.h"
 #include "DFGInsertionSet.h"
@@ -42,10 +43,13 @@
 #include "JSCInlines.h"
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
+#include <wtf/ListDump.h>
 
 namespace JSC { namespace DFG {
 
 namespace {
+
+bool verbose = false;
 
 class ArgumentsEliminationPhase : public Phase {
 public:
@@ -59,6 +63,11 @@ public:
         // For now this phase only works on SSA. This could be changed; we could have a block-local
         // version over LoadStore.
         DFG_ASSERT(m_graph, nullptr, m_graph.m_form == SSA);
+        
+        if (verbose) {
+            dataLog("Graph before arguments elimination:\n");
+            m_graph.dump();
+        }
         
         identifyCandidates();
         if (m_candidates.isEmpty())
@@ -101,6 +110,9 @@ private:
                 }
             }
         }
+        
+        if (verbose)
+            dataLog("Candidates: ", listDump(m_candidates), "\n");
     }
     
     // Look for escaping sites, and remove from the candidates set if we see an escape.
@@ -159,9 +171,20 @@ private:
                     escape(node->child3());
                     break;
 
-                case Phantom:
                 case Check:
-                case HardPhantom:
+                    m_graph.doToChildren(
+                        node,
+                        [&] (Edge edge) {
+                            if (edge.willNotHaveCheck())
+                                return;
+                            
+                            if (alreadyChecked(edge.useKind(), SpecObject))
+                                return;
+                            
+                            escape(edge);
+                        });
+                    break;
+                    
                 case MovHint:
                 case PutHint:
                     break;
@@ -191,6 +214,9 @@ private:
                 }
             }
         }
+
+        if (verbose)
+            dataLog("After escape analysis: ", listDump(m_candidates), "\n");
     }
 
     // Anywhere that a candidate is live (in bytecode or in DFG), check if there is a chance of
@@ -201,6 +227,7 @@ private:
         performLivenessAnalysis(m_graph);
         performOSRAvailabilityAnalysis(m_graph);
         m_graph.initializeNodeOwners();
+        CombinedLiveness combinedLiveness(m_graph);
         
         BlockMap<Operands<bool>> clobberedByBlock(m_graph);
         for (BasicBlock* block : m_graph.blocksInNaturalOrder()) {
@@ -239,7 +266,7 @@ private:
                 continue;
             
             forAllKillsInBlock(
-                m_graph, block,
+                m_graph, combinedLiveness, block,
                 [&] (unsigned nodeIndex, Node* candidate) {
                     if (!m_candidates.contains(candidate))
                         return;
@@ -333,6 +360,9 @@ private:
         // availabilities may become whatever. OSR exit should be able to handle this quite naturally,
         // since those availabilities speak of the stack before the optimizing compiler stack frame is
         // torn down.
+
+        if (verbose)
+            dataLog("After interference analysis: ", listDump(m_candidates), "\n");
     }
     
     void transform()
@@ -354,7 +384,6 @@ private:
                         break;
                     
                     node->setOpAndDefaultFlags(PhantomDirectArguments);
-                    insertionSet.insertNode(nodeIndex + 1, SpecNone, Phantom, node->origin, Edge(node));
                     break;
                     
                 case CreateClonedArguments:
@@ -362,7 +391,6 @@ private:
                         break;
                     
                     node->setOpAndDefaultFlags(PhantomClonedArguments);
-                    insertionSet.insertNode(nodeIndex + 1, SpecNone, Phantom, node->origin, Edge(node));
                     break;
                     
                 case GetFromArguments: {
@@ -454,7 +482,9 @@ private:
                     
                     LoadVarargsData* varargsData = node->loadVarargsData();
                     InlineCallFrame* inlineCallFrame = candidate->origin.semantic.inlineCallFrame;
-                    if (inlineCallFrame && !inlineCallFrame->isVarargs()) {
+                    if (inlineCallFrame
+                        && !inlineCallFrame->isVarargs()
+                        && inlineCallFrame->arguments.size() - varargsData->offset <= varargsData->limit) {
                         Node* argumentCount = insertionSet.insertConstant(
                             nodeIndex, node->origin,
                             jsNumber(inlineCallFrame->arguments.size() - varargsData->offset));
@@ -486,7 +516,7 @@ private:
                                 nodeIndex, SpecNone, PutStack, node->origin, OpInfo(data), Edge(value));
                         }
                         
-                        node->convertToPhantom();
+                        node->remove();
                         break;
                     }
                     
@@ -537,7 +567,7 @@ private:
                 case GetButterfly: {
                     if (!m_candidates.contains(node->child1().node()))
                         break;
-                    node->convertToPhantom();
+                    node->remove();
                     break;
                 }
                     

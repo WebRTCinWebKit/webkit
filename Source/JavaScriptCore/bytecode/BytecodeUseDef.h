@@ -99,6 +99,8 @@ void computeUsesForBytecodeOffset(
     case op_put_by_id_transition_normal_out_of_line:
     case op_put_by_id_out_of_line:
     case op_put_by_id:
+    case op_put_getter_by_id:
+    case op_put_setter_by_id:
     case op_put_to_scope:
     case op_put_to_arguments: {
         functor(codeBlock, instruction, opcodeID, instruction[1].u.operand);
@@ -135,6 +137,7 @@ void computeUsesForBytecodeOffset(
     case op_is_object_or_null:
     case op_is_function:
     case op_to_number:
+    case op_to_string:
     case op_negate:
     case op_neq_null:
     case op_eq_null:
@@ -271,6 +274,8 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, unsigned bytecodeOffset,
     case op_put_by_id_transition_direct_out_of_line:
     case op_put_by_id_transition_normal:
     case op_put_by_id_transition_normal_out_of_line:
+    case op_put_getter_by_id:
+    case op_put_setter_by_id:
     case op_put_getter_setter:
     case op_put_by_val:
     case op_put_by_val_direct:
@@ -328,6 +333,7 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, unsigned bytecodeOffset,
     case op_is_function:
     case op_in:
     case op_to_number:
+    case op_to_string:
     case op_negate:
     case op_add:
     case op_mul:

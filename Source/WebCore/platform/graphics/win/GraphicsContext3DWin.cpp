@@ -24,13 +24,11 @@
 
 #include "config.h"
 
-#if USE(3D_GRAPHICS)
+#if ENABLE(GRAPHICS_CONTEXT_3D)
 
 #include "GraphicsContext3D.h"
 #include "GraphicsContext3DPrivate.h"
 #include <WebCore/PlatformCALayerWin.h>
-#include <wtf/OwnPtr.h>
-#include <wtf/PassOwnPtr.h>
 
 #if PLATFORM(WIN)
 #include <GLSLANG/ShaderLang.h>
@@ -208,4 +206,4 @@ PlatformLayer* GraphicsContext3D::platformLayer() const
 
 } // namespace WebCore
 
-#endif // USE(3D_GRAPHICS)
+#endif // ENABLE(GRAPHICS_CONTEXT_3D)

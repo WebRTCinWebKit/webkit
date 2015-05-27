@@ -68,37 +68,37 @@ static ResourceLoadPriority defaultPriorityForResourceType(CachedResource::Type 
 {
     switch (type) {
     case CachedResource::MainResource:
-        return ResourceLoadPriorityVeryHigh;
+        return ResourceLoadPriority::VeryHigh;
     case CachedResource::CSSStyleSheet:
-        return ResourceLoadPriorityHigh;
+        return ResourceLoadPriority::High;
     case CachedResource::Script:
 #if ENABLE(SVG_FONTS)
     case CachedResource::SVGFontResource:
 #endif
     case CachedResource::FontResource:
     case CachedResource::RawResource:
-        return ResourceLoadPriorityMedium;
+        return ResourceLoadPriority::Medium;
     case CachedResource::ImageResource:
-        return ResourceLoadPriorityLow;
+        return ResourceLoadPriority::Low;
 #if ENABLE(XSLT)
     case CachedResource::XSLStyleSheet:
-        return ResourceLoadPriorityHigh;
+        return ResourceLoadPriority::High;
 #endif
     case CachedResource::SVGDocumentResource:
-        return ResourceLoadPriorityLow;
+        return ResourceLoadPriority::Low;
 #if ENABLE(LINK_PREFETCH)
     case CachedResource::LinkPrefetch:
-        return ResourceLoadPriorityVeryLow;
+        return ResourceLoadPriority::VeryLow;
     case CachedResource::LinkSubresource:
-        return ResourceLoadPriorityVeryLow;
+        return ResourceLoadPriority::VeryLow;
 #endif
 #if ENABLE(VIDEO_TRACK)
     case CachedResource::TextTrackResource:
-        return ResourceLoadPriorityLow;
+        return ResourceLoadPriority::Low;
 #endif
     }
     ASSERT_NOT_REACHED();
-    return ResourceLoadPriorityLow;
+    return ResourceLoadPriority::Low;
 }
 
 static std::chrono::milliseconds deadDecodedDataDeletionIntervalForResourceType(CachedResource::Type type)
@@ -460,7 +460,7 @@ void CachedResource::removeClient(CachedResourceClient* client)
             // We allow non-secure content to be reused in history, but we do not allow secure content to be reused.
             memoryCache.remove(*this);
         }
-        memoryCache.prune();
+        memoryCache.pruneSoon();
     }
     // This object may be dead here.
 }
@@ -557,7 +557,7 @@ void CachedResource::didAccessDecodedData(double timeStamp)
             memoryCache.removeFromLiveDecodedResourcesList(*this);
             memoryCache.insertInLiveDecodedResourcesList(*this);
         }
-        memoryCache.prune();
+        memoryCache.pruneSoon();
     }
 }
     
@@ -680,39 +680,30 @@ bool CachedResource::canUseCacheValidator() const
     return m_response.hasCacheValidatorFields();
 }
 
-static inline void logResourceRevalidationReason(Frame* frame, const String& reason)
-{
-    if (frame)
-        frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::cachedResourceRevalidationKey(), DiagnosticLoggingKeys::reasonKey(), reason, ShouldSample::Yes);
-}
-
-bool CachedResource::mustRevalidateDueToCacheHeaders(const CachedResourceLoader& cachedResourceLoader, CachePolicy cachePolicy) const
+CachedResource::RevalidationDecision CachedResource::makeRevalidationDecision(CachePolicy cachePolicy) const
 {    
-    ASSERT(cachePolicy == CachePolicyRevalidate || cachePolicy == CachePolicyVerify);
+    switch (cachePolicy) {
+    case CachePolicyHistoryBuffer:
+        return RevalidationDecision::No;
 
-    if (cachePolicy == CachePolicyRevalidate) {
-        logResourceRevalidationReason(cachedResourceLoader.frame(), DiagnosticLoggingKeys::reloadKey());
-        return true;
-    }
+    case CachePolicyReload:
+    case CachePolicyRevalidate:
+        return RevalidationDecision::YesDueToCachePolicy;
 
-    if (m_response.cacheControlContainsNoCache() || m_response.cacheControlContainsNoStore()) {
-        LOG(ResourceLoading, "CachedResource %p mustRevalidate because of m_response.cacheControlContainsNoCache() || m_response.cacheControlContainsNoStore()\n", this);
+    case CachePolicyVerify:
+        if (m_response.cacheControlContainsNoCache())
+            return RevalidationDecision::YesDueToNoCache;
+        // FIXME: Cache-Control:no-store should prevent storing, not reuse.
         if (m_response.cacheControlContainsNoStore())
-            logResourceRevalidationReason(cachedResourceLoader.frame(), DiagnosticLoggingKeys::noStoreKey());
-        else
-            logResourceRevalidationReason(cachedResourceLoader.frame(), DiagnosticLoggingKeys::noCacheKey());
+            return RevalidationDecision::YesDueToNoStore;
 
-        return true;
-    }
+        if (isExpired())
+            return RevalidationDecision::YesDueToExpired;
 
-    // CachePolicyVerify
-    if (isExpired()) {
-        LOG(ResourceLoading, "CachedResource %p mustRevalidate because of isExpired()\n", this);
-        logResourceRevalidationReason(cachedResourceLoader.frame(), DiagnosticLoggingKeys::isExpiredKey());
-        return true;
-    }
-
-    return false;
+        return RevalidationDecision::No;
+    };
+    ASSERT_NOT_REACHED();
+    return RevalidationDecision::No;
 }
 
 bool CachedResource::redirectChainAllowsReuse(ReuseExpiredRedirectionOrNot reuseExpiredRedirection) const

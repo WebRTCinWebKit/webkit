@@ -43,6 +43,7 @@
 #import <WebCore/FrameView.h>
 #import <WebCore/GraphicsContext.h>
 #import <WebCore/GraphicsLayerCA.h>
+#import <WebCore/MachSendRight.h>
 #import <WebCore/MainFrame.h>
 #import <WebCore/Page.h>
 #import <WebCore/PlatformCAAnimationMac.h>
@@ -328,6 +329,16 @@ bool TiledCoreAnimationDrawingArea::flushLayers()
         if (m_transientZoomScale != 1)
             applyTransientZoomToLayers(m_transientZoomScale, m_transientZoomOrigin);
 
+        if (!m_fenceCallbacksForAfterNextFlush.isEmpty()) {
+            MachSendRight fencePort = m_layerHostingContext->createFencePort();
+
+            for (auto callbackID : m_fenceCallbacksForAfterNextFlush)
+                m_webPage.send(Messages::WebPageProxy::MachSendRightCallback(fencePort, callbackID));
+            m_fenceCallbacksForAfterNextFlush.clear();
+
+            m_layerHostingContext->setFencePort(fencePort.sendRight());
+        }
+
         return returnValue;
     }
 }
@@ -408,7 +419,7 @@ void TiledCoreAnimationDrawingArea::updateScrolledExposedRect()
     frameView->setExposedRect(m_scrolledExposedRect);
 }
 
-void TiledCoreAnimationDrawingArea::updateGeometry(const IntSize& viewSize, const IntSize& layerPosition)
+void TiledCoreAnimationDrawingArea::updateGeometry(const IntSize& viewSize, const IntSize& layerPosition, bool flushSynchronously)
 {
     m_inUpdateGeometry = true;
 
@@ -439,9 +450,11 @@ void TiledCoreAnimationDrawingArea::updateGeometry(const IntSize& viewSize, cons
     [m_hostingLayer setFrame:CGRectMake(layerPosition.width(), layerPosition.height(), viewSize.width(), viewSize.height())];
 
     [CATransaction commit];
-    
-    [CATransaction flush];
-    [CATransaction synchronize];
+
+    if (flushSynchronously) {
+        [CATransaction flush];
+        [CATransaction synchronize];
+    }
 
     m_webPage.send(Messages::DrawingAreaProxy::DidUpdateGeometry());
 
@@ -572,8 +585,7 @@ PlatformCALayer* TiledCoreAnimationDrawingArea::shadowLayerForTransientZoom() co
     
 static FloatPoint shadowLayerPositionForFrame(FrameView& frameView, FloatPoint origin)
 {
-    FloatPoint position = frameView.renderView()->documentRect().location() + FloatPoint(0, FrameView::yPositionForRootContentLayer(frameView.scrollPosition(), frameView.topContentInset(), frameView.headerHeight()));
-
+    FloatPoint position = frameView.renderView()->documentRect().location() + FloatPoint(0, frameView.yPositionForRootContentLayer());
     return position + origin.expandedTo(FloatPoint());
 }
 
@@ -737,6 +749,16 @@ void TiledCoreAnimationDrawingArea::applyTransientZoomToPage(double scale, Float
     m_webPage.scalePage(scale / m_webPage.viewScaleFactor(), roundedIntPoint(-unscrolledOrigin));
     m_transientZoomScale = 1;
     flushLayers();
+}
+
+void TiledCoreAnimationDrawingArea::addFence(const MachSendRight& fencePort)
+{
+    m_layerHostingContext->setFencePort(fencePort.sendRight());
+}
+
+void TiledCoreAnimationDrawingArea::replyWithFenceAfterNextFlush(uint64_t callbackID)
+{
+    m_fenceCallbacksForAfterNextFlush.append(callbackID);
 }
 
 } // namespace WebKit

@@ -1052,7 +1052,6 @@ PassRefPtr<StructureShape> Structure::toStructureShape(JSValue value)
                 curShape->addProperty(structure->m_nameInPrevious.get());
         }
 
-        
         if (JSObject* curObject = curValue.getObject())
             curShape->setConstructorName(JSObject::calculatedClassName(curObject));
         else
@@ -1066,7 +1065,7 @@ PassRefPtr<StructureShape> Structure::toStructureShape(JSValue value)
         if (curStructure->storedPrototypeStructure()) {
             RefPtr<StructureShape> newShape = StructureShape::create();
             curShape->setProto(newShape);
-            curShape = newShape;
+            curShape = newShape.release();
             curValue = curStructure->storedPrototype();
         }
 
@@ -1162,7 +1161,7 @@ void PropertyTable::checkConsistency()
         if (rep == PROPERTY_MAP_DELETED_ENTRY_KEY)
             continue;
         ++nonEmptyEntryCount;
-        unsigned i = rep->existingHash();
+        unsigned i = IdentifierRepHash::hash(rep);
         unsigned k = 0;
         unsigned entryIndex;
         while (1) {
@@ -1171,7 +1170,7 @@ void PropertyTable::checkConsistency()
             if (rep == table()[entryIndex - 1].key)
                 break;
             if (k == 0)
-                k = 1 | doubleHash(rep->existingHash());
+                k = 1 | doubleHash(IdentifierRepHash::hash(rep));
             i += k;
         }
         ASSERT(entryIndex == c + 1);

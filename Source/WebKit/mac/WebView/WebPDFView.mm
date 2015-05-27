@@ -976,7 +976,7 @@ static BOOL isFrameInRange(WebFrame *frame, DOMRange *range)
     NSAttributedString *attributedString = [self selectedAttributedString];
     
     if ([types containsObject:NSRTFDPboardType]) {
-        NSData *RTFDData = [attributedString RTFDFromRange:NSMakeRange(0, [attributedString length]) documentAttributes:nil];
+        NSData *RTFDData = [attributedString RTFDFromRange:NSMakeRange(0, [attributedString length]) documentAttributes:@{ }];
         [pasteboard setData:RTFDData forType:NSRTFDPboardType];
     }        
     
@@ -984,7 +984,7 @@ static BOOL isFrameInRange(WebFrame *frame, DOMRange *range)
         if ([attributedString containsAttachments])
             attributedString = attributedStringByStrippingAttachmentCharacters(attributedString);
 
-        NSData *RTFData = [attributedString RTFFromRange:NSMakeRange(0, [attributedString length]) documentAttributes:nil];
+        NSData *RTFData = [attributedString RTFFromRange:NSMakeRange(0, [attributedString length]) documentAttributes:@{ }];
         [pasteboard setData:RTFData forType:NSRTFPboardType];
     }
     
@@ -1037,7 +1037,7 @@ static BOOL isFrameInRange(WebFrame *frame, DOMRange *range)
 
     // Call to the frame loader because this is where our security checks are made.
     Frame* frame = core([dataSource webFrame]);
-    frame->loader().loadFrameRequest(FrameLoadRequest(frame->document()->securityOrigin(), ResourceRequest(URL)), LockHistory::No, LockBackForwardList::No, event.get(), 0, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow);
+    frame->loader().loadFrameRequest(FrameLoadRequest(frame->document()->securityOrigin(), ResourceRequest(URL), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow), event.get(), nullptr);
 }
 
 - (void)PDFViewOpenPDFInNativeApplication:(PDFView *)sender

@@ -43,7 +43,6 @@
 #include "WebProcess.h"
 #include "WebProcessConnectionMessages.h"
 #include <WebCore/GraphicsContext.h>
-#include <WebCore/NotImplemented.h>
 #include <WebCore/SharedBuffer.h>
 
 using namespace WebCore;
@@ -62,7 +61,8 @@ PassRefPtr<PluginProxy> PluginProxy::create(uint64_t pluginProcessToken, bool is
 }
 
 PluginProxy::PluginProxy(uint64_t pluginProcessToken, bool isRestartedProcess)
-    : m_pluginProcessToken(pluginProcessToken)
+    : Plugin(PluginProxyType)
+    , m_pluginProcessToken(pluginProcessToken)
     , m_pluginInstanceID(generatePluginInstanceID())
     , m_pluginBackingStoreContainsValidData(false)
     , m_isStarted(false)
@@ -223,7 +223,6 @@ void PluginProxy::paint(GraphicsContext* graphicsContext, const IntRect& dirtyRe
     if (m_waitingForPaintInResponseToUpdate) {
         m_waitingForPaintInResponseToUpdate = false;
         m_connection->connection()->send(Messages::PluginControllerProxy::DidUpdate(), m_pluginInstanceID);
-        return;
     }
 }
 

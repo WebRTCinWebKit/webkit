@@ -35,6 +35,7 @@ enum Intrinsic {
     MaxIntrinsic,
     SqrtIntrinsic,
     SinIntrinsic,
+    Clz32Intrinsic,
     CosIntrinsic,
     ArrayPushIntrinsic,
     ArrayPopIntrinsic,
@@ -59,6 +60,7 @@ enum Intrinsic {
     OSRExitIntrinsic,
     IsFinalTierIntrinsic,
     SetInt32HeapPredictionIntrinsic,
+    CheckInt32Intrinsic,
     FiatInt52Intrinsic,
 };
 

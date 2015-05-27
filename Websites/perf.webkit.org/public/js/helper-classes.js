@@ -159,9 +159,11 @@ function PerfTestRuns(metric, platform) {
         'FrameRate': 'fps',
         'Runs': '/s',
         'Time': 'ms',
+        'Duration', 'ms',
         'Malloc': 'B',
         'Heap': 'B',
-        'Allocations': 'B'}[suffix];
+        'Allocations': 'B',
+        'Score': 'pt'}[suffix];
 
     // We can't do this in PerfTestResult because all results for each metric need to share the same unit and the same scaling factor.
     function computeScalingFactorIfNeeded() {

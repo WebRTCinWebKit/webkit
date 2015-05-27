@@ -767,12 +767,12 @@ void MutableStyleProperties::parseDeclaration(const String& styleDeclaration, St
     parser.parseDeclaration(this, styleDeclaration, 0, contextStyleSheet);
 }
 
-bool MutableStyleProperties::addParsedProperties(const Vector<CSSProperty>& properties)
+bool MutableStyleProperties::addParsedProperties(const CSSParser::ParsedPropertyVector& properties)
 {
     bool anyChanged = false;
     m_propertyVector.reserveCapacity(m_propertyVector.size() + properties.size());
-    for (unsigned i = 0; i < properties.size(); ++i) {
-        if (addParsedProperty(properties[i]))
+    for (const auto& property : properties) {
+        if (addParsedProperty(property))
             anyChanged = true;
     }
 
@@ -1074,11 +1074,11 @@ void StyleProperties::addSubresourceStyleURLs(ListHashSet<URL>& urls, StyleSheet
         propertyAt(i).value()->addSubresourceStyleURLs(urls, contextStyleSheet);
 }
 
-bool StyleProperties::hasFailedOrCanceledSubresources() const
+bool StyleProperties::traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const
 {
     unsigned size = propertyCount();
     for (unsigned i = 0; i < size; ++i) {
-        if (propertyAt(i).value()->hasFailedOrCanceledSubresources())
+        if (propertyAt(i).value()->traverseSubresources(handler))
             return true;
     }
     return false;

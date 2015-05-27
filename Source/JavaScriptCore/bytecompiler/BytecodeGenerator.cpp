@@ -77,9 +77,17 @@ ParserError BytecodeGenerator::generate()
 
     {
         RefPtr<RegisterID> temp = newTemporary();
-        for (FunctionBodyNode* functionBody : m_functionsToInitialize) {
+        RefPtr<RegisterID> globalScope = scopeRegister(); // FIXME: With lexical scoping, this won't always be the global object: https://bugs.webkit.org/show_bug.cgi?id=142944 
+        for (auto functionPair : m_functionsToInitialize) {
+            FunctionBodyNode* functionBody = functionPair.first;
+            FunctionVariableType functionType = functionPair.second;
             emitNewFunction(temp.get(), functionBody);
-            initializeVariable(variable(functionBody->ident()), temp.get());
+            if (functionType == NormalFunctionVariable)
+                initializeVariable(variable(functionBody->ident()) , temp.get());
+            else if (functionType == GlobalFunctionVariable)
+                emitPutToScope(globalScope.get(), Variable(functionBody->ident()), temp.get(), ThrowIfNotFound);
+            else
+                RELEASE_ASSERT_NOT_REACHED();
         }
     }
     
@@ -149,6 +157,9 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, ProgramNode* programNode, UnlinkedP
     , m_codeType(GlobalCode)
     , m_vm(&vm)
 {
+    for (auto& constantRegister : m_linkTimeConstantRegisters)
+        constantRegister = nullptr;
+
     m_codeBlock->setNumParameters(1); // Allocate space for "this"
 
     emitOpcode(op_enter);
@@ -160,8 +171,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, ProgramNode* programNode, UnlinkedP
 
     for (size_t i = 0; i < functionStack.size(); ++i) {
         FunctionBodyNode* function = functionStack[i];
-        UnlinkedFunctionExecutable* unlinkedFunction = makeFunction(function);
-        codeBlock->addFunctionDeclaration(*m_vm, function->ident(), unlinkedFunction);
+        m_functionsToInitialize.append(std::make_pair(function, GlobalFunctionVariable));
     }
 
     for (size_t i = 0; i < varStack.size(); ++i)
@@ -179,6 +189,9 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
     , m_vm(&vm)
     , m_isBuiltinFunction(codeBlock->isBuiltinFunction())
 {
+    for (auto& constantRegister : m_linkTimeConstantRegisters)
+        constantRegister = nullptr;
+
     if (m_isBuiltinFunction)
         m_shouldEmitDebugHooks = false;
     
@@ -378,7 +391,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
     for (FunctionBodyNode* function : functionNode->functionStack()) {
         const Identifier& ident = function->ident();
         createVariable(ident, varKind(ident.impl()), IsVariable);
-        m_functionsToInitialize.append(function);
+        m_functionsToInitialize.append(std::make_pair(function, NormalFunctionVariable));
     }
     for (auto& entry : functionNode->varStack()) {
         ConstantMode constantMode = modeForIsConstant(entry.second & DeclarationStacks::IsConstant);
@@ -494,6 +507,9 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, EvalNode* evalNode, UnlinkedEvalCod
     , m_codeType(EvalCode)
     , m_vm(&vm)
 {
+    for (auto& constantRegister : m_linkTimeConstantRegisters)
+        constantRegister = nullptr;
+
     m_symbolTable->setUsesNonStrictEval(codeBlock->usesEval() && !codeBlock->isStrictMode());
     m_codeBlock->setNumParameters(1);
 
@@ -982,6 +998,24 @@ RegisterID* BytecodeGenerator::addConstantValue(JSValue v, SourceCodeRepresentat
     } else
         index = result.iterator->value;
     return &m_constantPoolRegisters[index];
+}
+
+RegisterID* BytecodeGenerator::emitMoveLinkTimeConstant(RegisterID* dst, LinkTimeConstant type)
+{
+    unsigned constantIndex = static_cast<unsigned>(type);
+    if (!m_linkTimeConstantRegisters[constantIndex]) {
+        int index = m_nextConstantOffset;
+        m_constantPoolRegisters.append(FirstConstantRegisterIndex + m_nextConstantOffset);
+        ++m_nextConstantOffset;
+        m_codeBlock->addConstant(type);
+        m_linkTimeConstantRegisters[constantIndex] = &m_constantPoolRegisters[index];
+    }
+
+    emitOpcode(op_mov);
+    instructions().append(dst->index());
+    instructions().append(m_linkTimeConstantRegisters[constantIndex]->index());
+
+    return dst;
 }
 
 unsigned BytecodeGenerator::addRegExp(RegExp* r)
@@ -1514,6 +1548,28 @@ RegisterID* BytecodeGenerator::emitDirectPutById(RegisterID* base, const Identif
     return value;
 }
 
+void BytecodeGenerator::emitPutGetterById(RegisterID* base, const Identifier& property, RegisterID* getter)
+{
+    unsigned propertyIndex = addConstant(property);
+    m_staticPropertyAnalyzer.putById(base->index(), propertyIndex);
+
+    emitOpcode(op_put_getter_by_id);
+    instructions().append(base->index());
+    instructions().append(propertyIndex);
+    instructions().append(getter->index());
+}
+
+void BytecodeGenerator::emitPutSetterById(RegisterID* base, const Identifier& property, RegisterID* setter)
+{
+    unsigned propertyIndex = addConstant(property);
+    m_staticPropertyAnalyzer.putById(base->index(), propertyIndex);
+
+    emitOpcode(op_put_setter_by_id);
+    instructions().append(base->index());
+    instructions().append(propertyIndex);
+    instructions().append(setter->index());
+}
+
 void BytecodeGenerator::emitPutGetterSetter(RegisterID* base, const Identifier& property, RegisterID* getter, RegisterID* setter)
 {
     unsigned propertyIndex = addConstant(property);
@@ -1576,10 +1632,7 @@ RegisterID* BytecodeGenerator::emitGetByVal(RegisterID* dst, RegisterID* base, R
 RegisterID* BytecodeGenerator::emitPutByVal(RegisterID* base, RegisterID* property, RegisterID* value)
 {
     UnlinkedArrayProfile arrayProfile = newArrayProfile();
-    if (m_isBuiltinFunction)
-        emitOpcode(op_put_by_val_direct);
-    else
-        emitOpcode(op_put_by_val);
+    emitOpcode(op_put_by_val);
     instructions().append(base->index());
     instructions().append(property->index());
     instructions().append(value->index());
@@ -1622,9 +1675,11 @@ RegisterID* BytecodeGenerator::emitCreateThis(RegisterID* dst)
     size_t begin = instructions().size();
     m_staticPropertyAnalyzer.createThis(m_thisRegister.index(), begin + 3);
 
+    m_codeBlock->addPropertyAccessInstruction(instructions().size());
     emitOpcode(op_create_this); 
     instructions().append(m_thisRegister.index()); 
     instructions().append(m_thisRegister.index()); 
+    instructions().append(0);
     instructions().append(0);
     return dst;
 }
@@ -1951,6 +2006,41 @@ RegisterID* BytecodeGenerator::emitCallVarargs(OpcodeID opcode, RegisterID* dst,
         instructions().append(profileHookRegister->index());
     }
     return dst;
+}
+
+void BytecodeGenerator::emitCallDefineProperty(RegisterID* newObj, RegisterID* propertyNameRegister,
+    RegisterID* valueRegister, RegisterID* getterRegister, RegisterID* setterRegister, unsigned options, const JSTextPosition& position)
+{
+    RefPtr<RegisterID> descriptorRegister = emitNewObject(newTemporary());
+
+    RefPtr<RegisterID> trueRegister = emitLoad(newTemporary(), true);
+    if (options & PropertyConfigurable)
+        emitDirectPutById(descriptorRegister.get(), propertyNames().configurable, trueRegister.get(), PropertyNode::Unknown);
+    if (options & PropertyWritable)
+        emitDirectPutById(descriptorRegister.get(), propertyNames().writable, trueRegister.get(), PropertyNode::Unknown);
+    else if (valueRegister) {
+        RefPtr<RegisterID> falseRegister = emitLoad(newTemporary(), false);
+        emitDirectPutById(descriptorRegister.get(), propertyNames().writable, falseRegister.get(), PropertyNode::Unknown);
+    }
+    if (options & PropertyEnumerable)
+        emitDirectPutById(descriptorRegister.get(), propertyNames().enumerable, trueRegister.get(), PropertyNode::Unknown);
+
+    if (valueRegister)
+        emitDirectPutById(descriptorRegister.get(), propertyNames().value, valueRegister, PropertyNode::Unknown);
+    if (getterRegister)
+        emitDirectPutById(descriptorRegister.get(), propertyNames().get, getterRegister, PropertyNode::Unknown);
+    if (setterRegister)
+        emitDirectPutById(descriptorRegister.get(), propertyNames().set, setterRegister, PropertyNode::Unknown);
+
+    RefPtr<RegisterID> definePropertyRegister = emitMoveLinkTimeConstant(newTemporary(), LinkTimeConstant::DefinePropertyFunction);
+
+    CallArguments callArguments(*this, nullptr, 3);
+    emitLoad(callArguments.thisRegister(), jsUndefined());
+    emitMove(callArguments.argumentRegister(0), newObj);
+    emitMove(callArguments.argumentRegister(1), propertyNameRegister);
+    emitMove(callArguments.argumentRegister(2), descriptorRegister.get());
+
+    emitCall(newTemporary(), definePropertyRegister.get(), NoExpectedFunction, callArguments, position, position, position);
 }
 
 RegisterID* BytecodeGenerator::emitReturn(RegisterID* src)
@@ -2604,11 +2694,6 @@ RegisterID* BytecodeGenerator::emitThrowExpressionTooDeepException()
     // is still good enough to get us an accurate line number.
     m_expressionTooDeep = true;
     return newTemporary();
-}
-
-void BytecodeGenerator::setIsNumericCompareFunction(bool isNumericCompareFunction)
-{
-    m_codeBlock->setIsNumericCompareFunction(isNumericCompareFunction);
 }
 
 bool BytecodeGenerator::isArgumentNumber(const Identifier& ident, int argumentNumber)

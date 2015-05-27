@@ -103,6 +103,12 @@ public:
     typedef PropertyListNode* PropertyList;
     typedef ElementNode* ElementList;
     typedef ArgumentListNode* ArgumentsList;
+#if ENABLE(ES6_TEMPLATE_LITERAL_SYNTAX)
+    typedef TemplateExpressionListNode* TemplateExpressionList;
+    typedef TemplateStringNode* TemplateString;
+    typedef TemplateStringListNode* TemplateStringList;
+    typedef TemplateLiteralNode* TemplateLiteral;
+#endif
     typedef ParameterNode* FormalParameterList;
     typedef FunctionBodyNode* FunctionBody;
 #if ENABLE(ES6_CLASS_SYNTAX)
@@ -246,6 +252,43 @@ public:
         setExceptionLocation(node, start, divot, end);
         return node;
     }
+
+#if ENABLE(ES6_TEMPLATE_LITERAL_SYNTAX)
+    TemplateStringNode* createTemplateString(const JSTokenLocation& location, const Identifier& cooked, const Identifier& raw)
+    {
+        return new (m_parserArena) TemplateStringNode(location, cooked, raw);
+    }
+
+    TemplateStringListNode* createTemplateStringList(TemplateStringNode* templateString)
+    {
+        return new (m_parserArena) TemplateStringListNode(templateString);
+    }
+
+    TemplateStringListNode* createTemplateStringList(TemplateStringListNode* templateStringList, TemplateStringNode* templateString)
+    {
+        return new (m_parserArena) TemplateStringListNode(templateStringList, templateString);
+    }
+
+    TemplateExpressionListNode* createTemplateExpressionList(ExpressionNode* expression)
+    {
+        return new (m_parserArena) TemplateExpressionListNode(expression);
+    }
+
+    TemplateExpressionListNode* createTemplateExpressionList(TemplateExpressionListNode* templateExpressionListNode, ExpressionNode* expression)
+    {
+        return new (m_parserArena) TemplateExpressionListNode(templateExpressionListNode, expression);
+    }
+
+    TemplateLiteralNode* createTemplateLiteral(const JSTokenLocation& location, TemplateStringListNode* templateStringList)
+    {
+        return new (m_parserArena) TemplateLiteralNode(location, templateStringList);
+    }
+
+    TemplateLiteralNode* createTemplateLiteral(const JSTokenLocation& location, TemplateStringListNode* templateStringList, TemplateExpressionListNode* templateExpressionList)
+    {
+        return new (m_parserArena) TemplateLiteralNode(location, templateStringList, templateExpressionList);
+    }
+#endif
 
     ExpressionNode* createRegExp(const JSTokenLocation& location, const Identifier& pattern, const Identifier& flags, const JSTextPosition& start)
     {
@@ -670,7 +713,6 @@ public:
         return result;
     }
     
-    const Identifier* getName(Property property) const { return property->name(); }
     PropertyNode::Type getType(Property property) const { return property->type(); }
 
     bool isResolve(ExpressionNode* expr) const { return expr->isResolveNode(); }
@@ -985,7 +1027,7 @@ ExpressionNode* ASTBuilder::makeFunctionCallNode(const JSTokenLocation& location
     }
     if (func->isBracketAccessorNode()) {
         BracketAccessorNode* bracket = static_cast<BracketAccessorNode*>(func);
-        FunctionCallBracketNode* node = new (m_parserArena) FunctionCallBracketNode(location, bracket->base(), bracket->subscript(), args, divot, divotStart, divotEnd);
+        FunctionCallBracketNode* node = new (m_parserArena) FunctionCallBracketNode(location, bracket->base(), bracket->subscript(), bracket->subscriptHasAssignments(), args, divot, divotStart, divotEnd);
         node->setSubexpressionInfo(bracket->divot(), bracket->divotEnd().offset);
         return node;
     }

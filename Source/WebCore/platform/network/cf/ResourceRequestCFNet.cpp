@@ -227,19 +227,6 @@ void ResourceRequest::doUpdatePlatformHTTPBody()
 #endif
 }
 
-void ResourceRequest::updateFromDelegatePreservingOldProperties(const ResourceRequest& delegateProvidedRequest)
-{
-    ResourceLoadPriority oldPriority = priority();
-    RefPtr<FormData> oldHTTPBody = httpBody();
-    bool isHiddenFromInspector = hiddenFromInspector();
-
-    *this = delegateProvidedRequest;
-
-    setPriority(oldPriority);
-    setHTTPBody(oldHTTPBody.release());
-    setHiddenFromInspector(isHiddenFromInspector);
-}
-
 void ResourceRequest::doUpdateResourceRequest()
 {
     if (!m_cfRequest) {
@@ -339,6 +326,22 @@ void ResourceRequest::setStorageSession(CFURLStorageSessionRef storageSession)
 
 #endif // USE(CFNETWORK)
 
+void ResourceRequest::updateFromDelegatePreservingOldProperties(const ResourceRequest& delegateProvidedRequest)
+{
+    // These are things we don't want willSendRequest delegate to mutate or reset.
+    ResourceLoadPriority oldPriority = priority();
+    RefPtr<FormData> oldHTTPBody = httpBody();
+    bool isHiddenFromInspector = hiddenFromInspector();
+    auto oldRequester = requester();
+
+    *this = delegateProvidedRequest;
+
+    setPriority(oldPriority);
+    setHTTPBody(oldHTTPBody.release());
+    setHiddenFromInspector(isHiddenFromInspector);
+    setRequester(oldRequester);
+}
+
 bool ResourceRequest::httpPipeliningEnabled()
 {
     return s_httpPipeliningEnabled;
@@ -399,10 +402,10 @@ unsigned initializeMaximumHTTPConnectionCountPerHost()
     if (!ResourceRequest::resourcePrioritiesEnabled())
         return maximumHTTPConnectionCountPerHost;
 
-    wkSetHTTPRequestMaximumPriority(toPlatformRequestPriority(ResourceLoadPriorityHighest));
+    wkSetHTTPRequestMaximumPriority(toPlatformRequestPriority(ResourceLoadPriority::Highest));
 #if !PLATFORM(WIN)
     // FIXME: <rdar://problem/9375609> Implement minimum fast lane priority setting on Windows
-    wkSetHTTPRequestMinimumFastLanePriority(toPlatformRequestPriority(ResourceLoadPriorityMedium));
+    wkSetHTTPRequestMinimumFastLanePriority(toPlatformRequestPriority(ResourceLoadPriority::Medium));
 #endif
 
     return unlimitedRequestCount;
@@ -418,8 +421,8 @@ void initializeHTTPConnectionSettingsOnStartup()
     static const unsigned preferredConnectionCount = 6;
     static const unsigned fastLaneConnectionCount = 1;
     wkInitializeMaximumHTTPConnectionCountPerHost(preferredConnectionCount);
-    wkSetHTTPRequestMaximumPriority(ResourceLoadPriorityHighest);
-    wkSetHTTPRequestMinimumFastLanePriority(ResourceLoadPriorityMedium);
+    wkSetHTTPRequestMaximumPriority(toPlatformRequestPriority(ResourceLoadPriority::Highest));
+    wkSetHTTPRequestMinimumFastLanePriority(toPlatformRequestPriority(ResourceLoadPriority::Medium));
     _CFNetworkHTTPConnectionCacheSetLimit(kHTTPNumFastLanes, fastLaneConnectionCount);
 }
 #endif

@@ -41,11 +41,12 @@
 
 static const char* const classNameKey = "$class";
 static const char* const objectStreamKey = "$objectStream";
+static const char* const stringKey = "$string";
 
 static NSString * const selectorKey = @"selector";
 static NSString * const typeStringKey = @"typeString";
 
-static PassRefPtr<API::Dictionary> createEncodedObject(WKRemoteObjectEncoder *, id);
+static RefPtr<API::Dictionary> createEncodedObject(WKRemoteObjectEncoder *, id);
 
 @interface NSMethodSignature (Details)
 - (NSString *)_typeString;
@@ -92,10 +93,10 @@ static void ensureObjectStream(WKRemoteObjectEncoder *encoder)
     if (encoder->_objectStream)
         return;
 
-    RefPtr<API::Array> objectStream = API::Array::create();
-    encoder->_objectStream = objectStream.get();
+    Ref<API::Array> objectStream = API::Array::create();
+    encoder->_objectStream = objectStream.ptr();
 
-    encoder->_rootDictionary->set(objectStreamKey, objectStream.release());
+    encoder->_rootDictionary->set(objectStreamKey, WTF::move(objectStream));
 }
 
 static void encodeToObjectStream(WKRemoteObjectEncoder *encoder, id value)
@@ -213,6 +214,11 @@ static void encodeInvocation(WKRemoteObjectEncoder *encoder, NSInvocation *invoc
     }
 }
 
+static void encodeString(WKRemoteObjectEncoder *encoder, NSString *string)
+{
+    encoder->_currentDictionary->set(stringKey, API::String::create(string));
+}
+
 static void encodeObject(WKRemoteObjectEncoder *encoder, id object)
 {
     ASSERT(object);
@@ -235,20 +241,25 @@ static void encodeObject(WKRemoteObjectEncoder *encoder, id object)
         return;
     }
 
+    if ([object isKindOfClass:[NSString class]]) {
+        encodeString(encoder, object);
+        return;
+    }
+
     [object encodeWithCoder:encoder];
 }
 
-static PassRefPtr<API::Dictionary> createEncodedObject(WKRemoteObjectEncoder *encoder, id object)
+static RefPtr<API::Dictionary> createEncodedObject(WKRemoteObjectEncoder *encoder, id object)
 {
     if (!object)
         return nil;
 
-    RefPtr<API::Dictionary> dictionary = API::Dictionary::create();
-    TemporaryChange<API::Dictionary*> dictionaryChange(encoder->_currentDictionary, dictionary.get());
+    Ref<API::Dictionary> dictionary = API::Dictionary::create();
+    TemporaryChange<API::Dictionary*> dictionaryChange(encoder->_currentDictionary, dictionary.ptr());
 
     encodeObject(encoder, object);
 
-    return dictionary;
+    return WTF::move(dictionary);
 }
 
 - (void)encodeValueOfObjCType:(const char *)type at:(const void *)address
@@ -546,6 +557,15 @@ static NSInvocation *decodeInvocation(WKRemoteObjectDecoder *decoder)
     return invocation;
 }
 
+static NSString *decodeString(WKRemoteObjectDecoder *decoder)
+{
+    API::String* string = decoder->_currentDictionary->get<API::String>(stringKey);
+    if (!string)
+        [NSException raise:NSInvalidUnarchiveOperationException format:@"String missing"];
+
+    return string->string();
+}
+
 static id decodeObject(WKRemoteObjectDecoder *decoder)
 {
     API::String* classNameString = decoder->_currentDictionary->get<API::String>(classNameKey);
@@ -562,6 +582,9 @@ static id decodeObject(WKRemoteObjectDecoder *decoder)
 
     if (objectClass == [NSInvocation class])
         return decodeInvocation(decoder);
+
+    if (objectClass == [NSString class])
+        return decodeString(decoder);
 
     id result = [objectClass allocWithZone:decoder.zone];
     if (!result)

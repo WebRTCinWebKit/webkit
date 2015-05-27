@@ -73,6 +73,9 @@ fast/events/mouse-force-changed.html [ Skip ]
 fast/events/mouse-force-down.html [ Skip ]
 fast/events/mouse-force-up.html [ Skip ]
 
+# EFL WebKitTestRunner doesn't support this test based on emoji font
+editing/selection/extend-by-character-007.html [ Skip ]
+
 # ----------------------------------------
 # Tests which also fail in other platforms
 # ----------------------------------------
@@ -217,9 +220,6 @@ fast/canvas/canvas-quadratic-same-endpoint.html
 # Tests for features under development
 # ------------------------------------
 
-# Path::addPath needs to be implemented
-webkit.org/b/130464 fast/canvas/canvas-path-addPath.html
-
 # Unclassified failures
 fast/events/platform-wheelevent-paging-x-in-non-scrolling-div.html
 fast/events/platform-wheelevent-paging-x-in-non-scrolling-page.html
@@ -275,7 +275,6 @@ webkit.org/b/87661 http/tests/security/cross-origin-worker-indexeddb-allowed.htm
 webkit.org/b/87661 http/tests/security/cross-origin-worker-indexeddb.html [ Skip ]
 webkit.org/b/87661 http/tests/security/no-indexeddb-from-sandbox.html [ Skip ]
 webkit.org/b/87661 crypto/subtle/rsa-indexeddb.html [ Skip ]
-webkit.org/b/87661 inspector-protocol/indexeddb/basics.html [ Skip ]
 webkit.org/b/87661 fast/history/page-cache-indexed-closed-db.html [ Skip ]
 webkit.org/b/87661 fast/history/page-cache-indexed-opened-db.html [ Skip ]
 
@@ -658,7 +657,7 @@ webkit.org/b/136099 fast/harness/show-modal-dialog.html [ Crash Timeout ]
 
 webkit.org/b/136227 mathml/very-large-stretchy-operators.html [ Crash Timeout Pass ]
 
-webkit.org/b/142158 inspector-protocol/dom/remove-multiple-nodes.html [ Crash Pass ]
+#webkit.org/b/142158 inspector-protocol/dom/remove-multiple-nodes.html [ Crash Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # FLAKY TESTS
@@ -685,7 +684,7 @@ webkit.org/b/103444 http/tests/css/shared-stylesheet-mutation.html [ Failure Pas
 webkit.org/b/103445 http/tests/css/shared-stylesheet-mutation-preconstruct.html [ Failure Pass ]
 
 # These ref tests are flaky with coordinated graphics (missing purple corners).
-webkit.org/b/108340 fast/layers/no-clipping-overflow-hidden-added-after-transform.html [ ImageOnlyFailure Pass ]
+#webkit.org/b/108340 fast/layers/no-clipping-overflow-hidden-added-after-transform.html [ ImageOnlyFailure Pass ]
 webkit.org/b/108340 fast/layers/no-clipping-overflow-hidden-added-after-transition.html [ ImageOnlyFailure Pass ]
 webkit.org/b/108340 fast/layers/no-clipping-overflow-hidden-hardware-acceleration.html [ ImageOnlyFailure Pass ]
 
@@ -873,7 +872,7 @@ webkit.org/b/130353 mathml/wbr-in-mroot-crash.html [ Crash Pass ]
 webkit.org/b/127109 media/video-object-fit-change.html [ ImageOnlyFailure Pass ]
 webkit.org/b/127109 media/video-object-fit.html [ ImageOnlyFailure Pass ]
 
-webkit.org/b/119789 fast/events/touch/touch-before-pressing-spin-button.html [ Crash Pass ]
+#webkit.org/b/119789 fast/events/touch/touch-before-pressing-spin-button.html [ Crash Pass ]
 webkit.org/b/119789 fast/events/touch/touch-inside-iframe.html [ Crash Pass ]
 
 webkit.org/b/133305 fast/text/mark-matches-rendering.html [ ImageOnlyFailure Pass ]
@@ -938,6 +937,12 @@ webkit.org/b/141458 imported/w3c/canvas/2d.line.cap.round.html [ Failure Pass Im
 
 webkit.org/b/142766 fast/overflow/overflow-height-float-not-removed-crash2.html [ Crash Pass ]
 
+webkit.org/b/144802 fast/forms/number/number-large-padding.html [ Failure Pass ]
+webkit.org/b/144802 fast/forms/number/number-spinbutton-capturing.html [ Failure Pass ]
+webkit.org/b/144802 fast/forms/number/number-spinbutton-change-and-input-events.html [ Failure Pass ]
+webkit.org/b/144802 fast/forms/number/number-spinbutton-click-in-iframe.html [ Failure Pass ]
+webkit.org/b/144802 fast/forms/number/number-spinbutton-in-multi-column.html [ Failure Pass ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # PASSING TESTS WITH INCORRECT EXPECTATIONS
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -961,6 +966,10 @@ webkit.org/b/102367 fast/forms/zoomed-controls.html [ Pass ]
 webkit.org/b/129113 fast/multicol/newmulticol/clipping.html [ Pass ]
 
 webkit.org/b/129050 fast/sub-pixel/compositing-layers-on-subpixel-position.html [ Pass ]
+
+# This tests are passing on EFL but they do not in the Apple ports
+mathml/presentation/style-changed.html [ Pass ]
+transitions/svg-text-shadow-transition.html [ Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # FAILING TESTS
@@ -1133,9 +1142,6 @@ webkit.org/b/73544 fast/history/page-cache-notification-suspendable.html [ Skip 
 webkit.org/b/61932 [ Debug ] jquery/manipulation.html [ Failure Pass Timeout ]
 
 webkit.org/b/49142 fast/css/style-scoped [ Skip ]
-
-# These tests require TOUCH_ADJUSTMENT flag to be enabled
-webkit.org/b/78801 touchadjustment
 
 # Tracking corner not being painted for TextArea.
 webkit.org/b/9221 fast/css/resize-corner-tracking-transformed-iframe.html [ Missing ]
@@ -1347,16 +1353,13 @@ webkit.org/b/102068 webkit.org/b/102993 media/media-document-audio-repaint.html 
 webkit.org/b/100859 ietestcenter/css3/bordersbackgrounds/background-repeat-space-padding-box.htm [ Missing ]
 webkit.org/b/100857 ietestcenter/css3/text/textshadow-005.htm [ Missing ]
 
-webkit.org/b/100846 inspector-protocol/debugger/pause-dedicated-worker.html [ Skip ]
-webkit.org/b/100846 inspector-protocol/debugger/terminate-dedicated-worker-while-paused.html [ Skip ]
+#webkit.org/b/100846 inspector-protocol/debugger/pause-dedicated-worker.html [ Skip ]
+#webkit.org/b/100846 inspector-protocol/debugger/terminate-dedicated-worker-while-paused.html [ Skip ]
 
 # New media test introduced in r133660 fails.
 webkit.org/b/101439 media/progress-events-generated-correctly.html [ Failure Pass ]
 
 webkit.org/b/101456 fast/repaint/block-selection-gap-in-table-cell.html [ Missing ]
-
-# Identical failures on GTK, EFL and Qt.
-webkit.org/b/101539 editing/execCommand/switch-list-type-with-orphaned-li.html [ Failure ]
 
 # HiDPI tests are failing to render correctly.
 webkit.org/b/102097 fast/hidpi [ Skip ]
@@ -1499,7 +1502,6 @@ webkit.org/b/114920 fast/repaint/moving-shadow-on-path.html [ Failure ]
 # Compositing reftests added in r148172 fail on EFL
 webkit.org/b/114739 compositing/patterns/direct-pattern-compositing-contain.html [ ImageOnlyFailure Crash ]
 webkit.org/b/114739 compositing/patterns/direct-pattern-compositing-cover.html [ ImageOnlyFailure Crash ]
-webkit.org/b/114739 compositing/patterns/direct-pattern-compositing-padding.html [ ImageOnlyFailure Crash ]
 webkit.org/b/114739 compositing/patterns/direct-pattern-compositing-position.html [ ImageOnlyFailure Crash ]
 webkit.org/b/114739 compositing/patterns/direct-pattern-compositing-size.html [ ImageOnlyFailure Crash ]
 webkit.org/b/114739 compositing/patterns/direct-pattern-compositing-contain-no-repeat.html [ Pass Crash ]
@@ -1693,10 +1695,6 @@ webkit.org/b/110054 compositing/geometry/limit-layer-bounds-fixed.html [ Failure
 # Failing media query test.
 webkit.org/b/114916 fast/media/mq-resolution.html [ Failure ]
 
-# Regression(r148748).
-webkit.org/b/114946 compositing/patterns/direct-pattern-compositing-add-text.html [ ImageOnlyFailure Crash ]
-webkit.org/b/114946 compositing/patterns/direct-pattern-compositing.html [ ImageOnlyFailure Crash ]
-
 compositing/patterns/direct-pattern-compositing-load.html [ ImageOnlyFailure Pass ]
 
 # Most probably failures are result of delay in scrolling caused by 'delegated scrolling' usage.
@@ -1761,7 +1759,7 @@ webkit.org/b/120596 css3/masking/mask-repeat-space-content.html [ ImageOnlyFailu
 
 webkit.org/b/120105 http/tests/navigation/post-frames-goback1-uncached.html [ Failure ]
 
-webkit.org/b/120682 inspector-protocol/page/archive.html [ Timeout ]
+#webkit.org/b/120682 inspector-protocol/page/archive.html [ Timeout ]
 
 webkit.org/b/124414 animations/cross-fade-background-image.html [ ImageOnlyFailure ]
 
@@ -1960,7 +1958,7 @@ webkit.org/b/133972 mathml/presentation/foreign-element-in-token.html [ Failure 
 webkit.org/b/133973 fast/borders/hidpi-border-radius-with-subpixel-margin-not-renderable.html [ ImageOnlyFailure ]
 
 # Tests failing or flaky with closer reasons unknwown at this time
-webkit.org/b/133857 inspector-protocol/layers/layers-blending-compositing-reasons.html [ Failure ]
+#webkit.org/b/133857 inspector-protocol/layers/layers-blending-compositing-reasons.html [ Failure ]
 webkit.org/b/133859 fast/regions/inline-block-inside-anonymous-overflow.html [ ImageOnlyFailure ]
 webkit.org/b/133860 fast/regions/auto-size/autosize-region-window-resize.html [ ImageOnlyFailure Pass ]
 webkit.org/b/133974 fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-ink-svg.html [ ImageOnlyFailure Pass ]
@@ -2086,8 +2084,8 @@ webkit.org/b/114340 compositing/overlap-blending/nested-non-overlap-clipping.htm
 webkit.org/b/114340 compositing/overlap-blending/nested-overlap.html [ ImageOnlyFailure ]
 
 # Probably started failing since r159110
-webkit.org/b/141591 inspector-protocol/debugger/breakpoint-eval-with-exception.html [ Failure ]
-webkit.org/b/141591 inspector-protocol/debugger/setBreakpoint-actions.html [ Failure ]
+#webkit.org/b/141591 inspector-protocol/debugger/breakpoint-eval-with-exception.html [ Failure ]
+#webkit.org/b/141591 inspector-protocol/debugger/setBreakpoint-actions.html [ Failure ]
 
 # Doesn't support inter-ideograph justification
 webkit.org/b/141593 fast/text/justify-ideograph-complex.html [ Failure ]
@@ -2179,27 +2177,6 @@ webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-5.html [ ImageOnlyFailure ]
 # [EFL] r182307 broke 87 layouttests
 webkit.org/b/143364 fast/fixed-layout [ Skip ]
 
-# [EFL] Fix 18 crashing compositing tests after r182101
-# https://bugs.webkit.org/show_bug.cgi?id=143214
-compositing/clipping/border-radius-stacking-context-clip.html [ Crash ]
-compositing/contents-opaque/opaque-with-clip-path.html [ Crash ]
-compositing/masks/become-tiled-mask.html [ Crash ]
-compositing/masks/cease-tiled-mask.html [ Crash ]
-compositing/masks/compositing-clip-path-and-mask.html [ Crash ]
-compositing/masks/compositing-clip-path-change-no-repaint.html [ Crash Failure ]
-compositing/masks/compositing-clip-path-mask-change.html [ Crash ]
-compositing/masks/compositing-clip-path.html [ Crash ]
-compositing/masks/direct-image-mask.html [ Crash Pass ]
-compositing/masks/mask-layer-size.html [ Crash Pass ]
-compositing/masks/masked-ancestor.html [ Crash Pass ]
-compositing/masks/reference-clip-path-on-composited.html [ Crash ]
-compositing/masks/solid-color-masked.html [ Crash ]
-compositing/masks/tiled-mask.html [ Crash ]
-compositing/masks/toggle-mask.html [ Crash Pass ]
-compositing/overlap-blending/nested-overlap-overflow.html [ Crash ]
-compositing/reflections/nested-reflection-on-overflow.html [ Crash Pass ]
-compositing/text-on-scaled-surface.html [ Crash ]
-
 webkit.org/b/143415 fast/scrolling/scroll-select-list.html [ ImageOnlyFailure ]
 webkit.org/b/143416 fast/text/baseline-inline-block.html [ ImageOnlyFailure ]
 
@@ -2232,7 +2209,6 @@ webkit.org/b/131044 media/video-controls-toggling.html [ Timeout ]
 webkit.org/b/143663 accessibility/plugin.html [ Failure ]
 
 webkit.org/b/143877 fast/forms/input-auto-fill-button.html [ Failure ]
-webkit.org/b/143877 fast/forms/listbox-hit-test-zoomed.html [ Failure ]
 webkit.org/b/143877 fast/forms/listbox-visible-size.html [ Failure ]
 webkit.org/b/143877 fast/forms/range/slider-padding.html [ Failure ]
 webkit.org/b/143877 fast/forms/textarea-scroll-height.html [ Failure ]
@@ -2240,3 +2216,73 @@ webkit.org/b/143877 fast/forms/textarea-scroll-height.html [ Failure ]
 webkit.org/b/143878 http/tests/navigation/javascriptlink-frames.html [ Failure ]
 webkit.org/b/143878 http/tests/navigation/postredirect-basic.html [ Failure ]
 webkit.org/b/143878 http/tests/navigation/postredirect-goback1.html [ Failure ]
+
+webkit.org/b/144006 compositing/backing/solid-color-with-paints-into-ancestor.html [ ImageOnlyFailure ]
+
+# New failing compositing tests, needs more investigation
+compositing/masks/compositing-clip-path-change-no-repaint.html [ Failure ]
+compositing/tiling/transform-origin-tiled.html [ Failure ]
+compositing/background-color/background-color-change-to-text.html [ ImageOnlyFailure ]
+compositing/masks/compositing-clip-path-mask-change.html [ ImageOnlyFailure ]
+compositing/overlap-blending/nested-overlap-overflow.html [ ImageOnlyFailure ]
+compositing/text-on-scaled-surface.html [ ImageOnlyFailure ]
+
+webkit.org/b/144673 fast/forms/button-line-height.html [ ImageOnlyFailure ]
+
+# [EFL] REGRESSION(r183907): It made all inspector-protocol test crash
+webkit.org/b/144737 inspector-protocol [ Skip ]
+webkit.org/b/144737 http/tests/inspector-protocol [ Skip ]
+
+# [EFL] Mouseevent/hover tests fail with XorgDriver
+# https://bugs.webkit.org/show_bug.cgi?id=144741
+fast/css/hover-active-drag.html [ Failure ]
+fast/css/hover-affects-ancestor.html [ Failure ]
+fast/css/hover-affects-child.html [ Failure ]
+fast/css/hover-display-block.html [ Failure ]
+fast/css/hover-subselector.html [ Failure ]
+fast/css/nested-layers-with-hover.html [ Failure ]
+fast/css/unknown-pseudo-element-matching.html [ Failure ]
+fast/dom/Window/window-resize-and-move-arguments.html [ Failure ]
+fast/dynamic/hovered-detach.html [ Failure ]
+fast/events/event-sender-mouse-moved.html [ Failure ]
+fast/events/frame-scroll-fake-mouse-move.html [ Failure ]
+fast/events/ghostly-mousemoves-in-subframe.html [ Failure ]
+fast/events/mouse-cursor-change.html [ Failure ]
+fast/events/mouse-cursor-multiframecur.html [ Failure ]
+fast/events/mouse-cursor-no-mousemove.html [ Failure ]
+fast/events/mouseenter-mouseleave-capture.html [ Failure ]
+fast/events/mouseenter-mouseleave.html [ Failure ]
+fast/events/mouseenterleave-on-subframe.html [ Failure ]
+fast/events/mousemove-after-drag-over-scrollbar.html [ Failure ]
+fast/events/mouseout-dead-node.html [ Failure ]
+fast/events/mouseover-button.html [ Failure ]
+fast/events/mouseover-mouseout.html [ Failure ]
+fast/events/mouseover-mouseout2.html [ Failure ]
+fast/events/scroll-in-scaled-page-with-overflow-hidden.html [ Failure ]
+fast/events/touch/touch-before-pressing-spin-button.html [ Failure ]
+fast/events/wheelevent-basic.html [ Failure ]
+fast/events/wheelevent-mousewheel-interaction.html [ Failure ]
+fast/forms/input-step-as-double.html [ Failure ]
+fast/regions/repaint/repaint-absolute-pushed-to-next-region.html [ Failure ]
+fast/replaced/image-map-2.html [ Failure ]
+fast/selectors/hover-strict.html [ Failure ]
+http/tests/security/cross-frame-access-put.html [ Failure ]
+media/video-initially-hidden-volume-slider-up.html [ Failure ]
+scrollbars/overflow-custom-scrollbar-crash.html [ Failure ]
+scrollbars/scroll-rtl-or-bt-layer.html [ Failure ]
+fast/css/pseudo-element-selector-scrollbar-hover.html [ ImageOnlyFailure ]
+fast/frames/flattening/scrolling-in-object.html [ ImageOnlyFailure ]
+fast/regions/multicol/regions-in-multicol-hover-overflow.html [ ImageOnlyFailure ]
+fast/css/hover-update.html [ Skip ] #[ Timeout ]
+fast/events/iframe-onmousemove.html [ Skip ] #timeout
+fast/events/mouse-moved-remove-frame-crash.html [ Skip ] #timeout
+fast/events/mouseout-dead-subframe.html [ Skip ] #timeout
+fast/events/wheelevent-in-text-node.html [ Skip ] #timeout
+fast/layers/no-clipping-overflow-hidden-added-after-transform.html [ Skip ] #timeout
+fast/text/simple-lines-hover-after.html [ Skip ] #timeout
+media/click-volume-bar-not-pausing.html [ Skip ] #timeout
+
+webkit.org/b/144803 css3/viewport-percentage-lengths/viewport-percentage-lengths-anonymous-block.html [ Timeout ]
+webkit.org/b/144803 css3/viewport-percentage-lengths/viewport-percentage-lengths-percent-size-child.html [ Timeout ]
+webkit.org/b/144803 css3/viewport-percentage-lengths/viewport-percentage-lengths-relative-font-size.html [ Timeout ]
+webkit.org/b/144803 css3/viewport-percentage-lengths/viewport-percentage-lengths-resize.html [ Timeout ]

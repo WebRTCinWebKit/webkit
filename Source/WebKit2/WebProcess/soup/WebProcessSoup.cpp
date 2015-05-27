@@ -41,6 +41,7 @@
 #include <WebCore/ResourceHandle.h>
 #include <WebCore/SoupNetworkSession.h>
 #include <libsoup/soup.h>
+#include <wtf/RAMSize.h>
 #include <wtf/gobject/GRefPtr.h>
 #include <wtf/gobject/GUniquePtr.h>
 
@@ -56,25 +57,6 @@ static uint64_t getCacheDiskFreeSize(SoupCache* cache)
         return 0;
 
     return WebCore::getVolumeFreeSizeForPath(cacheDir.get());
-}
-
-static uint64_t getMemorySize()
-{
-    static uint64_t kDefaultMemorySize = 512;
-#if !OS(WINDOWS)
-    long pageSize = sysconf(_SC_PAGESIZE);
-    if (pageSize == -1)
-        return kDefaultMemorySize;
-
-    long physPages = sysconf(_SC_PHYS_PAGES);
-    if (physPages == -1)
-        return kDefaultMemorySize;
-
-    return ((pageSize / 1024LL) * physPages) / 1024LL;
-#else
-    // Fallback to default for other platforms.
-    return kDefaultMemorySize;
-#endif
 }
 
 void WebProcess::platformSetCacheModel(CacheModel cacheModel)
@@ -93,10 +75,10 @@ void WebProcess::platformSetCacheModel(CacheModel cacheModel)
 
     if (!usesNetworkProcess()) {
         cache = WebCore::SoupNetworkSession::defaultSession().cache();
-        diskFreeSize = getCacheDiskFreeSize(cache) / 1024 / 1024;
+        diskFreeSize = getCacheDiskFreeSize(cache) / WTF::MB;
     }
 
-    uint64_t memSize = getMemorySize();
+    uint64_t memSize = WTF::ramSize() / WTF::MB;
     calculateCacheSizes(cacheModel, memSize, diskFreeSize,
                         cacheTotalCapacity, cacheMinDeadCapacity, cacheMaxDeadCapacity, deadDecodedDataDeletionInterval,
                         pageCacheSize, urlCacheMemoryCapacity, urlCacheDiskCapacity);
@@ -154,7 +136,13 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
         return;
 
     ASSERT(!parameters.diskCacheDirectory.isEmpty());
-    GRefPtr<SoupCache> soupCache = adoptGRef(soup_cache_new(parameters.diskCacheDirectory.utf8().data(), SOUP_CACHE_SINGLE_USER));
+
+    // We used to use the given cache directory for the soup cache, but now we use a subdirectory to avoid
+    // conflicts with other cache files in the same directory. Remove the old cache files if they still exist.
+    WebCore::SoupNetworkSession::defaultSession().clearCache(parameters.diskCacheDirectory);
+
+    String diskCachePath = WebCore::pathByAppendingComponent(parameters.diskCacheDirectory, "webkit");
+    GRefPtr<SoupCache> soupCache = adoptGRef(soup_cache_new(diskCachePath.utf8().data(), SOUP_CACHE_SINGLE_USER));
     WebCore::SoupNetworkSession::defaultSession().setCache(soupCache.get());
     // Set an initial huge max_size for the SoupCache so the call to soup_cache_load() won't evict any cached
     // resource. The final size of the cache will be set by NetworkProcess::platformSetCacheModel().

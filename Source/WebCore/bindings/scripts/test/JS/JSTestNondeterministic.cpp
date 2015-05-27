@@ -165,7 +165,7 @@ void JSTestNondeterministic::destroy(JSC::JSCell* cell)
 
 JSTestNondeterministic::~JSTestNondeterministic()
 {
-    releaseImplIfNotNull();
+    releaseImpl();
 }
 
 EncodedJSValue jsTestNondeterministicNondeterministicReadonlyAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
@@ -378,7 +378,7 @@ void setJSTestNondeterministicNondeterministicWriteableAttr(ExecState* exec, JSO
         return;
     }
     auto& impl = castedThis->impl();
-    const String& nativeValue(value.isEmpty() ? String() : value.toString(exec)->value(exec));
+    const String nativeValue(value.isEmpty() ? String() : value.toString(exec)->value(exec));
     if (UNLIKELY(exec->hadException()))
         return;
     impl.setNondeterministicWriteableAttr(nativeValue);
@@ -398,7 +398,7 @@ void setJSTestNondeterministicNondeterministicExceptionAttr(ExecState* exec, JSO
         return;
     }
     auto& impl = castedThis->impl();
-    const String& nativeValue(value.isEmpty() ? String() : value.toString(exec)->value(exec));
+    const String nativeValue(value.isEmpty() ? String() : value.toString(exec)->value(exec));
     if (UNLIKELY(exec->hadException()))
         return;
     impl.setNondeterministicExceptionAttr(nativeValue);
@@ -418,7 +418,7 @@ void setJSTestNondeterministicNondeterministicGetterExceptionAttr(ExecState* exe
         return;
     }
     auto& impl = castedThis->impl();
-    const String& nativeValue(value.isEmpty() ? String() : value.toString(exec)->value(exec));
+    const String nativeValue(value.isEmpty() ? String() : value.toString(exec)->value(exec));
     if (UNLIKELY(exec->hadException()))
         return;
     impl.setNondeterministicGetterExceptionAttr(nativeValue);
@@ -439,7 +439,7 @@ void setJSTestNondeterministicNondeterministicSetterExceptionAttr(ExecState* exe
     }
     auto& impl = castedThis->impl();
     ExceptionCode ec = 0;
-    const String& nativeValue(value.isEmpty() ? String() : value.toString(exec)->value(exec));
+    const String nativeValue(value.isEmpty() ? String() : value.toString(exec)->value(exec));
     if (UNLIKELY(exec->hadException()))
         return;
     impl.setNondeterministicSetterExceptionAttr(nativeValue, ec);
@@ -495,7 +495,6 @@ void JSTestNondeterministicOwner::finalize(JSC::Handle<JSC::Unknown> handle, voi
     auto* jsTestNondeterministic = jsCast<JSTestNondeterministic*>(handle.slot()->asCell());
     auto& world = *static_cast<DOMWrapperWorld*>(context);
     uncacheWrapper(world, &jsTestNondeterministic->impl(), jsTestNondeterministic);
-    jsTestNondeterministic->releaseImpl();
 }
 
 #if ENABLE(BINDING_INTEGRITY)

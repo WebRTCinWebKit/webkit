@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2007, 2008, 2013, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -273,7 +273,7 @@ void Editor::replaceNodeFromPasteboard(Node* node, const String& pasteboardName)
         return;
 
     RefPtr<Range> range = Range::create(node->document(), Position(node, Position::PositionIsBeforeAnchor), Position(node, Position::PositionIsAfterAnchor));
-    m_frame.selection().setSelection(VisibleSelection(range.get()), FrameSelection::DoNotSetFocus);
+    m_frame.selection().setSelection(VisibleSelection(*range), FrameSelection::DoNotSetFocus);
 
     Pasteboard pasteboard(pasteboardName);
 
@@ -341,7 +341,7 @@ static PassRefPtr<SharedBuffer> dataInRTFDFormat(NSAttributedString *string)
         return nullptr;
 
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
-    return SharedBuffer::wrapNSData([string RTFDFromRange:NSMakeRange(0, length) documentAttributes:nil]);
+    return SharedBuffer::wrapNSData([string RTFDFromRange:NSMakeRange(0, length) documentAttributes:@{ }]);
     END_BLOCK_OBJC_EXCEPTIONS;
 
     return nullptr;
@@ -354,7 +354,7 @@ static PassRefPtr<SharedBuffer> dataInRTFFormat(NSAttributedString *string)
         return nullptr;
 
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
-    return SharedBuffer::wrapNSData([string RTFFromRange:NSMakeRange(0, length) documentAttributes:nil]);
+    return SharedBuffer::wrapNSData([string RTFFromRange:NSMakeRange(0, length) documentAttributes:@{ }]);
     END_BLOCK_OBJC_EXCEPTIONS;
 
     return nullptr;

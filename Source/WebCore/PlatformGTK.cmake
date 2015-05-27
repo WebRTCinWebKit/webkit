@@ -1,3 +1,5 @@
+set(WebCore_OUTPUT_NAME WebCoreGTK)
+
 list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/accessibility/atk"
     "${WEBCORE_DIR}/editing/atk"
@@ -15,6 +17,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/opengl"
     "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBCORE_DIR}/platform/graphics/wayland"
+    "${WEBCORE_DIR}/platform/graphics/x11"
     "${WEBCORE_DIR}/platform/linux"
     "${WEBCORE_DIR}/platform/mediastream/openwebrtc"
     "${WEBCORE_DIR}/platform/mock/mediasource"
@@ -61,6 +64,7 @@ list(APPEND WebCore_SOURCES
     platform/geoclue/GeolocationProviderGeoclue1.cpp
     platform/geoclue/GeolocationProviderGeoclue2.cpp
 
+    platform/graphics/GLContext.cpp
     platform/graphics/GraphicsContext3DPrivate.cpp
     platform/graphics/ImageSource.cpp
     platform/graphics/WOFFFileFormat.cpp
@@ -78,7 +82,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cairo/ImageBufferCairo.cpp
     platform/graphics/cairo/ImageCairo.cpp
     platform/graphics/cairo/IntRectCairo.cpp
-    platform/graphics/cairo/OwnPtrCairo.cpp
     platform/graphics/cairo/PathCairo.cpp
     platform/graphics/cairo/PatternCairo.cpp
     platform/graphics/cairo/PlatformContextCairo.cpp
@@ -86,10 +89,14 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cairo/RefPtrCairo.cpp
     platform/graphics/cairo/TransformationMatrixCairo.cpp
 
+    platform/graphics/egl/GLContextEGL.cpp
+
     platform/graphics/freetype/FontCacheFreeType.cpp
     platform/graphics/freetype/FontCustomPlatformDataFreeType.cpp
     platform/graphics/freetype/GlyphPageTreeNodeFreeType.cpp
     platform/graphics/freetype/SimpleFontDataFreeType.cpp
+
+    platform/graphics/glx/GLContextGLX.cpp
 
     platform/graphics/gstreamer/AudioTrackPrivateGStreamer.cpp
     platform/graphics/gstreamer/GRefPtrGStreamer.cpp
@@ -118,6 +125,9 @@ list(APPEND WebCore_SOURCES
     platform/graphics/opengl/TemporaryOpenGLSetting.cpp
 
     platform/graphics/opentype/OpenTypeVerticalData.cpp
+
+    platform/graphics/x11/PlatformDisplayX11.cpp
+    platform/graphics/x11/XUniqueResource.cpp
 
     platform/gtk/ErrorsGtk.cpp
     platform/gtk/EventLoopGtk.cpp
@@ -163,6 +173,7 @@ list(APPEND WebCore_SOURCES
     platform/network/soup/CookieStorageSoup.cpp
     platform/network/soup/CredentialStorageSoup.cpp
     platform/network/soup/DNSSoup.cpp
+    platform/network/soup/GRefPtrSoup.cpp
     platform/network/soup/NetworkStorageSessionSoup.cpp
     platform/network/soup/ProxyServerSoup.cpp
     platform/network/soup/ResourceErrorSoup.cpp
@@ -180,6 +191,7 @@ list(APPEND WebCore_SOURCES
 
     platform/text/enchant/TextCheckerEnchant.cpp
 
+    platform/text/gtk/HyphenationLibHyphen.cpp
     platform/text/gtk/TextBreakIteratorInternalICUGtk.cpp
 
     platform/network/gtk/CredentialBackingStore.cpp
@@ -191,13 +203,9 @@ list(APPEND WebCorePlatformGTK_SOURCES
     page/gtk/DragControllerGtk.cpp
     page/gtk/EventHandlerGtk.cpp
 
-    platform/graphics/GLContext.cpp
-
-    platform/graphics/egl/GLContextEGL.cpp
+    platform/graphics/PlatformDisplay.cpp
 
     platform/graphics/freetype/FontPlatformDataFreeType.cpp
-
-    platform/graphics/glx/GLContextGLX.cpp
 
     platform/graphics/gtk/ColorGtk.cpp
     platform/graphics/gtk/GdkCairoUtilities.cpp
@@ -229,7 +237,7 @@ list(APPEND WebCorePlatformGTK_SOURCES
     rendering/RenderThemeGtk.cpp
 )
 
-if (WTF_USE_GEOCLUE2)
+if (USE_GEOCLUE2)
     list(APPEND WebCore_SOURCES
         ${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface.c
     )
@@ -270,6 +278,7 @@ list(APPEND WebCore_LIBRARIES
     ${LIBSOUP_LIBRARIES}
     ${LIBXML2_LIBRARIES}
     ${LIBXSLT_LIBRARIES}
+    ${HYPHEN_LIBRARIES}
     ${PNG_LIBRARIES}
     ${SQLITE_LIBRARIES}
     ${WEBP_LIBRARIES}
@@ -371,18 +380,16 @@ if (ENABLE_MEDIA_STREAM)
     )
 endif ()
 
-if (ENABLE_TEXTURE_MAPPER)
+if (USE_TEXTURE_MAPPER)
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         "${WEBCORE_DIR}/platform/graphics/texmap"
     )
     list(APPEND WebCore_SOURCES
         platform/graphics/texmap/BitmapTexture.cpp
         platform/graphics/texmap/BitmapTextureGL.cpp
-        platform/graphics/texmap/BitmapTextureImageBuffer.cpp
         platform/graphics/texmap/BitmapTexturePool.cpp
         platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
         platform/graphics/texmap/TextureMapperGL.cpp
-        platform/graphics/texmap/TextureMapperImageBuffer.cpp
         platform/graphics/texmap/TextureMapperShaderProgram.cpp
     )
 endif ()
@@ -401,31 +408,31 @@ if (ENABLE_THREADED_COMPOSITOR)
         page/scrolling/ScrollingThread.cpp
         page/scrolling/ScrollingTreeNode.cpp
         page/scrolling/ScrollingTreeScrollingNode.cpp
-        platform/graphics/TiledBackingStore.cpp
         platform/graphics/texmap/coordinated/AreaAllocator.cpp
         platform/graphics/texmap/coordinated/CompositingCoordinator.cpp
         platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp
         platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp
         platform/graphics/texmap/coordinated/CoordinatedSurface.cpp
         platform/graphics/texmap/coordinated/CoordinatedTile.cpp
+        platform/graphics/texmap/coordinated/TiledBackingStore.cpp
         platform/graphics/texmap/coordinated/UpdateAtlas.cpp
     )
 endif ()
 
-if (WTF_USE_EGL)
+if (USE_EGL)
     list(APPEND WebCore_LIBRARIES
         ${EGL_LIBRARY}
     )
 endif ()
 
-if (WTF_USE_OPENGL_ES_2)
+if (USE_OPENGL_ES_2)
     list(APPEND WebCore_SOURCES
         platform/graphics/opengl/Extensions3DOpenGLES.cpp
         platform/graphics/opengl/GraphicsContext3DOpenGLES.cpp
     )
 endif ()
 
-if (WTF_USE_OPENGL)
+if (USE_OPENGL)
     list(APPEND WebCore_SOURCES
         platform/graphics/OpenGLShims.cpp
 
@@ -471,7 +478,7 @@ add_custom_command(
 
 if (ENABLE_WAYLAND_TARGET)
     list(APPEND WebCorePlatformGTK_SOURCES
-        platform/graphics/wayland/WaylandDisplay.cpp
+        platform/graphics/wayland/PlatformDisplayWayland.cpp
         platform/graphics/wayland/WaylandEventSource.cpp
         platform/graphics/wayland/WaylandSurface.cpp
 

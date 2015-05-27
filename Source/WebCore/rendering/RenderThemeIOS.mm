@@ -56,6 +56,7 @@
 #import "RenderThemeIOS.h"
 #import "RenderView.h"
 #import "SoftLinking.h"
+#import "UIColorSPI.h"
 #import "UserAgentScripts.h"
 #import "UserAgentStyleSheets.h"
 #import "WebCoreThreadRun.h"
@@ -65,15 +66,18 @@
 #import <wtf/RefPtr.h>
 #import <wtf/StdLibExtras.h>
 
-@interface UIApplication
-+ (UIApplication *)sharedApplication;
-@property(nonatomic,copy) NSString *preferredContentSizeCategory;
-@end
-
 SOFT_LINK_FRAMEWORK(UIKit)
 SOFT_LINK_CLASS(UIKit, UIApplication)
+SOFT_LINK_CLASS(UIKit, UIColor)
 SOFT_LINK_CONSTANT(UIKit, UIContentSizeCategoryDidChangeNotification, CFStringRef)
 #define UIContentSizeCategoryDidChangeNotification getUIContentSizeCategoryDidChangeNotification()
+
+#if !USE(APPLE_INTERNAL_SDK)
+@interface UIApplication
++ (UIApplication *)sharedApplication;
+@property (nonatomic, copy) NSString *preferredContentSizeCategory;
+@end
+#endif
 
 @interface WebCoreRenderThemeBundle : NSObject
 @end
@@ -132,7 +136,7 @@ static CGFunctionRef getSharedFunctionRef(IOSGradientRef gradient, Interpolation
     CGFunctionRef function = nullptr;
 
     static HashMap<IOSGradientRef, CGFunctionRef>* linearFunctionRefs;
-    static HashMap<IOSGradientRef, CGFunctionRef>* exponentialFunctionRefs;;
+    static HashMap<IOSGradientRef, CGFunctionRef>* exponentialFunctionRefs;
 
     if (interpolation == LinearInterpolation) {
         if (!linearFunctionRefs)
@@ -287,13 +291,13 @@ RenderThemeIOS::RenderThemeIOS()
 
 PassRefPtr<RenderTheme> RenderTheme::themeForPage(Page*)
 {
-    static RenderTheme* renderTheme = RenderThemeIOS::create().leakRef();
-    return renderTheme;
+    static RenderTheme& renderTheme = RenderThemeIOS::create().leakRef();
+    return &renderTheme;
 }
 
-PassRefPtr<RenderTheme> RenderThemeIOS::create()
+Ref<RenderTheme> RenderThemeIOS::create()
 {
-    return adoptRef(new RenderThemeIOS);
+    return adoptRef(*new RenderThemeIOS);
 }
 
 static String& _contentSizeCategory()
@@ -1201,7 +1205,7 @@ void RenderThemeIOS::updateCachedSystemFontDescription(CSSValueID valueID, FontD
         textStyle = kCTUIFontTextStyleBody;
         fontDescriptor = adoptCF(CTFontDescriptorCreateWithTextStyle(textStyle, contentSizeCategory(), 0));
         break;
-#if __IPHONE_OS_VERSION_MIN_REQUIRED > 80200
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
     case CSSValueAppleSystemTitle1:
         textStyle = kCTUIFontTextStyleTitle1;
         fontDescriptor = adoptCF(CTFontDescriptorCreateWithTextStyle(textStyle, contentSizeCategory(), 0));
@@ -1306,6 +1310,47 @@ String RenderThemeIOS::mediaControlsScript()
 #endif
 }
 #endif // ENABLE(VIDEO)
+
+Color RenderThemeIOS::systemColor(CSSValueID cssValueID) const
+{
+    auto addResult = m_systemColorCache.add(cssValueID, Color());
+    if (!addResult.isNewEntry)
+        return addResult.iterator->value;
+
+    Color color;
+    switch (cssValueID) {
+    case CSSValueAppleSystemBlue:
+        color = [getUIColorClass() systemBlueColor].CGColor;
+        break;
+    case CSSValueAppleSystemGray:
+        color = [getUIColorClass() systemGrayColor].CGColor;
+        break;
+    case CSSValueAppleSystemGreen:
+        color = [getUIColorClass() systemGreenColor].CGColor;
+        break;
+    case CSSValueAppleSystemOrange:
+        color = [getUIColorClass() systemOrangeColor].CGColor;
+        break;
+    case CSSValueAppleSystemPink:
+        color = [getUIColorClass() systemPinkColor].CGColor;
+        break;
+    case CSSValueAppleSystemRed:
+        color = [getUIColorClass() systemRedColor].CGColor;
+        break;
+    case CSSValueAppleSystemYellow:
+        color = [getUIColorClass() systemYellowColor].CGColor;
+        break;
+    default:
+        break;
+    }
+
+    if (!color.isValid())
+        color = RenderTheme::systemColor(cssValueID);
+
+    addResult.iterator->value = color;
+
+    return addResult.iterator->value;
+}
 
 }
 

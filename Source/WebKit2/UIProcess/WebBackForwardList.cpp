@@ -29,6 +29,7 @@
 #include "APIArray.h"
 #include "SessionState.h"
 #include "WebPageProxy.h"
+#include <WebCore/DiagnosticLoggingKeys.h>
 
 namespace WebKit {
 
@@ -175,6 +176,12 @@ void WebBackForwardList::goToItem(WebBackForwardListItem* item)
     if (targetIndex == notFound)
         return;
 
+    if (targetIndex < m_currentIndex) {
+        unsigned delta = m_entries.size() - targetIndex - 1;
+        String deltaValue = delta > 10 ? ASCIILiteral("over10") : String::number(delta);
+        m_page->logDiagnosticMessageWithValue(WebCore::DiagnosticLoggingKeys::backNavigationKey(), WebCore::DiagnosticLoggingKeys::deltaKey(), deltaValue, false /* shouldSample */);
+    }
+
     // If we're going to an item different from the current item, ask the client if the current
     // item should remain in the list.
     WebBackForwardListItem* currentItem = m_entries[m_currentIndex].get();
@@ -250,17 +257,17 @@ int WebBackForwardList::forwardListCount() const
     return m_page && m_hasCurrentIndex ? m_entries.size() - (m_currentIndex + 1) : 0;
 }
 
-PassRefPtr<API::Array> WebBackForwardList::backList() const
+Ref<API::Array> WebBackForwardList::backList() const
 {
     return backListAsAPIArrayWithLimit(backListCount());
 }
 
-PassRefPtr<API::Array> WebBackForwardList::forwardList() const
+Ref<API::Array> WebBackForwardList::forwardList() const
 {
     return forwardListAsAPIArrayWithLimit(forwardListCount());
 }
 
-PassRefPtr<API::Array> WebBackForwardList::backListAsAPIArrayWithLimit(unsigned limit) const
+Ref<API::Array> WebBackForwardList::backListAsAPIArrayWithLimit(unsigned limit) const
 {
     ASSERT(!m_hasCurrentIndex || m_currentIndex < m_entries.size());
 
@@ -284,7 +291,7 @@ PassRefPtr<API::Array> WebBackForwardList::backListAsAPIArrayWithLimit(unsigned 
     return API::Array::create(WTF::move(vector));
 }
 
-PassRefPtr<API::Array> WebBackForwardList::forwardListAsAPIArrayWithLimit(unsigned limit) const
+Ref<API::Array> WebBackForwardList::forwardListAsAPIArrayWithLimit(unsigned limit) const
 {
     ASSERT(!m_hasCurrentIndex || m_currentIndex < m_entries.size());
 
@@ -397,14 +404,18 @@ BackForwardListState WebBackForwardList::backForwardListState(const std::functio
         auto& entry = *m_entries[i];
 
         if (filter && !filter(entry)) {
-            if (backForwardListState.currentIndex && i <= backForwardListState.currentIndex.value())
-                --backForwardListState.currentIndex.value();
+            auto& currentIndex = backForwardListState.currentIndex;
+            if (currentIndex && i <= currentIndex.value() && currentIndex.value())
+                --currentIndex.value();
 
             continue;
         }
 
         backForwardListState.items.append(entry.itemState());
     }
+
+    if (backForwardListState.items.isEmpty())
+        backForwardListState.currentIndex = Nullopt;
 
     return backForwardListState;
 }

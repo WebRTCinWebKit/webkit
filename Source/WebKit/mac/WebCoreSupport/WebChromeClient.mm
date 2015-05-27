@@ -113,6 +113,7 @@ NSString *WebConsoleMessageOtherMessageSource = @"OtherMessageSource";
 
 NSString *WebConsoleMessageDebugMessageLevel = @"DebugMessageLevel";
 NSString *WebConsoleMessageLogMessageLevel = @"LogMessageLevel";
+NSString *WebConsoleMessageInfoMessageLevel = @"InfoMessageLevel";
 NSString *WebConsoleMessageWarningMessageLevel = @"WarningMessageLevel";
 NSString *WebConsoleMessageErrorMessageLevel = @"ErrorMessageLevel";
 
@@ -400,6 +401,8 @@ inline static NSString *stringForMessageLevel(MessageLevel level)
         return WebConsoleMessageDebugMessageLevel;
     case MessageLevel::Log:
         return WebConsoleMessageLogMessageLevel;
+    case MessageLevel::Info:
+        return WebConsoleMessageInfoMessageLevel;
     case MessageLevel::Warning:
         return WebConsoleMessageWarningMessageLevel;
     case MessageLevel::Error:
@@ -1036,18 +1039,23 @@ bool WebChromeClient::hasRelevantSelectionServices(bool isTextOnly) const
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
-void WebChromeClient::showPlaybackTargetPicker(const WebCore::IntPoint& location, bool hasVideo)
+void WebChromeClient::addPlaybackTargetPickerClient(uint64_t contextId)
 {
-    [m_webView _showPlaybackTargetPicker:location hasVideo:hasVideo];
+    [m_webView _addPlaybackTargetPickerClient:contextId];
 }
 
-void WebChromeClient::startingMonitoringPlaybackTargets()
+void WebChromeClient::removePlaybackTargetPickerClient(uint64_t contextId)
 {
-    [m_webView _startingMonitoringPlaybackTargets];
+    [m_webView _removePlaybackTargetPickerClient:contextId];
 }
 
-void WebChromeClient::stopMonitoringPlaybackTargets()
+void WebChromeClient::showPlaybackTargetPicker(uint64_t contextId, const WebCore::IntPoint& location, bool hasVideo)
 {
-    [m_webView _stopMonitoringPlaybackTargets];
+    [m_webView _showPlaybackTargetPicker:contextId location:location hasVideo:hasVideo];
+}
+
+void WebChromeClient::playbackTargetPickerClientStateDidChange(uint64_t contextId, MediaProducer::MediaStateFlags state)
+{
+    [m_webView _playbackTargetPickerClientStateDidChange:contextId state:state];
 }
 #endif

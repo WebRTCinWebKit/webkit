@@ -34,6 +34,7 @@
 #if ENABLE(MEDIA_STREAM)
 
 #include "PeerMediaDescription.h"
+#include <wtf/CryptographicallyRandomNumber.h>
 
 namespace WebCore {
 
@@ -45,18 +46,23 @@ public:
     }
     virtual ~MediaEndpointConfiguration() { }
 
-    unsigned long sessionId() const { return m_sessionId; }
-    void setSessionId(unsigned long sessionId) { m_sessionId = sessionId; }
+    uint64_t sessionId() const { return m_sessionId; }
+    void setSessionId(uint64_t sessionId) { m_sessionId = sessionId; }
+
+    unsigned sessionVersion() const { return m_sessionVersion; }
+    void setSessionVersion(unsigned sessionVersion) { m_sessionVersion = sessionVersion; }
 
     const Vector<RefPtr<PeerMediaDescription>>& mediaDescriptions() const { return m_mediaDescriptions; }
     void addMediaDescription(RefPtr<PeerMediaDescription>&& description) { m_mediaDescriptions.append(WTF::move(description)); }
 
 private:
     MediaEndpointConfiguration()
-        : m_sessionId(0)
+        : m_sessionId(cryptographicallyRandomNumber()) // FIXME: should be 64 bits
+        , m_sessionVersion(0)
     { }
 
-    unsigned long m_sessionId;
+    uint64_t m_sessionId;
+    unsigned m_sessionVersion;
 
     Vector<RefPtr<PeerMediaDescription>> m_mediaDescriptions;
 };

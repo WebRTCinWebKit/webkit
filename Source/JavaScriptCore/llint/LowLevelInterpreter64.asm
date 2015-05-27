@@ -630,14 +630,19 @@ _llint_op_create_this:
     btpz t4, .opCreateThisSlow
     loadp FunctionRareData::m_allocationProfile + ObjectAllocationProfile::m_allocator[t4], t1
     loadp FunctionRareData::m_allocationProfile + ObjectAllocationProfile::m_structure[t4], t2
+    btpz t1, .opCreateThisSlow
+    loadpFromInstruction(4, t4)
+    bpeq t4, 1, .hasSeenMultipleCallee
+    bpneq t4, t0, .opCreateThisSlow
+.hasSeenMultipleCallee:
     allocateJSObject(t1, t2, t0, t3, .opCreateThisSlow)
     loadisFromInstruction(1, t1)
     storeq t0, [cfr, t1, 8]
-    dispatch(4)
+    dispatch(5)
 
 .opCreateThisSlow:
     callSlowPath(_slow_path_create_this)
-    dispatch(4)
+    dispatch(5)
 
 
 _llint_op_to_this:
@@ -851,6 +856,22 @@ _llint_op_to_number:
 
 .opToNumberSlow:
     callSlowPath(_slow_path_to_number)
+    dispatch(3)
+
+
+_llint_op_to_string:
+    traceExecution()
+    loadisFromInstruction(2, t1)
+    loadisFromInstruction(1, t2)
+    loadConstantOrVariable(t1, t0)
+    btqnz t0, tagMask, .opToStringSlow
+    bbneq JSCell::m_type[t0], StringType, .opToStringSlow
+.opToStringIsString:
+    storeq t0, [cfr, t2, 8]
+    dispatch(3)
+
+.opToStringSlow:
+    callSlowPath(_slow_path_to_string)
     dispatch(3)
 
 

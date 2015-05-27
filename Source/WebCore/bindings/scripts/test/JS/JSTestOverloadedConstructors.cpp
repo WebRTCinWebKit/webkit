@@ -130,7 +130,7 @@ EncodedJSValue JSC_HOST_CALL JSTestOverloadedConstructorsConstructor::constructJ
     auto* castedThis = jsCast<JSTestOverloadedConstructorsConstructor*>(exec->callee());
     if (UNLIKELY(exec->argumentCount() < 1))
         return throwVMError(exec, createNotEnoughArgumentsError(exec));
-    const String& string(exec->argument(0).isEmpty() ? String() : exec->argument(0).toString(exec)->value(exec));
+    const String string(exec->argument(0).isEmpty() ? String() : exec->argument(0).toString(exec)->value(exec));
     if (UNLIKELY(exec->hadException()))
         return JSValue::encode(jsUndefined());
     RefPtr<TestOverloadedConstructors> object = TestOverloadedConstructors::create(string);
@@ -216,7 +216,7 @@ void JSTestOverloadedConstructors::destroy(JSC::JSCell* cell)
 
 JSTestOverloadedConstructors::~JSTestOverloadedConstructors()
 {
-    releaseImplIfNotNull();
+    releaseImpl();
 }
 
 EncodedJSValue jsTestOverloadedConstructorsConstructor(ExecState* exec, JSObject* baseValue, EncodedJSValue, PropertyName)
@@ -244,7 +244,6 @@ void JSTestOverloadedConstructorsOwner::finalize(JSC::Handle<JSC::Unknown> handl
     auto* jsTestOverloadedConstructors = jsCast<JSTestOverloadedConstructors*>(handle.slot()->asCell());
     auto& world = *static_cast<DOMWrapperWorld*>(context);
     uncacheWrapper(world, &jsTestOverloadedConstructors->impl(), jsTestOverloadedConstructors);
-    jsTestOverloadedConstructors->releaseImpl();
 }
 
 #if ENABLE(BINDING_INTEGRITY)

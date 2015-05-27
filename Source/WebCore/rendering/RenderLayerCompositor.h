@@ -119,6 +119,9 @@ public:
     // created, destroyed or re-parented).
     void setCompositingLayersNeedRebuild(bool needRebuild = true);
     bool compositingLayersNeedRebuild() const { return m_compositingLayersNeedRebuild; }
+    
+    void willRecalcStyle();
+    void didRecalcStyleWithNoPendingLayout();
 
     // GraphicsLayers buffer state, which gets pushed to the underlying platform layers
     // at specific times.
@@ -162,6 +165,9 @@ public:
     bool needsFixedRootBackgroundLayer(const RenderLayer&) const;
     GraphicsLayer* fixedRootBackgroundLayer() const;
     
+    // Called after the view transparency, or the document or base background color change.
+    void rootBackgroundTransparencyChanged();
+    
     // Repaint the appropriate layers when the given RenderLayer starts or stops being composited.
     void repaintOnCompositingChange(RenderLayer&);
     
@@ -171,7 +177,7 @@ public:
     void layerWasAdded(RenderLayer& parent, RenderLayer& child);
     void layerWillBeRemoved(RenderLayer& parent, RenderLayer& child);
 
-    void layerStyleChanged(RenderLayer&, const RenderStyle* oldStyle);
+    void layerStyleChanged(StyleDifference, RenderLayer&, const RenderStyle* oldStyle);
 
     static bool canCompositeClipPath(const RenderLayer&);
 
@@ -221,11 +227,6 @@ public:
     // to know if there is non-affine content, e.g. for drawing into an image.
     bool has3DContent() const;
     
-    // Most platforms connect compositing layer trees between iframes and their parent document.
-    // Some (currently just Mac) allow iframes to do their own compositing.
-    static bool allowsIndependentlyCompositedFrames(const FrameView*);
-    bool shouldPropagateCompositingToEnclosingFrame() const;
-
     static RenderLayerCompositor* frameContentsCompositor(RenderWidget*);
     // Return true if the layers changed.
     static bool parentFrameContentLayers(RenderWidget*);
@@ -310,6 +311,9 @@ public:
     // For testing.
     WEBCORE_EXPORT void startTrackingLayerFlushes();
     WEBCORE_EXPORT unsigned layerFlushCount() const;
+
+    WEBCORE_EXPORT void startTrackingCompositingUpdates();
+    WEBCORE_EXPORT unsigned compositingUpdateCount() const;
 
 private:
     class OverlapMap;
@@ -467,7 +471,8 @@ private:
     void logLayerInfo(const RenderLayer&, int depth);
 #endif
 
-    bool mainFrameBackingIsTiled() const;
+    bool documentUsesTiledBacking() const;
+    bool isMainFrameCompositor() const;
 
 private:
     RenderView& m_renderView;
@@ -498,6 +503,7 @@ private:
     int m_compositedLayerCount { 0 };
     unsigned m_layersWithTiledBackingCount { 0 };
     unsigned m_layerFlushCount { 0 };
+    unsigned m_compositingUpdateCount { 0 };
 
     RootLayerAttachment m_rootLayerAttachment;
 
@@ -534,6 +540,7 @@ private:
     bool m_layerFlushThrottlingEnabled;
     bool m_layerFlushThrottlingTemporarilyDisabledForInteraction;
     bool m_hasPendingLayerFlush;
+    bool m_layerNeedsCompositingUpdate { false };
 
     Timer m_paintRelatedMilestonesTimer;
 
@@ -546,6 +553,7 @@ private:
 #endif
 
     Color m_rootExtendedBackgroundColor;
+    Color m_lastDocumentBackgroundColor;
 
     HashMap<ScrollingNodeID, RenderLayer*> m_scrollingNodeToLayerMap;
 };

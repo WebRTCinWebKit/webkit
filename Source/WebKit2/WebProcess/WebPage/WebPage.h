@@ -146,6 +146,7 @@ namespace WebKit {
 class DrawingArea;
 class InjectedBundleBackForwardList;
 class NotificationPermissionRequestManager;
+class PDFPlugin;
 class PageBanner;
 class PluginView;
 class VisibleContentRectUpdateInfo;
@@ -338,7 +339,7 @@ public:
     void setTracksRepaints(bool);
     bool isTrackingRepaints() const;
     void resetTrackedRepaints();
-    PassRefPtr<API::Array> trackedRepaintRects();
+    Ref<API::Array> trackedRepaintRects();
 
     void executeEditingCommand(const String& commandName, const String& argument);
     bool isEditingCommandEnabled(const String& commandName);
@@ -358,8 +359,11 @@ public:
     void scalePageInViewCoordinates(double scale, WebCore::IntPoint centerInViewCoordinates);
     double pageScaleFactor() const;
     double totalScaleFactor() const;
-    double viewScaleFactor() const { return m_viewScaleFactor; }
+    double viewScaleFactor() const;
     void scaleView(double scale);
+#if PLATFORM(COCOA)
+    void scaleViewAndUpdateGeometryFenced(double scale, WebCore::IntSize viewSize, uint64_t callbackID);
+#endif
 
     void setUseFixedLayout(bool);
     bool useFixedLayout() const { return m_useFixedLayout; }
@@ -499,6 +503,7 @@ public:
     void moveSelectionByOffset(int32_t offset, uint64_t callbackID);
     void selectTextWithGranularityAtPoint(const WebCore::IntPoint&, uint32_t granularity, uint64_t callbackID);
     void selectPositionAtBoundaryWithDirection(const WebCore::IntPoint&, uint32_t granularity, uint32_t direction, uint64_t callbackID);
+    void moveSelectionAtBoundaryWithDirection(uint32_t granularity, uint32_t direction, uint64_t callbackID);
     void selectPositionAtPoint(const WebCore::IntPoint&, uint64_t callbackID);
     void beginSelectionInDirection(uint32_t direction, uint64_t callbackID);
     void updateSelectionWithExtentPoint(const WebCore::IntPoint&, uint64_t callbackID);
@@ -525,6 +530,7 @@ public:
     void resetAssistedNodeForFrame(WebFrame*);
     WebCore::IntRect rectForElementAtInteractionLocation();
     void updateSelectionAppearance();
+    void getLookupContextAtPoint(const WebCore::IntPoint, uint64_t callbackID);
 
 #if ENABLE(IOS_TOUCH_EVENTS)
     void dispatchAsynchronousTouchEvents(const Vector<WebTouchEvent, 1>& queue);
@@ -548,7 +554,7 @@ public:
     NotificationPermissionRequestManager* notificationPermissionRequestManager();
 
     void pageDidScroll();
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
     void pageDidRequestScroll(const WebCore::IntPoint&);
     void setFixedVisibleContentRect(const WebCore::IntRect&);
     void sendViewportAttributesChanged();
@@ -780,9 +786,12 @@ public:
     void updateVisibleContentRects(const VisibleContentRectUpdateInfo&, double oldestTimestamp);
     bool scaleWasSetByUIProcess() const { return m_scaleWasSetByUIProcess; }
     void willStartUserTriggeredZooming();
+
     void applicationWillResignActive();
     void applicationWillEnterForeground();
+    void applicationDidEnterBackground(uint64_t callbackID);
     void applicationDidBecomeActive();
+
     void zoomToRect(WebCore::FloatRect, double minimumScale, double maximumScale);
     void completePendingSyntheticClickForContentChangeObserver();
 #endif
@@ -850,6 +859,9 @@ public:
 
     WebCore::ScrollPinningBehavior scrollPinningBehavior() { return m_scrollPinningBehavior; }
     void setScrollPinningBehavior(uint32_t /* WebCore::ScrollPinningBehavior */ pinning);
+
+    WTF::Optional<WebCore::ScrollbarOverlayStyle> scrollbarOverlayStyle() { return m_scrollbarOverlayStyle; }
+    void setScrollbarOverlayStyle(WTF::Optional<uint32_t /* WebCore::ScrollbarOverlayStyle */> scrollbarStyle);
 
     PassRefPtr<WebCore::DocumentLoader> createDocumentLoader(WebCore::Frame&, const WebCore::ResourceRequest&, const WebCore::SubstituteData&);
 
@@ -929,7 +941,7 @@ private:
     void loadRequest(uint64_t navigationID, const WebCore::ResourceRequest&, const SandboxExtension::Handle&, const UserData&);
     void loadData(const IPC::DataReference&, const String& MIMEType, const String& encodingName, const String& baseURL, const UserData&);
     void loadHTMLString(uint64_t navigationID, const String& htmlString, const String& baseURL, const UserData&);
-    void loadAlternateHTMLString(const String& htmlString, const String& baseURL, const String& unreachableURL, const UserData&);
+    void loadAlternateHTMLString(const String& htmlString, const String& baseURL, const String& unreachableURL, const String& provisionalLoadErrorURL, const UserData&);
     void loadPlainTextString(const String&, const UserData&);
     void loadWebArchiveData(const IPC::DataReference&, const UserData&);
     void navigateToURLWithSimulatedClick(const String& url, WebCore::IntPoint documentPoint, WebCore::IntPoint screenPoint);
@@ -1013,6 +1025,9 @@ private:
     void performDictionaryLookupOfCurrentSelection();
     void performDictionaryLookupForRange(WebCore::Frame*, WebCore::Range&, NSDictionary *options, WebCore::TextIndicatorPresentationTransition);
     DictionaryPopupInfo dictionaryPopupInfoForRange(WebCore::Frame* frame, WebCore::Range& range, NSDictionary **options, WebCore::TextIndicatorPresentationTransition presentationTransition);
+#if ENABLE(PDFKIT_PLUGIN)
+    DictionaryPopupInfo dictionaryPopupInfoForSelectionInPDFPlugin(PDFSelection *, PDFPlugin&, NSDictionary **options, WebCore::TextIndicatorPresentationTransition);
+#endif
 
     void windowAndViewFramesChanged(const WebCore::FloatRect& windowFrameInScreenCoordinates, const WebCore::FloatRect& windowFrameInUnflippedScreenCoordinates, const WebCore::FloatRect& viewFrameInWindowCoordinates, const WebCore::FloatPoint& accessibilityViewCoordinates);
 
@@ -1107,9 +1122,12 @@ private:
     void setShouldDispatchFakeMouseMoveEvents(bool dispatch) { m_shouldDispatchFakeMouseMoveEvents = dispatch; }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
-    void playbackTargetSelected(const WebCore::MediaPlaybackTargetContext& outputDevice) const;
-    void playbackTargetAvailabilityDidChange(bool);
+    void playbackTargetSelected(uint64_t, const WebCore::MediaPlaybackTargetContext& outputDevice) const;
+    void playbackTargetAvailabilityDidChange(uint64_t, bool);
+    void setShouldPlayToPlaybackTarget(uint64_t, bool);
 #endif
+
+    void clearWheelEventTestTrigger();
 
     uint64_t m_pageID;
 
@@ -1333,6 +1351,7 @@ private:
     unsigned m_maximumRenderingSuppressionToken;
     
     WebCore::ScrollPinningBehavior m_scrollPinningBehavior;
+    WTF::Optional<WebCore::ScrollbarOverlayStyle> m_scrollbarOverlayStyle;
 
     bool m_useAsyncScrolling;
 
@@ -1343,8 +1362,6 @@ private:
     UserActivity m_userActivity;
 
     uint64_t m_pendingNavigationID;
-
-    double m_viewScaleFactor { 1 };
 
 #if ENABLE(WEBGL)
     WebCore::WebGLLoadPolicy m_systemWebGLPolicy;

@@ -103,6 +103,11 @@ String DiagnosticLoggingKeys::navigationKey()
     return ASCIILiteral("navigation");
 }
 
+String DiagnosticLoggingKeys::needsRevalidationKey()
+{
+    return ASCIILiteral("needsRevalidation");
+}
+
 String DiagnosticLoggingKeys::networkCacheKey()
 {
     return ASCIILiteral("networkCache");
@@ -258,6 +263,11 @@ String DiagnosticLoggingKeys::cannotSuspendActiveDOMObjectsKey()
     return ASCIILiteral("cannotSuspendActiveDOMObjects");
 }
 
+String DiagnosticLoggingKeys::deltaKey()
+{
+    return ASCIILiteral("delta");
+}
+
 String DiagnosticLoggingKeys::applicationCacheKey()
 {
     return ASCIILiteral("applicationCache");
@@ -266,6 +276,11 @@ String DiagnosticLoggingKeys::applicationCacheKey()
 String DiagnosticLoggingKeys::audioKey()
 {
     return ASCIILiteral("audio");
+}
+
+String DiagnosticLoggingKeys::backNavigationKey()
+{
+    return ASCIILiteral("backNavigation");
 }
 
 String DiagnosticLoggingKeys::cacheControlNoStoreKey()
@@ -366,6 +381,11 @@ String DiagnosticLoggingKeys::scriptKey()
 String DiagnosticLoggingKeys::sourceKey()
 {
     return ASCIILiteral("sourceKey");
+}
+
+String DiagnosticLoggingKeys::streamingMedia()
+{
+    return ASCIILiteral("streamingMedia");
 }
 
 String DiagnosticLoggingKeys::styleSheetKey()

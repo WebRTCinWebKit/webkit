@@ -126,6 +126,7 @@ fixedElementsLayoutRelativeToFrame initial=false
 allowDisplayOfInsecureContent initial=false
 allowRunningOfInsecureContent initial=false
 mediaPlaybackRequiresUserGesture initial=defaultMediaPlaybackRequiresUserGesture
+audioPlaybackRequiresUserGesture initial=defaultAudioPlaybackRequiresUserGesture
 mediaPlaybackAllowsInline initial=defaultMediaPlaybackAllowsInline
 allowsAlternateFullscreen initial=defaultAllowsAlternateFullscreen
 passwordEchoEnabled initial=false
@@ -240,3 +241,4 @@ attachmentElementEnabled initial=true, conditional=ATTACHMENT_ELEMENT
 
 newBlockInsideInlineModelEnabled initial=false, setNeedsStyleRecalcInAllFrames=1
 
+metaRefreshEnabled initial=true

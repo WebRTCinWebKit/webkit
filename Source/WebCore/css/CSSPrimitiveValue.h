@@ -181,18 +181,24 @@ public:
     bool isAttr() const { return m_primitiveUnitType == CSS_ATTR; }
     bool isCounter() const { return m_primitiveUnitType == CSS_COUNTER; }
     bool isFontIndependentLength() const { return m_primitiveUnitType >= CSS_PX && m_primitiveUnitType <= CSS_PC; }
-    bool isFontRelativeLength() const
+    static bool isFontRelativeLength(unsigned primitiveUnitType)
     {
-        return m_primitiveUnitType == CSS_EMS
-            || m_primitiveUnitType == CSS_EXS
-            || m_primitiveUnitType == CSS_REMS
-            || m_primitiveUnitType == CSS_CHS;
+        return primitiveUnitType == CSS_EMS
+            || primitiveUnitType == CSS_EXS
+            || primitiveUnitType == CSS_REMS
+            || primitiveUnitType == CSS_CHS;
     }
-    bool isLength() const
+    bool isFontRelativeLength() const { return isFontRelativeLength(m_primitiveUnitType); }
+
+    static bool isViewportPercentageLength(unsigned short type) { return type >= CSS_VW && type <= CSS_VMAX; }
+    bool isViewportPercentageLength() const { return isViewportPercentageLength(m_primitiveUnitType); }
+
+    static bool isLength(unsigned short type)
     {
-        unsigned short type = primitiveType();
-        return (type >= CSS_EMS && type <= CSS_PC) || type == CSS_REMS || type == CSS_CHS || isViewportPercentageLength();
+        return (type >= CSS_EMS && type <= CSS_PC) || type == CSS_REMS || type == CSS_CHS || isViewportPercentageLength(type);
     }
+
+    bool isLength() const { return isLength(primitiveType()); }
     bool isNumber() const { return primitiveType() == CSS_NUMBER; }
     bool isPercentage() const { return primitiveType() == CSS_PERCENTAGE; }
     bool isPx() const { return primitiveType() == CSS_PX; }
@@ -212,13 +218,13 @@ public:
     bool isDotsPerInch() const { return primitiveType() == CSS_DPI; }
     bool isDotsPerPixel() const { return primitiveType() == CSS_DPPX; }
     bool isDotsPerCentimeter() const { return primitiveType() == CSS_DPCM; }
-    bool isResolution() const
+
+    static bool isResolution(unsigned short type)
     {
-        unsigned short type = primitiveType();
         return type >= CSS_DPPX && type <= CSS_DPCM;
     }
 
-    bool isViewportPercentageLength() const { return m_primitiveUnitType >= CSS_VW && m_primitiveUnitType <= CSS_VMAX; }
+    bool isResolution() const { return isResolution(primitiveType()); }
     bool isViewportPercentageWidth() const { return m_primitiveUnitType == CSS_VW; }
     bool isViewportPercentageHeight() const { return m_primitiveUnitType == CSS_VH; }
     bool isViewportPercentageMax() const { return m_primitiveUnitType == CSS_VMAX; }
@@ -365,6 +371,7 @@ public:
     static UnitTypes canonicalUnitTypeForCategory(UnitCategory);
     static double conversionToCanonicalUnitsScaleFactor(unsigned short unitType);
 
+    static double computeNonCalcLengthDouble(const CSSToLengthConversionData&, unsigned short primitiveType, double value);
 private:
     CSSPrimitiveValue(CSSValueID);
     CSSPrimitiveValue(CSSPropertyID);

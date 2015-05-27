@@ -104,6 +104,7 @@ public:
     virtual bool avoidScrollbarCreation() const override;
 
     virtual void setContentsSize(const IntSize&) override;
+    virtual void updateContentsSize() override;
 
     void layout(bool allowSubtree = true);
     WEBCORE_EXPORT bool didFirstLayout() const;
@@ -139,7 +140,6 @@ public:
     WEBCORE_EXPORT void setCustomSizeForResizeEvent(IntSize);
 
     WEBCORE_EXPORT void setScrollVelocity(double horizontalVelocity, double verticalVelocity, double scaleChangeRate, double timestamp);
-    FloatRect computeCoverageRect(double horizontalMargin, double verticalMargin) const;
 #else
     bool useCustomFixedPositionLayoutRect() const { return false; }
 #endif
@@ -148,6 +148,7 @@ public:
     WEBCORE_EXPORT void serviceScriptedAnimations(double monotonicAnimationStartTime);
 #endif
 
+    void willRecalcStyle();
     void updateCompositingLayersAfterStyleChange();
     void updateCompositingLayersAfterLayout();
     bool flushCompositingStateForThisFrame(Frame* rootFrameForFlush);
@@ -170,8 +171,6 @@ public:
     ScrollableArea* scrollableAreaForScrollLayerID(uint64_t) const;
 
     bool hasCompositedContent() const;
-    bool hasCompositedContentIncludingDescendants() const;
-    bool hasCompositingAncestor() const;
     WEBCORE_EXPORT void enterCompositingMode();
     WEBCORE_EXPORT bool isEnclosedInCompositingLayer() const;
 
@@ -189,7 +188,7 @@ public:
     void resetScrollbarsAndClearContentsSize();
     void prepareForDetach();
     void detachCustomScrollbars();
-    void recalculateScrollbarOverlayStyle();
+    WEBCORE_EXPORT void recalculateScrollbarOverlayStyle();
 
     void clear();
 
@@ -234,7 +233,7 @@ public:
 
     virtual float visibleContentScaleFactor() const override;
 
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
     virtual void setFixedVisibleContentRect(const IntRect&) override;
 #endif
     WEBCORE_EXPORT virtual void setScrollPosition(const IntPoint&) override;
@@ -274,10 +273,16 @@ public:
     void removeViewportConstrainedObject(RenderElement*);
     const ViewportConstrainedObjectSet* viewportConstrainedObjects() const { return m_viewportConstrainedObjects.get(); }
     bool hasViewportConstrainedObjects() const { return m_viewportConstrainedObjects && m_viewportConstrainedObjects->size() > 0; }
+    
+    float frameScaleFactor() const;
 
     // Functions for querying the current scrolled position, negating the effects of overhang
     // and adjusting for page scale.
-    LayoutSize scrollOffsetForFixedPosition() const;
+    LayoutSize scrollOffsetForFixedPosition() const
+    {
+        return scrollOffsetForFixedPosition(visibleContentRect(), totalContentsSize(), scrollPosition(), scrollOrigin(), frameScaleFactor(), fixedElementsLayoutRelativeToFrame(), scrollBehaviorForFixedElements(), headerHeight(), footerHeight());
+    }
+    
     // Static function can be called from another thread.
     static LayoutSize scrollOffsetForFixedPosition(const LayoutRect& visibleContentRect, const LayoutSize& totalContentsSize, const LayoutPoint& scrollPosition, const LayoutPoint& scrollOrigin, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame, ScrollBehaviorForFixedElements, int headerHeight, int footerHeight);
 
@@ -285,6 +290,8 @@ public:
     // on both the main thread and the scrolling thread.
     static float yPositionForInsetClipLayer(const FloatPoint& scrollPosition, float topContentInset);
     WEBCORE_EXPORT static float yPositionForRootContentLayer(const FloatPoint& scrollPosition, float topContentInset, float headerHeight);
+    WEBCORE_EXPORT float yPositionForRootContentLayer() const;
+
     static float yPositionForHeaderLayer(const FloatPoint& scrollPosition, float topContentInset);
     static float yPositionForFooterLayer(const FloatPoint& scrollPosition, float topContentInset, float totalContentsHeight, float footerHeight);
 
@@ -401,6 +408,12 @@ public:
     WEBCORE_EXPORT IntPoint convertFromRendererToContainingView(const RenderElement*, const IntPoint&) const;
     WEBCORE_EXPORT IntPoint convertFromContainingViewToRenderer(const RenderElement*, const IntPoint&) const;
 
+    // Override ScrollView methods to do point conversion via renderers, in order to take transforms into account.
+    virtual IntRect convertToContainingView(const IntRect&) const override;
+    virtual IntRect convertFromContainingView(const IntRect&) const override;
+    virtual IntPoint convertToContainingView(const IntPoint&) const override;
+    virtual IntPoint convertFromContainingView(const IntPoint&) const override;
+
     bool isFrameViewScrollCorner(RenderScrollbarPart* scrollCorner) const { return m_scrollCorner == scrollCorner; }
 
     // isScrollable() takes an optional Scrollability parameter that allows the caller to define what they mean by 'scrollable.'
@@ -503,9 +516,17 @@ public:
 
     ScrollBehaviorForFixedElements scrollBehaviorForFixedElements() const;
 
+    bool hasFlippedBlockRenderers() const { return m_hasFlippedBlockRenderers; }
+    void setHasFlippedBlockRenderers(bool b) { m_hasFlippedBlockRenderers = b; }
+
     void updateWidgetPositions();
     void didAddWidgetToRenderTree(Widget&);
     void willRemoveWidgetFromRenderTree(Widget&);
+
+    const HashSet<Widget*>& widgetsInRenderTree() const { return m_widgetsInRenderTree; }
+
+    typedef Vector<Ref<FrameView>, 16> FrameViewList;
+    FrameViewList renderedChildFrameViews() const;
 
     void addTrackedRepaintRect(const FloatRect&);
 
@@ -576,23 +597,19 @@ private:
     void forceLayoutParentViewIfNeeded();
     void performPostLayoutTasks();
     void autoSizeIfEnabled();
-    void updateThrottledDOMTimersState();
+
+    void applyRecursivelyWithVisibleRect(const std::function<void (FrameView& frameView, const IntRect& visibleRect)>&);
+    void updateThrottledDOMTimersState(const IntRect& visibleRect);
+    void resumeVisibleImageAnimations(const IntRect& visibleRect);
+    void updateScriptedAnimationsThrottlingState(const IntRect& visibleRect);
 
     void updateLayerFlushThrottling();
     WEBCORE_EXPORT void adjustTiledBackingCoverage();
 
     virtual void repaintContentRectangle(const IntRect&) override;
-    virtual void updateContentsSize() override;
     virtual void addedOrRemovedScrollbar() override;
 
     virtual void delegatesScrollingDidChange() override;
-
-    // Override ScrollView methods to do point conversion via renderers, in order to
-    // take transforms into account.
-    virtual IntRect convertToContainingView(const IntRect&) const override;
-    virtual IntRect convertFromContainingView(const IntRect&) const override;
-    virtual IntPoint convertToContainingView(const IntPoint&) const override;
-    virtual IntPoint convertFromContainingView(const IntPoint&) const override;
 
     // ScrollableArea interface
     virtual void invalidateScrollbarRect(Scrollbar*, const IntRect&) override;
@@ -645,6 +662,7 @@ private:
     bool isFrameFlatteningValidForThisFrame() const;
 
     bool qualifiesAsVisuallyNonEmpty() const;
+    bool isViewForDocumentInFrame() const;
 
     AXObjectCache* axObjectCache() const;
     void notifyWidgetsInAllFrames(WidgetNotification);
@@ -783,7 +801,8 @@ private:
 #endif
 
     bool m_visualUpdatesAllowedByClient;
-    
+    bool m_hasFlippedBlockRenderers;
+
     ScrollPinningBehavior m_scrollPinningBehavior;
 
     IntRect* m_cachedWindowClipRect { nullptr };

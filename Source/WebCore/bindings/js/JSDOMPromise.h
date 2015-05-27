@@ -82,6 +82,14 @@ inline void DeferredWrapper::reject(const std::nullptr_t&)
 }
 
 template<>
+inline void DeferredWrapper::reject(const JSC::JSValue& value)
+{
+    JSC::ExecState* exec = m_globalObject->globalExec();
+    JSC::JSLockHolder locker(exec);
+    reject(exec, value);
+}
+
+template<>
 inline void DeferredWrapper::resolve<String>(const String& result)
 {
     JSC::ExecState* exec = m_globalObject->globalExec();
@@ -97,6 +105,13 @@ inline void DeferredWrapper::resolve<bool>(const bool& result)
     resolve(exec, JSC::jsBoolean(result));
 }
 
+template<>
+inline void DeferredWrapper::resolve<JSC::JSValue>(const JSC::JSValue& value)
+{
+    JSC::ExecState* exec = m_globalObject->globalExec();
+    JSC::JSLockHolder locker(exec);
+    resolve(exec, value);
+}
 template<>
 inline void DeferredWrapper::resolve<Vector<unsigned char>>(const Vector<unsigned char>& result)
 {

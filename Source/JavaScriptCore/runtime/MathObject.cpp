@@ -36,7 +36,6 @@ namespace JSC {
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(MathObject);
 
-EncodedJSValue JSC_HOST_CALL mathProtoFuncAbs(ExecState*);
 EncodedJSValue JSC_HOST_CALL mathProtoFuncACos(ExecState*);
 EncodedJSValue JSC_HOST_CALL mathProtoFuncACosh(ExecState*);
 EncodedJSValue JSC_HOST_CALL mathProtoFuncASin(ExecState*);
@@ -46,11 +45,11 @@ EncodedJSValue JSC_HOST_CALL mathProtoFuncATanh(ExecState*);
 EncodedJSValue JSC_HOST_CALL mathProtoFuncATan2(ExecState*);
 EncodedJSValue JSC_HOST_CALL mathProtoFuncCbrt(ExecState*);
 EncodedJSValue JSC_HOST_CALL mathProtoFuncCeil(ExecState*);
+EncodedJSValue JSC_HOST_CALL mathProtoFuncClz32(ExecState*);
 EncodedJSValue JSC_HOST_CALL mathProtoFuncCos(ExecState*);
 EncodedJSValue JSC_HOST_CALL mathProtoFuncCosh(ExecState*);
 EncodedJSValue JSC_HOST_CALL mathProtoFuncExp(ExecState*);
 EncodedJSValue JSC_HOST_CALL mathProtoFuncExpm1(ExecState*);
-EncodedJSValue JSC_HOST_CALL mathProtoFuncFloor(ExecState*);
 EncodedJSValue JSC_HOST_CALL mathProtoFuncFround(ExecState*);
 EncodedJSValue JSC_HOST_CALL mathProtoFuncHypot(ExecState*);
 EncodedJSValue JSC_HOST_CALL mathProtoFuncLog(ExecState*);
@@ -106,6 +105,7 @@ void MathObject::finishCreation(VM& vm, JSGlobalObject* globalObject)
     putDirectNativeFunctionWithoutTransition(vm, globalObject, Identifier::fromString(&vm, "atan2"), 2, mathProtoFuncATan2, NoIntrinsic, DontEnum | Function);
     putDirectNativeFunctionWithoutTransition(vm, globalObject, Identifier::fromString(&vm, "cbrt"), 1, mathProtoFuncCbrt, NoIntrinsic, DontEnum | Function);
     putDirectNativeFunctionWithoutTransition(vm, globalObject, Identifier::fromString(&vm, "ceil"), 1, mathProtoFuncCeil, CeilIntrinsic, DontEnum | Function);
+    putDirectNativeFunctionWithoutTransition(vm, globalObject, Identifier::fromString(&vm, "clz32"), 1, mathProtoFuncClz32, Clz32Intrinsic, DontEnum | Function);
     putDirectNativeFunctionWithoutTransition(vm, globalObject, Identifier::fromString(&vm, "cos"), 1, mathProtoFuncCos, CosIntrinsic, DontEnum | Function);
     putDirectNativeFunctionWithoutTransition(vm, globalObject, Identifier::fromString(&vm, "cosh"), 1, mathProtoFuncCosh, NoIntrinsic, DontEnum | Function);
     putDirectNativeFunctionWithoutTransition(vm, globalObject, Identifier::fromString(&vm, "exp"), 1, mathProtoFuncExp, ExpIntrinsic, DontEnum | Function);
@@ -164,6 +164,14 @@ EncodedJSValue JSC_HOST_CALL mathProtoFuncATan2(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL mathProtoFuncCeil(ExecState* exec)
 {
     return JSValue::encode(jsNumber(ceil(exec->argument(0).toNumber(exec))));
+}
+
+EncodedJSValue JSC_HOST_CALL mathProtoFuncClz32(ExecState* exec)
+{
+    uint32_t value = exec->argument(0).toUInt32(exec);
+    if (exec->hadException())
+        return JSValue::encode(jsNull());
+    return JSValue::encode(JSValue(clz32(value)));
 }
 
 EncodedJSValue JSC_HOST_CALL mathProtoFuncCos(ExecState* exec)
@@ -260,9 +268,7 @@ EncodedJSValue JSC_HOST_CALL mathProtoFuncRandom(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL mathProtoFuncRound(ExecState* exec)
 {
-    double arg = exec->argument(0).toNumber(exec);
-    double integer = ceil(arg);
-    return JSValue::encode(jsNumber(integer - (integer - arg > 0.5)));
+    return JSValue::encode(jsNumber(jsRound(exec->argument(0).toNumber(exec))));
 }
 
 EncodedJSValue JSC_HOST_CALL mathProtoFuncSign(ExecState* exec)

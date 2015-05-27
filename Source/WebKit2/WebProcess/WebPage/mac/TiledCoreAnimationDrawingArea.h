@@ -86,16 +86,19 @@ private:
 
     virtual void attachViewOverlayGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*) override;
 
+    virtual void replyWithFenceAfterNextFlush(uint64_t callbackID) override;
+
     // WebCore::LayerFlushSchedulerClient
     virtual bool flushLayers() override;
 
     // Message handlers.
-    virtual void updateGeometry(const WebCore::IntSize& viewSize, const WebCore::IntSize& layerPosition) override;
+    virtual void updateGeometry(const WebCore::IntSize& viewSize, const WebCore::IntSize& layerPosition, bool flushSynchronously) override;
     virtual void setDeviceScaleFactor(float) override;
     void suspendPainting();
     void resumePainting();
     void setLayerHostingMode(LayerHostingMode) override;
     virtual void setColorSpace(const ColorSpaceData&) override;
+    virtual void addFence(const WebCore::MachSendRight&) override;
 
     virtual void adjustTransientZoom(double scale, WebCore::FloatPoint origin) override;
     virtual void commitTransientZoom(double scale, WebCore::FloatPoint origin) override;
@@ -145,6 +148,8 @@ private:
     bool m_wantsDidUpdateViewState;
 
     WebCore::GraphicsLayer* m_viewOverlayRootLayer;
+
+    Vector<uint64_t> m_fenceCallbacksForAfterNextFlush;
 };
 
 } // namespace WebKit

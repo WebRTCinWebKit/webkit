@@ -36,6 +36,7 @@
 #include "ReadableStream.h"
 #include "ScriptWrappable.h"
 #include <functional>
+#include <runtime/JSCJSValue.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 
@@ -46,6 +47,13 @@ namespace WebCore {
 // See https://streams.spec.whatwg.org/#reader-class for more information.
 class ReadableStreamReader : public ActiveDOMObject, public ScriptWrappable, public RefCounted<ReadableStreamReader> {
 public:
+    enum class State {
+        Readable,
+        Closed,
+        Errored
+    };
+
+    void initialize();
     virtual ~ReadableStreamReader();
 
     ReadableStream* stream() { return m_stream.get(); }
@@ -53,6 +61,11 @@ public:
     typedef std::function<void()> ClosedSuccessCallback;
     typedef std::function<void()> ClosedErrorCallback;
     void closed(ClosedSuccessCallback, ClosedErrorCallback);
+
+    void changeStateToClosed();
+    void changeStateToErrored();
+
+    virtual JSC::JSValue error() = 0;
 
 protected:
     ReadableStreamReader(ReadableStream&);
@@ -62,7 +75,13 @@ private:
     const char* activeDOMObjectName() const override;
     bool canSuspendForPageCache() const override;
 
+    void releaseStreamAndClean();
+
     RefPtr<ReadableStream> m_stream;
+    State m_state { State::Readable };
+
+    ClosedSuccessCallback m_closedSuccessCallback;
+    ClosedErrorCallback m_closedErrorCallback;
 };
 
 }

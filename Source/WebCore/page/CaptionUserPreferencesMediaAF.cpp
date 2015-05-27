@@ -185,23 +185,22 @@ void CaptionUserPreferencesMediaAF::updateTimerFired()
 
 void CaptionUserPreferencesMediaAF::setInterestedInCaptionPreferenceChanges()
 {
+    if (m_listeningForPreferenceChanges)
+        return;
+
     if (!MediaAccessibilityLibrary())
         return;
 
     if (!kMAXCaptionAppearanceSettingsChangedNotification)
         return;
 
-    if (!m_listeningForPreferenceChanges) {
-        m_listeningForPreferenceChanges = true;
-        m_registeringForNotification = true;
-        CFNotificationCenterAddObserver(CFNotificationCenterGetLocalCenter(), this, userCaptionPreferencesChangedNotificationCallback, kMAXCaptionAppearanceSettingsChangedNotification, 0, CFNotificationSuspensionBehaviorCoalesce);
-        m_registeringForNotification = false;
-    }
+    m_listeningForPreferenceChanges = true;
+    m_registeringForNotification = true;
+    CFNotificationCenterAddObserver(CFNotificationCenterGetLocalCenter(), this, userCaptionPreferencesChangedNotificationCallback, kMAXCaptionAppearanceSettingsChangedNotification, 0, CFNotificationSuspensionBehaviorCoalesce);
+    m_registeringForNotification = false;
 
     // Generating and registering the caption stylesheet can be expensive and this method is called indirectly when the parser creates an audio or
     // video element, so do it after a brief pause.
-    if (m_updateStyleSheetTimer.isActive())
-        m_updateStyleSheetTimer.stop();
     m_updateStyleSheetTimer.startOneShot(0);
 }
 
@@ -234,12 +233,7 @@ String CaptionUserPreferencesMediaAF::captionsWindowCSS() const
     if (!opacity)
         return windowStyle;
 
-    StringBuilder builder;
-    builder.append(windowStyle);
-    builder.append(getPropertyNameString(CSSPropertyPadding));
-    builder.append(": .4em !important;");
-
-    return builder.toString();
+    return makeString(windowStyle, getPropertyNameString(CSSPropertyPadding), ": .4em !important;");
 }
 
 String CaptionUserPreferencesMediaAF::captionsBackgroundCSS() const
@@ -300,7 +294,7 @@ String CaptionUserPreferencesMediaAF::windowRoundedCornerRadiusCSS() const
     builder.append(getPropertyNameString(CSSPropertyBorderRadius));
     builder.append(String::format(":%.02fpx", radius));
     if (behavior == kMACaptionAppearanceBehaviorUseValue)
-        builder.append(" !important");
+        builder.appendLiteral(" !important");
     builder.append(';');
 
     return builder.toString();
@@ -327,7 +321,7 @@ String CaptionUserPreferencesMediaAF::cssPropertyWithTextEdgeColor(CSSPropertyID
     builder.append(' ');
     builder.append(captionsEdgeColorForTextColor(textColor).serialized());
     if (important)
-        builder.append(" !important");
+        builder.appendLiteral(" !important");
     builder.append(';');
     
     return builder.toString();
@@ -341,7 +335,7 @@ String CaptionUserPreferencesMediaAF::colorPropertyCSS(CSSPropertyID id, const C
     builder.append(':');
     builder.append(color.serialized());
     if (important)
-        builder.append(" !important");
+        builder.appendLiteral(" !important");
     builder.append(';');
     
     return builder.toString();
@@ -399,11 +393,11 @@ String CaptionUserPreferencesMediaAF::captionsDefaultFontCSS() const
     StringBuilder builder;
     
     builder.append(getPropertyNameString(CSSPropertyFontFamily));
-    builder.append(": \"");
+    builder.appendLiteral(": \"");
     builder.append(static_cast<CFStringRef>(name.get()));
     builder.append('"');
     if (behavior == kMACaptionAppearanceBehaviorUseValue)
-        builder.append(" !important");
+        builder.appendLiteral(" !important");
     builder.append(';');
     
     return builder.toString();
@@ -490,7 +484,7 @@ String CaptionUserPreferencesMediaAF::captionsStyleSheetOverride() const
     String fontName = captionsDefaultFontCSS();
     String background = captionsBackgroundCSS();
     if (!background.isEmpty() || !captionsColor.isEmpty() || !edgeStyle.isEmpty() || !fontName.isEmpty()) {
-        captionsOverrideStyleSheet.append(" video::");
+        captionsOverrideStyleSheet.appendLiteral(" video::");
         captionsOverrideStyleSheet.append(TextTrackCue::cueShadowPseudoId());
         captionsOverrideStyleSheet.append('{');
         
@@ -509,7 +503,7 @@ String CaptionUserPreferencesMediaAF::captionsStyleSheetOverride() const
     String windowColor = captionsWindowCSS();
     String windowCornerRadius = windowRoundedCornerRadiusCSS();
     if (!windowColor.isEmpty() || !windowCornerRadius.isEmpty()) {
-        captionsOverrideStyleSheet.append(" video::");
+        captionsOverrideStyleSheet.appendLiteral(" video::");
         captionsOverrideStyleSheet.append(VTTCue::cueBackdropShadowPseudoId());
         captionsOverrideStyleSheet.append('{');
         
@@ -668,9 +662,10 @@ int CaptionUserPreferencesMediaAF::textTrackSelectionScore(TextTrack* track, HTM
         if (audioTrackLanguage.isEmpty())
             return 0;
 
+        bool exactMatch;
         if (trackHasOnlyForcedSubtitles) {
             languageList.append(audioTrackLanguage);
-            size_t offset = indexOfBestMatchingLanguageInList(textTrackLanguage, languageList);
+            size_t offset = indexOfBestMatchingLanguageInList(textTrackLanguage, languageList, exactMatch);
 
             // Only consider a forced-only track if it IS in the same language as the primary audio track.
             if (offset)
@@ -679,12 +674,12 @@ int CaptionUserPreferencesMediaAF::textTrackSelectionScore(TextTrack* track, HTM
             languageList.append(defaultLanguage());
 
             // Only enable a text track if the current audio track is NOT in the user's preferred language ...
-            size_t offset = indexOfBestMatchingLanguageInList(audioTrackLanguage, languageList);
+            size_t offset = indexOfBestMatchingLanguageInList(audioTrackLanguage, languageList, exactMatch);
             if (!offset)
                 return 0;
 
             // and the text track matches the user's preferred language.
-            offset = indexOfBestMatchingLanguageInList(textTrackLanguage, languageList);
+            offset = indexOfBestMatchingLanguageInList(textTrackLanguage, languageList, exactMatch);
             if (offset)
                 return 0;
         }

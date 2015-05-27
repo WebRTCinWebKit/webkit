@@ -216,7 +216,6 @@ private:
 
 #if PLATFORM(GTK)
     void updateInspectorWindowTitle() const;
-    static void dockButtonClicked(GtkWidget*, WebInspectorProxy*);
 #endif
 
     static const unsigned minimumWindowWidth;
@@ -243,8 +242,6 @@ private:
 #if PLATFORM(MAC) && WK_API_ENABLED
     RetainPtr<WKWebInspectorWKWebView> m_inspectorView;
     RetainPtr<NSWindow> m_inspectorWindow;
-    RetainPtr<NSButton> m_dockBottomButton;
-    RetainPtr<NSButton> m_dockRightButton;
     RetainPtr<WKWebInspectorProxyObjCAdapter> m_inspectorProxyObjCAdapter;
     HashMap<String, RetainPtr<NSURL>> m_suggestedToActualURLMap;
     RunLoop::Timer<WebInspectorProxy> m_closeTimer;
@@ -254,8 +251,6 @@ private:
     GtkWidget* m_inspectorView {nullptr};
     GtkWidget* m_inspectorWindow {nullptr};
     GtkWidget* m_headerBar {nullptr};
-    GtkWidget* m_dockBottomButton {nullptr};
-    GtkWidget* m_dockRightButton {nullptr};
     String m_inspectedURLString;
 #elif PLATFORM(EFL)
     Evas_Object* m_inspectorView {nullptr};

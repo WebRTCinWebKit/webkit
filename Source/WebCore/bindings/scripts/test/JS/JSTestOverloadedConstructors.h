@@ -27,7 +27,7 @@
 
 namespace WebCore {
 
-class WEBCORE_EXPORT JSTestOverloadedConstructors : public JSDOMWrapper {
+class JSTestOverloadedConstructors : public JSDOMWrapper {
 public:
     typedef JSDOMWrapper Base;
     static JSTestOverloadedConstructors* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestOverloadedConstructors>&& impl)
@@ -52,15 +52,7 @@ public:
 
     static JSC::JSValue getConstructor(JSC::VM&, JSC::JSGlobalObject*);
     TestOverloadedConstructors& impl() const { return *m_impl; }
-    void releaseImpl() { m_impl->deref(); m_impl = 0; }
-
-    void releaseImplIfNotNull()
-    {
-        if (m_impl) {
-            m_impl->deref();
-            m_impl = 0;
-        }
-    }
+    void releaseImpl() { std::exchange(m_impl, nullptr)->deref(); }
 
 private:
     TestOverloadedConstructors* m_impl;
@@ -87,7 +79,7 @@ inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld&, TestOverloadedConstr
     return &owner.get();
 }
 
-WEBCORE_EXPORT JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestOverloadedConstructors*);
+JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestOverloadedConstructors*);
 inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, TestOverloadedConstructors& impl) { return toJS(exec, globalObject, &impl); }
 
 

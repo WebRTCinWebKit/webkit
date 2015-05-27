@@ -795,8 +795,9 @@ void CodeBlock::dumpBytecode(
             int r0 = (++it)->u.operand;
             int r1 = (++it)->u.operand;
             unsigned inferredInlineCapacity = (++it)->u.operand;
+            unsigned cachedFunction = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "create_this");
-            out.printf("%s, %s, %u", registerName(r0).data(), registerName(r1).data(), inferredInlineCapacity);
+            out.printf("%s, %s, %u, %u", registerName(r0).data(), registerName(r1).data(), inferredInlineCapacity, cachedFunction);
             break;
         }
         case op_to_this: {
@@ -937,6 +938,10 @@ void CodeBlock::dumpBytecode(
         }
         case op_to_number: {
             printUnaryOp(out, exec, location, it, "to_number");
+            break;
+        }
+        case op_to_string: {
+            printUnaryOp(out, exec, location, it, "to_string");
             break;
         }
         case op_negate: {
@@ -1104,6 +1109,22 @@ void CodeBlock::dumpBytecode(
         case op_put_by_id_transition_normal_out_of_line: {
             printPutByIdOp(out, exec, location, it, "put_by_id_transition_normal_out_of_line");
             printPutByIdCacheStatus(out, exec, location, stubInfos);
+            break;
+        }
+        case op_put_getter_by_id: {
+            int r0 = (++it)->u.operand;
+            int id0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "put_getter_by_id");
+            out.printf("%s, %s, %s", registerName(r0).data(), idName(id0, identifier(id0)).data(), registerName(r1).data());
+            break;
+        }
+        case op_put_setter_by_id: {
+            int r0 = (++it)->u.operand;
+            int id0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "put_setter_by_id");
+            out.printf("%s, %s, %s", registerName(r0).data(), idName(id0, identifier(id0)).data(), registerName(r1).data());
             break;
         }
         case op_put_getter_setter: {
@@ -1761,6 +1782,13 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
     setConstantRegisters(unlinkedCodeBlock->constantRegisters(), unlinkedCodeBlock->constantsSourceCodeRepresentation());
     if (unlinkedCodeBlock->usesGlobalObject())
         m_constantRegisters[unlinkedCodeBlock->globalObjectRegister().toConstantIndex()].set(*m_vm, ownerExecutable, m_globalObject.get());
+
+    for (unsigned i = 0; i < LinkTimeConstantCount; i++) {
+        LinkTimeConstant type = static_cast<LinkTimeConstant>(i);
+        if (unsigned registerIndex = unlinkedCodeBlock->registerIndexForLinkTimeConstant(type))
+            m_constantRegisters[registerIndex].set(*m_vm, ownerExecutable, m_globalObject->jsCellForLinkTimeConstant(type));
+    }
+
     m_functionDecls.resizeToFit(unlinkedCodeBlock->numberOfFunctionDecls());
     for (size_t count = unlinkedCodeBlock->numberOfFunctionDecls(), i = 0; i < count; ++i) {
         UnlinkedFunctionExecutable* unlinkedExecutable = unlinkedCodeBlock->functionDecl(i);
@@ -2542,6 +2570,18 @@ void CodeBlock::finalizeUnconditionally()
                 curInstruction[3].u.toThisStatus = merge(
                     curInstruction[3].u.toThisStatus, ToThisClearedByGC);
                 break;
+            case op_create_this: {
+                auto& cacheWriteBarrier = curInstruction[4].u.jsCell;
+                if (!cacheWriteBarrier || cacheWriteBarrier.unvalidatedGet() == JSCell::seenMultipleCalleeObjects())
+                    break;
+                JSCell* cachedFunction = cacheWriteBarrier.get();
+                if (Heap::isMarked(cachedFunction))
+                    break;
+                if (Options::verboseOSR())
+                    dataLogF("Clearing LLInt create_this with cached callee %p.\n", cachedFunction);
+                cacheWriteBarrier.clear();
+                break;
+            }
             case op_resolve_scope: {
                 // Right now this isn't strictly necessary. Any symbol tables that this will refer to
                 // are for outer functions, and we refer to those functions strongly, and they refer
@@ -2569,7 +2609,8 @@ void CodeBlock::finalizeUnconditionally()
                 break;
             }
             default:
-                RELEASE_ASSERT_NOT_REACHED();
+                OpcodeID opcodeID = interpreter->getOpcodeID(curInstruction[0].u.opcode);
+                ASSERT_WITH_MESSAGE_UNUSED(opcodeID, false, "Unhandled opcode in CodeBlock::finalizeUnconditionally, %s(%d) at bc %u", opcodeNames[opcodeID], opcodeID, propertyAccessInstructions[i]);
             }
         }
 
@@ -2934,12 +2975,6 @@ bool CodeBlock::findConstant(JSValue v, unsigned& index)
     }
     index = numberOfConstants;
     return false;
-}
-
-void CodeBlock::jettisonFunctionDeclsAndExprs()
-{
-    m_functionDecls.clear();
-    m_functionExprs.clear();
 }
 
 #if ENABLE(JIT)

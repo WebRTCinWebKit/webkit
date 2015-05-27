@@ -90,35 +90,35 @@ void WebKeyValueStorageManager::derefWebContextSupplement()
 
 void WebKeyValueStorageManager::getKeyValueStorageOrigins(std::function<void (API::Array*, CallbackBase::Error)> callbackFunction)
 {
-    StorageManager* storageManager = processPool()->websiteDataStore().websiteDataStore().storageManager();
+    StorageManager* storageManager = processPool()->websiteDataStore()->websiteDataStore().storageManager();
     if (!storageManager) {
         RunLoop::main().dispatch([callbackFunction] {
-            callbackFunction(API::Array::create().get(), CallbackBase::Error::None);
+            callbackFunction(API::Array::create().ptr(), CallbackBase::Error::None);
         });
         return;
     }
 
-    storageManager->getOrigins([callbackFunction](Vector<RefPtr<SecurityOrigin>> securityOrigins) {
+    storageManager->getLocalStorageOrigins([callbackFunction](Vector<RefPtr<SecurityOrigin>> securityOrigins) {
         Vector<RefPtr<API::Object>> webSecurityOrigins;
         webSecurityOrigins.reserveInitialCapacity(securityOrigins.size());
         for (auto& origin : securityOrigins)
             webSecurityOrigins.uncheckedAppend(API::SecurityOrigin::create(WTF::move(origin)));
 
-        callbackFunction(API::Array::create(WTF::move(webSecurityOrigins)).get(), CallbackBase::Error::None);
+        callbackFunction(API::Array::create(WTF::move(webSecurityOrigins)).ptr(), CallbackBase::Error::None);
     });
 }
 
 void WebKeyValueStorageManager::getStorageDetailsByOrigin(std::function<void (API::Array*, CallbackBase::Error)> callbackFunction)
 {
-    StorageManager* storageManager = processPool()->websiteDataStore().websiteDataStore().storageManager();
+    StorageManager* storageManager = processPool()->websiteDataStore()->websiteDataStore().storageManager();
     if (!storageManager) {
         RunLoop::main().dispatch([callbackFunction] {
-            callbackFunction(API::Array::create().get(), CallbackBase::Error::None);
+            callbackFunction(API::Array::create().ptr(), CallbackBase::Error::None);
         });
         return;
     }
 
-    storageManager->getStorageDetailsByOrigin([callbackFunction](Vector<LocalStorageDetails> storageDetails) {
+    storageManager->getLocalStorageDetailsByOrigin([callbackFunction](Vector<LocalStorageDetails> storageDetails) {
         HashMap<String, RefPtr<API::Object>> detailsMap;
         Vector<RefPtr<API::Object>> result;
         result.reserveInitialCapacity(storageDetails.size());
@@ -137,26 +137,26 @@ void WebKeyValueStorageManager::getStorageDetailsByOrigin(std::function<void (AP
             result.uncheckedAppend(API::Dictionary::create(WTF::move(detailsMap)));
         }
 
-        callbackFunction(API::Array::create(WTF::move(result)).get(), CallbackBase::Error::None);
+        callbackFunction(API::Array::create(WTF::move(result)).ptr(), CallbackBase::Error::None);
     });
 }
 
 void WebKeyValueStorageManager::deleteEntriesForOrigin(API::SecurityOrigin* origin)
 {
-    StorageManager* storageManager = processPool()->websiteDataStore().websiteDataStore().storageManager();
+    StorageManager* storageManager = processPool()->websiteDataStore()->websiteDataStore().storageManager();
     if (!storageManager)
         return;
 
-    storageManager->deleteEntriesForOrigin(origin->securityOrigin());
+    storageManager->deleteLocalStorageEntriesForOrigin(origin->securityOrigin());
 }
 
 void WebKeyValueStorageManager::deleteAllEntries()
 {
-    StorageManager* storageManager = processPool()->websiteDataStore().websiteDataStore().storageManager();
+    StorageManager* storageManager = processPool()->websiteDataStore()->websiteDataStore().storageManager();
     if (!storageManager)
         return;
 
-    storageManager->deleteAllEntries();
+    storageManager->deleteAllLocalStorageEntries();
 }
 
 } // namespace WebKit

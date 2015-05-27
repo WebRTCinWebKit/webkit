@@ -55,7 +55,6 @@ bool doesGC(Graph& graph, Node* node)
     case MovHint:
     case ZombieHint:
     case Phantom:
-    case HardPhantom:
     case Upsilon:
     case Phi:
     case Flush:
@@ -72,6 +71,7 @@ bool doesGC(Graph& graph, Node* node)
     case UInt32ToNumber:
     case DoubleAsInt32:
     case ArithAdd:
+    case ArithClz32:
     case ArithSub:
     case ArithNegate:
     case ArithMul:
@@ -83,6 +83,7 @@ bool doesGC(Graph& graph, Node* node)
     case ArithMax:
     case ArithPow:
     case ArithSqrt:
+    case ArithRound:
     case ArithFRound:
     case ArithSin:
     case ArithCos:
@@ -106,7 +107,6 @@ bool doesGC(Graph& graph, Node* node)
     case VarInjectionWatchpoint:
     case CheckCell:
     case CheckNotEmpty:
-    case AllocationProfileWatchpoint:
     case RegExpExec:
     case RegExpTest:
     case CompareLess:
@@ -198,6 +198,8 @@ bool doesGC(Graph& graph, Node* node)
     case CheckBadCell:
     case BottomValue:
     case PhantomNewObject:
+    case PhantomNewFunction:
+    case PhantomCreateActivation:
     case PhantomDirectArguments:
     case PhantomClonedArguments:
     case GetMyArgumentByVal:
@@ -236,6 +238,7 @@ bool doesGC(Graph& graph, Node* node)
     case GetEnumeratorGenericPname:
     case ToIndexString:
     case MaterializeNewObject:
+    case MaterializeCreateActivation:
         return true;
         
     case MultiPutByOffset:

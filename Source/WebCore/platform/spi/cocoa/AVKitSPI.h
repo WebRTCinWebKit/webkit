@@ -45,6 +45,7 @@
 
 @interface AVPlayerController (Details)
 typedef NS_ENUM(NSInteger, AVPlayerControllerStatus) {
+    AVPlayerControllerStatusUnknown = 0,
     AVPlayerControllerStatusReadyToPlay = 2,
 };
 
@@ -84,10 +85,10 @@ typedef NSInteger AVPlayerViewControllerOptimizedFullscreenStopReason;
 
 @interface AVPlayerViewController (Details)
 - (instancetype)initWithVideoLayer:(CALayer <AVVideoLayer> *)videoLayer;
-- (void)enterFullScreenWithCompletionHandler:(void (^)(BOOL success, NSError *))completionHandler;
+- (void)enterFullScreenAnimated:(BOOL)animated completionHandler:(void (^)(BOOL success, NSError *))completionHandler;
 - (void)exitFullScreenAnimated:(BOOL)animated completionHandler:(void (^)(BOOL success, NSError *))completionHandler;
-- (void)exitFullScreenWithCompletionHandler:(void (^)(BOOL success, NSError *))completionHandler;
 
+- (void)startOptimizedFullscreen;
 - (void)startOptimizedFullscreenWithStartCompletionHandler:(void (^)(BOOL success, NSError*))startCompletionHandler stopCompletionHandler:(void (^)(AVPlayerViewControllerOptimizedFullscreenStopReason))stopCompletionHandler;
 - (void)stopOptimizedFullscreen;
 - (void)cancelOptimizedFullscreen;
@@ -137,6 +138,7 @@ NS_CLASS_AVAILABLE_MAC(10_11)
 @property (readonly, getter=isExternalOutputDevicePicked) BOOL externalOutputDevicePicked;
 
 - (void)showMenuForRect:(NSRect)screenRect appearanceName:(NSString *)appearanceName;
+- (BOOL)showMenuForRect:(NSRect)screenRect appearanceName:(NSString *)appearanceName allowReselectionOfSelectedOutputDevice:(BOOL)allowReselectionOfSelectedOutputDevice;
 
 @end
 

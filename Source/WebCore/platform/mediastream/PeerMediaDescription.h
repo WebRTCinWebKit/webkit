@@ -55,6 +55,9 @@ public:
     unsigned short port() const { return m_port; }
     void setPort(unsigned short port) { m_port = port; }
 
+    const String& address() const { return m_address; }
+    void setAddress(const String& address) { m_address = address; }
+
     const String& mode() const { return m_mode; }
     void setMode(const String& mode) { m_mode = mode; }
 
@@ -63,6 +66,12 @@ public:
 
     bool rtcpMux() const { return m_rtcpMux; }
     void setRtcpMux(bool rtcpMux) { m_rtcpMux = rtcpMux; }
+
+    const String& rtcpAddress() const { return m_rtcpAddress; }
+    void setRtcpAddress(const String& rtcpAddress) { m_rtcpAddress = rtcpAddress; }
+
+    unsigned short rtcpPort() const { return m_rtcpPort; }
+    void setRtcpPort(unsigned short rtcpPort) { m_rtcpPort = rtcpPort; }
 
     const String& mediaStreamId() const { return m_mediaStreamId; }
     void setMediaStreamId(const String& mediaStreamId) { m_mediaStreamId = mediaStreamId; }
@@ -82,8 +91,8 @@ public:
     const String& cname() const { return m_cname; }
     void setCname(const String& cname) { m_cname = cname; }
 
-    const Vector<String>& ssrcs() const { return m_ssrcs; }
-    void addSsrc(const String& ssrc) { m_ssrcs.append(ssrc); }
+    const Vector<unsigned>& ssrcs() const { return m_ssrcs; }
+    void addSsrc(unsigned ssrc) { m_ssrcs.append(ssrc); }
 
     const String& iceUfrag() const { return m_iceUfrag; }
     void setIceUfrag(const String& iceUfrag) { m_iceUfrag = iceUfrag; }
@@ -110,11 +119,14 @@ private:
 
     String m_type;
     unsigned short m_port;
+    String m_address;
     String m_mode;
 
     Vector<RefPtr<MediaPayload>> m_payloads;
 
     bool m_rtcpMux;
+    String m_rtcpAddress;
+    unsigned short m_rtcpPort;
 
     String m_mediaStreamId;
     String m_mediaStreamTrackId;
@@ -123,7 +135,7 @@ private:
     String m_dtlsFingerprintHashFunction;
     String m_dtlsFingerprint;
 
-    Vector<String> m_ssrcs;
+    Vector<unsigned> m_ssrcs;
     String m_cname;
 
     String m_iceUfrag;

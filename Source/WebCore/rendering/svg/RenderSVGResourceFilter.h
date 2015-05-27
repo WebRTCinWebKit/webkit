@@ -75,7 +75,7 @@ public:
 
     virtual FloatRect resourceBoundingBox(const RenderObject&) override;
 
-    std::unique_ptr<SVGFilterBuilder> buildPrimitives(SVGFilter*) const;
+    std::unique_ptr<SVGFilterBuilder> buildPrimitives(SVGFilter&) const;
 
     SVGUnitTypes::SVGUnitType filterUnits() const { return filterElement().filterUnits(); }
     SVGUnitTypes::SVGUnitType primitiveUnits() const { return filterElement().primitiveUnits(); }
@@ -90,8 +90,6 @@ private:
 
     virtual const char* renderName() const override { return "RenderSVGResourceFilter"; }
     virtual bool isSVGResourceFilter() const override { return true; }
-
-    bool fitsInMaximumImageSize(const FloatSize&, FloatSize&);
 
     HashMap<RenderObject*, std::unique_ptr<FilterData>> m_filter;
 };

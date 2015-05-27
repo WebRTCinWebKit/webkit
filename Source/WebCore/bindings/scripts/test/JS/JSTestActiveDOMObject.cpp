@@ -163,7 +163,7 @@ void JSTestActiveDOMObject::destroy(JSC::JSCell* cell)
 
 JSTestActiveDOMObject::~JSTestActiveDOMObject()
 {
-    releaseImplIfNotNull();
+    releaseImpl();
 }
 
 bool JSTestActiveDOMObject::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
@@ -231,7 +231,7 @@ EncodedJSValue JSC_HOST_CALL jsTestActiveDOMObjectPrototypeFunctionPostMessage(E
     auto& impl = castedThis->impl();
     if (UNLIKELY(exec->argumentCount() < 1))
         return throwVMError(exec, createNotEnoughArgumentsError(exec));
-    const String& message(exec->argument(0).isEmpty() ? String() : exec->argument(0).toString(exec)->value(exec));
+    const String message(exec->argument(0).isEmpty() ? String() : exec->argument(0).toString(exec)->value(exec));
     if (UNLIKELY(exec->hadException()))
         return JSValue::encode(jsUndefined());
     impl.postMessage(message);
@@ -250,7 +250,6 @@ void JSTestActiveDOMObjectOwner::finalize(JSC::Handle<JSC::Unknown> handle, void
     auto* jsTestActiveDOMObject = jsCast<JSTestActiveDOMObject*>(handle.slot()->asCell());
     auto& world = *static_cast<DOMWrapperWorld*>(context);
     uncacheWrapper(world, &jsTestActiveDOMObject->impl(), jsTestActiveDOMObject);
-    jsTestActiveDOMObject->releaseImpl();
 }
 
 #if ENABLE(BINDING_INTEGRITY)

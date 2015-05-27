@@ -36,7 +36,6 @@ namespace JSC { namespace DFG {
 enum LocationKind {
     InvalidLocationKind,
     
-    AllocationProfileWatchpointLoc,
     ArrayLengthLoc,
     ButterflyLoc,
     CheckHasInstanceLoc,
@@ -54,7 +53,6 @@ enum LocationKind {
     NamedPropertyLoc,
     SetterLoc,
     StructureLoc,
-    TypeOfLoc,
     TypedArrayByteOffsetLoc,
     VarInjectionWatchpointLoc,
     StackLoc,

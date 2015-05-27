@@ -119,6 +119,7 @@
 #include "TextStream.h"
 #include "TransformationMatrix.h"
 #include "TranslateTransformOperation.h"
+#include "WheelEventTestTrigger.h"
 #include <stdio.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
@@ -136,14 +137,14 @@ using namespace HTMLNames;
 class ClipRects {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static PassRefPtr<ClipRects> create()
+    static Ref<ClipRects> create()
     {
-        return adoptRef(new ClipRects);
+        return adoptRef(*new ClipRects);
     }
 
-    static PassRefPtr<ClipRects> create(const ClipRects& other)
+    static Ref<ClipRects> create(const ClipRects& other)
     {
-        return adoptRef(new ClipRects(other));
+        return adoptRef(*new ClipRects(other));
     }
 
     ClipRects() = default;
@@ -250,7 +251,7 @@ private:
 
 void makeMatrixRenderable(TransformationMatrix& matrix, bool has3DRendering)
 {
-#if !ENABLE(3D_RENDERING)
+#if !ENABLE(3D_TRANSFORMS)
     UNUSED_PARAM(has3DRendering);
     matrix.makeAffine();
 #else
@@ -971,12 +972,12 @@ TransformationMatrix RenderLayer::currentTransform(RenderStyle::ApplyTransformOr
 {
     if (!m_transform)
         return TransformationMatrix();
-
+    
     RenderBox* box = renderBox();
     ASSERT(box);
-    FloatRect pixelSnappedBorderRect = snapRectToDevicePixels(box->borderBoxRect(), box->document().deviceScaleFactor());
     if (renderer().style().isRunningAcceleratedAnimation()) {
         TransformationMatrix currTransform;
+        FloatRect pixelSnappedBorderRect = snapRectToDevicePixels(box->borderBoxRect(), box->document().deviceScaleFactor());
         RefPtr<RenderStyle> style = renderer().animation().getAnimatedStyleForRenderer(renderer());
         style->applyTransform(currTransform, pixelSnappedBorderRect, applyOrigin);
         makeMatrixRenderable(currTransform, canRender3DTransforms());
@@ -986,6 +987,7 @@ TransformationMatrix RenderLayer::currentTransform(RenderStyle::ApplyTransformOr
     // m_transform includes transform-origin, so we need to recompute the transform here.
     if (applyOrigin == RenderStyle::ExcludeTransformOrigin) {
         TransformationMatrix currTransform;
+        FloatRect pixelSnappedBorderRect = snapRectToDevicePixels(box->borderBoxRect(), box->document().deviceScaleFactor());
         box->style().applyTransform(currTransform, pixelSnappedBorderRect, RenderStyle::ExcludeTransformOrigin);
         makeMatrixRenderable(currTransform, canRender3DTransforms());
         return currTransform;
@@ -1316,7 +1318,7 @@ bool RenderLayer::updateLayerPosition()
     } else if (RenderBox* box = renderBox()) {
         // FIXME: Is snapping the size really needed here for the RenderBox case?
         setSize(box->pixelSnappedSize());
-        localPoint += box->topLeftLocationOffset();
+        box->applyTopLeftLocationOffset(localPoint);
     }
 
     RenderElement* ancestor;
@@ -3075,6 +3077,10 @@ PassRefPtr<Scrollbar> RenderLayer::createScrollbar(ScrollbarOrientation orientat
     else {
         widget = Scrollbar::createNativeScrollbar(*this, orientation, RegularScrollbar);
         didAddScrollbar(widget.get(), orientation);
+        if (Page* page = renderer().frame().page()) {
+            if (page->expectsWheelEventTriggers())
+                scrollAnimator().setWheelEventTestTrigger(page->testTrigger());
+        }
     }
     renderer().view().frameView().addChild(widget.get());
     return widget.release();
@@ -3455,6 +3461,12 @@ void RenderLayer::updateScrollInfoAfterLayout()
 
     computeScrollDimensions();
 
+#if ENABLE(CSS_SCROLL_SNAP)
+    // FIXME: Ensure that offsets are also updated in case of programmatic style changes.
+    // https://bugs.webkit.org/show_bug.cgi?id=135964
+    updateSnapOffsets();
+#endif
+
     if (box->style().overflowX() != OMARQUEE && !isRubberBandInProgress()) {
         // Layout may cause us to be at an invalid scroll position. In this case we need
         // to pull our scroll offsets back to the max (or push them up to the min).
@@ -3482,15 +3494,7 @@ void RenderLayer::updateScrollInfoAfterLayout()
     if (compositor().updateLayerCompositingState(*this))
         compositor().setCompositingLayersNeedRebuild();
 
-#if ENABLE(CSS_SCROLL_SNAP)
-    // FIXME: Ensure that offsets are also updated in case of programmatic style changes.
-    // https://bugs.webkit.org/show_bug.cgi?id=135964
-    updateSnapOffsets();
-#if PLATFORM(MAC)
-    if (ScrollAnimator* scrollAnimator = existingScrollAnimator())
-        return scrollAnimator->updateScrollAnimatorsAndTimers();
-#endif
-#endif
+    updateScrollSnapState();
 }
 
 bool RenderLayer::overflowControlsIntersectRect(const IntRect& localRect) const
@@ -3750,8 +3754,8 @@ void RenderLayer::paint(GraphicsContext* context, const LayoutRect& damageRect, 
     LayerPaintingInfo paintingInfo(this, enclosingIntRect(damageRect), paintBehavior, subpixelAccumulation, subtreePaintRoot, &overlapTestRequests);
     paintLayer(context, paintingInfo, paintFlags);
 
-    for (auto it : overlapTestRequests)
-        it.key->setOverlapTestResult(false);
+    for (auto& widget : overlapTestRequests.keys())
+        widget->setOverlapTestResult(false);
 }
 
 void RenderLayer::paintOverlayScrollbars(GraphicsContext* context, const LayoutRect& damageRect, PaintBehavior paintBehavior, RenderObject* subtreePaintRoot)
@@ -3820,12 +3824,12 @@ static void performOverlapTests(OverlapTestRequestMap& overlapTestRequests, cons
 {
     Vector<OverlapTestRequestClient*> overlappedRequestClients;
     LayoutRect boundingBox = layer->boundingBox(rootLayer, layer->offsetFromAncestor(rootLayer));
-    for (auto it : overlapTestRequests) {
-        if (!boundingBox.intersects(it.value))
+    for (auto& request : overlapTestRequests) {
+        if (!boundingBox.intersects(request.value))
             continue;
 
-        it.key->setOverlapTestResult(true);
-        overlappedRequestClients.append(it.key);
+        request.key->setOverlapTestResult(true);
+        overlappedRequestClients.append(request.key);
     }
     for (auto client : overlappedRequestClients)
         overlapTestRequests.remove(client);
@@ -5814,11 +5818,13 @@ LayoutRect RenderLayer::localBoundingBox(CalculateLayerBoundsFlags flags) const
 LayoutRect RenderLayer::boundingBox(const RenderLayer* ancestorLayer, const LayoutSize& offsetFromRoot, CalculateLayerBoundsFlags flags) const
 {    
     LayoutRect result = localBoundingBox(flags);
-    if (renderer().isBox())
-        renderBox()->flipForWritingMode(result);
-    else
-        renderer().containingBlock()->flipForWritingMode(result);
-    
+    if (renderer().view().frameView().hasFlippedBlockRenderers()) {
+        if (renderer().isBox())
+            renderBox()->flipForWritingMode(result);
+        else
+            renderer().containingBlock()->flipForWritingMode(result);
+    }
+
     PaginationInclusionMode inclusionMode = ExcludeCompositedPaginatedLayers;
     if (flags & UseFragmentBoxesIncludingCompositing)
         inclusionMode = IncludeCompositedPaginatedLayers;
@@ -5894,10 +5900,12 @@ LayoutRect RenderLayer::calculateLayerBounds(const RenderLayer* ancestorLayer, c
 
     LayoutRect boundingBoxRect = localBoundingBox(flags);
 
-    if (is<RenderBox>(renderer()))
-        downcast<RenderBox>(renderer()).flipForWritingMode(boundingBoxRect);
-    else
-        renderer().containingBlock()->flipForWritingMode(boundingBoxRect);
+    if (renderer().view().frameView().hasFlippedBlockRenderers()) {
+        if (is<RenderBox>(renderer()))
+            downcast<RenderBox>(renderer()).flipForWritingMode(boundingBoxRect);
+        else
+            renderer().containingBlock()->flipForWritingMode(boundingBoxRect);
+    }
 
     if (renderer().isRoot()) {
         // If the root layer becomes composited (e.g. because some descendant with negative z-index is composited),
@@ -6693,7 +6701,7 @@ void RenderLayer::styleChanged(StyleDifference diff, const RenderStyle* oldStyle
 
     updateNeedsCompositedScrolling();
 
-    compositor().layerStyleChanged(*this, oldStyle);
+    compositor().layerStyleChanged(diff, *this, oldStyle);
 
     updateOrRemoveFilterEffectRenderer();
 
@@ -6881,7 +6889,7 @@ void RenderLayer::updateOrRemoveFilterEffectRenderer()
         filterRenderer->setFilterScale(renderer().frame().page()->deviceScaleFactor());
         RenderingMode renderingMode = renderer().frame().settings().acceleratedFiltersEnabled() ? Accelerated : Unaccelerated;
         filterRenderer->setRenderingMode(renderingMode);
-        filterInfo.setRenderer(filterRenderer.release());
+        filterInfo.setRenderer(WTF::move(filterRenderer));
         
         // We can optimize away code paths in other places if we know that there are no software filters.
         renderer().view().setHasSoftwareFilters(true);

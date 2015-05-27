@@ -35,6 +35,8 @@
 namespace JSC { namespace FTL {
 
 #define FOR_EACH_FTL_INTRINSIC(macro) \
+    macro(ceil64, "llvm.ceil.f64", functionType(doubleType, doubleType)) \
+    macro(ctlz32, "llvm.ctlz.i32", functionType(int32, int32, boolean)) \
     macro(addWithOverflow32, "llvm.sadd.with.overflow.i32", functionType(structType(m_context, int32, boolean), int32, int32)) \
     macro(addWithOverflow64, "llvm.sadd.with.overflow.i64", functionType(structType(m_context, int64, boolean), int64, int64)) \
     macro(doubleAbs, "llvm.fabs.f64", functionType(doubleType, doubleType)) \
@@ -59,6 +61,7 @@ namespace JSC { namespace FTL {
     macro(C_JITOperation_EC, functionType(intPtr, intPtr, intPtr)) \
     macro(C_JITOperation_ECZ, functionType(intPtr, intPtr, intPtr, int32)) \
     macro(C_JITOperation_ECZC, functionType(intPtr, intPtr, intPtr, int32, intPtr)) \
+    macro(C_JITOperation_EGC, functionType(intPtr, intPtr, intPtr, intPtr)) \
     macro(C_JITOperation_EJ, functionType(intPtr, intPtr, int64)) \
     macro(C_JITOperation_EJssJss, functionType(intPtr, intPtr, intPtr, intPtr)) \
     macro(C_JITOperation_EJssJssJss, functionType(intPtr, intPtr, intPtr, intPtr, intPtr)) \
@@ -96,6 +99,7 @@ namespace JSC { namespace FTL {
     macro(P_JITOperation_EStZ, functionType(intPtr, intPtr, intPtr, int32)) \
     macro(Q_JITOperation_D, functionType(int64, doubleType)) \
     macro(Q_JITOperation_J, functionType(int64, int64)) \
+    macro(S_JITOperation_EGC, functionType(intPtr, intPtr, intPtr, intPtr)) \
     macro(S_JITOperation_EJ, functionType(intPtr, intPtr, int64)) \
     macro(S_JITOperation_EJJ, functionType(intPtr, intPtr, int64, int64)) \
     macro(S_JITOperation_J, functionType(intPtr, int64)) \
@@ -111,7 +115,9 @@ namespace JSC { namespace FTL {
     macro(V_JITOperation_Z, functionType(voidType, int32)) \
     macro(Z_JITOperation_D, functionType(int32, doubleType)) \
     macro(Z_JITOperation_EC, functionType(int32, intPtr, intPtr)) \
-    macro(Z_JITOperation_EJZ, functionType(int32, intPtr, int64, int32))
+    macro(Z_JITOperation_EGC, functionType(int32, intPtr, intPtr, intPtr)) \
+    macro(Z_JITOperation_EJZ, functionType(int32, intPtr, int64, int32)) \
+    macro(Z_JITOperation_ESJss, functionType(int32, intPtr, intPtr, int64)) \
     
 class IntrinsicRepository : public CommonValues {
 public:

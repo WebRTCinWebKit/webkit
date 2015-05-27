@@ -36,7 +36,6 @@
 #include "PlatformWheelEvent.h"
 #include "ScrollableArea.h"
 #include <algorithm>
-#include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
 
@@ -87,6 +86,16 @@ void ScrollAnimator::scrollToOffsetWithoutAnimation(const FloatPoint& offset)
 bool ScrollAnimator::processWheelEventForScrollSnap(const PlatformWheelEvent& wheelEvent)
 {
     return m_scrollController.processWheelEventForScrollSnap(wheelEvent);
+}
+
+bool ScrollAnimator::activeScrollSnapIndexDidChange() const
+{
+    return m_scrollController.activeScrollSnapIndexDidChange();
+}
+
+unsigned ScrollAnimator::activeScrollSnapIndexForAxis(ScrollEventAxis axis) const
+{
+    return m_scrollController.activeScrollSnapIndexForAxis(axis);
 }
 #endif
 
@@ -190,6 +199,24 @@ void ScrollAnimator::immediateScrollOnAxis(ScrollEventAxis axis, float delta)
         scrollToOffsetWithoutAnimation(FloatPoint(currentPosition.x() + delta, currentPosition.y()));
     else
         scrollToOffsetWithoutAnimation(FloatPoint(currentPosition.x(), currentPosition.y() + delta));
+}
+#endif
+
+#if (ENABLE(CSS_SCROLL_SNAP) || ENABLE(RUBBER_BANDING)) && PLATFORM(MAC)
+void ScrollAnimator::deferTestsForReason(WheelEventTestTrigger::ScrollableAreaIdentifier identifier, WheelEventTestTrigger::DeferTestTriggerReason reason) const
+{
+    if (!m_wheelEventTestTrigger)
+        return;
+
+    m_wheelEventTestTrigger->deferTestsForReason(identifier, reason);
+}
+
+void ScrollAnimator::removeTestDeferralForReason(WheelEventTestTrigger::ScrollableAreaIdentifier identifier, WheelEventTestTrigger::DeferTestTriggerReason reason) const
+{
+    if (!m_wheelEventTestTrigger)
+        return;
+    
+    m_wheelEventTestTrigger->removeTestDeferralForReason(identifier, reason);
 }
 #endif
 

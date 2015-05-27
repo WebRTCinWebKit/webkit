@@ -40,7 +40,7 @@ TextFragmentIterator::Style::Style(const RenderStyle& style)
     , preserveNewline(style.preserveNewline())
     , wrapLines(style.autoWrap())
     , breakWordOnOverflow(style.overflowWrap() == BreakOverflowWrap && (wrapLines || preserveNewline))
-    , spaceWidth(font.width(TextRun(&space, 1)))
+    , spaceWidth(font.width(TextRun(StringView(&space, 1))))
     , tabWidth(collapseWhitespace ? 0 : style.tabSize())
     , locale(style.locale())
 {
@@ -98,15 +98,14 @@ TextFragmentIterator::TextFragment TextFragmentIterator::findNextTextFragment(fl
     return TextFragment(startPosition, endPosition, width, TextFragment::NonWhitespace, endPosition == segmentEndPosition, overlappingFragment, false, false, m_style.breakWordOnOverflow);
 }
 
-void TextFragmentIterator::revertToFragment(const TextFragment& fragment)
+void TextFragmentIterator::revertToEndOfFragment(const TextFragment& fragment)
 {
     ASSERT(m_position >= fragment.end());
-    // Revert segment first.
-    while (m_currentSegment->start > fragment.start())
+    while (m_currentSegment->start > fragment.end())
         --m_currentSegment;
     // TODO: It reverts to the last fragment on the same position, but that's ok for now as we don't need to
     // differentiate multiple renderers on the same position.
-    m_position = fragment.start();
+    m_position = fragment.end();
     m_atEndOfSegment = false;
 }
 
@@ -198,7 +197,7 @@ float TextFragmentIterator::runWidth(const FlowContents::Segment& segment, unsig
     bool measureWithEndSpace = m_style.collapseWhitespace && segmentTo < segment.text.length() && segment.text[segmentTo] == ' ';
     if (measureWithEndSpace)
         ++segmentTo;
-    TextRun run(segment.text.characters<CharacterType>() + segmentFrom, segmentTo - segmentFrom);
+    TextRun run(StringView(segment.text).substring(segmentFrom, segmentTo - segmentFrom));
     run.setXPos(xPosition);
     run.setTabSize(!!m_style.tabWidth, m_style.tabWidth);
     float width = m_style.font.width(run);

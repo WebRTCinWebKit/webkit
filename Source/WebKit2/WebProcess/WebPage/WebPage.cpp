@@ -338,7 +338,6 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_processSuppressionEnabled(true)
     , m_userActivity("Process suppression disabled for page.")
     , m_pendingNavigationID(0)
-    , m_viewScaleFactor(parameters.viewScaleFactor)
 #if ENABLE(WEBGL)
     , m_systemWebGLPolicy(WebGLAllowCreation)
 #endif
@@ -451,6 +450,11 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     setAutoSizingShouldExpandToViewHeight(parameters.autoSizingShouldExpandToViewHeight);
     
     setScrollPinningBehavior(parameters.scrollPinningBehavior);
+    if (parameters.scrollbarOverlayStyle)
+        m_scrollbarOverlayStyle = static_cast<ScrollbarOverlayStyle>(parameters.scrollbarOverlayStyle.value());
+    else
+        m_scrollbarOverlayStyle = WTF::Optional<ScrollbarOverlayStyle>();
+
     setBackgroundExtendsBeyondPage(parameters.backgroundExtendsBeyondPage);
 
     setTopContentInset(parameters.topContentInset);
@@ -506,8 +510,8 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #endif
     m_page->settings().setAppleMailPaginationQuirkEnabled(parameters.appleMailPaginationQuirkEnabled);
 
-    if (m_viewScaleFactor != 1)
-        scalePage(1, IntPoint());
+    if (parameters.viewScaleFactor != 1)
+        scaleView(parameters.viewScaleFactor);
 }
 
 void WebPage::reinitializeWebPage(const WebPageCreationParameters& parameters)
@@ -810,7 +814,7 @@ void WebPage::resetTrackedRepaints()
         view->resetTrackedRepaints();
 }
 
-PassRefPtr<API::Array> WebPage::trackedRepaintRects()
+Ref<API::Array> WebPage::trackedRepaintRects()
 {
     FrameView* view = mainFrameView();
     if (!view)
@@ -1068,11 +1072,14 @@ void WebPage::loadHTMLString(uint64_t navigationID, const String& htmlString, co
     loadString(navigationID, htmlString, ASCIILiteral("text/html"), baseURL, URL(), userData);
 }
 
-void WebPage::loadAlternateHTMLString(const String& htmlString, const String& baseURLString, const String& unreachableURLString, const UserData& userData)
+void WebPage::loadAlternateHTMLString(const String& htmlString, const String& baseURLString, const String& unreachableURLString, const String& provisionalLoadErrorURLString, const UserData& userData)
 {
     URL baseURL = baseURLString.isEmpty() ? blankURL() : URL(URL(), baseURLString);
     URL unreachableURL = unreachableURLString.isEmpty() ? URL() : URL(URL(), unreachableURLString);
+    URL provisionalLoadErrorURL = provisionalLoadErrorURLString.isEmpty() ? URL() : URL(URL(), provisionalLoadErrorURLString);
+    m_mainFrame->coreFrame()->loader().setProvisionalLoadErrorBeingHandledURL(provisionalLoadErrorURL);
     loadString(0, htmlString, ASCIILiteral("text/html"), baseURL, unreachableURL, userData);
+    m_mainFrame->coreFrame()->loader().setProvisionalLoadErrorBeingHandledURL({ });
 }
 
 void WebPage::loadPlainTextString(const String& string, const UserData& userData)
@@ -1210,13 +1217,13 @@ void WebPage::setSize(const WebCore::IntSize& viewSize)
     
     m_viewSize = viewSize;
 
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
     if (view->useFixedLayout())
         sendViewportAttributesChanged();
 #endif
 }
 
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
 void WebPage::setFixedVisibleContentRect(const IntRect& rect)
 {
     ASSERT(m_useFixedLayout);
@@ -1371,7 +1378,7 @@ void WebPage::windowScreenDidChange(uint32_t displayID)
 
 void WebPage::scalePage(double scale, const IntPoint& origin)
 {
-    double totalScale = scale * m_viewScaleFactor;
+    double totalScale = scale * viewScaleFactor();
     bool willChangeScaleFactor = totalScale != totalScaleFactor();
 
 #if PLATFORM(IOS)
@@ -1404,7 +1411,7 @@ void WebPage::scalePage(double scale, const IntPoint& origin)
 
 void WebPage::scalePageInViewCoordinates(double scale, IntPoint centerInViewCoordinates)
 {
-    double totalScale = scale * m_viewScaleFactor;
+    double totalScale = scale * viewScaleFactor();
     if (totalScale == totalScaleFactor())
         return;
 
@@ -1425,24 +1432,40 @@ double WebPage::totalScaleFactor() const
 
 double WebPage::pageScaleFactor() const
 {
-    return totalScaleFactor() / m_viewScaleFactor;
+    return totalScaleFactor() / viewScaleFactor();
+}
+
+double WebPage::viewScaleFactor() const
+{
+    return m_page->viewScaleFactor();
 }
 
 void WebPage::scaleView(double scale)
 {
-    float pageScale = pageScaleFactor();
+    if (viewScaleFactor() == scale)
+        return;
 
-    double scaleRatio = scale / m_viewScaleFactor;
+    float pageScale = pageScaleFactor();
 
     IntPoint scrollPositionAtNewScale;
     if (FrameView* mainFrameView = m_page->mainFrame().view()) {
+        double scaleRatio = scale / viewScaleFactor();
         scrollPositionAtNewScale = mainFrameView->scrollPosition();
         scrollPositionAtNewScale.scale(scaleRatio, scaleRatio);
     }
 
-    m_viewScaleFactor = scale;
+    m_page->setViewScaleFactor(scale);
     scalePage(pageScale, scrollPositionAtNewScale);
 }
+
+#if PLATFORM(COCOA)
+void WebPage::scaleViewAndUpdateGeometryFenced(double scale, IntSize viewSize, uint64_t callbackID)
+{
+    scaleView(scale);
+    m_drawingArea->updateGeometry(viewSize, IntSize(), false);
+    m_drawingArea->replyWithFenceAfterNextFlush(callbackID);
+}
+#endif
 
 void WebPage::setDeviceScaleFactor(float scaleFactor)
 {
@@ -1491,7 +1514,7 @@ void WebPage::setUseFixedLayout(bool fixed)
     m_page->settings().setScrollingCoordinatorEnabled(fixed);
 #endif
 
-#if USE(TILED_BACKING_STORE) && ENABLE(SMOOTH_SCROLLING)
+#if USE(COORDINATED_GRAPHICS) && ENABLE(SMOOTH_SCROLLING)
     // Delegated scrolling will be enabled when the FrameView is created if fixed layout is enabled.
     // Ensure we don't do animated scrolling in the WebProcess in that case.
     m_page->settings().setScrollAnimatorEnabled(!fixed);
@@ -1501,7 +1524,7 @@ void WebPage::setUseFixedLayout(bool fixed)
     if (!view)
         return;
 
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
     view->setDelegatesScrolling(fixed);
     view->setPaintsEntireContents(fixed);
 #endif
@@ -1785,7 +1808,7 @@ void WebPage::pageDidScroll()
     send(Messages::WebPageProxy::PageDidScroll());
 }
 
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
 void WebPage::pageDidRequestScroll(const IntPoint& point)
 {
 #if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
@@ -2292,7 +2315,7 @@ void WebPage::setCanStartMediaTimerFired()
 
 inline bool WebPage::canHandleUserEvents() const
 {
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
     // Should apply only if the area was frozen by didStartPageTransition().
     return !m_drawingArea->layerTreeStateIsFrozen();
 #endif
@@ -2398,9 +2421,7 @@ String WebPage::userAgent(const URL& webCoreURL) const
 String WebPage::userAgent(WebFrame* frame, const URL& webcoreURL) const
 {
     if (frame && m_loaderClient.client().userAgentForURL) {
-        RefPtr<API::URL> url = API::URL::create(webcoreURL);
-
-        API::String* apiString = m_loaderClient.userAgentForURL(frame, url.get());
+        API::String* apiString = m_loaderClient.userAgentForURL(frame, API::URL::create(webcoreURL).ptr());
         if (apiString)
             return apiString->string();
     }
@@ -2758,6 +2779,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setForceUpdateScrollbarsOnMainThreadForPerformanceTesting(store.getBoolValueForKey(WebPreferencesKey::forceUpdateScrollbarsOnMainThreadForPerformanceTestingKey()));
     settings.setInteractiveFormValidationEnabled(store.getBoolValueForKey(WebPreferencesKey::interactiveFormValidationEnabledKey()));
     settings.setSpatialNavigationEnabled(store.getBoolValueForKey(WebPreferencesKey::spatialNavigationEnabledKey()));
+
+    settings.setMetaRefreshEnabled(store.getBoolValueForKey(WebPreferencesKey::metaRefreshEnabledKey()));
 
     DatabaseManager::singleton().setIsAvailable(store.getBoolValueForKey(WebPreferencesKey::databasesEnabledKey()));
 
@@ -3290,7 +3313,11 @@ void WebPage::didCancelForOpenPanel()
 #if ENABLE(SANDBOX_EXTENSIONS)
 void WebPage::extendSandboxForFileFromOpenPanel(const SandboxExtension::Handle& handle)
 {
-    SandboxExtension::create(handle)->consumePermanently();
+    bool result = SandboxExtension::consumePermanently(handle);
+    if (!result) {
+        // We have reports of cases where this fails for some unknown reason, <rdar://problem/10156710>.
+        WTFLogAlways("WebPage::extendSandboxForFileFromOpenPanel(): Could not consume a sandbox extension");
+    }
 }
 #endif
 
@@ -4211,7 +4238,7 @@ void WebPage::insertTextAsync(const String& text, const EditingRange& replacemen
     if (replacementEditingRange.location != notFound) {
         RefPtr<Range> replacementRange = rangeFromEditingRange(frame, replacementEditingRange);
         if (replacementRange)
-            frame.selection().setSelection(VisibleSelection(replacementRange.get(), SEL_DEFAULT_AFFINITY));
+            frame.selection().setSelection(VisibleSelection(*replacementRange, SEL_DEFAULT_AFFINITY));
     }
     
     if (registerUndoGroup)
@@ -4301,7 +4328,8 @@ void WebPage::setCompositionAsync(const String& text, Vector<CompositionUnderlin
         RefPtr<Range> replacementRange;
         if (replacementEditingRange.location != notFound) {
             replacementRange = rangeFromEditingRange(frame, replacementEditingRange);
-            frame.selection().setSelection(VisibleSelection(replacementRange.get(), SEL_DEFAULT_AFFINITY));
+            if (replacementRange)
+                frame.selection().setSelection(VisibleSelection(*replacementRange, SEL_DEFAULT_AFFINITY));
         }
 
         frame.editor().setComposition(text, underlines, selection.location, selection.location + selection.length);
@@ -4359,7 +4387,7 @@ void WebPage::confirmComposition(const String& compositionString, int64_t select
     ASSERT_WITH_MESSAGE(selectionRange, "Invalid selection: [%lld:%lld] in text of length %d", static_cast<long long>(selectionStart), static_cast<long long>(selectionLength), scope->innerText().length());
 
     if (selectionRange) {
-        VisibleSelection selection(selectionRange.get(), SEL_DEFAULT_AFFINITY);
+        VisibleSelection selection(*selectionRange, SEL_DEFAULT_AFFINITY);
         targetFrame->selection().setSelection(selection);
     }
     send(Messages::WebPageProxy::EditorStateChanged(editorState()));
@@ -4380,7 +4408,7 @@ void WebPage::setComposition(const String& text, const Vector<CompositionUnderli
         Element* scope = targetFrame->selection().selection().rootEditableElement();
         RefPtr<Range> replacementRange = TextIterator::rangeFromLocationAndLength(scope, replacementStart, replacementLength);
         targetFrame->editor().setIgnoreCompositionSelectionChange(true);
-        targetFrame->selection().setSelection(VisibleSelection(replacementRange.get(), SEL_DEFAULT_AFFINITY));
+        targetFrame->selection().setSelection(VisibleSelection(*replacementRange, SEL_DEFAULT_AFFINITY));
         targetFrame->editor().setIgnoreCompositionSelectionChange(false);
     }
 
@@ -4400,14 +4428,17 @@ void WebPage::didChangeSelection()
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
     FrameView* view = frame.view();
-    bool needsLayout = view && view->needsLayout();
+#if PLATFORM(COCOA) && !defined(NDEBUG)
+    int layoutCount = view ? view->layoutCount() : 0;
+#endif
 
     // If there is a layout pending, we should avoid populating EditorState that require layout to be done or it will
     // trigger a synchronous layout every time the selection changes. sendPostLayoutEditorStateIfNeeded() will be called
     // to send the full editor state after layout is done if we send a partial editor state here.
-    auto editorState = this->editorState(needsLayout ? IncludePostLayoutDataHint::No : IncludePostLayoutDataHint::Yes);
-#if PLATFORM(COCOA)
-    ASSERT_WITH_MESSAGE(needsLayout == (view && view->needsLayout()), "Calling editorState() should not cause a synchronous layout.");
+    auto editorState = this->editorState(view && view->needsLayout() ? IncludePostLayoutDataHint::No : IncludePostLayoutDataHint::Yes);
+#if PLATFORM(COCOA) && !defined(NDEBUG)
+    if (view)
+        ASSERT_WITH_MESSAGE(layoutCount == view->layoutCount(), "Calling editorState() should not cause a synchronous layout.");
 #endif
     m_isEditorStateMissingPostLayoutData = editorState.isMissingPostLayoutData;
 
@@ -4823,6 +4854,15 @@ void WebPage::setScrollPinningBehavior(uint32_t pinning)
     m_page->mainFrame().view()->setScrollPinningBehavior(m_scrollPinningBehavior);
 }
 
+void WebPage::setScrollbarOverlayStyle(WTF::Optional<uint32_t> scrollbarStyle)
+{
+    if (scrollbarStyle)
+        m_scrollbarOverlayStyle = static_cast<ScrollbarOverlayStyle>(scrollbarStyle.value());
+    else
+        m_scrollbarOverlayStyle = WTF::Optional<ScrollbarOverlayStyle>();
+    m_page->mainFrame().view()->recalculateScrollbarOverlayStyle();
+}
+
 PassRefPtr<DocumentLoader> WebPage::createDocumentLoader(Frame& frame, const ResourceRequest& request, const SubstituteData& substituteData)
 {
     RefPtr<WebDocumentLoader> documentLoader = WebDocumentLoader::create(request, substituteData);
@@ -4837,9 +4877,11 @@ PassRefPtr<DocumentLoader> WebPage::createDocumentLoader(Frame& frame, const Res
 
 void WebPage::getBytecodeProfile(uint64_t callbackID)
 {
-    ASSERT(JSDOMWindow::commonVM().m_perBytecodeProfiler);
-    if (!JSDOMWindow::commonVM().m_perBytecodeProfiler)
+    if (!JSDOMWindow::commonVM().m_perBytecodeProfiler) {
         send(Messages::WebPageProxy::StringCallback(String(), callbackID));
+        return;
+    }
+
     String result = JSDOMWindow::commonVM().m_perBytecodeProfiler->toJSON();
     ASSERT(result.length());
     send(Messages::WebPageProxy::StringCallback(result, callbackID));
@@ -4902,6 +4944,14 @@ void WebPage::postSynchronousMessage(const String& messageName, API::Object* mes
         returnData = nullptr;
     else
         returnData = webProcess.transformHandlesToObjects(returnUserData.object());
+}
+
+void WebPage::clearWheelEventTestTrigger()
+{
+    if (!m_page)
+        return;
+
+    m_page->clearTrigger();
 }
 
 } // namespace WebKit

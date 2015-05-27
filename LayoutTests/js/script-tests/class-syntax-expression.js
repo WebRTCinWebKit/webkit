@@ -31,13 +31,27 @@ shouldBe("A.prototype.constructor", "A");
 
 shouldThrow("x = class", "'SyntaxError: Unexpected end of script'");
 shouldThrow("x = class {", "'SyntaxError: Unexpected end of script'");
-shouldThrow("x = class { ( }", "'SyntaxError: Unexpected token \\'(\\'. Expected an identifier.'");
+shouldThrow("x = class { ( }", "'SyntaxError: Unexpected token \\'(\\''");
 shouldNotThrow("x = class {}");
+
 shouldThrow("x = class { constructor() {} constructor() {} }", "'SyntaxError: Cannot declare multiple constructors in a single class.'");
+shouldThrow("x = class { get constructor() {} }", "'SyntaxError: Cannot declare a getter or setter named \\'constructor\\'.'");
+shouldThrow("x = class { set constructor() {} }", "'SyntaxError: Cannot declare a getter or setter named \\'constructor\\'.'");
 shouldNotThrow("x = class { constructor() {} static constructor() { return staticMethodValue; } }");
-shouldBe("x.constructor()", "staticMethodValue");
+shouldBe("x = class { constructor() {} static constructor() { return staticMethodValue; } }; x.constructor()", "staticMethodValue");
+
 shouldThrow("x = class { constructor() {} static prototype() {} }", "'SyntaxError: Cannot declare a static method named \\'prototype\\'.'");
-shouldNotThrow("x = class { constructor() {} prototype() { return instanceMethodValue; } }");
-shouldBe("(new x).prototype()", "instanceMethodValue");
+shouldThrow("x = class { constructor() {} static get prototype() {} }", "'SyntaxError: Cannot declare a static method named \\'prototype\\'.'");
+shouldThrow("x = class { constructor() {} static set prototype() {} }", "'SyntaxError: Cannot declare a static method named \\'prototype\\'.'");
+shouldNotThrow("x = class  { constructor() {} prototype() { return instanceMethodValue; } }");
+shouldBe("x = class { constructor() {} prototype() { return instanceMethodValue; } }; (new x).prototype()", "instanceMethodValue");
+
+shouldNotThrow("x = class { constructor() {} set foo(a) {} }");
+shouldNotThrow("x = class { constructor() {} set foo({x, y}) {} }");
+shouldThrow("x = class { constructor() {} set foo() {} }");
+shouldThrow("x = class { constructor() {} set foo(a, b) {} }");
+shouldNotThrow("x = class { constructor() {} get foo() {} }");
+shouldThrow("x = class { constructor() {} get foo(x) {} }");
+shouldThrow("x = class { constructor() {} get foo({x, y}) {} }");
 
 var successfullyParsed = true;

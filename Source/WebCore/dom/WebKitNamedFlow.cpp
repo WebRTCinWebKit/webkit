@@ -52,9 +52,9 @@ WebKitNamedFlow::~WebKitNamedFlow()
     m_flowManager->discardNamedFlow(this);
 }
 
-PassRefPtr<WebKitNamedFlow> WebKitNamedFlow::create(PassRefPtr<NamedFlowCollection> manager, const AtomicString& flowThreadName)
+Ref<WebKitNamedFlow> WebKitNamedFlow::create(PassRefPtr<NamedFlowCollection> manager, const AtomicString& flowThreadName)
 {
-    return adoptRef(new WebKitNamedFlow(manager, flowThreadName));
+    return adoptRef(*new WebKitNamedFlow(manager, flowThreadName));
 }
 
 const AtomicString& WebKitNamedFlow::name() const
@@ -210,7 +210,7 @@ void WebKitNamedFlow::setRenderer(RenderNamedFlowThread* parentFlowThread)
 
 void WebKitNamedFlow::dispatchRegionOversetChangeEvent()
 {
-    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
     
     // If the flow is in the "NULL" state the event should not be dispatched any more.
     if (flowState() == FlowStateNull)

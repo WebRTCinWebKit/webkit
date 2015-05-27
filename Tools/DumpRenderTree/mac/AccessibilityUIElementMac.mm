@@ -1446,6 +1446,7 @@ void AccessibilityUIElement::removeNotificationListener()
     // Mac programmers should not be trying to remove a listener that's already removed.
     ASSERT(m_notificationHandler);
 
+    [m_notificationHandler stopObserving];
     [m_notificationHandler release];
     m_notificationHandler = nil;
 }
@@ -1772,6 +1773,15 @@ AccessibilityTextMarker AccessibilityUIElement::endTextMarker()
     END_AX_OBJC_EXCEPTIONS
     
     return nullptr;
+}
+
+bool AccessibilityUIElement::setSelectedVisibleTextRange(AccessibilityTextMarkerRange* markerRange)
+{
+    BEGIN_AX_OBJC_EXCEPTIONS
+    [m_element accessibilitySetValue:(id)markerRange->platformTextMarkerRange() forAttribute:NSAccessibilitySelectedTextMarkerRangeAttribute];
+    END_AX_OBJC_EXCEPTIONS
+    
+    return true;
 }
 
 #endif // SUPPORTS_AX_TEXTMARKERS

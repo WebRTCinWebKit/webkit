@@ -130,12 +130,12 @@ QuickTimePluginReplacement::~QuickTimePluginReplacement()
     m_mediaElement = nullptr;
 }
 
-RenderPtr<RenderElement> QuickTimePluginReplacement::createElementRenderer(HTMLPlugInElement& plugin, Ref<RenderStyle>&& style)
+RenderPtr<RenderElement> QuickTimePluginReplacement::createElementRenderer(HTMLPlugInElement& plugin, Ref<RenderStyle>&& style, const RenderTreePosition& insertionPosition)
 {
     ASSERT_UNUSED(plugin, m_parentElement == &plugin);
 
     if (m_mediaElement)
-        return m_mediaElement->createElementRenderer(WTF::move(style));
+        return m_mediaElement->createElementRenderer(WTF::move(style), insertionPosition);
 
     return nullptr;
 }
@@ -148,12 +148,11 @@ DOMWrapperWorld& QuickTimePluginReplacement::isolatedWorld()
 
 bool QuickTimePluginReplacement::ensureReplacementScriptInjected()
 {
-    Page* page = m_parentElement->document().page();
-    if (!page)
+    if (!m_parentElement->document().frame())
         return false;
     
     DOMWrapperWorld& world = isolatedWorld();
-    ScriptController& scriptController = page->mainFrame().script();
+    ScriptController& scriptController = m_parentElement->document().frame()->script();
     JSDOMGlobalObject* globalObject = JSC::jsCast<JSDOMGlobalObject*>(scriptController.globalObject(world));
     JSC::ExecState* exec = globalObject->globalExec();
     JSC::JSLockHolder lock(exec);
@@ -174,13 +173,14 @@ bool QuickTimePluginReplacement::ensureReplacementScriptInjected()
 
 bool QuickTimePluginReplacement::installReplacement(ShadowRoot* root)
 {
-    Page* page = m_parentElement->document().page();
-
     if (!ensureReplacementScriptInjected())
         return false;
 
+    if (!m_parentElement->document().frame())
+        return false;
+
     DOMWrapperWorld& world = isolatedWorld();
-    ScriptController& scriptController = page->mainFrame().script();
+    ScriptController& scriptController = m_parentElement->document().frame()->script();
     JSDOMGlobalObject* globalObject = JSC::jsCast<JSDOMGlobalObject*>(scriptController.globalObject(world));
     JSC::ExecState* exec = globalObject->globalExec();
     JSC::JSLockHolder lock(exec);

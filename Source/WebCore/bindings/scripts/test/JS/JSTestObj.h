@@ -27,7 +27,7 @@
 
 namespace WebCore {
 
-class WEBCORE_EXPORT JSTestObj : public JSDOMWrapper {
+class JSTestObj : public JSDOMWrapper {
 public:
     typedef JSDOMWrapper Base;
     static JSTestObj* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestObj>&& impl)
@@ -66,15 +66,7 @@ public:
     JSC::JSValue customMethodWithArgs(JSC::ExecState*);
     static JSC::JSValue classMethod2(JSC::ExecState*);
     TestObj& impl() const { return *m_impl; }
-    void releaseImpl() { m_impl->deref(); m_impl = 0; }
-
-    void releaseImplIfNotNull()
-    {
-        if (m_impl) {
-            m_impl->deref();
-            m_impl = 0;
-        }
-    }
+    void releaseImpl() { std::exchange(m_impl, nullptr)->deref(); }
 
 private:
     TestObj* m_impl;
@@ -103,7 +95,7 @@ inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld&, TestObj*)
     return &owner.get();
 }
 
-WEBCORE_EXPORT JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestObj*);
+JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestObj*);
 inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, TestObj& impl) { return toJS(exec, globalObject, &impl); }
 
 

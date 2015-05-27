@@ -156,7 +156,7 @@ void JSTestCustomNamedGetter::destroy(JSC::JSCell* cell)
 
 JSTestCustomNamedGetter::~JSTestCustomNamedGetter()
 {
-    releaseImplIfNotNull();
+    releaseImpl();
 }
 
 bool JSTestCustomNamedGetter::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
@@ -205,7 +205,7 @@ EncodedJSValue JSC_HOST_CALL jsTestCustomNamedGetterPrototypeFunctionAnotherFunc
     auto& impl = castedThis->impl();
     if (UNLIKELY(exec->argumentCount() < 1))
         return throwVMError(exec, createNotEnoughArgumentsError(exec));
-    const String& str(exec->argument(0).isEmpty() ? String() : exec->argument(0).toString(exec)->value(exec));
+    const String str(exec->argument(0).isEmpty() ? String() : exec->argument(0).toString(exec)->value(exec));
     if (UNLIKELY(exec->hadException()))
         return JSValue::encode(jsUndefined());
     impl.anotherFunction(str);
@@ -224,7 +224,6 @@ void JSTestCustomNamedGetterOwner::finalize(JSC::Handle<JSC::Unknown> handle, vo
     auto* jsTestCustomNamedGetter = jsCast<JSTestCustomNamedGetter*>(handle.slot()->asCell());
     auto& world = *static_cast<DOMWrapperWorld*>(context);
     uncacheWrapper(world, &jsTestCustomNamedGetter->impl(), jsTestCustomNamedGetter);
-    jsTestCustomNamedGetter->releaseImpl();
 }
 
 #if ENABLE(BINDING_INTEGRITY)

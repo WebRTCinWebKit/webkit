@@ -26,7 +26,6 @@
 #include "config.h"
 #include "InsertIntoTextNodeCommand.h"
 
-#include "AXObjectCache.h"
 #include "Document.h"
 #include "ExceptionCodePlaceholder.h"
 #include "Frame.h"
@@ -39,8 +38,8 @@
 
 namespace WebCore {
 
-InsertIntoTextNodeCommand::InsertIntoTextNodeCommand(PassRefPtr<Text> node, unsigned offset, const String& text)
-    : SimpleEditCommand(node->document())
+InsertIntoTextNodeCommand::InsertIntoTextNodeCommand(RefPtr<Text>&& node, unsigned offset, const String& text, EditAction editingAction)
+    : SimpleEditCommand(node->document(), editingAction)
     , m_node(node)
     , m_offset(offset)
     , m_text(text)
@@ -66,8 +65,8 @@ void InsertIntoTextNodeCommand::doApply()
 
     m_node->insertData(m_offset, m_text, IGNORE_EXCEPTION);
 
-    if (AXObjectCache* cache = document().existingAXObjectCache())
-        cache->nodeTextChangeNotification(m_node.get(), AXObjectCache::AXTextInserted, m_offset, m_text);
+    if (shouldPostAccessibilityNotification())
+        notifyAccessibilityForTextChange(m_node.get(), applyEditType(), m_text, VisiblePosition(Position(m_node, m_offset)));
 }
 
 #if PLATFORM(IOS)
@@ -84,8 +83,8 @@ void InsertIntoTextNodeCommand::doUnapply()
         return;
         
     // Need to notify this before actually deleting the text
-    if (AXObjectCache* cache = document().existingAXObjectCache())
-        cache->nodeTextChangeNotification(m_node.get(), AXObjectCache::AXTextDeleted, m_offset, m_text);
+    if (shouldPostAccessibilityNotification())
+        notifyAccessibilityForTextChange(m_node.get(), unapplyEditType(), m_text, VisiblePosition(Position(m_node, m_offset)));
 
     m_node->deleteData(m_offset, m_text.length(), IGNORE_EXCEPTION);
 }

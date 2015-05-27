@@ -219,6 +219,8 @@ void RenderBoxModelObject::updateFromStyle()
     setInline(styleToUse.isDisplayInlineType());
     setPositionState(styleToUse.position());
     setHorizontalWritingMode(styleToUse.isHorizontalWritingMode());
+    if (styleToUse.isFlippedBlocksWritingMode())
+        view().frameView().setHasFlippedBlockRenderers(true);
 }
 
 static LayoutSize accumulateInFlowPositionOffsets(const RenderObject* child)
@@ -242,7 +244,7 @@ bool RenderBoxModelObject::hasAutoHeightOrContainingBlockWithAutoHeight() const
     // For percentage heights: The percentage is calculated with respect to the height of the generated box's
     // containing block. If the height of the containing block is not specified explicitly (i.e., it depends
     // on content height), and this element is not absolutely positioned, the value computes to 'auto'.
-    if (!logicalHeightLength.isPercent() || isOutOfFlowPositioned() || document().inQuirksMode())
+    if (!logicalHeightLength.isPercentOrCalculated() || isOutOfFlowPositioned() || document().inQuirksMode())
         return false;
 
     // Anonymous block boxes are ignored when resolving percentage values that would refer to it:
@@ -272,21 +274,22 @@ bool RenderBoxModelObject::hasAutoHeightOrContainingBlockWithAutoHeight() const
 
 LayoutSize RenderBoxModelObject::relativePositionOffset() const
 {
-    LayoutSize offset = accumulateInFlowPositionOffsets(this);
+    // This function has been optimized to avoid calls to containingBlock() in the common case
+    // where all values are either auto or fixed.
 
-    RenderBlock* containingBlock = this->containingBlock();
+    LayoutSize offset = accumulateInFlowPositionOffsets(this);
 
     // Objects that shrink to avoid floats normally use available line width when computing containing block width.  However
     // in the case of relative positioning using percentages, we can't do this.  The offset should always be resolved using the
     // available width of the containing block.  Therefore we don't use containingBlockLogicalWidthForContent() here, but instead explicitly
     // call availableWidth on our containing block.
     if (!style().left().isAuto()) {
-        if (!style().right().isAuto() && !containingBlock->style().isLeftToRightDirection())
-            offset.setWidth(-valueForLength(style().right(), containingBlock->availableWidth()));
+        if (!style().right().isAuto() && !containingBlock()->style().isLeftToRightDirection())
+            offset.setWidth(-valueForLength(style().right(), !style().right().isFixed() ? containingBlock()->availableWidth() : LayoutUnit()));
         else
-            offset.expand(valueForLength(style().left(), containingBlock->availableWidth()), 0);
+            offset.expand(valueForLength(style().left(), !style().left().isFixed() ? containingBlock()->availableWidth() : LayoutUnit()), 0);
     } else if (!style().right().isAuto()) {
-        offset.expand(-valueForLength(style().right(), containingBlock->availableWidth()), 0);
+        offset.expand(-valueForLength(style().right(), !style().right().isFixed() ? containingBlock()->availableWidth() : LayoutUnit()), 0);
     }
 
     // If the containing block of a relatively positioned element does not
@@ -296,16 +299,16 @@ LayoutSize RenderBoxModelObject::relativePositionOffset() const
     // calculate the percent offset based on this height.
     // See <https://bugs.webkit.org/show_bug.cgi?id=26396>.
     if (!style().top().isAuto()
-        && (!containingBlock->hasAutoHeightOrContainingBlockWithAutoHeight()
-            || !style().top().isPercent()
-            || containingBlock->stretchesToViewport()))
-        offset.expand(0, valueForLength(style().top(), containingBlock->availableHeight()));
+        && (!style().top().isPercentOrCalculated()
+            || !containingBlock()->hasAutoHeightOrContainingBlockWithAutoHeight()
+            || containingBlock()->stretchesToViewport()))
+        offset.expand(0, valueForLength(style().top(), !style().top().isFixed() ? containingBlock()->availableHeight() : LayoutUnit()));
 
     else if (!style().bottom().isAuto()
-        && (!containingBlock->hasAutoHeightOrContainingBlockWithAutoHeight()
-            || !style().bottom().isPercent()
-            || containingBlock->stretchesToViewport()))
-        offset.expand(0, -valueForLength(style().bottom(), containingBlock->availableHeight()));
+        && (!style().bottom().isPercentOrCalculated()
+            || !containingBlock()->hasAutoHeightOrContainingBlockWithAutoHeight()
+            || containingBlock()->stretchesToViewport()))
+        offset.expand(0, -valueForLength(style().bottom(), !style().bottom().isFixed() ? containingBlock()->availableHeight() : LayoutUnit()));
 
     return offset;
 }
@@ -516,7 +519,7 @@ int RenderBoxModelObject::pixelSnappedOffsetHeight() const
 LayoutUnit RenderBoxModelObject::computedCSSPadding(const Length& padding) const
 {
     LayoutUnit w = 0;
-    if (padding.isPercent())
+    if (padding.isPercentOrCalculated())
         w = containingBlockLogicalWidthForContent();
     return minimumValueForLength(padding, w);
 }
@@ -929,8 +932,8 @@ LayoutSize RenderBoxModelObject::calculateImageIntrinsicDimensions(StyleImage* i
     FloatSize intrinsicRatio;
     image->computeIntrinsicDimensions(this, intrinsicWidth, intrinsicHeight, intrinsicRatio);
 
-    ASSERT(!intrinsicWidth.isPercent());
-    ASSERT(!intrinsicHeight.isPercent());
+    ASSERT(!intrinsicWidth.isPercentOrCalculated());
+    ASSERT(!intrinsicHeight.isPercentOrCalculated());
 
     LayoutSize resolvedSize(intrinsicWidth.value(), intrinsicHeight.value());
     LayoutSize minimumSize(resolvedSize.width() > 0 ? 1 : 0, resolvedSize.height() > 0 ? 1 : 0);
@@ -980,12 +983,12 @@ LayoutSize RenderBoxModelObject::calculateFillTileSize(const FillLayer& fillLaye
 
             if (layerWidth.isFixed())
                 tileSize.setWidth(layerWidth.value());
-            else if (layerWidth.isPercent())
+            else if (layerWidth.isPercentOrCalculated())
                 tileSize.setWidth(valueForLength(layerWidth, positioningAreaSize.width()));
             
             if (layerHeight.isFixed())
                 tileSize.setHeight(layerHeight.value());
-            else if (layerHeight.isPercent())
+            else if (layerHeight.isPercentOrCalculated())
                 tileSize.setHeight(valueForLength(layerHeight, positioningAreaSize.height()));
 
             // If one of the values is auto we have to use the appropriate
@@ -1108,16 +1111,20 @@ BackgroundImageGeometry RenderBoxModelObject::calculateBackgroundImageGeometry(c
             positioningAreaSize = paintRect.size() - LayoutSize(left + right, top + bottom);
     } else {
         LayoutRect viewportRect;
+        float topContentInset = 0;
         if (frame().settings().fixedBackgroundsPaintRelativeToDocument())
             viewportRect = view().unscaledDocumentRect();
         else {
-            viewportRect.setSize(view().frameView().unscaledVisibleContentSizeIncludingObscuredArea());
+            FrameView& frameView = view().frameView();
+            viewportRect.setSize(frameView.unscaledVisibleContentSizeIncludingObscuredArea());
+            topContentInset = frameView.topContentInset(ScrollView::TopContentInsetType::WebCoreOrPlatformContentInset);
+
             if (fixedBackgroundPaintsInLocalCoordinates())
-                viewportRect.setLocation(LayoutPoint());
-            else {
-                viewportRect.setLocation(toLayoutPoint(view().frameView().documentScrollOffsetRelativeToViewOrigin()));
-                top += view().frameView().topContentInset(ScrollView::TopContentInsetType::WebCoreOrPlatformContentInset);
-            }
+                viewportRect.setLocation(LayoutPoint(0, -topContentInset));
+            else
+                viewportRect.setLocation(toLayoutPoint(frameView.documentScrollOffsetRelativeToViewOrigin()));
+
+            top += topContentInset;
         }
         
         if (paintContainer)
@@ -1125,6 +1132,7 @@ BackgroundImageGeometry RenderBoxModelObject::calculateBackgroundImageGeometry(c
 
         destinationRect = viewportRect;
         positioningAreaSize = destinationRect.size();
+        positioningAreaSize.setHeight(positioningAreaSize.height() - topContentInset);
     }
 
     auto clientForBackgroundImage = backgroundObject ? backgroundObject : this;

@@ -100,7 +100,7 @@ public:
         // WebSocketChannelClient functions.
         virtual void didConnect() override;
         virtual void didReceiveMessage(const String& message) override;
-        virtual void didReceiveBinaryData(PassOwnPtr<Vector<char>>) override;
+        virtual void didReceiveBinaryData(Vector<char>&&) override;
         virtual void didUpdateBufferedAmount(unsigned long bufferedAmount) override;
         virtual void didStartClosingHandshake() override;
         virtual void didClose(unsigned long unhandledBufferedAmount, ClosingHandshakeCompletionStatus, unsigned short code, const String& reason) override;
@@ -119,8 +119,8 @@ public:
     using RefCounted<WorkerThreadableWebSocketChannel>::deref;
 
 protected:
-    virtual void refThreadableWebSocketChannel() { ref(); }
-    virtual void derefThreadableWebSocketChannel() { deref(); }
+    virtual void refThreadableWebSocketChannel() override { ref(); }
+    virtual void derefThreadableWebSocketChannel() override { deref(); }
 
 private:
     // Bridge for Peer.  Running on the worker thread.

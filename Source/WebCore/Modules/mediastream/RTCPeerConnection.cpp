@@ -174,6 +174,18 @@ void RTCPeerConnection::removeTrack(RTCRtpSender* sender, ExceptionCode& ec)
     // FIXME: Mark connection as needing negotiation.
 }
 
+static RTCRtpSender* takeFirstSenderOfType(Vector<RTCRtpSender*>& senders, const String& type)
+{
+    for (unsigned i = 0; i < senders.size(); ++i) {
+        if (senders[i]->track()->kind() == type) {
+            RTCRtpSender* sender = senders[i];
+            senders.remove(i);
+            return sender;
+        }
+    }
+    return nullptr;
+}
+
 static void updateMediaDescriptionsWithSenders(const Vector<RefPtr<PeerMediaDescription>>& mediaDescriptions, Vector<RTCRtpSender*>& senders)
 {
     // Remove any sender(s) from the senders list that already have their tracks represented by a media
@@ -195,19 +207,11 @@ static void updateMediaDescriptionsWithSenders(const Vector<RefPtr<PeerMediaDesc
         if (mdesc->mediaStreamTrackId() != emptyString())
             continue;
 
-        RTCRtpSender* sender = nullptr;
-        for (auto s : senders) {
-            if (s->track()->kind() == mdesc->type()) {
-                sender = s;
-                break;
-            }
-        }
-
+        RTCRtpSender* sender = takeFirstSenderOfType(senders, mdesc->type());
         if (sender) {
             mdesc->setMediaStreamId(sender->mediaStreamId());
             mdesc->setMediaStreamTrackId(sender->track()->id());
             mdesc->setMode("sendrecv");
-            senders.removeFirst(sender);
         } else
             mdesc->setMode("recvonly");
     }
@@ -580,7 +584,7 @@ void RTCPeerConnection::close()
     m_signalingState = SignalingStateClosed;
 }
 
-void RTCPeerConnection::gotSendSSRC(unsigned mdescIndex, const String& ssrc, const String& cname)
+void RTCPeerConnection::gotSendSSRC(unsigned mdescIndex, unsigned ssrc, const String& cname)
 {
     printf("-> gotSendSSRC()\n");
 
@@ -623,7 +627,7 @@ void RTCPeerConnection::gotDtlsCertificate(unsigned mdescIndex, const String& ce
     for (unsigned i = 0; i < fingerprintVector.size(); ++i)
         fingerprint.append(String::format(i ? ":%02X" : "%02X", fingerprintVector[i]));
 
-    m_localConfiguration->mediaDescriptions()[mdescIndex]->setDtlsFingerprintHashFunction("sha256");
+    m_localConfiguration->mediaDescriptions()[mdescIndex]->setDtlsFingerprintHashFunction("sha-256");
     m_localConfiguration->mediaDescriptions()[mdescIndex]->setDtlsFingerprint(fingerprint.toString());
 
     if (maybeResolveSetLocalDescription() == SetLocalDescriptionResolvedSuccessfully)
@@ -644,7 +648,19 @@ void RTCPeerConnection::gotIceCandidate(unsigned mdescIndex, RefPtr<IceCandidate
 
     mdesc.addIceCandidate(candidate.copyRef());
 
-    // FIXME: update mdesc address (ideally with active candidate)
+    if (!candidate->address().contains(':')) { // not IPv6
+        if (candidate->componentId() == 1) { // RTP
+            if (mdesc.address().isEmpty() || mdesc.address() == "0.0.0.0") {
+                mdesc.setAddress(candidate->address());
+                mdesc.setPort(candidate->port());
+            }
+        } else { // RTCP
+            if (mdesc.rtcpAddress().isEmpty() || !mdesc.rtcpPort()) {
+                mdesc.setRtcpAddress(candidate->address());
+                mdesc.setRtcpPort(candidate->port());
+            }
+        }
+    }
 
     ResolveSetLocalDescriptionResult result = maybeResolveSetLocalDescription();
     if (result == SetLocalDescriptionResolvedSuccessfully)
@@ -666,7 +682,7 @@ void RTCPeerConnection::doneGatheringCandidates(unsigned mdescIndex)
     maybeDispatchGatheringDone();
 }
 
-void RTCPeerConnection::gotRemoteSource(unsigned, RefPtr<RealTimeMediaSource>&&)
+void RTCPeerConnection::gotRemoteSource(unsigned, RefPtr<RealtimeMediaSource>&&)
 {
 }
 

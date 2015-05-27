@@ -31,6 +31,7 @@
 #include "FloatPoint.h"
 #include "FloatSize.h"
 #include "ScrollTypes.h"
+#include "WheelEventTestTrigger.h"
 #include <wtf/Noncopyable.h>
 #include <wtf/RunLoop.h>
 
@@ -42,6 +43,7 @@ namespace WebCore {
 
 class PlatformWheelEvent;
 class ScrollableArea;
+class WheelEventTestTrigger;
 
 class ScrollControllerClient {
 protected:
@@ -75,6 +77,9 @@ public:
     // the page to scroll to the nearest boundary point.
     virtual void adjustScrollPositionToBoundsIfNecessary() = 0;
 
+    virtual void deferTestsForReason(WheelEventTestTrigger::ScrollableAreaIdentifier, WheelEventTestTrigger::DeferTestTriggerReason) const { /* Do nothing */ }
+    virtual void removeTestDeferralForReason(WheelEventTestTrigger::ScrollableAreaIdentifier, WheelEventTestTrigger::DeferTestTriggerReason) const { /* Do nothing */ }
+
 #if ENABLE(CSS_SCROLL_SNAP) && PLATFORM(MAC)
     virtual LayoutUnit scrollOffsetOnAxis(ScrollEventAxis) const = 0;
     virtual void immediateScrollOnAxis(ScrollEventAxis, float delta) = 0;
@@ -91,6 +96,11 @@ public:
     virtual float pageScaleFactor() const
     {
         return 1.0f;
+    }
+
+    virtual unsigned activeScrollOffsetIndex(ScrollEventAxis) const
+    {
+        return 0;
     }
 #endif
 };
@@ -109,6 +119,10 @@ public:
     bool processWheelEventForScrollSnap(const PlatformWheelEvent&);
     void updateScrollAnimatorsAndTimers(const ScrollableArea&);
     void updateScrollSnapPoints(ScrollEventAxis, const Vector<LayoutUnit>&);
+    unsigned activeScrollSnapIndexForAxis(ScrollEventAxis) const;
+    void setActiveScrollSnapIndexForAxis(ScrollEventAxis, unsigned);
+    bool activeScrollSnapIndexDidChange() const { return m_activeScrollSnapIndexDidChange; }
+    void setScrollSnapIndexDidChange(bool state) { m_activeScrollSnapIndexDidChange = state; }
 #endif
 
 private:
@@ -163,12 +177,13 @@ private:
     RunLoop::Timer<ScrollController> m_verticalScrollSnapTimer;
 #endif
 
-    bool m_inScrollGesture;
-    bool m_momentumScrollInProgress;
-    bool m_ignoreMomentumScrolls;
-    bool m_snapRubberbandTimerIsActive;
+    bool m_inScrollGesture { false };
+    bool m_momentumScrollInProgress { false };
+    bool m_ignoreMomentumScrolls { false };
+    bool m_snapRubberbandTimerIsActive { false };
+    bool m_activeScrollSnapIndexDidChange { false };
 };
-
+    
 } // namespace WebCore
 
 #endif // ENABLE(RUBBER_BANDING)

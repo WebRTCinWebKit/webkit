@@ -59,6 +59,8 @@ enum ResourceLoadPriority {
     boolean isPreloaded(DOMString url);
     boolean isLoadingFromMemoryCache(DOMString url);
     DOMString xhrResponseSource(XMLHttpRequest xhr);
+    boolean isSharingStyleSheetContents(Element linkA, Element linkB);
+    boolean isStyleSheetLoadingSubresources(Element link);
     void clearMemoryCache();
     void pruneMemoryCacheToSize(long size);
     long memoryCacheSize();
@@ -121,6 +123,8 @@ enum ResourceLoadPriority {
     void invalidateFontCache();
 
     [RaisesException] void setScrollViewPosition(long x, long y);
+
+    [RaisesException] void setViewBaseBackgroundColor(DOMString colorValue);
 
     [RaisesException] void setPagination(DOMString mode, long gap, optional long pageLength);
 
@@ -277,8 +281,13 @@ enum ResourceLoadPriority {
     // Query if a timer is currently throttled, to debug timer throttling.
     [RaisesException] boolean isTimerThrottled(long timerHandle);
 
+    boolean isRequestAnimationFrameThrottled();
+
     [RaisesException] void startTrackingStyleRecalcs();
     [RaisesException] unsigned long styleRecalcCount();
+
+    [RaisesException] void startTrackingCompositingUpdates();
+    [RaisesException] unsigned long compositingUpdateCount();
 
     // |node| should be Document, HTMLIFrameElement, or unspecified.
     // If |node| is an HTMLIFrameElement, it assumes node.contentDocument is
@@ -336,6 +345,8 @@ enum ResourceLoadPriority {
     [Conditional=VIDEO] void applicationWillEnterForeground();
     [Conditional=VIDEO] void applicationWillEnterBackground();
     [Conditional=VIDEO, RaisesException] void setMediaSessionRestrictions(DOMString mediaType, DOMString restrictions);
+    [Conditional=VIDEO, RaisesException] void setMediaElementRestrictions(HTMLMediaElement element, DOMString restrictions);
+    [Conditional=WEB_AUDIO, RaisesException] void setAudioContextRestrictions(AudioContext context, DOMString restrictions);
     [Conditional=VIDEO, RaisesException] void postRemoteControlCommand(DOMString command);
     
     [Conditional=VIDEO] void simulateSystemSleep();
@@ -350,6 +361,11 @@ enum ResourceLoadPriority {
     
     File createFile(DOMString url);
     void queueMicroTask(long testNumber);
+    boolean testPreloaderSettingViewport();
 
     [Conditional=CONTENT_FILTERING] readonly attribute MockContentFilterSettings mockContentFilterSettings;
+
+#if defined(ENABLE_CSS_SCROLL_SNAP) && ENABLE_CSS_SCROLL_SNAP
+    [RaisesException] DOMString scrollSnapOffsets(Element element);
+#endif
 };

@@ -45,7 +45,7 @@ class TouchEvent;
 
 class SliderThumbElement final : public HTMLDivElement {
 public:
-    static PassRefPtr<SliderThumbElement> create(Document&);
+    static Ref<SliderThumbElement> create(Document&);
 
     void setPositionFromValue();
     void dragFrom(const LayoutPoint&);
@@ -61,7 +61,7 @@ public:
 private:
     SliderThumbElement(Document&);
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
     virtual RefPtr<Element> cloneElementWithoutAttributesAndChildren(Document&) override;
     virtual bool isDisabledFormControl() const override;
     virtual bool matchesReadWritePseudoClass() const override;
@@ -107,9 +107,9 @@ private:
 #endif
 };
 
-inline PassRefPtr<SliderThumbElement> SliderThumbElement::create(Document& document)
+inline Ref<SliderThumbElement> SliderThumbElement::create(Document& document)
 {
-    return adoptRef(new SliderThumbElement(document));
+    return adoptRef(*new SliderThumbElement(document));
 }
 
 // --------------------------------
@@ -127,11 +127,11 @@ private:
 
 class SliderContainerElement final : public HTMLDivElement {
 public:
-    static PassRefPtr<SliderContainerElement> create(Document&);
+    static Ref<SliderContainerElement> create(Document&);
 
 private:
     SliderContainerElement(Document&);
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
     virtual const AtomicString& shadowPseudoId() const override;
 };
 

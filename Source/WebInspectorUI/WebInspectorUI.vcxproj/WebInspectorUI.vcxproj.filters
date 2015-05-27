@@ -141,9 +141,6 @@
     <None Include="..\UserInterface\CanvasProfileView.js">
       <Filter>UserInterface</Filter>
     </None>
-    <None Include="..\UserInterface\ChartDetailsSectionLegendRow.js">
-      <Filter>UserInterface</Filter>
-    </None>
     <None Include="..\UserInterface\ChartDetailsSectionRow.js">
       <Filter>UserInterface</Filter>
     </None>
@@ -654,6 +651,9 @@
     <None Include="..\UserInterface\LayoutTimelineRecord.js">
       <Filter>UserInterface</Filter>
     </None>
+    <None Include="..\UserInterface\LinearTimelineOverview.js">
+      <Filter>UserInterface</Filter>
+    </None>
     <None Include="..\UserInterface\LoadInspectorBackendCommands.js">
       <Filter>UserInterface</Filter>
     </None>
@@ -780,10 +780,10 @@
     <None Include="..\UserInterface\RemoteObject.js">
       <Filter>UserInterface</Filter>
     </None>
-    <None Include="..\UserInterface\RenderingFrameDetailsSidebarPanel.js">
+    <None Include="..\UserInterface\RenderingFrameTimelineDataGridNode.js">
       <Filter>UserInterface</Filter>
     </None>
-    <None Include="..\UserInterface\RenderingFrameTimelineDataGridNode.js">
+    <None Include="..\UserInterface\RenderingFrameTimelineOverview.js">
       <Filter>UserInterface</Filter>
     </None>
     <None Include="..\UserInterface\RenderingFrameTimelineOverviewGraph.css">

@@ -1136,14 +1136,14 @@ static NSString* nsStringForReplacedNode(Node* replacedNode)
     return [attrString autorelease];
 }
 
-static id textMarkerRangeFromVisiblePositions(AXObjectCache *cache, VisiblePosition startPosition, VisiblePosition endPosition)
+static id textMarkerRangeFromVisiblePositions(AXObjectCache *cache, const VisiblePosition& startPosition, const VisiblePosition& endPosition)
 {
     id startTextMarker = textMarkerForVisiblePosition(cache, startPosition);
     id endTextMarker = textMarkerForVisiblePosition(cache, endPosition);
     return textMarkerRangeFromMarkers(startTextMarker, endTextMarker);
 }
 
-- (id)textMarkerRangeFromVisiblePositions:(VisiblePosition)startPosition endPosition:(VisiblePosition)endPosition
+- (id)textMarkerRangeFromVisiblePositions:(const VisiblePosition&)startPosition endPosition:(const VisiblePosition&)endPosition
 {
     return textMarkerRangeFromVisiblePositions(m_object->axObjectCache(), startPosition, endPosition);
 }
@@ -1909,7 +1909,8 @@ static const AccessibilityRoleMap& createAccessibilityRoleMap()
         { ListBoxOptionRole, NSAccessibilityStaticTextRole },
         { CellRole, NSAccessibilityCellRole },
         { TableHeaderContainerRole, NSAccessibilityGroupRole },
-        { RowHeaderRole, NSAccessibilityGroupRole },
+        { ColumnHeaderRole, NSAccessibilityCellRole },
+        { RowHeaderRole, NSAccessibilityCellRole },
         { DefinitionRole, NSAccessibilityGroupRole },
         { DescriptionListDetailRole, NSAccessibilityGroupRole },
         { DescriptionListTermRole, NSAccessibilityGroupRole },
@@ -1958,6 +1959,7 @@ static const AccessibilityRoleMap& createAccessibilityRoleMap()
         { BlockquoteRole, NSAccessibilityGroupRole },
         { SwitchRole, NSAccessibilityCheckBoxRole },
         { SearchFieldRole, NSAccessibilityTextFieldRole },
+        { PreRole, NSAccessibilityGroupRole },
     };
     AccessibilityRoleMap& roleMap = *new AccessibilityRoleMap;
     
@@ -3480,7 +3482,7 @@ static RenderObject* rendererForView(NSView* view)
 - (NSData*)doAXRTFForRange:(NSRange)range
 {
     NSAttributedString* attrString = [self doAXAttributedStringForRange:range];
-    return [attrString RTFFromRange: NSMakeRange(0, [attrString length]) documentAttributes: nil];
+    return [attrString RTFFromRange: NSMakeRange(0, [attrString length]) documentAttributes:@{ }];
 }
 
 - (id)accessibilityAttributeValue:(NSString*)attribute forParameter:(id)parameter

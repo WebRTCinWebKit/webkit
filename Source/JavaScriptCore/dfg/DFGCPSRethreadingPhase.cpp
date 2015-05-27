@@ -39,7 +39,6 @@ class CPSRethreadingPhase : public Phase {
 public:
     CPSRethreadingPhase(Graph& graph)
         : Phase(graph, "CPS rethreading")
-        , m_availableForOSR(OperandsLike, graph.block(0)->variablesAtHead)
     {
     }
     
@@ -126,14 +125,10 @@ private:
         ASSERT(
             m_block->variablesAtHead.sizeFor<operandKind>()
             == m_block->variablesAtTail.sizeFor<operandKind>());
-        ASSERT(
-            m_block->variablesAtHead.sizeFor<operandKind>()
-            == m_availableForOSR.sizeFor<operandKind>());
         
         for (unsigned i = m_block->variablesAtHead.sizeFor<operandKind>(); i--;) {
             m_block->variablesAtHead.atFor<operandKind>(i) = nullptr;
             m_block->variablesAtTail.atFor<operandKind>(i) = nullptr;
-            m_availableForOSR.atFor<operandKind>(i) = Edge();
         }
     }
     
@@ -194,12 +189,12 @@ private:
             
             if (otherNode->op() == GetLocal) {
                 // Replace all references to this GetLocal with otherNode.
-                node->replacement = otherNode;
+                node->setReplacement(otherNode);
                 return;
             }
             
             ASSERT(otherNode->op() == SetLocal);
-            node->replacement = otherNode->child1().node();
+            node->setReplacement(otherNode->child1().node());
             return;
         }
         
@@ -247,8 +242,7 @@ private:
                 // redundant and inefficient, since really it just means that we want to
                 // keep the last MovHinted value of that local alive.
                 
-                node->children.setChild1(m_availableForOSR.atFor<operandKind>(idx));
-                node->convertToPhantom();
+                node->remove();
                 return;
             }
             
@@ -357,10 +351,6 @@ private:
                 
             case SetArgument:
                 canonicalizeSet(node);
-                break;
-                
-            case MovHint:
-                m_availableForOSR.operand(node->unlinkedLocal()) = node->child1();
                 break;
                 
             default:
@@ -493,8 +483,21 @@ private:
         }
         while (!m_flushedLocalOpWorklist.isEmpty()) {
             Node* node = m_flushedLocalOpWorklist.takeLast();
-            ASSERT(node->flags() & NodeIsFlushed);
-            DFG_NODE_DO_TO_CHILDREN(m_graph, node, addFlushedLocalEdge);
+            switch (node->op()) {
+            case SetLocal:
+            case SetArgument:
+                break;
+                
+            case Flush:
+            case Phi:
+                ASSERT(node->flags() & NodeIsFlushed);
+                DFG_NODE_DO_TO_CHILDREN(m_graph, node, addFlushedLocalEdge);
+                break;
+
+            default:
+                DFG_CRASH(m_graph, node, "Invalid node in flush graph");
+                break;
+            }
         }
     }
     
@@ -513,7 +516,6 @@ private:
     Vector<PhiStackEntry, 128> m_argumentPhiStack;
     Vector<PhiStackEntry, 128> m_localPhiStack;
     Vector<Node*, 128> m_flushedLocalOpWorklist;
-    Operands<Edge> m_availableForOSR;
 };
 
 bool performCPSRethreading(Graph& graph)

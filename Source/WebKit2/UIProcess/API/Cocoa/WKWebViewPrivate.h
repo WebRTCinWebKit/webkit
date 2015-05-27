@@ -93,7 +93,10 @@ typedef NS_ENUM(NSInteger, _WKPaginationMode) {
 - (void)_close;
 
 @property (nonatomic, setter=_setLayoutMode:) _WKLayoutMode _layoutMode;
+// For use with _layoutMode = _WKLayoutModeFixedSize:
 @property (nonatomic, setter=_setFixedLayoutSize:) CGSize _fixedLayoutSize;
+// For use with _layoutMode = _WKLayoutModeDynamicSizeWithMinimumViewSize:
+@property (nonatomic, setter=_setMinimumViewSize:) CGSize _minimumViewSize;
 
 @property (nonatomic, setter=_setViewScale:) CGFloat _viewScale;
 
@@ -123,6 +126,9 @@ typedef NS_ENUM(NSInteger, _WKPaginationMode) {
 @property (nonatomic, readonly) CGFloat _viewportMetaTagWidth;
 
 @property (nonatomic, readonly) _WKWebViewPrintFormatter *_webViewPrintFormatter;
+
+// Indicating whether link preview is allowed. The default value is YES.
+@property (nonatomic, getter=_allowsLinkPreview, setter=_setAllowsLinkPreview:) BOOL _allowsLinkPreview WK_AVAILABLE(NA, WK_IOS_TBA);
 
 - (void)_beginInteractiveObscuredInsetsChange;
 - (void)_endInteractiveObscuredInsetsChange;
