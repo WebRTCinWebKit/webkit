@@ -192,11 +192,11 @@ void MediaEndpointOwr::addRemoteCandidate(IceCandidate& candidate, unsigned mdes
 }
 
 std::unique_ptr<RTCDataChannelHandler> MediaEndpointOwr::createDataChannel(const String& label, RTCDataChannelInit_Endpoint& initData)
-{   
+{   //TODO parse initData
     gchar* protocol_conversion = g_strdup(initData.protocol.ascii().data());
     gchar* label_conversion = g_strdup(label.ascii().data());
     //FIX ME : add maxRetransmitTime et maxRetransmits parameters in owr_data_channel_new
-    OwrDataChannel* channel = owr_data_channel_new(initData.ordered, 5000, -1, protocol_conversion, initData.negotiated, initData.id, label_conversion);
+    OwrDataChannel* channel = owr_data_channel_new(false, 5000, -1, "OPT", true, rand() % 100, "well");
     m_dataChannels.append(channel);   
     
     std::unique_ptr<RTCDataChannelHandler> handler = RTCDataChannelHandler::create(label, initData.ordered, 5000, -1, protocol_conversion, initData.negotiated, initData.id, channel);
@@ -316,7 +316,8 @@ void MediaEndpointOwr::ensureTransportAgentAndSessions(bool isInitiator, const V
 }
 
 void MediaEndpointOwr::internalAddRemoteCandidate(OwrSession* session, IceCandidate& candidate, const String& ufrag, const String& password)
-{
+{   
+    printf("internalAddRemoteCandidate::ufrag: %s\n", ufrag.ascii().data());
     gboolean rtcpMux;
     //g_object_get(session, "rtcp-mux", &rtcpMux, nullptr);
 
@@ -324,7 +325,6 @@ void MediaEndpointOwr::internalAddRemoteCandidate(OwrSession* session, IceCandid
         //return;
 
     ASSERT(candidateTypes.find(candidate.type()) != notFound);
-    printf("ASSERT: %d\n", (candidateTypes.find(candidate.type()) != notFound));
 
     OwrCandidateType candidateType = static_cast<OwrCandidateType>(candidateTypes.find(candidate.type()));
     OwrComponentType componentId = static_cast<OwrComponentType>(candidate.componentId());
@@ -334,7 +334,6 @@ void MediaEndpointOwr::internalAddRemoteCandidate(OwrSession* session, IceCandid
         transportType = OWR_TRANSPORT_TYPE_UDP;
     else {
         ASSERT(candidateTcpTypes.find(candidate.tcpType()) != notFound);
-        printf("ASSERT: %d\n", (candidateTcpTypes.find(candidate.tcpType()) != notFound));
         transportType = static_cast<OwrTransportType>(candidateTcpTypes.find(candidate.tcpType()));
     }
 
@@ -380,6 +379,7 @@ static void gotCandidate(OwrSession* session, OwrCandidate* candidate, MediaEndp
         "password", &password,
         nullptr);
 
+    printf("gotCandidate::ufrag: %s\n", ufrag);
     ASSERT(candidateType >= 0 && candidateType < candidateTypes.size());
     ASSERT(transportType >= 0 && transportType < candidateTcpTypes.size());
 

@@ -645,7 +645,7 @@ void RTCPeerConnection::gotIceCandidate(unsigned mdescIndex, RefPtr<IceCandidate
         mdesc.setIceUfrag(ufrag);
         mdesc.setIcePassword(password);
     }
-
+    
     mdesc.addIceCandidate(candidate.copyRef());
 
     if (!candidate->address().contains(':')) { // not IPv6
@@ -682,7 +682,7 @@ void RTCPeerConnection::doneGatheringCandidates(unsigned mdescIndex)
     maybeDispatchGatheringDone();
 }
 
-void RTCPeerConnection::gotRemoteSource(unsigned, RefPtr<RealtimeMediaSource>&&)
+void RTCPeerConnection::gotRemoteSource(unsigned, RefPtr<RealTimeMediaSource>&&)
 {
 }
 
