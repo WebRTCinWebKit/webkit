@@ -73,8 +73,7 @@
     attribute EventHandler onnegotiationneeded;
     attribute EventHandler onicecandidate;
     attribute EventHandler onsignalingstatechange;
-    attribute EventHandler onaddstream;
-    attribute EventHandler onremovestream;
+    attribute EventHandler ontrack;
     attribute EventHandler oniceconnectionstatechange;
     attribute EventHandler ondatachannel;
 

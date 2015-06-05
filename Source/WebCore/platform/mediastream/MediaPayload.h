@@ -33,8 +33,10 @@
 
 #if ENABLE(MEDIA_STREAM)
 
+#include <wtf/HashMap.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
+#include <wtf/text/StringHash.h>
 
 namespace WebCore {
 
@@ -53,16 +55,46 @@ public:
     void setEncodingName(const String & encodingName) { m_encodingName = encodingName; }
 
     unsigned clockRate() const { return m_clockRate; }
+    void setClockRate(unsigned clockRate) { m_clockRate = clockRate; }
+
+    unsigned channels() const { return m_channels; }
+    void setChannels(unsigned channels) { m_channels = channels; }
+
+    bool ccmfir() const { return m_ccmfir; }
+    void setCcmfir(bool ccmfir) { m_ccmfir = ccmfir; }
+
+    bool nackpli() const { return m_nackpli; }
+    void setNackpli(bool nackpli) { m_nackpli = nackpli; }
+
+    bool nack() const { return m_nack; }
+    void setNack(bool nack) { m_nack = nack; }
+
+    const HashMap<String, unsigned>& parameters() const { return m_parameters; }
+    void addParameter(const String& name, unsigned value) { m_parameters.set(name, value); }
 
 private:
     MediaPayload()
         : m_type(0)
         , m_clockRate(0)
+        , m_channels(0)
+        , m_ccmfir(false)
+        , m_nackpli(false)
+        , m_nack(false)
     { }
 
     unsigned m_type;
     String m_encodingName;
     unsigned m_clockRate;
+
+    // audio
+    unsigned m_channels;
+
+    // video
+    bool m_ccmfir;
+    bool m_nackpli;
+    bool m_nack;
+
+    HashMap<String, unsigned> m_parameters;
 };
 
 } // namespace WebCore

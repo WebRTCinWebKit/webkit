@@ -1,8 +1,5 @@
 /*
- * Copyright (C) 2011 Ericsson AB. All rights reserved.
- * Copyright (C) 2012 Google Inc. All rights reserved.
- * Copyright (C) 2015 Igalia S.L. All rights reserved.
- * Copyright (C) 2015 Metrological. All rights reserved.
+ * Copyright (C) 2015 Ericsson AB. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,44 +28,51 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RealtimeMediaSourceCenterOwr_h
-#define RealtimeMediaSourceCenterOwr_h
+#ifndef RTCTrackEvent_h
+#define RTCTrackEvent_h
 
-#if ENABLE(MEDIA_STREAM) && USE(OPENWEBRTC)
+#if ENABLE(MEDIA_STREAM)
 
-#include "RealtimeMediaSourceCenter.h"
-
-#include "RealtimeMediaSourceOwr.h"
-#include <wtf/PassRefPtr.h>
+#include "Event.h"
+// #include "MediaStreamTrack.h"
+#include <wtf/text/AtomicString.h>
 
 namespace WebCore {
 
-class MediaStreamPrivate;
-class RealtimeMediaSource;
-class MediaStreamSourcesQueryClient;
+class MediaStreamTrack;
+class RTCRtpReceiver;
 
-class RealtimeMediaSourceCenterOwr final : public RealtimeMediaSourceCenter {
+struct RTCTrackEventInit : public EventInit {
+    RTCTrackEventInit();
+
+    RefPtr<RTCRtpReceiver> receiver;
+    RefPtr<MediaStreamTrack> track;
+};
+
+class RTCTrackEvent : public Event {
 public:
-    RealtimeMediaSourceCenterOwr();
-    ~RealtimeMediaSourceCenterOwr();
+    virtual ~RTCTrackEvent();
 
-    virtual void validateRequestConstraints(PassRefPtr<MediaStreamCreationClient>, PassRefPtr<MediaConstraints> audioConstraints, PassRefPtr<MediaConstraints> videoConstraints);
-    virtual void createMediaStream(PassRefPtr<MediaStreamCreationClient>, PassRefPtr<MediaConstraints> audioConstraints, PassRefPtr<MediaConstraints> videoConstraints);
-    virtual bool getMediaStreamTrackSources(PassRefPtr<MediaStreamTrackSourcesRequestClient>) override;
+    static Ref<RTCTrackEvent> create();
+    static Ref<RTCTrackEvent> create(const AtomicString& type, bool canBubble, bool cancelable, RefPtr<RTCRtpReceiver>&&, RefPtr<MediaStreamTrack>&&);
+    static Ref<RTCTrackEvent> create(const AtomicString& type, const RTCTrackEventInit&);
 
-    void mediaSourcesAvailable(GList* sources);
+    RTCRtpReceiver* receiver() const { return m_receiver.get(); }
+    MediaStreamTrack* track() const  { return m_track.get(); }
+
+    virtual EventInterface eventInterface() const { return RTCTrackEventInterfaceType; }
 
 private:
-    PassRefPtr<RealtimeMediaSource> selectSource(RealtimeMediaSource::Type);
-    RealtimeMediaSourceOwrMap m_sourceMap;
-    RefPtr<MediaStreamCreationClient> m_client;
+    RTCTrackEvent();
+    RTCTrackEvent(const AtomicString& type, bool canBubble, bool cancelable, RefPtr<RTCRtpReceiver>&&, RefPtr<MediaStreamTrack>&&);
+    RTCTrackEvent(const AtomicString& type, const RTCTrackEventInit&);
 
-    String m_preferredAudioSourceName;
-    String m_preferredVideoSourceName;
+    RefPtr<RTCRtpReceiver> m_receiver;
+    RefPtr<MediaStreamTrack> m_track;
 };
 
 } // namespace WebCore
 
-#endif // ENABLE(MEDIA_STREAM) && USE(OPENWEBRTC)
+#endif // ENABLE(MEDIA_STREAM)
 
-#endif // RealtimeMediaSourceCenterOwr_h
+#endif // RTCTrackEvent_h

@@ -186,10 +186,6 @@ bool MediaPlayerPrivateGStreamerOwr::internalLoad()
 
         RealtimeMediaSourceOwr* source = reinterpret_cast<RealtimeMediaSourceOwr*>(track->source());
         OwrMediaSource* mediaSource = OWR_MEDIA_SOURCE(source->mediaSource());
-        OwrSourceType sourceType;
-        g_object_get(mediaSource, "type", &sourceType, nullptr);
-        if ((sourceType & OWR_SOURCE_TYPE_CAPTURE) != OWR_SOURCE_TYPE_CAPTURE)
-            continue;
 
         if (track->type() == RealtimeMediaSource::Audio) {
             if (m_audioSource && (m_audioSource.get() == source))

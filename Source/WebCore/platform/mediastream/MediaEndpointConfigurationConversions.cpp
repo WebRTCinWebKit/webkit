@@ -167,6 +167,33 @@ RefPtr<MediaEndpointConfiguration> fromJSON(const String& json)
             if (payloadsObject->getString(ASCIILiteral("encodingName"), stringValue))
                 payload->setEncodingName(stringValue);
 
+            if (payloadsObject->getInteger(ASCIILiteral("clockRate"), intValue))
+                payload->setClockRate(intValue);
+
+            if (payloadsObject->getInteger(ASCIILiteral("channels"), intValue))
+                payload->setChannels(intValue);
+
+            if (payloadsObject->getBoolean(ASCIILiteral("ccmfir"), boolValue))
+                payload->setCcmfir(boolValue);
+
+            if (payloadsObject->getBoolean(ASCIILiteral("nackpli"), boolValue))
+                payload->setNackpli(boolValue);
+
+            if (payloadsObject->getBoolean(ASCIILiteral("nack"), boolValue))
+                payload->setNack(boolValue);
+
+            RefPtr<InspectorObject> parametersObject = InspectorObject::create();
+            if (payloadsObject->getObject(ASCIILiteral("parameters"), parametersObject)) {
+                if (parametersObject->getInteger(ASCIILiteral("packetizationMode"), intValue))
+                    payload->addParameter("packetizationMode", intValue);
+
+                if (parametersObject->getInteger(ASCIILiteral("apt"), intValue))
+                    payload->addParameter("apt", intValue);
+
+                if (parametersObject->getInteger(ASCIILiteral("rtxTime"), intValue))
+                    payload->addParameter("rtxTime", intValue);
+            }
+
             mdesc->addPayload(WTF::move(payload));
         }
 
@@ -275,6 +302,20 @@ String toJSON(MediaEndpointConfiguration* configuration)
 
             payloadObject->setInteger(ASCIILiteral("type"), payload->type());
             payloadObject->setString(ASCIILiteral("encodingName"), payload->encodingName());
+            payloadObject->setInteger(ASCIILiteral("clockRate"), payload->clockRate());
+            payloadObject->setInteger(ASCIILiteral("channels"), payload->channels());
+            payloadObject->setBoolean(ASCIILiteral("ccmfir"), payload->ccmfir());
+            payloadObject->setBoolean(ASCIILiteral("nackpli"), payload->nackpli());
+            payloadObject->setBoolean(ASCIILiteral("nack"), payload->nack());
+
+            if (!payload->parameters().isEmpty()) {
+                RefPtr<InspectorObject> parametersObject = InspectorObject::create();
+
+                for (auto& name : payload->parameters().keys())
+                    parametersObject->setInteger(name, payload->parameters().get(name));
+
+                payloadObject->setObject(ASCIILiteral("parameters"), parametersObject);
+            }
 
             payloadsArray->pushObject(payloadObject);
         }

@@ -63,6 +63,8 @@ public:
 
     const Vector<RefPtr<MediaPayload>>& payloads() const { return m_payloads; }
     void addPayload(RefPtr<MediaPayload>&& payload) { m_payloads.append(WTF::move(payload)); }
+    void setPayloads(Vector<RefPtr<MediaPayload>>&& payloads) { m_payloads = payloads; }
+    void setPayloads(const Vector<RefPtr<MediaPayload>>& payloads) { m_payloads = payloads; }
 
     bool rtcpMux() const { return m_rtcpMux; }
     void setRtcpMux(bool rtcpMux) { m_rtcpMux = rtcpMux; }

@@ -68,6 +68,7 @@ public:
     void dispatchDtlsCertificate(unsigned sessionIndex, const String& certificate);
     void dispatchSendSSRC(unsigned sessionIndex, unsigned ssrc, const String& cname);
     void dispatchNewDataChannel(unsigned sessionIndex, std::unique_ptr<RTCDataChannelHandler>);
+    void dispatchRemoteSource(unsigned sessionIndex, RefPtr<RealtimeMediaSource>&&);
 
 private:
     enum SessionType {
