@@ -112,35 +112,39 @@ function gotDescription2(desc) {
 var nIceCallback1 = 0;
 function iceCallback1(event) {
   trace('local ice callback');
+    var desc2 = new RTCSessionDescription(localConnection.localDescription);
+    remoteConnection.setRemoteDescription(desc2);
+if ( nIceCallback1 == 4) {
+    nIceCallback1 = 10;
+
+    remoteConnection.createAnswer(gotDescription2,
+    onCreateSessionDescriptionError);
+  }
   if (event.candidate) {
     nIceCallback1++;
     remoteConnection.addIceCandidate(event.candidate,
         onAddIceCandidateSuccess, onAddIceCandidateError);
     trace('Local ICE candidate: \n' + event.candidate.candidate);
   }
-  if ( nIceCallback1 == 5) {
-    nIceCallback1 = 10;
-    var desc2 = new RTCSessionDescription(localConnection.localDescription);
-    remoteConnection.setRemoteDescription(desc2);
-    remoteConnection.createAnswer(gotDescription2,
-    onCreateSessionDescriptionError);
-  }
+  
 }
 
 var nIceCallback2 = 0;
 function iceCallback2(event) {
   trace('remote ice callback');
+    var desc3 = new RTCSessionDescription(remoteConnection.localDescription);
+    localConnection.setRemoteDescription(desc3);
+if ( nIceCallback2 == 4) {
+    nIceCallback2 = 10;
+
+  }
   if (event.candidate) {
     nIceCallback2++;
     localConnection.addIceCandidate(event.candidate,
         onAddIceCandidateSuccess, onAddIceCandidateError);
     trace('Remote ICE candidate: \n ' + event.candidate.candidate);
   }
-  if ( nIceCallback2 == 5) {
-    nIceCallback2 = 10;
-    var desc3 = new RTCSessionDescription(remoteConnection.localDescription);
-    localConnection.setRemoteDescription(desc3);
-  }
+  
 }
 
 function onAddIceCandidateSuccess() {
@@ -149,6 +153,7 @@ function onAddIceCandidateSuccess() {
 
 function onAddIceCandidateError(error) {
   trace('Failed to add Ice Candidate: ' + error.toString());
+  console.log(error);
 }
 
 function receiveChannelCallback(event) {
