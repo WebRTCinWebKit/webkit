@@ -47,7 +47,7 @@ class MediaEndpoint;
 class MediaEndpointConfiguration;
 class RTCDataChannelHandler;
 class RTCDataChannelHandlerClient;
-class RealTimeMediaSource; 
+class RealtimeMediaSource; 
 
 
 
@@ -73,7 +73,7 @@ public:
     virtual void gotDtlsCertificate(unsigned mdescIndex, const String& certificate) = 0;
     virtual void gotIceCandidate(unsigned mdescIndex, RefPtr<IceCandidate>&&, const String& ufrag, const String& password) = 0;
     virtual void doneGatheringCandidates(unsigned mdescIndex) = 0;
-    virtual void gotRemoteSource(unsigned mdescIndex, RefPtr<RealTimeMediaSource>&&) = 0;
+    virtual void gotRemoteSource(unsigned mdescIndex, RefPtr<RealtimeMediaSource>&&) = 0;
     virtual void gotDataChannel(unsigned mdescIndex, std::unique_ptr<RTCDataChannelHandler>) = 0;
 
     virtual ~MediaEndpointClient() { }

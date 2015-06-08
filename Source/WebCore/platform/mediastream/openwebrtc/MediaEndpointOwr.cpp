@@ -205,6 +205,7 @@ void MediaEndpointOwr::prepareToSend(MediaEndpointConfiguration* configuration, 
 
 void MediaEndpointOwr::addRemoteCandidate(IceCandidate& candidate, unsigned mdescIndex, const String& ufrag, const String& password)
 {
+    printf("MediaEndpointOwr::addRemoteCandidate \n");
     internalAddRemoteCandidate(m_sessions[mdescIndex], candidate, ufrag, password);
 }
 
@@ -337,7 +338,6 @@ void MediaEndpointOwr::ensureTransportAgentAndSessions(bool isInitiator, const V
 
 void MediaEndpointOwr::internalAddRemoteCandidate(OwrSession* session, IceCandidate& candidate, const String& ufrag, const String& password)
 {   
-    printf("internalAddRemoteCandidate::ufrag: %s\n", ufrag.ascii().data());
     gboolean rtcpMux;
     //g_object_get(session, "rtcp-mux", &rtcpMux, nullptr);
 

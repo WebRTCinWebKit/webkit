@@ -104,7 +104,7 @@ public:
     virtual void gotDtlsCertificate(unsigned mdescIndex, const String& certificate) override;
     virtual void gotIceCandidate(unsigned mdescIndex, RefPtr<IceCandidate>&&, const String& ufrag, const String& password) override;
     virtual void doneGatheringCandidates(unsigned mdescIndex) override;
-    virtual void gotRemoteSource(unsigned mdescIndex, RefPtr<RealTimeMediaSource>&&) override;
+    virtual void gotRemoteSource(unsigned mdescIndex, RefPtr<RealtimeMediaSource>&&) override;
     virtual void gotDataChannel(unsigned mdescIndex, std::unique_ptr<RTCDataChannelHandler>) override;
 
     // EventTarget

@@ -801,14 +801,14 @@ void RTCPeerConnection::gotIceCandidate(unsigned mdescIndex, RefPtr<IceCandidate
     }
 
     ResolveSetLocalDescriptionResult result = maybeResolveSetLocalDescription();
-    if (result == SetLocalDescriptionResolvedSuccessfully)
-        maybeDispatchGatheringDone();
-    else if (result == SetLocalDescriptionAlreadyResolved) {
+   // if (result == SetLocalDescriptionResolvedSuccessfully)
+    //    maybeDispatchGatheringDone();
+   // else if (result == SetLocalDescriptionAlreadyResolved) {
         String candidateString = MediaEndpointConfigurationConversions::iceCandidateToJSON(candidate.get());
         String sdpFragment = iceCandidateToSDP(candidateString);
         RefPtr<RTCIceCandidate> iceCandidate = RTCIceCandidate::create(sdpFragment, "", mdescIndex);
         scheduleDispatchEvent(RTCIceCandidateEvent::create(false, false, WTF::move(iceCandidate)));
-    }
+   // }
 }
 
 void RTCPeerConnection::doneGatheringCandidates(unsigned mdescIndex)
