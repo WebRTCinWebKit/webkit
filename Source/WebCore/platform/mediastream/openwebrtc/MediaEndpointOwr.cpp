@@ -157,7 +157,8 @@ void MediaEndpointOwr::prepareToSend(MediaEndpointConfiguration* configuration, 
             //FIXME: need to handle more than one datachannels
             g_object_set(session, "sctp-remote-port", 5000, nullptr);
             printf("set remote port 5000 %i\n", isInitiator);
-
+            
+            //TODO
             if(m_dataChannels.size() == 1) {
                 owr_data_session_add_data_channel(OWR_DATA_SESSION(session), m_dataChannels[0]);
                 printf("data channel added in session %i\n", isInitiator);
@@ -216,10 +217,12 @@ std::unique_ptr<RTCDataChannelHandler> MediaEndpointOwr::createDataChannel(const
     gchar* protocol_conversion = g_strdup(initData.protocol.ascii().data());
     gchar* label_conversion = g_strdup(label.ascii().data());
     //FIX ME : add maxRetransmitTime et maxRetransmits parameters in owr_data_channel_new
-    OwrDataChannel* channel = owr_data_channel_new(false, 5000, -1, "OPT", false, initData.id, "well");
+    OwrDataChannel* channel = owr_data_channel_new(initData.ordered, 5000, -1, protocol_conversion, initData.negotiated, initData.id * 2 + 1, label_conversion);
+
+    //Store the owr channel in order to add it into dataSession later
     m_dataChannels.append(channel);   
     
-    std::unique_ptr<RTCDataChannelHandler> handler = RTCDataChannelHandler::create(label, initData.ordered, 5000, -1, protocol_conversion, initData.negotiated, initData.id, channel);
+    std::unique_ptr<RTCDataChannelHandler> handler = RTCDataChannelHandler::create(label, initData.ordered, 5000, -1, protocol_conversion, initData.negotiated, initData.id * 2 + 1, channel);
 
     return handler;
 }
@@ -321,9 +324,8 @@ void MediaEndpointOwr::ensureTransportAgentAndSessions(bool isInitiator, const V
         if (isInitiator)
             m_transportAgent = owr_transport_agent_new(false);
         else
-             m_transportAgent = owr_transport_agent_new(true);
+            m_transportAgent = owr_transport_agent_new(true);
         //TODO
-        owr_transport_agent_add_local_address(m_transportAgent, "127.0.0.1");
         printf("ensureTransportAgentAndSessions created transport %i\n", isInitiator);
         for (auto& server : m_configuration->iceServers()) {
             // FIXME: parse url type and port
@@ -338,8 +340,8 @@ void MediaEndpointOwr::ensureTransportAgentAndSessions(bool isInitiator, const V
         if (config.type == SessionTypeMedia){
             m_sessions.append(OWR_SESSION(owr_media_session_new(config.isDtlsClient)));    
         } else {
-	        m_sessions.append(OWR_SESSION(owr_data_session_new(!config.isDtlsClient)));  
-            printf("ensureTransportAgentAndSessions create dataSession %i\n", !config.isDtlsClient);
+	        m_sessions.append(OWR_SESSION(owr_data_session_new(config.isDtlsClient)));  
+            printf("ensureTransportAgentAndSessions create dataSession %i\n", config.isDtlsClient);
         } 
     }
 }
@@ -493,6 +495,7 @@ static void gotIncomingSource(OwrMediaSession* mediaSession, OwrMediaSource* sou
 
 static void dataChannelRequested(OwrDataSession* dataSession, bool ordered, int maxRetransmitTime, int maxRetransmits, const gchar *protocol, bool negotiated, int id, const gchar *label, MediaEndpointOwr* mediaEndpoint )
 {
+    //TODO: Shouldn't reuse the label from signal
     printf("-> dataChannelRequested\n");
     
     RTCDataChannelInit_Endpoint initData;
@@ -504,7 +507,9 @@ static void dataChannelRequested(OwrDataSession* dataSession, bool ordered, int 
     initData.protocol = protocol;
     initData.negotiated = negotiated;
 
-    std::unique_ptr<RTCDataChannelHandler> handler =  mediaEndpoint->createDataChannel(label, initData);
+    OwrDataChannel* channel = owr_data_channel_new(ordered, 5000, -1, protocol, negotiated, id, label);    
+    std::unique_ptr<RTCDataChannelHandler> handler = RTCDataChannelHandler::create(label, ordered, 5000, -1, protocol, negotiated, id, channel);
+
     owr_data_session_add_data_channel(dataSession, handler->owrDatachannel());
 
     mediaEndpoint->dispatchNewDataChannel(mediaEndpoint->sessionIndex(OWR_SESSION(dataSession)), WTF::move(handler));

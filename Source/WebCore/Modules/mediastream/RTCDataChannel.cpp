@@ -67,7 +67,7 @@ PassRefPtr<RTCDataChannel> RTCDataChannel::create(ScriptExecutionContext* contex
     options.get("maxRetransmitTime", maxRetransmitTimeStr);
     options.get("protocol", initData.protocol);
     
-    initData.id = 2;
+    initData.id = 3;
     bool maxRetransmitsConversion;
     bool maxRetransmitTimeConversion;
     initData.maxRetransmits = maxRetransmitsStr.toUIntStrict(&maxRetransmitsConversion);
