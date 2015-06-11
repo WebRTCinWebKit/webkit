@@ -66,7 +66,8 @@ PassRefPtr<RTCDataChannel> RTCDataChannel::create(ScriptExecutionContext* contex
     options.get("maxRetransmits", maxRetransmitsStr);
     options.get("maxRetransmitTime", maxRetransmitTimeStr);
     options.get("protocol", initData.protocol);
-
+    
+    initData.id = 2;
     bool maxRetransmitsConversion;
     bool maxRetransmitTimeConversion;
     initData.maxRetransmits = maxRetransmitsStr.toUIntStrict(&maxRetransmitsConversion);
@@ -191,7 +192,8 @@ void RTCDataChannel::setBinaryType(const AtomicString& binaryType, ExceptionCode
 }
 
 void RTCDataChannel::send(const String& data, ExceptionCode& ec)
-{
+{   
+    printf("send data\n");
     if (m_readyState != ReadyStateOpen) {
         ec = INVALID_STATE_ERR;
         return;

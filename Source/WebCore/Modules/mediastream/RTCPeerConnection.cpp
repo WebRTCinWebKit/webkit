@@ -346,7 +346,7 @@ void RTCPeerConnection::createOffer(const Dictionary& offerOptions, OfferAnswerR
         mediaDescription->setType("application");
         //mediaDescription->setMode("recvonly");
         //mediaDescription->setRtcpMux(true);
-        //mediaDescription->setDtlsSetup("actpass");
+        mediaDescription->setDtlsSetup("actpass");
 
         configurationSnapshot->addMediaDescription(WTF::move(mediaDescription));
     }
@@ -733,7 +733,8 @@ void RTCPeerConnection::gotSendSSRC(unsigned mdescIndex, unsigned ssrc, const St
 }
 
 void RTCPeerConnection::gotDtlsCertificate(unsigned mdescIndex, const String& certificate)
-{
+{   
+    printf("-> gotDtlsCertificate()\n");
     Vector<String> certificateRows;
     Vector<uint8_t> der;
 
@@ -801,14 +802,15 @@ void RTCPeerConnection::gotIceCandidate(unsigned mdescIndex, RefPtr<IceCandidate
     }
 
     ResolveSetLocalDescriptionResult result = maybeResolveSetLocalDescription();
-   // if (result == SetLocalDescriptionResolvedSuccessfully)
-    //    maybeDispatchGatheringDone();
-   // else if (result == SetLocalDescriptionAlreadyResolved) {
+    printf("gotIceCandidate result: %i\n", result == SetLocalDescriptionAlreadyResolved);
+    if (result == SetLocalDescriptionResolvedSuccessfully)
+        maybeDispatchGatheringDone();
+    else if (result == SetLocalDescriptionAlreadyResolved) {
         String candidateString = MediaEndpointConfigurationConversions::iceCandidateToJSON(candidate.get());
         String sdpFragment = iceCandidateToSDP(candidateString);
         RefPtr<RTCIceCandidate> iceCandidate = RTCIceCandidate::create(sdpFragment, "", mdescIndex);
         scheduleDispatchEvent(RTCIceCandidateEvent::create(false, false, WTF::move(iceCandidate)));
-   // }
+    }
 }
 
 void RTCPeerConnection::doneGatheringCandidates(unsigned mdescIndex)
@@ -915,8 +917,8 @@ bool RTCPeerConnection::isLocalConfigurationComplete() const
         if (mdesc->dtlsFingerprint().isEmpty() || mdesc->iceUfrag().isEmpty())
             return false;
         // Test: No trickle
-        if (!mdesc->iceCandidateGatheringDone())
-            return false;
+        //if (!mdesc->iceCandidateGatheringDone())
+        //    return false;
         if (mdesc->type() == "audio" || mdesc->type() == "video") {
             if (!mdesc->ssrcs().size() || mdesc->cname().isEmpty())
                 return false;
@@ -938,7 +940,7 @@ RTCPeerConnection::ResolveSetLocalDescriptionResult RTCPeerConnection::maybeReso
         m_resolveSetLocalDescription = nullptr;
         return SetLocalDescriptionResolvedSuccessfully;
     }
-
+    printf("maybeResolveSetLocalDescription incomplete\n");
     return LocalConfigurationIncomplete;
 }
 

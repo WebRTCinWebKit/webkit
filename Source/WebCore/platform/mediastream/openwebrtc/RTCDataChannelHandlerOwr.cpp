@@ -73,6 +73,10 @@ void RTCDataChannelHandlerOwr::setClient(RTCDataChannelHandlerClient* client)
     m_client = client;
 }
 
+OwrDataChannel* RTCDataChannelHandlerOwr::owrDatachannel()
+{
+    return m_owrDataChannel;
+}
 RTCDataChannelHandlerClient* RTCDataChannelHandlerOwr::client()
 {
     return m_client;
@@ -120,7 +124,9 @@ unsigned long RTCDataChannelHandlerOwr::bufferedAmount()
 
 bool RTCDataChannelHandlerOwr::sendStringData(const String& data)
 {
+    printf("RTCDataChannelHandlerOwr::sendStringData\n");    
     owr_data_channel_send(m_owrDataChannel, data.ascii().data());
+    return 1;
 }
 
 bool RTCDataChannelHandlerOwr::sendRawData(const char* data, size_t size)
@@ -137,6 +143,7 @@ void RTCDataChannelHandlerOwr::close()
 
 static void onData(OwrDataChannel *data_channel, const gchar *string, RTCDataChannelHandler *handler)
 {
+    printf("RTCDataChannelHandlerOwr::onData\n");
     RTCDataChannelHandlerClient* client = handler->client();
     client->didReceiveStringData(string);
 }
@@ -149,6 +156,7 @@ static void onRawData(OwrDataChannel *data_channel, const gchar *data, guint len
 
 static void onReadyState(OwrDataChannel *data_channel, GParamSpec *pspec, RTCDataChannelHandler *handler)
 {
+    printf("RTCDataChannelHandlerOwr::onReadyState\n");
     gint ready_state;
 
     g_object_get(data_channel, "ready-state", &ready_state, NULL);

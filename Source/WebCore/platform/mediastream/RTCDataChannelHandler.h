@@ -57,6 +57,7 @@ public:
     virtual bool negotiated() = 0;
     virtual unsigned short id() = 0;
     virtual unsigned long bufferedAmount() = 0;
+    virtual OwrDataChannel* owrDatachannel() = 0;
 
     virtual bool sendStringData(const String&) = 0;
     virtual bool sendRawData(const char*, size_t) = 0;
