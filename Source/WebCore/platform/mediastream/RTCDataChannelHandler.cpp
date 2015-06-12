@@ -36,7 +36,7 @@
 
 namespace WebCore {
 
-static std::unique_ptr<RTCDataChannelHandler> createRTCDataChannelHandler(const String& label, bool, unsigned short, unsigned short, const String&, bool, unsigned short, OwrDataChannel* channel)
+static std::unique_ptr<RTCDataChannelHandler> createRTCDataChannelHandler(const String& label, bool, unsigned short, unsigned short, const String&, bool, unsigned short, void* channel)
 {
     return nullptr;
 }

@@ -29,7 +29,6 @@
 #if ENABLE(MEDIA_STREAM)
 
 #include "MediaEndpoint.h"
-#include <owr/owr_data_channel.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
@@ -39,7 +38,7 @@ struct RTCDataChannelInit_Endpoint;
 class RTCDataChannelHandler;
 class RTCDataChannelHandlerClient;
 
-typedef std::unique_ptr<RTCDataChannelHandler> (*CreateRTCDataChannelHandler)(const String&, bool, unsigned short, unsigned short, const String&, bool, unsigned short, OwrDataChannel*);
+typedef std::unique_ptr<RTCDataChannelHandler> (*CreateRTCDataChannelHandler)(const String&, bool, unsigned short, unsigned short, const String&, bool, unsigned short, void*);
 
 class RTCDataChannelHandler {
 public:
@@ -57,7 +56,7 @@ public:
     virtual bool negotiated() = 0;
     virtual unsigned short id() = 0;
     virtual unsigned long bufferedAmount() = 0;
-    virtual OwrDataChannel* owrDatachannel() = 0;
+    virtual void* owrDatachannel() = 0;
 
     virtual bool sendStringData(const String&) = 0;
     virtual bool sendRawData(const char*, size_t) = 0;

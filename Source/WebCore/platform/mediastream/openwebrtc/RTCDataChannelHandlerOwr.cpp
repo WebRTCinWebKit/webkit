@@ -38,7 +38,7 @@
 
 namespace WebCore {
 
-static std::unique_ptr<RTCDataChannelHandler> createRTCDataChannelHandlerOwr( const String& label, bool ordered, unsigned short maxRetransmitTime, unsigned short maxRetransmits, const String& protocol, bool negotiated, unsigned short id, OwrDataChannel* channel)
+static std::unique_ptr<RTCDataChannelHandler> createRTCDataChannelHandlerOwr( const String& label, bool ordered, unsigned short maxRetransmitTime, unsigned short maxRetransmits, const String& protocol, bool negotiated, unsigned short id, void* channel)
 {
     return std::unique_ptr<RTCDataChannelHandler>(new RTCDataChannelHandlerOwr(label, ordered, maxRetransmitTime, maxRetransmits, protocol, negotiated, id, channel));
 }
@@ -49,7 +49,7 @@ static void onReadyState(OwrDataChannel *data_channel, GParamSpec *pspec, RTCDat
 
 CreateRTCDataChannelHandler RTCDataChannelHandler::create = createRTCDataChannelHandlerOwr;
 
-RTCDataChannelHandlerOwr::RTCDataChannelHandlerOwr(const String& label, bool ordered, unsigned short maxRetransmitTime, unsigned short maxRetransmits, const String& protocol, bool negotiated, unsigned short id, OwrDataChannel* channel)
+RTCDataChannelHandlerOwr::RTCDataChannelHandlerOwr(const String& label, bool ordered, unsigned short maxRetransmitTime, unsigned short maxRetransmits, const String& protocol, bool negotiated, unsigned short id, void* channel)
     : m_label(label)
     , m_ordered(ordered)
     , m_maxRetransmitTime(maxRetransmitTime)
@@ -57,7 +57,7 @@ RTCDataChannelHandlerOwr::RTCDataChannelHandlerOwr(const String& label, bool ord
     , m_protocol(protocol)
     , m_negotiated(negotiated)
     , m_id(id)
-    , m_owrDataChannel(channel)
+    , m_owrDataChannel((OwrDataChannel*) channel)
 {
     g_signal_connect(m_owrDataChannel, "on-data", G_CALLBACK(onData), this);
     g_signal_connect(m_owrDataChannel, "on-binary-data", G_CALLBACK(onRawData), this);
@@ -73,7 +73,7 @@ void RTCDataChannelHandlerOwr::setClient(RTCDataChannelHandlerClient* client)
     m_client = client;
 }
 
-OwrDataChannel* RTCDataChannelHandlerOwr::owrDatachannel()
+void* RTCDataChannelHandlerOwr::owrDatachannel()
 {
     return m_owrDataChannel;
 }

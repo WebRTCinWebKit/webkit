@@ -42,7 +42,7 @@ class RTCDataChannelHandlerClient;
 
 class RTCDataChannelHandlerOwr : public RTCDataChannelHandler {
 public:
-    RTCDataChannelHandlerOwr(const String&, bool, unsigned short, unsigned short, const String&, bool, unsigned short, OwrDataChannel*);
+    RTCDataChannelHandlerOwr(const String&, bool, unsigned short, unsigned short, const String&, bool, unsigned short, void*);
     ~RTCDataChannelHandlerOwr();
 
     virtual void setClient(RTCDataChannelHandlerClient*);
@@ -56,11 +56,11 @@ public:
     virtual bool negotiated();
     virtual unsigned short id();
     virtual unsigned long bufferedAmount();
-    virtual OwrDataChannel* owrDatachannel();
 
     virtual bool sendStringData(const String&);
     virtual bool sendRawData(const char*, size_t);
     virtual void close();
+    virtual void* owrDatachannel();
 
 private:
     String m_label;
