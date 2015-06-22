@@ -33,8 +33,8 @@
 #include "Dictionary.h"
 #include "Event.h"
 #include "ExceptionCode.h"
-#include "MessageEvent.h"
 #include "MediaEndpoint.h"
+#include "MessageEvent.h"
 #include "RTCDataChannelHandler.h"
 #include "ScriptExecutionContext.h"
 #include <runtime/ArrayBuffer.h>

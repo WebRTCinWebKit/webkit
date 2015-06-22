@@ -35,10 +35,10 @@
 #if ENABLE(MEDIA_STREAM)
 
 #include "MediaEndpoint.h"
-#include <owr/owr_media_session.h>
-#include <owr/owr_data_session.h>
-#include <owr/owr_transport_agent.h>
 #include <owr/owr_data_channel.h>
+#include <owr/owr_data_session.h>
+#include <owr/owr_media_session.h>
+#include <owr/owr_transport_agent.h>
 
 namespace WebCore {
 

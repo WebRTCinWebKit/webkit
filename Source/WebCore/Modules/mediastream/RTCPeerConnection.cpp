@@ -338,14 +338,14 @@ void RTCPeerConnection::createOffer(const Dictionary& offerOptions, OfferAnswerR
         configurationSnapshot->addMediaDescription(WTF::move(mediaDescription));
     }
 
-    printf("RTCPeerConnection:createOffer Datachannel size %d \n",m_dataChannels.size());
+    printf("RTCPeerConnection:createOffer Datachannel size %d \n", m_dataChannels.size());
     for (RefPtr<RTCDataChannel> dataChannel : m_dataChannels) {
 
         RefPtr<PeerMediaDescription> mediaDescription = PeerMediaDescription::create();
 
         mediaDescription->setType("application");
-        //mediaDescription->setMode("recvonly");
-        //mediaDescription->setRtcpMux(true);
+        // mediaDescription->setMode("recvonly");
+        // mediaDescription->setRtcpMux(true);
         mediaDescription->setDtlsSetup("actpass");
 
         configurationSnapshot->addMediaDescription(WTF::move(mediaDescription));
@@ -400,10 +400,9 @@ void RTCPeerConnection::createAnswer(const Dictionary& answerOptions, OfferAnswe
 
         if (localMediaDescription->dtlsSetup() == "actpass")
             localMediaDescription->setDtlsSetup("passive");
-      
-        if(localMediaDescription->type() == "application"){
-          localMediaDescription->setPort(remoteMediaDescription->port());
-        }
+
+        if (localMediaDescription->type() == "application")
+            localMediaDescription->setPort(remoteMediaDescription->port());
     }
 
     Vector<RTCRtpSender*> senders;
@@ -527,9 +526,7 @@ void RTCPeerConnection::setRemoteDescription(RTCSessionDescription* description,
     m_remoteConfiguration = MediaEndpointConfigurationConversions::fromJSON(description->sdp());
     printf("-> set m_remoteConfiguration\n");
     m_remoteConfigurationType = description->type();
-    
-    //bool isInitiator = descriptionType == DescriptionTypeAnswer;
-  
+
     printf("-> setRemoteDescription::prepareToSend()\n");
 
     String json = fromSDP(description->sdp());
@@ -707,7 +704,7 @@ PassRefPtr<RTCDataChannel> RTCPeerConnection::createDataChannel(String label, co
         ec = INVALID_STATE_ERR;
         return nullptr;
     }
-    PassRefPtr<RTCDataChannel> channel = RTCDataChannel::create(scriptExecutionContext(), m_mediaEndpoint.get(), label, options, ec);
+    RefPtr<RTCDataChannel> channel = RTCDataChannel::create(scriptExecutionContext(), m_mediaEndpoint.get(), label, options, ec);
     m_dataChannels.append(channel.get());
     return channel;
 }
@@ -829,11 +826,11 @@ void RTCPeerConnection::gotDataChannel(unsigned mdescIndex, std::unique_ptr<RTCD
 {
     printf("-> gotDataChannel()\n");
 
-    PassRefPtr<RTCDataChannel> channel = RTCDataChannel::create(scriptExecutionContext(), WTF::move(handler));
+    RefPtr<RTCDataChannel> channel = RTCDataChannel::create(scriptExecutionContext(), WTF::move(handler));
     m_dataChannels.append(channel.get());
     scheduleDispatchEvent(RTCDataChannelEvent::create(false, false, WTF::move(channel)));
 }
-  
+
 void RTCPeerConnection::gotRemoteSource(unsigned mdescIndex, RefPtr<RealtimeMediaSource>&& source)
 {
     if (m_signalingState == SignalingStateClosed)
@@ -917,7 +914,7 @@ bool RTCPeerConnection::isLocalConfigurationComplete() const
         if (mdesc->dtlsFingerprint().isEmpty() || mdesc->iceUfrag().isEmpty())
             return false;
         // Test: No trickle
-        //if (!mdesc->iceCandidateGatheringDone())
+        // if (!mdesc->iceCandidateGatheringDone())
         //    return false;
         if (mdesc->type() == "audio" || mdesc->type() == "video") {
             if (!mdesc->ssrcs().size() || mdesc->cname().isEmpty())

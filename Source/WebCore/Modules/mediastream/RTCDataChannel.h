@@ -29,8 +29,8 @@
 #if ENABLE(MEDIA_STREAM)
 
 #include "EventTarget.h"
-#include "RTCDataChannelHandlerClient.h"
 #include "MediaEndpoint.h"
+#include "RTCDataChannelHandlerClient.h"
 #include "ScriptWrappable.h"
 #include "Timer.h"
 #include <wtf/RefCounted.h>
@@ -45,7 +45,6 @@ namespace WebCore {
 class Blob;
 class Dictionary;
 class RTCDataChannelHandler;
-//class RTCPeerConnectionHandler;
 
 class RTCDataChannel final : public RefCounted<RTCDataChannel>, public ScriptWrappable, public EventTargetWithInlineData, public RTCDataChannelHandlerClient {
 public:

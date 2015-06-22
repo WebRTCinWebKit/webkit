@@ -32,20 +32,21 @@
 
 #if ENABLE(MEDIA_STREAM)
 #include "RTCDataChannelHandlerOwr.h"
-#include "RTCDataChannelHandlerClient.h"
+
 #include "MediaEndpoint.h"
+#include "RTCDataChannelHandlerClient.h"
 #include <wtf/text/CString.h>
 
 namespace WebCore {
 
-static std::unique_ptr<RTCDataChannelHandler> createRTCDataChannelHandlerOwr( const String& label, bool ordered, unsigned short maxRetransmitTime, unsigned short maxRetransmits, const String& protocol, bool negotiated, unsigned short id, void* channel)
+static std::unique_ptr<RTCDataChannelHandler> createRTCDataChannelHandlerOwr(const String& label, bool ordered, unsigned short maxRetransmitTime, unsigned short maxRetransmits, const String& protocol, bool negotiated, unsigned short id, void* channel)
 {
     return std::unique_ptr<RTCDataChannelHandler>(new RTCDataChannelHandlerOwr(label, ordered, maxRetransmitTime, maxRetransmits, protocol, negotiated, id, channel));
 }
 
-static void onData(OwrDataChannel *data_channel, const gchar *string, RTCDataChannelHandler *handler);
-static void onRawData(OwrDataChannel *data_channel, const gchar *data, guint length, RTCDataChannelHandler *handler);
-static void onReadyState(OwrDataChannel *data_channel, GParamSpec *pspec, RTCDataChannelHandler *handler);
+static void onData(OwrDataChannel*, const gchar *string, RTCDataChannelHandler*);
+static void onRawData(OwrDataChannel*, const gchar *data, guint length, RTCDataChannelHandler*);
+static void onReadyState(OwrDataChannel*, GParamSpec *pspec, RTCDataChannelHandler*);
 
 CreateRTCDataChannelHandler RTCDataChannelHandler::create = createRTCDataChannelHandlerOwr;
 
@@ -89,7 +90,7 @@ String RTCDataChannelHandlerOwr::label()
 
 bool RTCDataChannelHandlerOwr::ordered()
 {
-    return m_ordered ;
+    return m_ordered;
 }
 
 unsigned short RTCDataChannelHandlerOwr::maxRetransmitTime()
@@ -131,9 +132,9 @@ bool RTCDataChannelHandlerOwr::sendStringData(const String& data)
 
 bool RTCDataChannelHandlerOwr::sendRawData(const char* data, size_t size)
 {
-    const gchar *binary_message;
-    binary_message = data;
-    owr_data_channel_send_binary(m_owrDataChannel, (const guint8 *) binary_message, size);
+    const gchar* binaryMessage;
+    binaryMessage = data;
+    owr_data_channel_send_binary(m_owrDataChannel, (const guint8 *) binaryMessage, size);
 }
 
 void RTCDataChannelHandlerOwr::close()
@@ -157,24 +158,21 @@ static void onRawData(OwrDataChannel *data_channel, const gchar *data, guint len
 static void onReadyState(OwrDataChannel *data_channel, GParamSpec *pspec, RTCDataChannelHandler *handler)
 {
     printf("RTCDataChannelHandlerOwr::onReadyState\n");
-    gint ready_state;
+    gint readyState;
 
-    g_object_get(data_channel, "ready-state", &ready_state, NULL);
+    g_object_get(data_channel, "ready-state", &readyState, NULL);
 
     RTCDataChannelHandlerClient::ReadyState state;
-    if (ready_state == OWR_DATA_CHANNEL_READY_STATE_CONNECTING) {
+    if (readyState == OWR_DATA_CHANNEL_READY_STATE_CONNECTING) {
         state = RTCDataChannelHandlerClient::ReadyStateConnecting;
         handler->client()->didChangeReadyState(state);
-    }
-    else if (ready_state == OWR_DATA_CHANNEL_READY_STATE_OPEN) {
+    } else if (readyState == OWR_DATA_CHANNEL_READY_STATE_OPEN) {
         state = RTCDataChannelHandlerClient::ReadyStateOpen;
         handler->client()->didChangeReadyState(state);
-    }
-    else if (ready_state == OWR_DATA_CHANNEL_READY_STATE_CLOSING) {
+    } else if (readyState == OWR_DATA_CHANNEL_READY_STATE_CLOSING) {
         state = RTCDataChannelHandlerClient::ReadyStateClosing;
         handler->client()->didChangeReadyState(state);
-    }
-    else if (ready_state == OWR_DATA_CHANNEL_READY_STATE_CLOSED) {
+    } else if (readyState == OWR_DATA_CHANNEL_READY_STATE_CLOSED) {
         state = RTCDataChannelHandlerClient::ReadyStateClosed;
         handler->client()->didChangeReadyState(state);
     }

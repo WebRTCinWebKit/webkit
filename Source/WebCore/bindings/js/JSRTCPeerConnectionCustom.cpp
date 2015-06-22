@@ -29,12 +29,12 @@
 #if ENABLE(MEDIA_STREAM)
 #include "JSRTCPeerConnection.h"
 
-#include "JSRTCDataChannel.h"
 #include "Dictionary.h"
 #include "ExceptionCode.h"
 #include "JSDOMBinding.h"
 #include "JSDOMError.h"
 #include "JSDOMPromise.h"
+#include "JSRTCDataChannel.h"
 #include "JSRTCIceCandidate.h"
 #include "JSRTCPeerConnectionErrorCallback.h"
 #include "JSRTCSessionDescription.h"
@@ -276,7 +276,7 @@ JSValue JSRTCPeerConnection::createDataChannel(ExecState* exec)
     }
 
     JSDOMWrapper* jsWrapper = jsCast<JSDOMWrapper*>(exec->callee());
-    PassRefPtr<RTCDataChannel> dataChannel = impl().createDataChannel(label, dataInit, ec);
+    RefPtr<RTCDataChannel> dataChannel = impl().createDataChannel(label, dataInit, ec);
 
     return toJS(exec, globalObject(), dataChannel.get());
 }
