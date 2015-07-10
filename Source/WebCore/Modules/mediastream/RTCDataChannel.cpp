@@ -54,9 +54,9 @@ static const AtomicString& arraybufferKeyword()
     return arraybuffer;
 }
 
-RefPtr<RTCDataChannel> RTCDataChannel::create(ScriptExecutionContext* context, RTCPeerConnectionHandler* peerConnectionHandler, const String& label, const Dictionary& options, ExceptionCode& ec)
+RefPtr<RTCDataChannel> RTCDataChannel::create(ScriptExecutionContext* context, PeerConnectionBackend* backend, const String& label, const Dictionary& options, ExceptionCode& ec)
 {
-    RTCDataChannelInit initData;
+    RTCDataChannelInit_Endpoint initData;
     String maxRetransmitsStr;
     String maxRetransmitTimeStr;
     options.get("ordered", initData.ordered);
@@ -75,7 +75,7 @@ RefPtr<RTCDataChannel> RTCDataChannel::create(ScriptExecutionContext* context, R
         return nullptr;
     }
 
-    std::unique_ptr<RTCDataChannelHandler> handler = peerConnectionHandler->createDataChannel(label, initData);
+    std::unique_ptr<RTCDataChannelHandler> handler = backend->createDataChannel(label, initData);
     if (!handler) {
         ec = NOT_SUPPORTED_ERR;
         return nullptr;

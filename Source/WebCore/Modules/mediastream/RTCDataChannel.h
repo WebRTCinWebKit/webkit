@@ -28,6 +28,7 @@
 #if ENABLE(MEDIA_STREAM)
 
 #include "EventTarget.h"
+#include "PeerConnectionBackend.h"
 #include "RTCDataChannelHandlerClient.h"
 #include "ScriptWrappable.h"
 #include "Timer.h"
@@ -42,13 +43,14 @@ namespace WebCore {
 
 class Blob;
 class Dictionary;
+class PeerConnectionBackend;
 class RTCDataChannelHandler;
 class RTCPeerConnectionHandler;
 
 class RTCDataChannel final : public RefCounted<RTCDataChannel>, public ScriptWrappable, public EventTargetWithInlineData, public RTCDataChannelHandlerClient {
 public:
     static Ref<RTCDataChannel> create(ScriptExecutionContext*, std::unique_ptr<RTCDataChannelHandler>);
-    static RefPtr<RTCDataChannel> create(ScriptExecutionContext*, RTCPeerConnectionHandler*, const String& label, const Dictionary& options, ExceptionCode&);
+    static RefPtr<RTCDataChannel> create(ScriptExecutionContext*, PeerConnectionBackend*, const String& label, const Dictionary& options, ExceptionCode&);
     ~RTCDataChannel();
 
     String label() const;

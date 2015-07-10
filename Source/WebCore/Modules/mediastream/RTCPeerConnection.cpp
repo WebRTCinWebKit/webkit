@@ -359,14 +359,16 @@ void RTCPeerConnection::getStats(PassRefPtr<RTCStatsCallback>, PassRefPtr<RTCPee
 {
 }
 
-PassRefPtr<RTCDataChannel> RTCPeerConnection::createDataChannel(String, const Dictionary&, ExceptionCode& ec)
+PassRefPtr<RTCDataChannel> RTCPeerConnection::createDataChannel(String label, const Dictionary& options, ExceptionCode& ec)
 {
     if (m_signalingState == SignalingStateClosed) {
         ec = INVALID_STATE_ERR;
         return nullptr;
     }
 
-    return nullptr;
+    RefPtr<RTCDataChannel> channel = RTCDataChannel::create(scriptExecutionContext(), m_backend.get(), label, options, ec);
+    m_dataChannels.append(channel.get());
+    return channel;
 }
 
 void RTCPeerConnection::close()
@@ -489,6 +491,11 @@ ScriptExecutionContext* RTCPeerConnection::context() const
 Vector<RefPtr<RTCRtpSender>> RTCPeerConnection::senders() const
 {
     return getSenders();
+}
+
+Vector<RefPtr<RTCDataChannel>> RTCPeerConnection::dataChannels() const
+{
+    return m_dataChannels;
 }
 
 // FIXME: consider doing this differently

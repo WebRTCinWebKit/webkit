@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 Ericsson AB. All rights reserved.
+ * Copyright (C) 2015 Temasys Communications. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,6 +35,8 @@
 #if ENABLE(MEDIA_STREAM)
 
 #include "MediaEndpoint.h"
+#include <owr/owr_data_channel.h>
+#include <owr/owr_data_session.h>
 #include <owr/owr_media_session.h>
 #include <owr/owr_transport_agent.h>
 
@@ -53,7 +56,9 @@ public:
     virtual void prepareToSend(MediaEndpointConfiguration*, bool isInitiator) override;
 
     virtual void addRemoteCandidate(IceCandidate&, unsigned mdescIndex, const String& ufrag, const String& password) override;
-
+    
+    virtual std::unique_ptr<RTCDataChannelHandler> createDataChannel(const String& label, RTCDataChannelInit_Endpoint&) override;
+    
     virtual void stop() override;
 
     unsigned sessionIndex(OwrSession*) const;
@@ -62,10 +67,14 @@ public:
     void dispatchGatheringDone(unsigned sessionIndex);
     void dispatchDtlsCertificate(unsigned sessionIndex, const String& certificate);
     void dispatchSendSSRC(unsigned sessionIndex, unsigned ssrc, const String& cname);
+    void dispatchNewDataChannel(unsigned sessionIndex, std::unique_ptr<RTCDataChannelHandler>);
     void dispatchRemoteSource(unsigned sessionIndex, RefPtr<RealtimeMediaSource>&&);
 
 private:
-    enum SessionType { SessionTypeMedia };
+    enum SessionType {
+        SessionTypeMedia = 1,
+        SessionTypeData = 2
+    };
 
     struct SessionConfig {
         SessionType type;
@@ -74,6 +83,7 @@ private:
 
     void prepareSession(OwrSession*, PeerMediaDescription*);
     void prepareMediaSession(OwrMediaSession*, PeerMediaDescription*, bool isInitiator);
+    void prepareDataSession(OwrDataSession*, PeerMediaDescription*);
 
     void ensureTransportAgentAndSessions(bool isInitiator, const Vector<SessionConfig>& sessionConfigs);
     void internalAddRemoteCandidate(OwrSession*, IceCandidate&, const String& ufrag, const String& password);
@@ -82,6 +92,7 @@ private:
 
     OwrTransportAgent* m_transportAgent;
     Vector<OwrSession*> m_sessions;
+    Vector<OwrDataChannel*> m_dataChannels;
 
     MediaEndpointClient* m_client;
 

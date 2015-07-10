@@ -35,6 +35,8 @@
 
 // #include "RTCConfigurationPrivate.h"
 #include "MediaEndpointInit.h"
+#include "RTCDataChannelHandler.h"
+#include "RTCDataChannelHandlerClient.h"
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -42,7 +44,26 @@ namespace WebCore {
 class IceCandidate;
 class MediaEndpoint;
 class MediaEndpointConfiguration;
+class RTCDataChannelHandler;
+class RTCDataChannelHandlerClient;
 class RealtimeMediaSource;
+
+
+struct RTCDataChannelInit_Endpoint {
+public:
+    RTCDataChannelInit_Endpoint()
+        : ordered(true)
+        , maxRetransmitTime(-1)
+        , maxRetransmits(-1)
+        , negotiated(false)
+        , id(-1) { }
+    bool ordered;
+    int maxRetransmitTime;
+    int maxRetransmits;
+    String protocol;
+    bool negotiated;
+    int id;
+};
 
 class MediaEndpointClient {
 public:
@@ -51,6 +72,7 @@ public:
     virtual void gotIceCandidate(unsigned mdescIndex, RefPtr<IceCandidate>&&, const String& ufrag, const String& password) = 0;
     virtual void doneGatheringCandidates(unsigned mdescIndex) = 0;
     virtual void gotRemoteSource(unsigned mdescIndex, RefPtr<RealtimeMediaSource>&&) = 0;
+    virtual void gotDataChannel(unsigned mdescIndex, std::unique_ptr<RTCDataChannelHandler>) = 0;
 
     virtual ~MediaEndpointClient() { }
 };
@@ -69,6 +91,8 @@ public:
     virtual void prepareToSend(MediaEndpointConfiguration*, bool isInitiator) = 0;
 
     virtual void addRemoteCandidate(IceCandidate&, unsigned mdescIndex, const String& ufrag, const String& password) = 0;
+
+    virtual std::unique_ptr<RTCDataChannelHandler> createDataChannel(const String& label, RTCDataChannelInit_Endpoint& initData) = 0;
 
     virtual void stop() = 0;
 };

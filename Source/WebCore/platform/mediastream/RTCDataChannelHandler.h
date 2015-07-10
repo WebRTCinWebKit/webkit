@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2015 Temasys Communications. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,17 +28,25 @@
 
 #if ENABLE(MEDIA_STREAM)
 
+#include "MediaEndpoint.h"
+#include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
+struct RTCDataChannelInit_Endpoint;
+class RTCDataChannelHandler;
 class RTCDataChannelHandlerClient;
+
+typedef std::unique_ptr<RTCDataChannelHandler> (*CreateRTCDataChannelHandler)(const String&, bool, unsigned short, unsigned short, const String&, bool, unsigned short, void*);
 
 class RTCDataChannelHandler {
 public:
+    WEBCORE_EXPORT static CreateRTCDataChannelHandler create;
     virtual ~RTCDataChannelHandler() { }
 
     virtual void setClient(RTCDataChannelHandlerClient*) = 0;
+    virtual RTCDataChannelHandlerClient* client() = 0;
 
     virtual String label() = 0;
     virtual bool ordered() = 0;
@@ -47,6 +56,7 @@ public:
     virtual bool negotiated() = 0;
     virtual unsigned short id() = 0;
     virtual unsigned long bufferedAmount() = 0;
+    virtual void* owrDatachannel() = 0;
 
     virtual bool sendStringData(const String&) = 0;
     virtual bool sendRawData(const char*, size_t) = 0;

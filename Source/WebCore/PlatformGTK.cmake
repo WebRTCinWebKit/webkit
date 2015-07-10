@@ -166,6 +166,7 @@ list(APPEND WebCore_SOURCES
     platform/mediastream/openwebrtc/MediaEndpointOwr.cpp
     platform/mediastream/openwebrtc/OpenWebRTCUtilities.cpp
     platform/mediastream/openwebrtc/RealtimeMediaSourceCenterOwr.cpp
+    platform/mediastream/openwebrtc/RTCDataChannelHandlerOwr.cpp
 
     platform/network/gtk/CredentialBackingStore.cpp
 

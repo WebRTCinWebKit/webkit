@@ -60,6 +60,8 @@ public:
     void setConfiguration(RTCConfiguration&) override;
     void addIceCandidate(RTCIceCandidate*, VoidResolveCallback, RejectCallback) override;
 
+    std::unique_ptr<RTCDataChannelHandler> createDataChannel(const String& label, RTCDataChannelInit_Endpoint& initData) override;
+
     void stop() override;
 
 private:
@@ -79,6 +81,7 @@ private:
     virtual void gotIceCandidate(unsigned mdescIndex, RefPtr<IceCandidate>&&, const String& ufrag, const String& password) override;
     virtual void doneGatheringCandidates(unsigned mdescIndex) override;
     virtual void gotRemoteSource(unsigned mdescIndex, RefPtr<RealtimeMediaSource>&&) override;
+    virtual void gotDataChannel(unsigned mdescIndex, std::unique_ptr<RTCDataChannelHandler>) override;
 
     String toSDP(const String& json) const;
     String fromSDP(const String& sdp) const;

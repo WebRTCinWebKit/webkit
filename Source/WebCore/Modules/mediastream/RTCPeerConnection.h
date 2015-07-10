@@ -173,6 +173,7 @@ private:
     // PeerConnectionBackendClient
     ScriptExecutionContext* context() const override;
     Vector<RefPtr<RTCRtpSender>> senders() const override;
+    Vector<RefPtr<RTCDataChannel>> dataChannels() const override;
     void updateSignalingState() override;
     void scheduleEvent(RefPtr<Event>&&) override;
     bool isClosed() const override;

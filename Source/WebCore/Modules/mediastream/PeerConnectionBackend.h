@@ -33,6 +33,10 @@
 
 #if ENABLE(MEDIA_STREAM)
 
+#include "RTCDataChannelHandler.h"
+#include "RTCDataChannel.h"
+#include "MediaEndpoint.h"
+
 namespace WebCore {
 
 class DOMError;
@@ -42,15 +46,18 @@ class RTCAnswerOptions;
 class RTCConfiguration;
 class RTCIceCandidate;
 class RTCOfferOptions;
+class RTCDataChannel;
 class RTCRtpSender;
 class RTCSessionDescription;
 class ScriptExecutionContext;
+class RTCDataChannelHandler;
 
 class PeerConnectionBackendClient {
 public:
     virtual ScriptExecutionContext* context() const = 0;
 
     virtual Vector<RefPtr<RTCRtpSender>> senders() const = 0;
+    virtual Vector<RefPtr<RTCDataChannel>> dataChannels() const = 0;
     virtual bool isClosed() const = 0;
 
     virtual void updateSignalingState() = 0;
@@ -82,6 +89,7 @@ public:
     virtual void setConfiguration(RTCConfiguration&) = 0;
     virtual void addIceCandidate(RTCIceCandidate*, VoidResolveCallback, RejectCallback) = 0;
 
+    virtual std::unique_ptr<RTCDataChannelHandler> createDataChannel(const String& label, RTCDataChannelInit_Endpoint& initData) = 0;
     virtual void stop() = 0;
 };
 

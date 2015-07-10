@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 Ericsson AB. All rights reserved.
+ * Copyright (C) 2015 Temasys Communications. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,11 +36,13 @@
 
 #include "MediaEndpointConfiguration.h"
 #include "OpenWebRTCUtilities.h"
+#include "RTCDataChannelHandlerOwr.h"
 #include "RealtimeMediaSourceOwr.h"
 #include <owr/owr.h>
 #include <owr/owr_audio_payload.h>
 #include <owr/owr_video_payload.h>
 #include <wtf/text/CString.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -48,6 +51,7 @@ static void candidateGatheringDone(OwrSession*, MediaEndpointOwr*);
 static void gotDtlsCertificate(OwrSession*, GParamSpec*, MediaEndpointOwr*);
 static void gotSendSsrc(OwrMediaSession*, GParamSpec*, MediaEndpointOwr*);
 static void gotIncomingSource(OwrMediaSession*, OwrMediaSource*, MediaEndpointOwr*);
+static void dataChannelRequested(OwrDataSession*, bool ordered, int maxRetransmitTime, int maxRetransmits, const gchar *protocol, bool negotiated, int id, const gchar *label, MediaEndpointOwr*);
 
 static const Vector<String> candidateTypes = { "host", "srflx", "prflx", "relay" };
 static const Vector<String> candidateTcpTypes = { "", "active", "passive", "so" };
@@ -82,10 +86,13 @@ void MediaEndpointOwr::setConfiguration(RefPtr<MediaEndpointInit>&& configuratio
 
 void MediaEndpointOwr::prepareToReceive(MediaEndpointConfiguration* configuration, bool isInitiator)
 {
+    printf("start prepareToRecive\n");
     Vector<SessionConfig> sessionConfigs;
+
     for (unsigned i = m_sessions.size(); i < configuration->mediaDescriptions().size(); ++i) {
         SessionConfig config;
-        config.type = SessionTypeMedia;
+        config.type = configuration->mediaDescriptions()[i]->type() == "application" ? SessionTypeData :SessionTypeMedia;
+
         config.isDtlsClient = configuration->mediaDescriptions()[i]->dtlsSetup() == "active";
         sessionConfigs.append(WTF::move(config));
     }
@@ -94,7 +101,11 @@ void MediaEndpointOwr::prepareToReceive(MediaEndpointConfiguration* configuratio
 
     // Prepare the new sessions.
     for (unsigned i = m_numberOfReceivePreparedSessions; i < m_sessions.size(); ++i) {
-        prepareMediaSession(OWR_MEDIA_SESSION(m_sessions[i]), configuration->mediaDescriptions()[i].get(), isInitiator);
+        if (configuration->mediaDescriptions()[i]->type() == "application")
+            prepareDataSession(OWR_DATA_SESSION(m_sessions[i]), configuration->mediaDescriptions()[i].get());
+        else
+            prepareMediaSession(OWR_MEDIA_SESSION(m_sessions[i]), configuration->mediaDescriptions()[i].get(), isInitiator);
+
         owr_transport_agent_add_session(m_transportAgent, m_sessions[i]);
     }
 
@@ -116,7 +127,7 @@ void MediaEndpointOwr::prepareToSend(MediaEndpointConfiguration* configuration, 
     Vector<SessionConfig> sessionConfigs;
     for (unsigned i = m_sessions.size(); i < configuration->mediaDescriptions().size(); ++i) {
         SessionConfig config;
-        config.type = SessionTypeMedia;
+        config.type = configuration->mediaDescriptions()[i]->type() == "application" ? SessionTypeData :SessionTypeMedia;
         config.isDtlsClient = configuration->mediaDescriptions()[i]->dtlsSetup() != "active";
         sessionConfigs.append(WTF::move(config));
     }
@@ -140,6 +151,20 @@ void MediaEndpointOwr::prepareToSend(MediaEndpointConfiguration* configuration, 
 
         if (i < m_numberOfSendPreparedSessions)
             continue;
+
+        if (mdesc.type() == "application") {
+            g_object_set(session, "sctp-remote-port", 5000, nullptr);
+            printf("set remote port 5000 %i\n", isInitiator);
+            
+            if (m_dataChannels.size() > 0) {
+                owr_data_session_add_data_channel(OWR_DATA_SESSION(session), m_dataChannels[0]);
+                m_dataChannels.remove(0);
+                printf("data channel added in session %i\n", isInitiator);
+            }    
+
+            m_numberOfSendPreparedSessions = i + 1;
+            continue;
+        }
 
         if (!mdesc.source())
             continue;
@@ -181,7 +206,23 @@ void MediaEndpointOwr::prepareToSend(MediaEndpointConfiguration* configuration, 
 
 void MediaEndpointOwr::addRemoteCandidate(IceCandidate& candidate, unsigned mdescIndex, const String& ufrag, const String& password)
 {
+    printf("MediaEndpointOwr::addRemoteCandidate \n");
     internalAddRemoteCandidate(m_sessions[mdescIndex], candidate, ufrag, password);
+}
+
+std::unique_ptr<RTCDataChannelHandler> MediaEndpointOwr::createDataChannel(const String& label, RTCDataChannelInit_Endpoint& initData)
+{
+    gchar* protocolConversion = g_strdup(initData.protocol.ascii().data());
+    gchar* labelConversion = g_strdup(label.ascii().data());
+    // FIX ME : add maxRetransmitTime et maxRetransmits parameters in owr_data_channel_new
+    OwrDataChannel* channel = owr_data_channel_new(initData.ordered, 5000, -1, protocolConversion, initData.negotiated, initData.id * 2 + 1, labelConversion);
+
+    // Store the owr channel in order to add it into dataSession later
+    m_dataChannels.append(channel);   
+    
+    std::unique_ptr<RTCDataChannelHandler> handler = RTCDataChannelHandler::create(label, initData.ordered, 5000, -1, protocolConversion, initData.negotiated, initData.id * 2 + 1, channel);
+
+    return handler;
 }
 
 void MediaEndpointOwr::stop()
@@ -214,6 +255,11 @@ void MediaEndpointOwr::dispatchDtlsCertificate(unsigned sessionIndex, const Stri
 void MediaEndpointOwr::dispatchSendSSRC(unsigned sessionIndex, unsigned ssrc, const String& cname)
 {
     m_client->gotSendSSRC(sessionIndex, ssrc, cname);
+}
+
+void MediaEndpointOwr::dispatchNewDataChannel(unsigned sessionIndex, std::unique_ptr<RTCDataChannelHandler> handler)
+{
+    m_client->gotDataChannel(sessionIndex, WTF::move(handler));
 }
 
 void MediaEndpointOwr::dispatchRemoteSource(unsigned sessionIndex, RefPtr<RealtimeMediaSource>&& source)
@@ -260,34 +306,53 @@ void MediaEndpointOwr::prepareMediaSession(OwrMediaSession* mediaSession, PeerMe
     }
 }
 
+void MediaEndpointOwr::prepareDataSession(OwrDataSession* dataSession, PeerMediaDescription* mediaDescription)
+{
+    prepareSession(OWR_SESSION(dataSession), mediaDescription);
+
+    printf("prepareDataSession\n");
+    g_object_set(dataSession, "sctp-local-port", 5000, nullptr);
+    g_signal_connect(dataSession, "on-data-channel-requested", G_CALLBACK(dataChannelRequested), this);
+
+}
+
 void MediaEndpointOwr::ensureTransportAgentAndSessions(bool isInitiator, const Vector<SessionConfig>& sessionConfigs)
 {
     if (!m_transportAgent) {
-        m_transportAgent = owr_transport_agent_new(false);
+        if (isInitiator)
+            m_transportAgent = owr_transport_agent_new(false);
+        else
+            m_transportAgent = owr_transport_agent_new(true);
 
+        printf("ensureTransportAgentAndSessions created transport %i\n", isInitiator);
         for (auto& server : m_configuration->iceServers()) {
             // FIXME: parse url type and port
-            owr_transport_agent_add_helper_server(m_transportAgent, OWR_HELPER_SERVER_TYPE_STUN,
-                server->urls()[0].ascii().data(), 3478, nullptr, nullptr);
+            // owr_transport_agent_add_helper_server(m_transportAgent, OWR_HELPER_SERVER_TYPE_STUN,
+            // server->urls()[0].ascii().data(), 3478, nullptr, nullptr);
         }
     }
 
     g_object_set(m_transportAgent, "ice-controlling-mode", isInitiator, nullptr);
-
-    for (auto& config : sessionConfigs)
-        m_sessions.append(OWR_SESSION(owr_media_session_new(config.isDtlsClient)));
+    
+    for (auto& config : sessionConfigs) {
+        if (config.type == SessionTypeMedia)
+            m_sessions.append(OWR_SESSION(owr_media_session_new(config.isDtlsClient)));    
+        else {
+            m_sessions.append(OWR_SESSION(owr_data_session_new(config.isDtlsClient)));  
+            printf("ensureTransportAgentAndSessions create dataSession %i\n", config.isDtlsClient);
+        } 
+    }
 }
 
 void MediaEndpointOwr::internalAddRemoteCandidate(OwrSession* session, IceCandidate& candidate, const String& ufrag, const String& password)
-{
+{   
     gboolean rtcpMux;
-    g_object_get(session, "rtcp-mux", &rtcpMux, nullptr);
+    // g_object_get(session, "rtcp-mux", &rtcpMux, nullptr);
 
     if (rtcpMux && candidate.componentId() == OWR_COMPONENT_TYPE_RTCP)
-        return;
+        // return;
 
     ASSERT(candidateTypes.find(candidate.type()) != notFound);
-    printf("ASSERT: %d\n", (candidateTypes.find(candidate.type()) != notFound));
 
     OwrCandidateType candidateType = static_cast<OwrCandidateType>(candidateTypes.find(candidate.type()));
     OwrComponentType componentId = static_cast<OwrComponentType>(candidate.componentId());
@@ -297,7 +362,6 @@ void MediaEndpointOwr::internalAddRemoteCandidate(OwrSession* session, IceCandid
         transportType = OWR_TRANSPORT_TYPE_UDP;
     else {
         ASSERT(candidateTcpTypes.find(candidate.tcpType()) != notFound);
-        printf("ASSERT: %d\n", (candidateTcpTypes.find(candidate.tcpType()) != notFound));
         transportType = static_cast<OwrTransportType>(candidateTcpTypes.find(candidate.tcpType()));
     }
 
@@ -312,7 +376,7 @@ void MediaEndpointOwr::internalAddRemoteCandidate(OwrSession* session, IceCandid
         "ufrag", ufrag.ascii().data(),
         "password", password.ascii().data(),
         nullptr);
-
+    printf("internalAddRemoteCandidate::owr_session_add_remote_candidate\n");
     owr_session_add_remote_candidate(session, owrCandidate);
 }
 
@@ -424,6 +488,29 @@ static void gotIncomingSource(OwrMediaSession* mediaSession, OwrMediaSource* sou
 
     RefPtr<RealtimeMediaSourceOwr> mediaSource = adoptRef(new RealtimeMediaSourceOwr(source, id, sourceType, name));
     mediaEndpoint->dispatchRemoteSource(mediaEndpoint->sessionIndex(OWR_SESSION(mediaSession)), WTF::move(mediaSource));
+}
+
+static void dataChannelRequested(OwrDataSession* dataSession, bool ordered, int maxRetransmitTime, int maxRetransmits, const gchar *protocol, bool negotiated, int id, const gchar *label, MediaEndpointOwr* mediaEndpoint )
+{
+    // TODO: Shouldn't reuse the label from signal
+    printf("-> dataChannelRequested\n");
+    
+    RTCDataChannelInit_Endpoint initData;
+
+    initData.ordered = ordered;
+    initData.id = id;
+    initData.maxRetransmitTime = maxRetransmitTime;
+    initData.maxRetransmits = maxRetransmits;
+    initData.protocol = protocol;
+    initData.negotiated = negotiated;
+
+    OwrDataChannel* channel = owr_data_channel_new(ordered, 5000, -1, protocol, negotiated, id, label);    
+    std::unique_ptr<RTCDataChannelHandler> handler = RTCDataChannelHandler::create(label, ordered, 5000, -1, protocol, negotiated, id, channel);
+    
+    OwrDataChannel* owrDataChannel = (OwrDataChannel*) (handler->owrDatachannel());
+    owr_data_session_add_data_channel(dataSession, owrDataChannel);
+
+    mediaEndpoint->dispatchNewDataChannel(mediaEndpoint->sessionIndex(OWR_SESSION(dataSession)), WTF::move(handler));
 }
 
 } // namespace WebCore

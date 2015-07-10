@@ -29,6 +29,7 @@
 #if ENABLE(MEDIA_STREAM)
 #include "JSRTCPeerConnection.h"
 
+#include "JSRTCDataChannel.h"
 #include "Dictionary.h"
 #include "ExceptionCode.h"
 #include "JSDOMBinding.h"
@@ -249,6 +250,22 @@ JSValue JSRTCPeerConnection::addIceCandidate(ExecState* exec)
     impl().addIceCandidate(candidate.get(), WTF::move(resolveCallback), WTF::move(rejectCallback));
 
     return promiseDeferred->promise();
+}
+
+JSValue JSRTCPeerConnection::createDataChannel(ExecState* exec)
+{
+    ExceptionCode ec = 0;
+    String label;
+    Dictionary dataInit;
+    if (exec->argumentCount() > 0) {
+        label = exec->argument(0).getString(exec);
+        dataInit = Dictionary(exec, exec->argument(1));
+    }
+
+    JSDOMWrapper* jsWrapper = jsCast<JSDOMWrapper*>(exec->callee());
+    PassRefPtr<RTCDataChannel> dataChannel = impl().createDataChannel(label, dataInit, ec);
+
+    return toJS(exec, globalObject(), dataChannel.get());
 }
 
 } // namespace WebCore

@@ -33,6 +33,7 @@
 #if ENABLE(MEDIA_STREAM)
 #include "MediaEndpointPeerConnection.h"
 
+#include "ActiveDOMObject.h"
 #include "CryptoDigest.h"
 #include "DOMError.h"
 #include "MediaEndpointConfigurationConversions.h"
@@ -40,6 +41,8 @@
 #include "PeerConnectionBackend.h"
 #include "PeerMediaDescription.h"
 #include "RTCConfiguration.h"
+#include "RTCDataChannel.h"
+#include "RTCDataChannelEvent.h"
 #include "RTCIceCandidate.h"
 #include "RTCIceCandidateEvent.h"
 #include "RTCOfferAnswerOptions.h"
@@ -47,6 +50,7 @@
 #include "RTCRtpReceiver.h"
 #include "RTCRtpSender.h"
 #include "RTCTrackEvent.h"
+
 #include "UUID.h"
 #include <wtf/text/Base64.h>
 
@@ -228,6 +232,19 @@ void MediaEndpointPeerConnection::createOffer(const RefPtr<RTCOfferOptions>& opt
         configurationSnapshot->addMediaDescription(WTF::move(mediaDescription));
     }
 
+    Vector<RefPtr<RTCDataChannel>> dataChannels = m_client->dataChannels();
+    for (RefPtr<RTCDataChannel> dataChannel : dataChannels) {
+
+        RefPtr<PeerMediaDescription> mediaDescription = PeerMediaDescription::create();
+
+        mediaDescription->setType("application");
+        //mediaDescription->setMode("recvonly");
+        //mediaDescription->setRtcpMux(true);
+        mediaDescription->setDtlsSetup("actpass");
+
+        configurationSnapshot->addMediaDescription(WTF::move(mediaDescription));
+    }
+
     String json = MediaEndpointConfigurationConversions::toJSON(configurationSnapshot.get());
     RefPtr<RTCSessionDescription> offer = RTCSessionDescription::create("offer", toSDP(json));
     resolveCallback(*offer);
@@ -258,6 +275,10 @@ void MediaEndpointPeerConnection::createAnswer(const RefPtr<RTCAnswerOptions>&, 
 
         if (localMediaDescription->dtlsSetup() == "actpass")
             localMediaDescription->setDtlsSetup("passive");
+
+        if(localMediaDescription->type() == "application")
+            localMediaDescription->setPort(remoteMediaDescription->port());
+
     }
 
     Vector<RefPtr<RTCRtpSender>> senders = m_client->senders();
@@ -412,6 +433,13 @@ void MediaEndpointPeerConnection::addIceCandidate(RTCIceCandidate* rtcCandidate,
     resolveCallback();
 }
 
+std::unique_ptr<RTCDataChannelHandler> MediaEndpointPeerConnection::createDataChannel(const String& label, RTCDataChannelInit_Endpoint& initData)
+{
+   return m_mediaEndpoint->createDataChannel(label, initData);
+}
+
+
+
 void MediaEndpointPeerConnection::stop()
 {
     m_mediaEndpoint->stop();
@@ -423,8 +451,8 @@ bool MediaEndpointPeerConnection::isLocalConfigurationComplete() const
         if (mdesc->dtlsFingerprint().isEmpty() || mdesc->iceUfrag().isEmpty())
             return false;
         // Test: No trickle
-        if (!mdesc->iceCandidateGatheringDone())
-            return false;
+        //if (!mdesc->iceCandidateGatheringDone())
+        //    return false;
         if (mdesc->type() == "audio" || mdesc->type() == "video") {
             if (!mdesc->ssrcs().size() || mdesc->cname().isEmpty())
                 return false;
@@ -518,7 +546,7 @@ void MediaEndpointPeerConnection::gotIceCandidate(unsigned mdescIndex, RefPtr<Ic
 {
     printf("-> gotIceCandidate()\n");
 
-    ASSERT(scriptExecutionContext()->isContextThread());
+    ASSERT(context()->isContextThread());
 
     PeerMediaDescription& mdesc = *m_localConfiguration->mediaDescriptions()[mdescIndex];
     if (mdesc.iceUfrag().isEmpty()) {
@@ -593,6 +621,16 @@ void MediaEndpointPeerConnection::gotRemoteSource(unsigned mdescIndex, RefPtr<Re
 
     // scheduleDispatchEvent(RTCTrackEvent::create(eventNames().trackEvent, false, false, WTF::move(receiver), WTF::move(track)));
     m_client->scheduleEvent(RTCTrackEvent::create(eventNames().trackEvent, false, false, WTF::move(receiver), WTF::move(track)));
+}
+
+void MediaEndpointPeerConnection::gotDataChannel(unsigned mdescIndex, std::unique_ptr<RTCDataChannelHandler> handler)
+{
+    printf("----> gotDataChannel()\n");
+
+    PassRefPtr<RTCDataChannel> channel = RTCDataChannel::create(m_client->context(), WTF::move(handler));
+    Vector<RefPtr<RTCDataChannel>> dataChannels = m_client->dataChannels();
+    dataChannels.append(channel.get());
+    m_client->scheduleEvent(RTCDataChannelEvent::create(eventNames().datachannelEvent, false, false, WTF::move(channel)));
 }
 
 String MediaEndpointPeerConnection::toSDP(const String& json) const
