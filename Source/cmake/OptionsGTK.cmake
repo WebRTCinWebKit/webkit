@@ -294,7 +294,17 @@ if (ENABLE_MEDIA_STREAM)
         message(FATAL_ERROR "OpenWebRTC is needed for ENABLE_MEDIA_STREAM.")
     endif ()
     SET_AND_EXPOSE_TO_BUILD(USE_OPENWEBRTC TRUE)
+
+    if (ENABLE_GOOGLE_WEBRTC)
+        find_package(GoogleWebRTC)
+        if (NOT GOOGLEWEBRTC_FOUND)
+            message(FATAL_ERROR "GoogleWebRTC is needed for ENABLE_GOOGLE_WEBRTC.")
+        endif ()
+        SET_AND_EXPOSE_TO_BUILD(USE_GOOGLEWEBRTC TRUE)
+    endif ()
 endif ()
+
+
 
 SET_AND_EXPOSE_TO_BUILD(USE_TEXTURE_MAPPER TRUE)
 

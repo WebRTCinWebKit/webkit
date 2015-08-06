@@ -36,9 +36,9 @@
 
 namespace WebCore {
 
-namespace SDPScriptResource {
+namespace SDPScriptResource {   
 
-const char* script = "/*\
+static const char* script = "/*\
  * Copyright (C) 2014-2015 Ericsson AB. All rights reserved.\
  *\
  * Redistribution and use in source and binary forms, with or without\
@@ -579,7 +579,8 @@ function iceCandidateFromSDP(sdpFragment) {\
     return JSON.stringify(iceInfo.candidates[0]);\
 }";
 
-String getString()
+
+static String getString()
 {
     return String(script);
 }

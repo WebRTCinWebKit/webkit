@@ -71,8 +71,9 @@ static std::unique_ptr<PeerConnectionBackend> createMediaEndpointPeerConnection(
     return std::unique_ptr<PeerConnectionBackend>(new MediaEndpointPeerConnection(client));
 }
 
+#if !ENABLE(GOOGLE_WEBRTC)
 CreatePeerConnectionBackend PeerConnectionBackend::create = createMediaEndpointPeerConnection;
-
+#endif
 static RefPtr<MediaEndpointInit> createMediaEndpointInit(RTCConfiguration& rtcConfig)
 {
     Vector<RefPtr<IceServerInfo>> iceServers;
@@ -546,7 +547,7 @@ void MediaEndpointPeerConnection::gotIceCandidate(unsigned mdescIndex, RefPtr<Ic
 {
     printf("-> gotIceCandidate()\n");
 
-    ASSERT(context()->isContextThread());
+    ASSERT(m_client->context()->isContextThread());
 
     PeerMediaDescription& mdesc = *m_localConfiguration->mediaDescriptions()[mdescIndex];
     if (mdesc.iceUfrag().isEmpty()) {
@@ -585,7 +586,7 @@ void MediaEndpointPeerConnection::doneGatheringCandidates(unsigned mdescIndex)
 {
     printf("-> doneGatheringCandidates()\n");
 
-    ASSERT(scriptExecutionContext()->isContextThread());
+    ASSERT(m_client->context()->isContextThread());
 
     m_localConfiguration->mediaDescriptions()[mdescIndex]->setIceCandidateGatheringDone(true);
     // Test: No trickle

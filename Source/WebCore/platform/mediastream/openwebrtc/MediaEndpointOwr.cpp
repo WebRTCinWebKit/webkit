@@ -507,7 +507,7 @@ static void dataChannelRequested(OwrDataSession* dataSession, bool ordered, int 
     OwrDataChannel* channel = owr_data_channel_new(ordered, 5000, -1, protocol, negotiated, id, label);    
     std::unique_ptr<RTCDataChannelHandler> handler = RTCDataChannelHandler::create(label, ordered, 5000, -1, protocol, negotiated, id, channel);
     
-    OwrDataChannel* owrDataChannel = (OwrDataChannel*) (handler->owrDatachannel());
+    OwrDataChannel* owrDataChannel = (OwrDataChannel*) (handler->datachannel());
     owr_data_session_add_data_channel(dataSession, owrDataChannel);
 
     mediaEndpoint->dispatchNewDataChannel(mediaEndpoint->sessionIndex(OWR_SESSION(dataSession)), WTF::move(handler));

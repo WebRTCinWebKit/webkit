@@ -50,7 +50,7 @@ public:
     virtual bool negotiated() override { return m_negotiated; }
     virtual unsigned short id() override { return m_id; }
     virtual unsigned long bufferedAmount() override { return 0; }
-    virtual void* owrDatachannel() override { return 0; }
+    virtual void* datachannel() override { return 0; }
 
     virtual bool sendStringData(const String&) override;
     virtual bool sendRawData(const char*, size_t) override;

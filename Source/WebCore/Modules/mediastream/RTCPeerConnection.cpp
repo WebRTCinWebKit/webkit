@@ -423,8 +423,9 @@ RTCPeerConnection::DescriptionType RTCPeerConnection::parseDescriptionType(const
         return DescriptionTypeOffer;
     if (typeName == "pranswer")
         return DescriptionTypePranswer;
-
+    
     ASSERT(typeName == "answer");
+
     return DescriptionTypeAnswer;
 }
 

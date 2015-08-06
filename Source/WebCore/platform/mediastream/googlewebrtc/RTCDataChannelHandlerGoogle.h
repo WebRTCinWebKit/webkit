@@ -28,22 +28,23 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RTCDataChannelHandlerOwr_h
-#define RTCDataChannelHandlerOwr_h
+#ifndef RTCDataChannelHandlerGoogle_h
+#define RTCDataChannelHandlerGoogle_h
 
 #if ENABLE(MEDIA_STREAM)
+#if ENABLE(GOOGLE_WEBRTC)
 
 #include "MediaEndpoint.h"
-#include <owr/owr_data_channel.h>
+#include <talk/app/webrtc/datachannel.h>
 
 namespace WebCore {
 
 class RTCDataChannelHandlerClient;
 
-class RTCDataChannelHandlerOwr : public RTCDataChannelHandler {
+class RTCDataChannelHandlerGoogle : public RTCDataChannelHandler, public webrtc::DataChannelObserver {
 public:
-    RTCDataChannelHandlerOwr(const String&, bool, unsigned short, unsigned short, const String&, bool, unsigned short, void*);
-    ~RTCDataChannelHandlerOwr();
+    RTCDataChannelHandlerGoogle(const String&, bool, unsigned short, unsigned short, const String&, bool, unsigned short, void*);
+    ~RTCDataChannelHandlerGoogle();
 
     virtual void setClient(RTCDataChannelHandlerClient*);
     virtual RTCDataChannelHandlerClient* client();
@@ -62,6 +63,9 @@ public:
     virtual void close();
     virtual void* datachannel();
 
+    void OnStateChange();
+    void OnMessage(const webrtc::DataBuffer& buffer);
+
 private:
     String m_label;
     bool m_ordered;
@@ -74,11 +78,12 @@ private:
     unsigned long m_bufferedAmount;
     
     RTCDataChannelHandlerClient* m_client;
-    OwrDataChannel* m_owrDataChannel;
+    webrtc::DataChannelInterface* m_googleDatachannel;
 };
 
 } // namespace WebCore
 
+#endif // ENABLE(GOOGLE_WEBRTC)
 #endif // ENABLE(MEDIA_STREAM)
 
-#endif // RTCDataChannelHandlerOwr_h
+#endif // RTCDataChannelHandlerGoogle_h

@@ -168,6 +168,9 @@ list(APPEND WebCore_SOURCES
     platform/mediastream/openwebrtc/RealtimeMediaSourceCenterOwr.cpp
     platform/mediastream/openwebrtc/RTCDataChannelHandlerOwr.cpp
 
+    platform/mediastream/googlewebrtc/JinglePeerConnectionHandler.cpp
+    platform/mediastream/googlewebrtc/RTCDataChannelHandlerGoogle.cpp
+
     platform/network/gtk/CredentialBackingStore.cpp
 
     platform/network/soup/AuthenticationChallengeSoup.cpp
@@ -384,7 +387,17 @@ if (ENABLE_MEDIA_STREAM)
     list(APPEND WebCore_LIBRARIES
         ${OPENWEBRTC_LIBRARIES}
     )
+    if (ENABLE_GOOGLE_WEBRTC)
+        list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
+            ${GOOGLEWEBRTC_INCLUDE_DIRS}
+        )
+        list(APPEND WebCore_LIBRARIES
+            ${GOOGLEWEBRTC_LIBRARIES}
+        )
+    endif ()
 endif ()
+
+
 
 if (USE_TEXTURE_MAPPER)
     list(APPEND WebCore_INCLUDE_DIRECTORIES

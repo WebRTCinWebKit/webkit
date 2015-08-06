@@ -48,7 +48,9 @@ static void onData(OwrDataChannel*, const gchar *string, RTCDataChannelHandler*)
 static void onRawData(OwrDataChannel*, const gchar *data, guint length, RTCDataChannelHandler*);
 static void onReadyState(OwrDataChannel*, GParamSpec *pspec, RTCDataChannelHandler*);
 
+#if !ENABLE(GOOGLE_WEBRTC)
 CreateRTCDataChannelHandler RTCDataChannelHandler::create = createRTCDataChannelHandlerOwr;
+#endif
 
 RTCDataChannelHandlerOwr::RTCDataChannelHandlerOwr(const String& label, bool ordered, unsigned short maxRetransmitTime, unsigned short maxRetransmits, const String& protocol, bool negotiated, unsigned short id, void* channel)
     : m_label(label)
@@ -74,7 +76,7 @@ void RTCDataChannelHandlerOwr::setClient(RTCDataChannelHandlerClient* client)
     m_client = client;
 }
 
-void* RTCDataChannelHandlerOwr::owrDatachannel()
+void* RTCDataChannelHandlerOwr::datachannel()
 {
     return m_owrDataChannel;
 }
