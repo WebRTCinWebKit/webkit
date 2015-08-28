@@ -94,7 +94,6 @@ class DTLSIdentityService : public webrtc::DTLSIdentityServiceInterface,
     if (should_fail_) {
       m_signaling_thread->Post(this, MSG_FAILURE, msg);
     } else {
-      printf("========> rtc::Thread::Current()->Post\n");
       m_signaling_thread->Post(this, MSG_SUCCESS, msg);
     }
     return true;
@@ -108,7 +107,6 @@ class DTLSIdentityService : public webrtc::DTLSIdentityServiceInterface,
 
   // rtc::MessageHandler implementation.
   void OnMessage(rtc::Message* msg) {
-    printf("========> OnMessage\n");
     DTLSIdentityService::MessageData* message_data =
         static_cast<DTLSIdentityService::MessageData*>(msg->pdata);
     DTLSIdentityRequestObserver* observer = message_data->data().observer.get();
@@ -116,9 +114,8 @@ class DTLSIdentityService : public webrtc::DTLSIdentityServiceInterface,
       case MSG_SUCCESS: {
         std::string cert, key;
         GenerateIdentity(message_data->data().common_name, &cert, &key);
-        printf("========> OnMessage:OnSuccess BEFORE\n");
         observer->OnSuccess(cert, key);
-        printf("========> OnMessage:OnSuccess DONE\n");
+        printf("========> OnMessage:OnSuccess SUCCESS\n");
         break;
       }
       case MSG_FAILURE:

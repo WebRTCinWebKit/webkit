@@ -43,7 +43,7 @@ set(GOOGLEWEBRTC_PEERCONNECTION_LIBRARIES "${GOOGLEWEBRTC_LIBRARY_PATHS}/obj/tal
 
 set(GOOGLEWEBRTC_LIBRARIES ${GOOGLEWEBRTC_PEERCONNECTION_LIBRARIES})
 
-# handle the QUIETLY and REQUIRED arguments and set DirectX_FOUND to TRUE if all listed variables are TRUE
+# handle the QUIETLY and REQUIRED arguments and set DirectX_FOUND to TRUE if all listed variables are TRUE/home/temasys/nss-3.19.2/nspr/target.debug/dist/lib/libnspr4.so;/home/temasys/nss-3.19.2/nss/lib/nss/Linux3.13_x86_64_glibc_PTH_64_OPT.OBJ/libnss3.so;/home/temasys/nss-3.19.2/nss/lib/util/Linux3.13_x86_64_glibc_PTH_64_OPT.OBJ/libnssutil3.so
 include(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(GOOGLEWEBRTC DEFAULT_MSG GOOGLEWEBRTC_INCLUDE_DIRS GOOGLEWEBRTC_LIBRARIES VERSION_OK)
 

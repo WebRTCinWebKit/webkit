@@ -34,7 +34,7 @@
 
 #if ENABLE(MEDIA_STREAM)
 #if ENABLE(GOOGLE_WEBRTC)
-
+#include "RTCIceCandidateEvent.h"
 #include "DOMError.h"
 #include "MediaEndpointConfigurationConversions.h"
 #include "PeerConnectionBackend.h"
@@ -122,11 +122,6 @@
 #define NVALGRIND 
 #define DYNAMIC_ANNOTATIONS_ENABLED 0
 */
- #define _DEBUG 
- #define LINUX 
-#define WEBRTC_LINUX 
-#include <webrtc/base/nssidentity.h>
-
 
 namespace WebCore {
 
@@ -202,10 +197,9 @@ private:
 
     class JingleCreateSessionDescriptionObserver : public webrtc::CreateSessionDescriptionObserver {
     public:
-        JingleCreateSessionDescriptionObserver(JinglePeerConnectionHandler* peerConnectionHandler, OfferAnswerResolveCallback resolveCallback, RejectCallback rejectCallback)
+        JingleCreateSessionDescriptionObserver(OfferAnswerResolveCallback resolveCallback, RejectCallback rejectCallback)
             : m_resolveCallback(resolveCallback)
             , m_rejectCallback(rejectCallback)
-            , m_peerConnectionHandler(peerConnectionHandler)  
         {
 
         }
@@ -218,7 +212,7 @@ private:
             desc->ToString(&out);
             String json = String::fromUTF8(out.c_str());
             String type = String::fromUTF8(desc->type().c_str());
-            //RefPtr<RTCSessionDescription> offer = RTCSessionDescription::create("offer", m_peerConnectionHandler->toSDP(json));
+
             RefPtr<RTCSessionDescription> offer = RTCSessionDescription::create(type, json);
             m_resolveCallback(*offer);
         }
@@ -232,7 +226,6 @@ private:
     private:
         OfferAnswerResolveCallback m_resolveCallback;
         RejectCallback m_rejectCallback;
-        JinglePeerConnectionHandler* m_peerConnectionHandler;
     };
 
     class JingleSetSessionDescriptionObserver : public webrtc::SetSessionDescriptionObserver {
@@ -248,6 +241,7 @@ private:
         void OnSuccess() 
         {
             printf("----> successSetSessionDescriptionObserver()\n");
+            m_client->scheduleEvent(RTCIceCandidateEvent::create(false, false, nullptr));
             m_client->updateSignalingState();
             //m_resolveCallback();
         }

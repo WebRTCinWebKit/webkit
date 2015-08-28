@@ -62,9 +62,9 @@
 #include <talk/app/webrtc/jsepicecandidate.h>
 #include <talk/app/webrtc/jsepsessiondescription.h>
 #include <talk/app/webrtc/portallocatorfactory.h>
-//#include <talk/app/webrtc/test/fakedtlsidentityservice.h>
+#include <webrtc/base/ssladapter.h>
 #include <webrtc/base/thread.h>
-#include "pk11pub.h"
+
 namespace WebCore {
 
 static std::unique_ptr<PeerConnectionBackend> createJinglePeerConnectionHandler(PeerConnectionBackendClient* client)
@@ -85,22 +85,22 @@ static RefPtr<MediaEndpointInit> createMediaEndpointInit(RTCConfiguration& rtcCo
 
 JinglePeerConnectionHandler::JinglePeerConnectionHandler(PeerConnectionBackendClient* client)
     : m_client(client)
-    //, m_peerConnectionFactory(webrtc::CreatePeerConnectionFactory())
 {
-    printf("----> JinglePeerConnectionHandler()\n");
     //m_constraints = new WebRTCMediaConstraints();
-    rtc::Thread* worker = new rtc::Thread;
+    rtc::Thread* worker = new rtc::Thread();
     m_signaling_thread = new rtc::Thread();
-    //signaling->Start();
+
     worker->Start();
     m_signaling_thread->Start();
     m_signaling_thread->WrapCurrent();
 
-    //rtc::ThreadManager::Instance()->SetCurrentThread(worker);
-    printf("----> JinglePeerConnectionHandler() 2\n");
+    
+    if(!rtc::InitializeSSL()){
+        printf("----> NSS FAILURE\n");
+    }
+    
     m_peerConnectionFactory = webrtc::CreatePeerConnectionFactory(worker, m_signaling_thread, NULL, NULL, NULL);
     //m_peerConnectionFactory = webrtc::CreatePeerConnectionFactory();
-    printf("----> JinglePeerConnectionHandler() 3\n");
 }
 
 JinglePeerConnectionHandler::~JinglePeerConnectionHandler()
@@ -110,7 +110,7 @@ JinglePeerConnectionHandler::~JinglePeerConnectionHandler()
 void JinglePeerConnectionHandler::createOffer(const RefPtr<RTCOfferOptions>& options, OfferAnswerResolveCallback resolveCallback, RejectCallback rejectCallback)
 {
     printf("----> createOffer()\n");
-    rtc::scoped_refptr<JingleCreateSessionDescriptionObserver> observer(new rtc::RefCountedObject<JingleCreateSessionDescriptionObserver>(this, resolveCallback, rejectCallback));
+    rtc::scoped_refptr<JingleCreateSessionDescriptionObserver> observer(new rtc::RefCountedObject<JingleCreateSessionDescriptionObserver>(resolveCallback, rejectCallback));
     m_constraints.SetMandatoryReceiveAudio(options->offerToReceiveAudio());
     m_constraints.SetMandatoryReceiveVideo(options->offerToReceiveVideo());
     m_constraints.SetMandatoryIceRestart(options->iceRestart());
@@ -123,7 +123,7 @@ void JinglePeerConnectionHandler::createOffer(const RefPtr<RTCOfferOptions>& opt
 void JinglePeerConnectionHandler::createAnswer(const RefPtr<RTCAnswerOptions>&, OfferAnswerResolveCallback resolveCallback, RejectCallback rejectCallback)
 {
     printf("----> createAnswer()\n");
-    rtc::scoped_refptr<JingleCreateSessionDescriptionObserver> observer(new rtc::RefCountedObject<JingleCreateSessionDescriptionObserver>(this, resolveCallback, rejectCallback));
+    rtc::scoped_refptr<JingleCreateSessionDescriptionObserver> observer(new rtc::RefCountedObject<JingleCreateSessionDescriptionObserver>(resolveCallback, rejectCallback));
 
     //m_peerConnection->CreateAnswer(observer, &m_constraints);
     m_peerConnection->CreateAnswer(observer, NULL);
@@ -194,7 +194,7 @@ void JinglePeerConnectionHandler::setConfiguration(RTCConfiguration& configurati
             m_google_configuration->servers.push_back(google_ice_server);
         }       
     }
-
+/*
     if(m_configuration->iceTransportPolicy() == "kNone")
         m_google_configuration->type = webrtc::PeerConnectionInterface::kNone;
     else if(m_configuration->iceTransportPolicy() == "kRelay")
@@ -210,7 +210,7 @@ void JinglePeerConnectionHandler::setConfiguration(RTCConfiguration& configurati
         m_google_configuration->bundle_policy = webrtc::PeerConnectionInterface::kBundlePolicyMaxBundle;
     else if(m_configuration->bundlePolicy() == "kBundlePolicyMaxCompat")
         m_google_configuration->bundle_policy = webrtc::PeerConnectionInterface::kBundlePolicyMaxCompat;
-
+*/
     printf("----> setConfiguration()\n");
     createPeerConnection();
 }
@@ -236,13 +236,16 @@ std::unique_ptr<RTCDataChannelHandler> JinglePeerConnectionHandler::createDataCh
     webrtc_initData.protocol = initData.protocol.utf8().data();
     webrtc_initData.negotiated = initData.negotiated;
     webrtc_initData.id = initData.id;
-    printf("----> DataChannel BEFORE LAUNCH\n");
-    if(!m_peerConnection)
-        printf("----> m_peerConnection NULL\n");
+    
+
     rtc::scoped_refptr<webrtc::DataChannelInterface> data_channel = m_peerConnection->CreateDataChannel(label.utf8().data(), &webrtc_initData);
+    if(data_channel == NULL)
+    {
+        printf("---->  createDataChannel() NULL\n");
+    }
     //rtc::scoped_refptr<webrtc::DataChannelInterface> data_channel = m_peerConnection->CreateDataChannel(label.utf8().data(), NULL);
     std::unique_ptr<RTCDataChannelHandler> handler = RTCDataChannelHandler::create(label, initData.ordered, 5000, -1, initData.protocol, initData.negotiated, initData.id, data_channel.get());
-    
+    printf("---->  createDataChannel() END\n");
     
     return handler;
 }
@@ -308,10 +311,13 @@ void JinglePeerConnectionHandler::OnIceGatheringChange(webrtc::PeerConnectionInt
 void JinglePeerConnectionHandler::OnIceCandidate(const webrtc::IceCandidateInterface* candidate) 
 {
     printf("----> OnIceCandidate()\n");
-    std::string* sdpIceCandidate;
-    candidate->ToString(sdpIceCandidate);
-    RefPtr<RTCIceCandidate> iceCandidate = RTCIceCandidate::create(String::fromUTF8(sdpIceCandidate->c_str()), "",candidate->sdp_mline_index());
+    ASSERT(m_client->context()->isContextThread());
+    std::string sdpIceCandidate;
+    candidate->ToString(&sdpIceCandidate);
+    String sdpMid = String::fromUTF8(candidate->sdp_mid().c_str());
+    RefPtr<RTCIceCandidate> iceCandidate = RTCIceCandidate::create(String::fromUTF8(sdpIceCandidate.c_str()), sdpMid, candidate->sdp_mline_index());
     m_client->scheduleEvent(RTCIceCandidateEvent::create(false, false, WTF::move(iceCandidate)));
+    printf("----> OnIceCandidate() END\n");
 }
 
 // TODO(bemasc): Remove this once callers transition to OnIceGatheringChange.
@@ -406,21 +412,10 @@ rtc::scoped_refptr<webrtc::PeerConnectionInterface> JinglePeerConnectionHandler:
     
     m_constraints.SetAllowDtlsSctpDataChannels();
     //m_constraints.SetAllowRtpDataChannels();
-    m_peerConnection = m_peerConnectionFactory->CreatePeerConnection(*m_google_configuration, &m_constraints, NULL, NULL, this);
-    
-    printf("PK11_ImportDERPrivateKeyInfoAndReturnKey BEFORE\n");
-    SECKEYPrivateKey* privkey = NULL;
-    //PK11_ImportDERPrivateKeyInfoAndReturnKey(NULL, NULL, NULL, NULL, PR_FALSE, PR_FALSE, 2, &privkey, NULL);
-    printf("PK11_ImportDERPrivateKeyInfoAndReturnKey AFTER\n");
-
-
-
-
-
-printf("----> createPeerConnection() 2 \n");
+    //m_peerConnection = m_peerConnectionFactory->CreatePeerConnection(*m_google_configuration, &m_constraints, NULL, NULL, this);
 
     m_peerConnection = m_peerConnectionFactory->CreatePeerConnection(*m_google_configuration, &m_constraints, NULL, dtls_identity_service, this);
-printf("----> createPeerConnection() 3 \n");
+printf("----> createPeerConnection() END \n");
 }
 
 webrtc::PeerConnectionInterface::RTCConfiguration JinglePeerConnectionHandler::toGoogleRTCConfiguration ()

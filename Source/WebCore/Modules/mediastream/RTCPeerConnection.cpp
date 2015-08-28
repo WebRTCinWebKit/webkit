@@ -275,6 +275,7 @@ void RTCPeerConnection::addIceCandidate(RTCIceCandidate* rtcCandidate, VoidResol
 {
     if (m_signalingState == SignalingStateClosed) {
         RefPtr<DOMError> error = DOMError::create("InvalidStateError");
+        printf("-> RTCPeerConnection::addIceCandidate() InvalidStateError\n");
         rejectCallback(*error);
         return;
     }
@@ -282,6 +283,7 @@ void RTCPeerConnection::addIceCandidate(RTCIceCandidate* rtcCandidate, VoidResol
     if (!remoteDescription()) {
         // FIXME: Error type?
         RefPtr<DOMError> error = DOMError::create("InvalidStateError (no remote description)");
+         printf("-> RTCPeerConnection::addIceCandidate() InvalidStateError (no remote description)\n");
         rejectCallback(*error);
         return;
     }
@@ -464,13 +466,15 @@ void RTCPeerConnection::changeIceConnectionState(IceConnectionState iceConnectio
 void RTCPeerConnection::scheduleDispatchEvent(PassRefPtr<Event> event)
 {
     m_scheduledEvents.append(event);
-
-    if (!m_scheduledEventTimer.isActive())
+    if (!m_scheduledEventTimer.isActive()){
+        printf("-> RTCPeerConnection::scheduleDispatchEvent() isInactive\n");
         m_scheduledEventTimer.startOneShot(0);
+    }
 }
 
 void RTCPeerConnection::scheduledEventTimerFired()
 {
+    printf("-> RTCPeerConnection::scheduledEventTimerFired()\n");
     if (m_stopped)
         return;
 
@@ -508,6 +512,7 @@ void RTCPeerConnection::updateSignalingState()
 
 void RTCPeerConnection::scheduleEvent(RefPtr<Event>&& event)
 {
+    
     scheduleDispatchEvent(event.release());
 }
 
