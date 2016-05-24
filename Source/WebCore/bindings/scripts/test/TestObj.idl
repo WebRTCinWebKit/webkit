@@ -374,6 +374,8 @@ enum TestConfidence { "high", "kinda-low" };
 #endif
 
     void attachShadowRoot(TestDictionary init);
+
+    serializer = {readOnlyStringAttr, create, enumAttr, longAttr};
 };
 
 // The following comment should not generate any code.

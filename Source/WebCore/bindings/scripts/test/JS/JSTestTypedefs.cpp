@@ -209,6 +209,8 @@ void JSTestTypedefs::destroy(JSC::JSCell* cell)
     thisObject->JSTestTypedefs::~JSTestTypedefs();
 }
 
+JSValue jsTestTypedefsUnsignedLongLongAttrGetter(ExecState*, JSTestTypedefs*);
+
 EncodedJSValue jsTestTypedefsUnsignedLongLongAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     UNUSED_PARAM(state);
@@ -218,11 +220,20 @@ EncodedJSValue jsTestTypedefsUnsignedLongLongAttr(ExecState* state, EncodedJSVal
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestTypedefs", "unsignedLongLongAttr");
     }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.unsignedLongLongAttr());
-    return JSValue::encode(result);
+    return JSValue::encode(jsTestTypedefsUnsignedLongLongAttrGetter(state, castedThis));
 }
 
+JSValue jsTestTypedefsUnsignedLongLongAttrGetter(ExecState* state, JSTestTypedefs* thisObject)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(thisObject);
+    auto& impl = thisObject->wrapped();
+    JSValue result = jsNumber(impl.unsignedLongLongAttr());
+    return result;
+}
+
+
+JSValue jsTestTypedefsImmutableSerializedScriptValueGetter(ExecState*, JSTestTypedefs*);
 
 EncodedJSValue jsTestTypedefsImmutableSerializedScriptValue(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
@@ -233,11 +244,20 @@ EncodedJSValue jsTestTypedefsImmutableSerializedScriptValue(ExecState* state, En
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestTypedefs", "immutableSerializedScriptValue");
     }
-    auto& impl = castedThis->wrapped();
-    JSValue result = impl.immutableSerializedScriptValue() ? impl.immutableSerializedScriptValue()->deserialize(state, castedThis->globalObject(), 0) : jsNull();
-    return JSValue::encode(result);
+    return JSValue::encode(jsTestTypedefsImmutableSerializedScriptValueGetter(state, castedThis));
 }
 
+JSValue jsTestTypedefsImmutableSerializedScriptValueGetter(ExecState* state, JSTestTypedefs* thisObject)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(thisObject);
+    auto& impl = thisObject->wrapped();
+    JSValue result = impl.immutableSerializedScriptValue() ? impl.immutableSerializedScriptValue()->deserialize(state, thisObject->globalObject(), 0) : jsNull();
+    return result;
+}
+
+
+JSValue jsTestTypedefsConstructorTestSubObjGetter(ExecState*, JSTestTypedefs*);
 
 EncodedJSValue jsTestTypedefsConstructorTestSubObj(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
@@ -248,9 +268,18 @@ EncodedJSValue jsTestTypedefsConstructorTestSubObj(ExecState* state, EncodedJSVa
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestTypedefs", "TestSubObj");
     }
-    return JSValue::encode(JSTestSubObj::getConstructor(state->vm(), castedThis->globalObject()));
+    return JSValue::encode(jsTestTypedefsConstructorTestSubObjGetter(state, castedThis));
 }
 
+JSValue jsTestTypedefsConstructorTestSubObjGetter(ExecState* state, JSTestTypedefs* thisObject)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(thisObject);
+    return JSTestSubObj::getConstructor(state->vm(), thisObject->globalObject());
+}
+
+
+JSValue jsTestTypedefsAttrWithGetterExceptionGetter(ExecState*, JSTestTypedefs*);
 
 EncodedJSValue jsTestTypedefsAttrWithGetterException(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
@@ -261,13 +290,22 @@ EncodedJSValue jsTestTypedefsAttrWithGetterException(ExecState* state, EncodedJS
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestTypedefs", "attrWithGetterException");
     }
-    ExceptionCode ec = 0;
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.attrWithGetterException(ec));
-    setDOMException(state, ec);
-    return JSValue::encode(result);
+    return JSValue::encode(jsTestTypedefsAttrWithGetterExceptionGetter(state, castedThis));
 }
 
+JSValue jsTestTypedefsAttrWithGetterExceptionGetter(ExecState* state, JSTestTypedefs* thisObject)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(thisObject);
+    ExceptionCode ec = 0;
+    auto& impl = thisObject->wrapped();
+    JSValue result = jsNumber(impl.attrWithGetterException(ec));
+    setDOMException(state, ec);
+    return result;
+}
+
+
+JSValue jsTestTypedefsAttrWithSetterExceptionGetter(ExecState*, JSTestTypedefs*);
 
 EncodedJSValue jsTestTypedefsAttrWithSetterException(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
@@ -278,11 +316,20 @@ EncodedJSValue jsTestTypedefsAttrWithSetterException(ExecState* state, EncodedJS
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestTypedefs", "attrWithSetterException");
     }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.attrWithSetterException());
-    return JSValue::encode(result);
+    return JSValue::encode(jsTestTypedefsAttrWithSetterExceptionGetter(state, castedThis));
 }
 
+JSValue jsTestTypedefsAttrWithSetterExceptionGetter(ExecState* state, JSTestTypedefs* thisObject)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(thisObject);
+    auto& impl = thisObject->wrapped();
+    JSValue result = jsNumber(impl.attrWithSetterException());
+    return result;
+}
+
+
+JSValue jsTestTypedefsStringAttrWithGetterExceptionGetter(ExecState*, JSTestTypedefs*);
 
 EncodedJSValue jsTestTypedefsStringAttrWithGetterException(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
@@ -293,13 +340,22 @@ EncodedJSValue jsTestTypedefsStringAttrWithGetterException(ExecState* state, Enc
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestTypedefs", "stringAttrWithGetterException");
     }
-    ExceptionCode ec = 0;
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsStringWithCache(state, impl.stringAttrWithGetterException(ec));
-    setDOMException(state, ec);
-    return JSValue::encode(result);
+    return JSValue::encode(jsTestTypedefsStringAttrWithGetterExceptionGetter(state, castedThis));
 }
 
+JSValue jsTestTypedefsStringAttrWithGetterExceptionGetter(ExecState* state, JSTestTypedefs* thisObject)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(thisObject);
+    ExceptionCode ec = 0;
+    auto& impl = thisObject->wrapped();
+    JSValue result = jsStringWithCache(state, impl.stringAttrWithGetterException(ec));
+    setDOMException(state, ec);
+    return result;
+}
+
+
+JSValue jsTestTypedefsStringAttrWithSetterExceptionGetter(ExecState*, JSTestTypedefs*);
 
 EncodedJSValue jsTestTypedefsStringAttrWithSetterException(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
@@ -310,9 +366,16 @@ EncodedJSValue jsTestTypedefsStringAttrWithSetterException(ExecState* state, Enc
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestTypedefs", "stringAttrWithSetterException");
     }
-    auto& impl = castedThis->wrapped();
+    return JSValue::encode(jsTestTypedefsStringAttrWithSetterExceptionGetter(state, castedThis));
+}
+
+JSValue jsTestTypedefsStringAttrWithSetterExceptionGetter(ExecState* state, JSTestTypedefs* thisObject)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(thisObject);
+    auto& impl = thisObject->wrapped();
     JSValue result = jsStringWithCache(state, impl.stringAttrWithSetterException());
-    return JSValue::encode(result);
+    return result;
 }
 
 

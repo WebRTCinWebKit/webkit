@@ -137,6 +137,8 @@ void JSTestGlobalObject::destroy(JSC::JSCell* cell)
     thisObject->JSTestGlobalObject::~JSTestGlobalObject();
 }
 
+JSValue jsTestGlobalObjectRegularAttributeGetter(ExecState*, JSTestGlobalObject*);
+
 EncodedJSValue jsTestGlobalObjectRegularAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     UNUSED_PARAM(state);
@@ -146,13 +148,22 @@ EncodedJSValue jsTestGlobalObjectRegularAttribute(ExecState* state, EncodedJSVal
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestGlobalObject", "regularAttribute");
     }
-    auto& impl = castedThis->wrapped();
+    return JSValue::encode(jsTestGlobalObjectRegularAttributeGetter(state, castedThis));
+}
+
+JSValue jsTestGlobalObjectRegularAttributeGetter(ExecState* state, JSTestGlobalObject* thisObject)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(thisObject);
+    auto& impl = thisObject->wrapped();
     JSValue result = jsStringWithCache(state, impl.regularAttribute());
-    return JSValue::encode(result);
+    return result;
 }
 
 
 #if ENABLE(TEST_FEATURE)
+JSValue jsTestGlobalObjectEnabledAtRuntimeAttributeGetter(ExecState*, JSTestGlobalObject*);
+
 EncodedJSValue jsTestGlobalObjectEnabledAtRuntimeAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     UNUSED_PARAM(state);
@@ -162,9 +173,16 @@ EncodedJSValue jsTestGlobalObjectEnabledAtRuntimeAttribute(ExecState* state, Enc
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestGlobalObject", "enabledAtRuntimeAttribute");
     }
-    auto& impl = castedThis->wrapped();
+    return JSValue::encode(jsTestGlobalObjectEnabledAtRuntimeAttributeGetter(state, castedThis));
+}
+
+JSValue jsTestGlobalObjectEnabledAtRuntimeAttributeGetter(ExecState* state, JSTestGlobalObject* thisObject)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(thisObject);
+    auto& impl = thisObject->wrapped();
     JSValue result = jsStringWithCache(state, impl.enabledAtRuntimeAttribute());
-    return JSValue::encode(result);
+    return result;
 }
 
 #endif

@@ -133,6 +133,8 @@ void JSTestSerializedScriptValueInterface::destroy(JSC::JSCell* cell)
     thisObject->JSTestSerializedScriptValueInterface::~JSTestSerializedScriptValueInterface();
 }
 
+JSValue jsTestSerializedScriptValueInterfaceValueGetter(ExecState*, JSTestSerializedScriptValueInterface*);
+
 EncodedJSValue jsTestSerializedScriptValueInterfaceValue(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     UNUSED_PARAM(state);
@@ -142,11 +144,20 @@ EncodedJSValue jsTestSerializedScriptValueInterfaceValue(ExecState* state, Encod
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestSerializedScriptValueInterface", "value");
     }
-    auto& impl = castedThis->wrapped();
-    JSValue result = impl.value() ? impl.value()->deserialize(state, castedThis->globalObject(), 0) : jsNull();
-    return JSValue::encode(result);
+    return JSValue::encode(jsTestSerializedScriptValueInterfaceValueGetter(state, castedThis));
 }
 
+JSValue jsTestSerializedScriptValueInterfaceValueGetter(ExecState* state, JSTestSerializedScriptValueInterface* thisObject)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(thisObject);
+    auto& impl = thisObject->wrapped();
+    JSValue result = impl.value() ? impl.value()->deserialize(state, thisObject->globalObject(), 0) : jsNull();
+    return result;
+}
+
+
+JSValue jsTestSerializedScriptValueInterfaceReadonlyValueGetter(ExecState*, JSTestSerializedScriptValueInterface*);
 
 EncodedJSValue jsTestSerializedScriptValueInterfaceReadonlyValue(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
@@ -157,11 +168,20 @@ EncodedJSValue jsTestSerializedScriptValueInterfaceReadonlyValue(ExecState* stat
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestSerializedScriptValueInterface", "readonlyValue");
     }
-    auto& impl = castedThis->wrapped();
-    JSValue result = impl.readonlyValue() ? impl.readonlyValue()->deserialize(state, castedThis->globalObject(), 0) : jsNull();
-    return JSValue::encode(result);
+    return JSValue::encode(jsTestSerializedScriptValueInterfaceReadonlyValueGetter(state, castedThis));
 }
 
+JSValue jsTestSerializedScriptValueInterfaceReadonlyValueGetter(ExecState* state, JSTestSerializedScriptValueInterface* thisObject)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(thisObject);
+    auto& impl = thisObject->wrapped();
+    JSValue result = impl.readonlyValue() ? impl.readonlyValue()->deserialize(state, thisObject->globalObject(), 0) : jsNull();
+    return result;
+}
+
+
+JSValue jsTestSerializedScriptValueInterfaceCachedValueGetter(ExecState*, JSTestSerializedScriptValueInterface*);
 
 EncodedJSValue jsTestSerializedScriptValueInterfaceCachedValue(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
@@ -172,14 +192,23 @@ EncodedJSValue jsTestSerializedScriptValueInterfaceCachedValue(ExecState* state,
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestSerializedScriptValueInterface", "cachedValue");
     }
-    if (JSValue cachedValue = castedThis->m_cachedValue.get())
-        return JSValue::encode(cachedValue);
-    auto& impl = castedThis->wrapped();
-    JSValue result = impl.cachedValue() ? impl.cachedValue()->deserialize(state, castedThis->globalObject(), 0) : jsNull();
-    castedThis->m_cachedValue.set(state->vm(), castedThis, result);
-    return JSValue::encode(result);
+    return JSValue::encode(jsTestSerializedScriptValueInterfaceCachedValueGetter(state, castedThis));
 }
 
+JSValue jsTestSerializedScriptValueInterfaceCachedValueGetter(ExecState* state, JSTestSerializedScriptValueInterface* thisObject)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(thisObject);
+    if (JSValue cachedValue = thisObject->m_cachedValue.get())
+        return cachedValue;
+    auto& impl = thisObject->wrapped();
+    JSValue result = impl.cachedValue() ? impl.cachedValue()->deserialize(state, thisObject->globalObject(), 0) : jsNull();
+    thisObject->m_cachedValue.set(state->vm(), thisObject, result);
+    return result;
+}
+
+
+JSValue jsTestSerializedScriptValueInterfacePortsGetter(ExecState*, JSTestSerializedScriptValueInterface*);
 
 EncodedJSValue jsTestSerializedScriptValueInterfacePorts(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
@@ -190,11 +219,20 @@ EncodedJSValue jsTestSerializedScriptValueInterfacePorts(ExecState* state, Encod
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestSerializedScriptValueInterface", "ports");
     }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsArray(state, castedThis->globalObject(), impl.ports());
-    return JSValue::encode(result);
+    return JSValue::encode(jsTestSerializedScriptValueInterfacePortsGetter(state, castedThis));
 }
 
+JSValue jsTestSerializedScriptValueInterfacePortsGetter(ExecState* state, JSTestSerializedScriptValueInterface* thisObject)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(thisObject);
+    auto& impl = thisObject->wrapped();
+    JSValue result = jsArray(state, thisObject->globalObject(), impl.ports());
+    return result;
+}
+
+
+JSValue jsTestSerializedScriptValueInterfaceCachedReadonlyValueGetter(ExecState*, JSTestSerializedScriptValueInterface*);
 
 EncodedJSValue jsTestSerializedScriptValueInterfaceCachedReadonlyValue(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
@@ -205,12 +243,19 @@ EncodedJSValue jsTestSerializedScriptValueInterfaceCachedReadonlyValue(ExecState
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestSerializedScriptValueInterface", "cachedReadonlyValue");
     }
-    if (JSValue cachedValue = castedThis->m_cachedReadonlyValue.get())
-        return JSValue::encode(cachedValue);
-    auto& impl = castedThis->wrapped();
-    JSValue result = impl.cachedReadonlyValue() ? impl.cachedReadonlyValue()->deserialize(state, castedThis->globalObject(), 0) : jsNull();
-    castedThis->m_cachedReadonlyValue.set(state->vm(), castedThis, result);
-    return JSValue::encode(result);
+    return JSValue::encode(jsTestSerializedScriptValueInterfaceCachedReadonlyValueGetter(state, castedThis));
+}
+
+JSValue jsTestSerializedScriptValueInterfaceCachedReadonlyValueGetter(ExecState* state, JSTestSerializedScriptValueInterface* thisObject)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(thisObject);
+    if (JSValue cachedValue = thisObject->m_cachedReadonlyValue.get())
+        return cachedValue;
+    auto& impl = thisObject->wrapped();
+    JSValue result = impl.cachedReadonlyValue() ? impl.cachedReadonlyValue()->deserialize(state, thisObject->globalObject(), 0) : jsNull();
+    thisObject->m_cachedReadonlyValue.set(state->vm(), thisObject, result);
+    return result;
 }
 
 

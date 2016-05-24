@@ -25,6 +25,7 @@
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
 #include "JSDOMIterator.h"
+#include "ObjectConstructor.h"
 #include "URL.h"
 #include <runtime/Error.h>
 #include <runtime/JSString.h>
@@ -48,6 +49,8 @@ JSC::EncodedJSValue jsTestNodeName(JSC::ExecState*, JSC::EncodedJSValue, JSC::Pr
 bool setJSTestNodeName(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestNodeConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 bool setJSTestNodeConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+
+EncodedJSValue JSC_HOST_CALL jsTestNodePrototypeFunctionToJSON(ExecState*);
 
 class JSTestNodePrototype : public JSC::JSNonFinalObject {
 public:
@@ -107,6 +110,7 @@ static const HashTableValue JSTestNodePrototypeTableValues[] =
     { "keys", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestNodePrototypeFunctionKeys), (intptr_t) (0) } },
     { "values", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestNodePrototypeFunctionValues), (intptr_t) (0) } },
     { "forEach", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestNodePrototypeFunctionForEach), (intptr_t) (1) } },
+    { "toJSON", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestNodePrototypeFunctionToJSON), (intptr_t) (0) } },
 };
 
 const ClassInfo JSTestNodePrototype::s_info = { "TestNodePrototype", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestNodePrototype) };
@@ -135,6 +139,8 @@ JSObject* JSTestNode::prototype(VM& vm, JSGlobalObject* globalObject)
     return getDOMPrototype<JSTestNode>(vm, globalObject);
 }
 
+JSValue jsTestNodeNameGetter(ExecState*, JSTestNode*);
+
 EncodedJSValue jsTestNodeName(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     UNUSED_PARAM(state);
@@ -144,9 +150,16 @@ EncodedJSValue jsTestNodeName(ExecState* state, EncodedJSValue thisValue, Proper
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestNode", "name");
     }
-    auto& impl = castedThis->wrapped();
+    return JSValue::encode(jsTestNodeNameGetter(state, castedThis));
+}
+
+JSValue jsTestNodeNameGetter(ExecState* state, JSTestNode* thisObject)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(thisObject);
+    auto& impl = thisObject->wrapped();
     JSValue result = jsStringWithCache(state, impl.name());
-    return JSValue::encode(result);
+    return result;
 }
 
 
@@ -190,6 +203,19 @@ bool setJSTestNodeName(ExecState* state, EncodedJSValue thisValue, EncodedJSValu
 JSValue JSTestNode::getConstructor(VM& vm, const JSGlobalObject* globalObject)
 {
     return getDOMConstructor<JSTestNodeConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestNodePrototypeFunctionToJSON(ExecState* state)
+{
+    auto castedThis = jsDynamicCast<JSTestNode*>(state->thisValue());
+    if (UNLIKELY(!castedThis))
+        return throwThisTypeError(*state, "TestNode", "toJSON");
+    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestNode::info());
+
+    auto* result = constructEmptyObject(state);
+    VM& vm = state->vm();
+    result->putDirect(vm, Identifier::fromString(&vm, "name"), jsTestNodeNameGetter(state, castedThis));
+    return JSValue::encode(result);
 }
 
 using TestNodeIterator = JSDOMIterator<JSTestNode>;

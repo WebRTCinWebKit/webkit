@@ -25,5 +25,7 @@
     attribute DOMString name;
 
     iterable<TestNode>;
+
+    serializer;
 };
 

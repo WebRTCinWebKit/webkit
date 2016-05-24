@@ -132,6 +132,8 @@ void JSTestException::destroy(JSC::JSCell* cell)
     thisObject->JSTestException::~JSTestException();
 }
 
+JSValue jsTestExceptionNameGetter(ExecState*, JSTestException*);
+
 EncodedJSValue jsTestExceptionName(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     UNUSED_PARAM(state);
@@ -141,9 +143,16 @@ EncodedJSValue jsTestExceptionName(ExecState* state, EncodedJSValue thisValue, P
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestException", "name");
     }
-    auto& impl = castedThis->wrapped();
+    return JSValue::encode(jsTestExceptionNameGetter(state, castedThis));
+}
+
+JSValue jsTestExceptionNameGetter(ExecState* state, JSTestException* thisObject)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(thisObject);
+    auto& impl = thisObject->wrapped();
     JSValue result = jsStringWithCache(state, impl.name());
-    return JSValue::encode(result);
+    return result;
 }
 
 

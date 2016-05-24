@@ -132,6 +132,8 @@ void JSattribute::destroy(JSC::JSCell* cell)
     thisObject->JSattribute::~JSattribute();
 }
 
+JSValue jsattributeReadonlyGetter(ExecState*, JSattribute*);
+
 EncodedJSValue jsattributeReadonly(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     UNUSED_PARAM(state);
@@ -141,9 +143,16 @@ EncodedJSValue jsattributeReadonly(ExecState* state, EncodedJSValue thisValue, P
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "attribute", "readonly");
     }
-    auto& impl = castedThis->wrapped();
+    return JSValue::encode(jsattributeReadonlyGetter(state, castedThis));
+}
+
+JSValue jsattributeReadonlyGetter(ExecState* state, JSattribute* thisObject)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(thisObject);
+    auto& impl = thisObject->wrapped();
     JSValue result = jsStringWithCache(state, impl.readonly());
-    return JSValue::encode(result);
+    return result;
 }
 
 

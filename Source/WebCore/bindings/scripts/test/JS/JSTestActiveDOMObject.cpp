@@ -140,6 +140,8 @@ void JSTestActiveDOMObject::destroy(JSC::JSCell* cell)
     thisObject->JSTestActiveDOMObject::~JSTestActiveDOMObject();
 }
 
+JSValue jsTestActiveDOMObjectExcitingAttrGetter(ExecState*, JSTestActiveDOMObject*);
+
 EncodedJSValue jsTestActiveDOMObjectExcitingAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     UNUSED_PARAM(state);
@@ -149,11 +151,18 @@ EncodedJSValue jsTestActiveDOMObjectExcitingAttr(ExecState* state, EncodedJSValu
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestActiveDOMObject", "excitingAttr");
     }
-    if (!BindingSecurity::shouldAllowAccessToDOMWindow(state, castedThis->wrapped()))
-        return JSValue::encode(jsUndefined());
-    auto& impl = castedThis->wrapped();
+    return JSValue::encode(jsTestActiveDOMObjectExcitingAttrGetter(state, castedThis));
+}
+
+JSValue jsTestActiveDOMObjectExcitingAttrGetter(ExecState* state, JSTestActiveDOMObject* thisObject)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(thisObject);
+    if (!BindingSecurity::shouldAllowAccessToDOMWindow(state, thisObject->wrapped()))
+        return jsUndefined();
+    auto& impl = thisObject->wrapped();
     JSValue result = jsNumber(impl.excitingAttr());
-    return JSValue::encode(result);
+    return result;
 }
 
 

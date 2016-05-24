@@ -322,7 +322,7 @@ if (typeof(SDP) == "undefined")
                         candidate.tcpType = candidateLine[12];
                     else if (candidate.transport == "TCP") {
                         if (candidate.port == 0 || candidate.port == 9) {
-                            candidate.tcpType = "active";
+                            candidate.tcpType = "";
                             candidate.port = 9;
                         } else {
                             return;

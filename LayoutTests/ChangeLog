@@ -1,3 +1,18 @@
+2016-05-24  Alejandro G. Castro  <alex@igalia.com>
+
+        Add WebIDL special operation support: serializer
+        https://bugs.webkit.org/show_bug.cgi?id=156293
+
+        Reviewed by Darin Adler.
+
+        Verify the new API of the objects and check what happens when user
+        modifies the values and types of the attributes, or adds a null value.
+
+        * fast/mediastream/RTCIceCandidate-expected.txt:
+        * fast/mediastream/RTCIceCandidate.html:
+        * fast/mediastream/RTCSessionDescription-expected.txt:
+        * fast/mediastream/RTCSessionDescription.html:
+
 2016-06-10  Adam Bergkvist  <adam.bergkvist@ericsson.com>
 
         WebRTC: Imlement MediaEndpointPeerConnection::createAnswer()
