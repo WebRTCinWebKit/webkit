@@ -373,10 +373,10 @@ void MediaEndpointPeerConnection::setLocalDescriptionTask(RefPtr<RTCSessionDescr
     if (m_client->internalSignalingState() == SignalingState::Closed)
         return;
 
-    ExceptionCode ec = 0;
-    RefPtr<MediaEndpointSessionDescription> newDescription = MediaEndpointSessionDescription::create(WTFMove(description), *m_sdpProcessor, ec);
-    if (ec) {
-        promise.reject(ec);
+    ExceptionCodeWithMessage exception;
+    auto newDescription = MediaEndpointSessionDescription::create(WTFMove(description), *m_sdpProcessor, exception);
+    if (exception.code) {
+        promise.reject(exception.code, exception.message);
         return;
     }
 
@@ -508,10 +508,10 @@ void MediaEndpointPeerConnection::setRemoteDescriptionTask(RefPtr<RTCSessionDesc
     if (m_client->internalSignalingState() == SignalingState::Closed)
         return;
 
-    ExceptionCode ec = 0;
-    RefPtr<MediaEndpointSessionDescription> newDescription = MediaEndpointSessionDescription::create(WTFMove(description), *m_sdpProcessor, ec);
-    if (ec) {
-        promise.reject(ec);
+    ExceptionCodeWithMessage exception;
+    auto newDescription = MediaEndpointSessionDescription::create(WTFMove(description), *m_sdpProcessor, exception);
+    if (exception.code) {
+        promise.reject(exception.code, exception.message);
         return;
     }
 

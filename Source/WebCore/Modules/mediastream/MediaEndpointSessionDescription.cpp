@@ -55,18 +55,19 @@ Ref<MediaEndpointSessionDescription> MediaEndpointSessionDescription::create(RTC
     return adoptRef(*new MediaEndpointSessionDescription(type, WTFMove(configuration), nullptr));
 }
 
-RefPtr<MediaEndpointSessionDescription> MediaEndpointSessionDescription::create(RefPtr<RTCSessionDescription>&& rtcDescription, const SDPProcessor& sdpProcessor, ExceptionCode& ec)
+RefPtr<MediaEndpointSessionDescription> MediaEndpointSessionDescription::create(RefPtr<RTCSessionDescription>&& rtcDescription, const SDPProcessor& sdpProcessor, ExceptionCodeWithMessage& exception)
 {
     RefPtr<MediaEndpointSessionConfiguration> configuration;
     SDPProcessor::Result result = sdpProcessor.parse(rtcDescription->sdp(), configuration);
     if (result != SDPProcessor::Result::Success) {
         if (result == SDPProcessor::Result::ParseError) {
-            // FIXME: Consider using ExceptionCodeWithMessage here
-            ec = INVALID_ACCESS_ERR;
+            exception.code = INVALID_ACCESS_ERR;
+            exception.message = ASCIILiteral("SDP content is invalid");
             return nullptr;
         }
         LOG_ERROR("SDPProcessor internal error");
-        ec = ABORT_ERR;
+        exception.code = ABORT_ERR;
+        exception.message = ASCIILiteral("Internal error");
         return nullptr;
     }
 

@@ -46,7 +46,7 @@ class DOMError;
 class MediaEndpointSessionDescription : public RefCounted<MediaEndpointSessionDescription> {
 public:
     static Ref<MediaEndpointSessionDescription> create(RTCSessionDescription::SdpType, RefPtr<MediaEndpointSessionConfiguration>&&);
-    static RefPtr<MediaEndpointSessionDescription> create(RefPtr<RTCSessionDescription>&&, const SDPProcessor&, ExceptionCode&);
+    static RefPtr<MediaEndpointSessionDescription> create(RefPtr<RTCSessionDescription>&&, const SDPProcessor&, ExceptionCodeWithMessage&);
     virtual ~MediaEndpointSessionDescription() { }
 
     RefPtr<RTCSessionDescription> toRTCSessionDescription(const SDPProcessor&) const;
