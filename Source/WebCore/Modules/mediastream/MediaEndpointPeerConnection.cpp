@@ -64,40 +64,6 @@ static std::unique_ptr<PeerConnectionBackend> createMediaEndpointPeerConnection(
 
 CreatePeerConnectionBackend PeerConnectionBackend::create = createMediaEndpointPeerConnection;
 
-class WrappedSessionDescriptionPromise : public RefCounted<WrappedSessionDescriptionPromise> {
-public:
-    static Ref<WrappedSessionDescriptionPromise> create(SessionDescriptionPromise&& promise)
-    {
-        return *adoptRef(new WrappedSessionDescriptionPromise(WTFMove(promise)));
-    }
-
-    SessionDescriptionPromise& promise() { return m_promise; }
-
-private:
-    WrappedSessionDescriptionPromise(SessionDescriptionPromise&& promise)
-        : m_promise(WTFMove(promise))
-    { }
-
-    SessionDescriptionPromise m_promise;
-};
-
-class WrappedVoidPromise : public RefCounted<WrappedVoidPromise> {
-public:
-    static Ref<WrappedVoidPromise> create(VoidPromise&& promise)
-    {
-        return *adoptRef(new WrappedVoidPromise(WTFMove(promise)));
-    }
-
-    VoidPromise& promise() { return m_promise; }
-
-private:
-    WrappedVoidPromise(VoidPromise&& promise)
-        : m_promise(WTFMove(promise))
-    { }
-
-    VoidPromise m_promise;
-};
-
 static String randomString(size_t length)
 {
     const size_t size = ceil(length * 3 / 4);
@@ -182,11 +148,8 @@ void MediaEndpointPeerConnection::startRunningTasks()
 
 void MediaEndpointPeerConnection::createOffer(RTCOfferOptions& options, SessionDescriptionPromise&& promise)
 {
-    const RefPtr<RTCOfferOptions> protectedOptions = &options;
-    RefPtr<WrappedSessionDescriptionPromise> wrappedPromise = WrappedSessionDescriptionPromise::create(WTFMove(promise));
-
-    runTask([this, protectedOptions, wrappedPromise]() {
-        createOfferTask(*protectedOptions, wrappedPromise->promise());
+    runTask([this, protectedOptions = RefPtr<RTCOfferOptions>(&options), protectedPromise = WTFMove(promise)]() mutable {
+        createOfferTask(*protectedOptions, protectedPromise);
     });
 }
 
@@ -255,11 +218,8 @@ void MediaEndpointPeerConnection::createOfferTask(RTCOfferOptions&, SessionDescr
 
 void MediaEndpointPeerConnection::createAnswer(RTCAnswerOptions& options, SessionDescriptionPromise&& promise)
 {
-    const RefPtr<RTCAnswerOptions> protectedOptions = &options;
-    RefPtr<WrappedSessionDescriptionPromise> wrappedPromise = WrappedSessionDescriptionPromise::create(WTFMove(promise));
-
-    runTask([this, protectedOptions, wrappedPromise]() {
-        createAnswerTask(*protectedOptions, wrappedPromise->promise());
+    runTask([this, protectedOptions = RefPtr<RTCAnswerOptions>(&options), protectedPromise = WTFMove(promise)]() mutable {
+        createAnswerTask(*protectedOptions, protectedPromise);
     });
 }
 
@@ -360,11 +320,8 @@ static RealtimeMediaSourceMap createSourceMap(const MediaDescriptionVector& remo
 
 void MediaEndpointPeerConnection::setLocalDescription(RTCSessionDescription& description, VoidPromise&& promise)
 {
-    RefPtr<RTCSessionDescription> protectedDescription = &description;
-    RefPtr<WrappedVoidPromise> wrappedPromise = WrappedVoidPromise::create(WTFMove(promise));
-
-    runTask([this, protectedDescription, wrappedPromise]() mutable {
-        setLocalDescriptionTask(WTFMove(protectedDescription), wrappedPromise->promise());
+    runTask([this, protectedDescription = RefPtr<RTCSessionDescription>(&description), protectedPromise = WTFMove(promise)]() mutable {
+        setLocalDescriptionTask(WTFMove(protectedDescription), protectedPromise);
     });
 }
 
@@ -495,11 +452,8 @@ RefPtr<RTCSessionDescription> MediaEndpointPeerConnection::pendingLocalDescripti
 
 void MediaEndpointPeerConnection::setRemoteDescription(RTCSessionDescription& description, VoidPromise&& promise)
 {
-    RefPtr<RTCSessionDescription> protectedDescription = &description;
-    RefPtr<WrappedVoidPromise> wrappedPromise = WrappedVoidPromise::create(WTFMove(promise));
-
-    runTask([this, protectedDescription, wrappedPromise]() mutable {
-        setRemoteDescriptionTask(WTFMove(protectedDescription), wrappedPromise->promise());
+    runTask([this, protectedDescription = RefPtr<RTCSessionDescription>(&description), protectedPromise = WTFMove(promise)]() mutable {
+        setRemoteDescriptionTask(WTFMove(protectedDescription), protectedPromise);
     });
 }
 
@@ -677,11 +631,8 @@ void MediaEndpointPeerConnection::setConfiguration(RTCConfiguration& configurati
 
 void MediaEndpointPeerConnection::addIceCandidate(RTCIceCandidate& rtcCandidate, PeerConnection::VoidPromise&& promise)
 {
-    RefPtr<RTCIceCandidate> protectedCandidate = &rtcCandidate;
-    RefPtr<WrappedVoidPromise> wrappedPromise = WrappedVoidPromise::create(WTFMove(promise));
-
-    runTask([this, protectedCandidate, wrappedPromise]() {
-        addIceCandidateTask(*protectedCandidate, wrappedPromise->promise());
+    runTask([this, protectedCandidate = RefPtr<RTCIceCandidate>(&rtcCandidate), protectedPromise = WTFMove(promise)]() mutable {
+        addIceCandidateTask(*protectedCandidate, protectedPromise);
     });
 }
 
@@ -781,12 +732,8 @@ void MediaEndpointPeerConnection::replaceTrack(RTCRtpSender& sender, RefPtr<Medi
         return;
     }
 
-    RefPtr<RTCRtpSender> protectedSender = &sender;
-    RefPtr<MediaStreamTrack> protectedTrack = withTrack;
-    RefPtr<WrappedVoidPromise> wrappedPromise = WrappedVoidPromise::create(WTFMove(promise));
-
-    runTask([this, protectedSender, mid, protectedTrack, wrappedPromise]() mutable {
-        replaceTrackTask(*protectedSender, mid, WTFMove(protectedTrack), wrappedPromise->promise());
+    runTask([this, protectedSender = RefPtr<RTCRtpSender>(&sender), mid, protectedTrack = WTFMove(withTrack), protectedPromise = WTFMove(promise)]() mutable {
+        replaceTrackTask(*protectedSender, mid, WTFMove(protectedTrack), protectedPromise);
     });
 }
 
