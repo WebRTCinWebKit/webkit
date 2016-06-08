@@ -160,8 +160,9 @@ void MediaEndpointPeerConnection::createOfferTask(RTCOfferOptions&, SessionDescr
     if (m_client->internalSignalingState() == SignalingState::Closed)
         return;
 
-    RefPtr<MediaEndpointSessionConfiguration> configurationSnapshot = internalLocalDescription() ?
-        internalLocalDescription()->configuration()->clone() : MediaEndpointSessionConfiguration::create();
+    MediaEndpointSessionDescription* localDescription = internalLocalDescription();
+    RefPtr<MediaEndpointSessionConfiguration> configurationSnapshot = localDescription ?
+        localDescription->configuration()->clone() : MediaEndpointSessionConfiguration::create();
 
     configurationSnapshot->setSessionVersion(m_sdpOfferSessionVersion++);
 
@@ -344,8 +345,8 @@ void MediaEndpointPeerConnection::setLocalDescriptionTask(RefPtr<RTCSessionDescr
 
     const RtpTransceiverVector& transceivers = m_client->getTransceivers();
     const MediaDescriptionVector& mediaDescriptions = newDescription->configuration()->mediaDescriptions();
-    unsigned previousNumberOfMediaDescriptions = internalLocalDescription() ?
-        internalLocalDescription()->configuration()->mediaDescriptions().size() : 0;
+    MediaEndpointSessionDescription* localDescription = internalLocalDescription();
+    unsigned previousNumberOfMediaDescriptions = localDescription ? localDescription->configuration()->mediaDescriptions().size() : 0;
     bool hasNewMediaDescriptions = mediaDescriptions.size() > previousNumberOfMediaDescriptions;
     bool isInitiator = newDescription->type() == RTCSessionDescription::SdpType::Offer;
 
