@@ -63,6 +63,8 @@ RTCTrackEvent::RTCTrackEvent(const AtomicString& type, const RTCTrackEventInit& 
     : Event(type, initializer)
     , m_receiver(initializer.receiver)
     , m_track(initializer.track)
+    , m_streams(initializer.streams)
+    , m_transceiver(initializer.transceiver)
 {
 }
 

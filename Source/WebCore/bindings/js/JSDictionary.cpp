@@ -276,6 +276,30 @@ void JSDictionary::convertValue(JSC::ExecState*, JSC::JSValue value, RefPtr<RTCR
 {
     result = JSRTCRtpTransceiver::toWrapped(value);
 }
+
+void JSDictionary::convertValue(ExecState* exec, JSValue value, Vector<RefPtr<MediaStream>>& result)
+{
+    if (value.isUndefinedOrNull())
+        return;
+
+    unsigned length = 0;
+    JSObject* object = toJSSequence(exec, value, length);
+    if (exec->hadException())
+        return;
+
+    for (unsigned i = 0 ; i < length; ++i) {
+        JSValue itemValue = object->get(exec, i);
+        if (exec->hadException())
+            return;
+
+        auto stream = JSMediaStream::toWrapped(itemValue);
+        if (!stream) {
+            setDOMException(exec, TypeError);
+            return;
+        }
+        result.append(stream);
+    }
+}
 #endif
 
 #if ENABLE(FONT_LOAD_EVENTS)

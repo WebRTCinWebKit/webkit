@@ -34,7 +34,6 @@
 ] interface RTCTrackEvent : Event {
    [InitializedByEventConstructor] readonly attribute RTCRtpReceiver receiver;
    [InitializedByEventConstructor] readonly attribute MediaStreamTrack track;
-   // FIXME: streams should be a 'FrozenArray' attribute.
-   sequence<MediaStream> streams();
+   [InitializedByEventConstructor] readonly attribute MediaStream[] streams;
    [InitializedByEventConstructor] readonly attribute RTCRtpTransceiver transceiver;
 };
