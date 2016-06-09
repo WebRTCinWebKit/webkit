@@ -6,8 +6,8 @@
     </head>
     <body>
         <script>
-            var stream;
-            var offer;
+            let stream;
+            let offer;
 
             description("Test setting up media between two RTCPeerConnection instances with one single SDP dialog using legacy callbacks API.");
 
@@ -19,10 +19,10 @@
             }
 
             debug("Create RTCPeerConnection A");
-            var pcA = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
+            const pcA = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
 
             debug("Create RTCPeerConnection B");
-            var pcB = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
+            const pcB = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
 
             pcA.ontrack = function () {
                 debug("");
