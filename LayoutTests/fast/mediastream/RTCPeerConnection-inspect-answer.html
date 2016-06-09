@@ -6,10 +6,10 @@
     </head>
     <body>
         <script>
-            var remoteStream;
-            var remotePcAudioTrack;
-            var remotePcVideoTrack;
-            var mediaDescriptionVariables = [];
+            let remoteStream;
+            let remotePcAudioTrack;
+            let remotePcVideoTrack;
+            const mediaDescriptionVariables = [];
 
             description("Test RTCPeerConnection.setRemoteDescription called with an RTCSessionDescription of type 'offer'");
 
@@ -20,8 +20,8 @@
                 finishJSTest();
             }
 
-            var pc = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
-            var remotePc = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
+            const pc = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
+            const remotePc = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
 
             navigator.mediaDevices.getUserMedia({ "audio": true, "video": true })
             .then(function (s) {
