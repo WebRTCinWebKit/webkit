@@ -138,9 +138,9 @@ MediaPayloadVector MockMediaEndpoint::filterPayloads(const MediaPayloadVector& r
 
     for (auto& remotePayload : remotePayloads) {
         MediaPayload* defaultPayload = nullptr;
-        for (auto& p : defaultPayloads) {
-            if (p->encodingName() == remotePayload->encodingName().convertToASCIIUppercase()) {
-                defaultPayload = p.get();
+        for (auto& payload : defaultPayloads) {
+            if (payload->encodingName() == remotePayload->encodingName().convertToASCIIUppercase()) {
+                defaultPayload = payload.get();
                 break;
             }
         }

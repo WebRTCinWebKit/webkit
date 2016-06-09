@@ -476,7 +476,6 @@ void MediaEndpointPeerConnection::setRemoteDescriptionTask(RefPtr<RTCSessionDesc
     }
 
     const MediaDescriptionVector& mediaDescriptions = newDescription->configuration()->mediaDescriptions();
-
     for (auto& mediaDescription : mediaDescriptions) {
         if (mediaDescription->type() != "audio" && mediaDescription->type() != "video")
             continue;
@@ -487,7 +486,6 @@ void MediaEndpointPeerConnection::setRemoteDescriptionTask(RefPtr<RTCSessionDesc
 
     bool isInitiator = newDescription->type() == RTCSessionDescription::SdpType::Answer;
     const RtpTransceiverVector& transceivers = m_client->getTransceivers();
-
 
     RealtimeMediaSourceMap sendSourceMap;
     if (internalLocalDescription())
@@ -501,9 +499,7 @@ void MediaEndpointPeerConnection::setRemoteDescriptionTask(RefPtr<RTCSessionDesc
     // One legacy MediaStreamEvent will be fired for every new MediaStream created as this remote description is set.
     Vector<RefPtr<MediaStreamEvent>> legacyMediaStreamEvents;
 
-    for (unsigned i = 0; i < mediaDescriptions.size(); ++i) {
-        PeerMediaDescription* mediaDescription = mediaDescriptions[i].get();
-
+    for (auto mediaDescription : mediaDescriptions) {
         RTCRtpTransceiver* transceiver = matchTransceiverByMid(transceivers, mediaDescription->mid());
         if (!transceiver) {
             bool receiveOnlyFlag = false;

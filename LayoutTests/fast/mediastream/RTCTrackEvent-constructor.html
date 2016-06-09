@@ -51,6 +51,7 @@
                 shouldThrow("new RTCTrackEvent('eventType', { receiver: track, track: track, streams: [1], transceiver: transceiver})");
                 debug("");
 
+                // The tests below are expected to fail (bug: webkit.org/b/158536)
                 debug("Dictionary members receiver, track and transceiver are not nullable");
                 shouldThrow("new RTCTrackEvent('eventType', { receiver: null, track: track, transceiver: transceiver})");
                 shouldThrow("new RTCTrackEvent('eventType', { receiver: receiver, track: null, transceiver: transceiver})");
