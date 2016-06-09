@@ -213,7 +213,7 @@ void MediaEndpointPeerConnection::createOfferTask(RTCOfferOptions&, SessionDescr
         configurationSnapshot->addMediaDescription(WTFMove(mediaDescription));
     }
 
-    Ref<MediaEndpointSessionDescription> description = MediaEndpointSessionDescription::create(RTCSessionDescription::SdpType::Offer, WTFMove(configurationSnapshot));
+    auto description = MediaEndpointSessionDescription::create(RTCSessionDescription::SdpType::Offer, WTFMove(configurationSnapshot));
     promise.resolve(*description->toRTCSessionDescription(*m_sdpProcessor));
 }
 
@@ -236,12 +236,13 @@ void MediaEndpointPeerConnection::createAnswerTask(RTCAnswerOptions&, SessionDes
         return;
     }
 
-    RefPtr<MediaEndpointSessionConfiguration> configurationSnapshot = internalLocalDescription() ?
-        internalLocalDescription()->configuration()->clone() : MediaEndpointSessionConfiguration::create();
+    MediaEndpointSessionDescription* localDescription = internalLocalDescription();
+    RefPtr<MediaEndpointSessionConfiguration> configurationSnapshot = localDescription ?
+        localDescription->configuration()->clone() : MediaEndpointSessionConfiguration::create();
 
     configurationSnapshot->setSessionVersion(m_sdpAnswerSessionVersion++);
 
-    RtpTransceiverVector transceivers = RtpTransceiverVector(m_client->getTransceivers());
+    auto transceivers = RtpTransceiverVector(m_client->getTransceivers());
     const MediaDescriptionVector& remoteMediaDescriptions = internalRemoteDescription()->configuration()->mediaDescriptions();
 
     for (unsigned i = 0; i < remoteMediaDescriptions.size(); ++i) {
@@ -254,7 +255,7 @@ void MediaEndpointPeerConnection::createAnswerTask(RTCAnswerOptions&, SessionDes
         }
 
         if (i >= configurationSnapshot->mediaDescriptions().size()) {
-            RefPtr<PeerMediaDescription> newMediaDescription = PeerMediaDescription::create();
+            auto newMediaDescription = PeerMediaDescription::create();
 
             RTCRtpSender& sender = *transceiver->sender();
             if (sender.track()) {
@@ -295,7 +296,7 @@ void MediaEndpointPeerConnection::createAnswerTask(RTCAnswerOptions&, SessionDes
     if (hasUnassociatedTransceivers(transceivers))
         markAsNeedingNegotiation();
 
-    Ref<MediaEndpointSessionDescription> description = MediaEndpointSessionDescription::create(RTCSessionDescription::SdpType::Answer, WTFMove(configurationSnapshot));
+    auto description = MediaEndpointSessionDescription::create(RTCSessionDescription::SdpType::Answer, WTFMove(configurationSnapshot));
     promise.resolve(*description->toRTCSessionDescription(*m_sdpProcessor));
 }
 
