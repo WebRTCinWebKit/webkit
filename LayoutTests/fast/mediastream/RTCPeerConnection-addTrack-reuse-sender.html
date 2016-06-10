@@ -5,14 +5,14 @@
     </head>
     <body>
         <script>
-            var stream;
-            var audioTrack;
-            var videoTrack;
+            let stream;
+            let audioTrack;
+            let videoTrack;
 
-            var audioSender;
-            var senderFromAddTrack;
+            let audioSender;
+            let senderFromAddTrack;
 
-            description("Test that RTCPeerConnection.addTrack reuses a unused sender of the same kind if present");
+            description("Test that RTCPeerConnection.addTrack reuses an unused sender of the same kind if present");
 
             if (window.testRunner)
                 testRunner.setUserMediaPermission(true);
@@ -21,8 +21,8 @@
                 finishJSTest();
             }
 
-            var pc = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
-            var remotePc = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
+            const pc = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
+            const remotePc = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
 
             navigator.mediaDevices.getUserMedia({ "audio": true, "video": true })
             .then(function (s) {
@@ -42,18 +42,20 @@
 
                 shouldBe("pc.getSenders().length", "1");
                 shouldBe("pc.getReceivers().length", "1");
+                shouldBe("pc.getReceivers()[0].track.kind", "'audio'");
                 shouldBe("pc.getTransceivers().length", "1");
                 debug("");
 
+                debug("*** Check unused sender");
                 evalAndLog("audioSender = pc.getSenders()[0]");
                 shouldBe("audioSender.track", "null");
                 debug("");
 
-                debug("*** Adding a video track should not reuse audioSender");
+                debug("*** Adding a video track should not reuse audioSender (wrong kind)");
                 evalAndLog("senderFromAddTrack = pc.addTrack(videoTrack, stream)");
                 shouldNotBe("senderFromAddTrack", "audioSender");
 
-                debug("*** An extra sender should be added");
+                debug("*** An extra sender should have been added");
                 shouldBe("pc.getSenders().length", "2");
                 shouldBeTrue("pc.getSenders().includes(audioSender)");
                 shouldBeTrue("pc.getSenders().includes(senderFromAddTrack)");
