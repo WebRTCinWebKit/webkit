@@ -186,7 +186,7 @@ function getStreamById()
     if (arguments.length < 1)
         throw new @TypeError("Not enough arguments");
 
-    const streamId = String(arguments[0]);
+    const streamId = @String(arguments[0]);
 
     if (this.@localStreams) {
         for (let i = 0; i < this.@localStreams.length; ++i) {
