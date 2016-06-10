@@ -248,7 +248,7 @@ namespace WebKit {
 
 static const double pageScrollHysteresisSeconds = 0.3;
 static const std::chrono::milliseconds initialLayerVolatilityTimerInterval { 20 };
-static const std::chrono::seconds maximumLayerVolatilityTimerInterval { 10 };
+static const std::chrono::seconds maximumLayerVolatilityTimerInterval { 2 };
 
 #define WEBPAGE_LOG_ALWAYS(...) LOG_ALWAYS(isAlwaysOnLoggingAllowed(), __VA_ARGS__)
 #define WEBPAGE_LOG_ALWAYS_ERROR(...) LOG_ALWAYS_ERROR(isAlwaysOnLoggingAllowed(), __VA_ARGS__)
@@ -341,6 +341,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_hasWheelEventHandlers(false)
     , m_cachedPageCount(0)
     , m_autoSizingShouldExpandToViewHeight(false)
+    , m_userIsInteracting(false)
 #if ENABLE(CONTEXT_MENUS)
     , m_isShowingContextMenu(false)
 #endif
@@ -350,7 +351,6 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_scaleWasSetByUIProcess(false)
     , m_userHasChangedPageScaleFactor(false)
     , m_hasStablePageScaleFactor(true)
-    , m_userIsInteracting(false)
     , m_hasPendingBlurNotification(false)
     , m_useTestingViewportConfiguration(false)
     , m_isInStableState(true)
@@ -389,7 +389,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #if ENABLE(CONTEXT_MENUS)
     pageConfiguration.contextMenuClient = new WebContextMenuClient(this);
 #endif
-    pageConfiguration.editorClient = new WebEditorClient(this);
+    pageConfiguration.editorClient = std::make_unique<WebEditorClient>(this);
 #if ENABLE(DRAG_SUPPORT)
     pageConfiguration.dragClient = new WebDragClient(this);
 #endif
@@ -414,7 +414,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #include <WebKitAdditions/WebPageInitialization.h>
 #endif
 
-    m_page = std::make_unique<Page>(pageConfiguration);
+    m_page = std::make_unique<Page>(WTFMove(pageConfiguration));
     updatePreferences(parameters.store);
 
     m_drawingArea = DrawingArea::create(*this, parameters);
@@ -432,7 +432,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     m_drawingArea->updatePreferences(parameters.store);
 
 #if ENABLE(BATTERY_STATUS)
-    WebCore::provideBatteryTo(m_page.get(), new WebBatteryClient(this));
+    WebCore::provideBatteryTo(*m_page, *new WebBatteryClient(this));
 #endif
 #if ENABLE(GEOLOCATION)
     WebCore::provideGeolocationTo(m_page.get(), new WebGeolocationClient(this));
@@ -762,8 +762,9 @@ PassRefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* plu
 
     if (isBlockedPlugin) {
         bool replacementObscured = false;
-        if (is<RenderEmbeddedObject>(*pluginElement->renderer())) {
-            auto& renderObject = downcast<RenderEmbeddedObject>(*pluginElement->renderer());
+        auto* renderer = pluginElement->renderer();
+        if (is<RenderEmbeddedObject>(renderer)) {
+            auto& renderObject = downcast<RenderEmbeddedObject>(*renderer);
             renderObject.setPluginUnavailabilityReasonWithDescription(RenderEmbeddedObject::InsecurePluginVersion, unavailabilityDescription);
             replacementObscured = renderObject.isReplacementObscured();
             renderObject.setUnavailablePluginIndicatorIsHidden(replacementObscured);
@@ -2037,32 +2038,34 @@ void WebPage::setLayerTreeStateIsFrozen(bool frozen)
     drawingArea->setLayerTreeStateIsFrozen(frozen);
 }
 
+void WebPage::callVolatilityCompletionHandlers()
+{
+    auto completionHandlers = WTFMove(m_markLayersAsVolatileCompletionHandlers);
+    for (auto& completionHandler : completionHandlers)
+        completionHandler();
+}
+
 void WebPage::layerVolatilityTimerFired()
 {
-    if (markLayersVolatileImmediatelyIfPossible()) {
+    auto newInterval = 2 * m_layerVolatilityTimer.repeatIntervalMS();
+    bool didSucceed = markLayersVolatileImmediatelyIfPossible();
+    if (didSucceed || newInterval > maximumLayerVolatilityTimerInterval) {
         m_layerVolatilityTimer.stop();
+        WEBPAGE_LOG_ALWAYS("%p - WebPage - Attempted to mark surfaces as volatile, success? %d", this, didSucceed);
+        callVolatilityCompletionHandlers();
         return;
     }
 
-    auto newInterval = std::min(2 * m_layerVolatilityTimer.repeatIntervalMS(), std::chrono::duration_cast<std::chrono::milliseconds>(maximumLayerVolatilityTimerInterval));
     WEBPAGE_LOG_ALWAYS_ERROR("%p - WebPage - Failed to mark all layers as volatile, will retry in %lld ms", this, static_cast<long long>(newInterval.count()));
     m_layerVolatilityTimer.startRepeating(newInterval);
 }
 
 bool WebPage::markLayersVolatileImmediatelyIfPossible()
 {
-    bool success = !drawingArea() || drawingArea()->markLayersVolatileImmediatelyIfPossible();
-    if (success) {
-        WEBPAGE_LOG_ALWAYS("%p - WebPage - Successfully marked layers as volatile", this);
-        auto completionHandlers = WTFMove(m_markLayersAsVolatileCompletionHandlers);
-        for (auto& completionHandler : completionHandlers)
-            completionHandler();
-    }
-
-    return success;
+    return !drawingArea() || drawingArea()->markLayersVolatileImmediatelyIfPossible();
 }
 
-void WebPage::markLayersVolatile(std::function<void()> completionHandler)
+void WebPage::markLayersVolatile(std::function<void ()> completionHandler)
 {
     WEBPAGE_LOG_ALWAYS("%p - WebPage::markLayersVolatile()", this);
 
@@ -2072,8 +2075,17 @@ void WebPage::markLayersVolatile(std::function<void()> completionHandler)
     if (completionHandler)
         m_markLayersAsVolatileCompletionHandlers.append(WTFMove(completionHandler));
 
-    if (markLayersVolatileImmediatelyIfPossible())
+    bool didSucceed = markLayersVolatileImmediatelyIfPossible();
+    if (didSucceed || m_isSuspendedUnderLock) {
+        if (didSucceed)
+            WEBPAGE_LOG_ALWAYS("%p - WebPage - Successfully marked layers as volatile", this);
+        else {
+            // If we get suspended when locking the screen, it is expected that some IOSurfaces cannot be marked as purgeable so we do not keep retrying.
+            WEBPAGE_LOG_ALWAYS("%p - WebPage - Did what we could to mark IOSurfaces as purgeable after locking the screen", this);
+        }
+        callVolatilityCompletionHandlers();
         return;
+    }
 
     WEBPAGE_LOG_ALWAYS("%p - Failed to mark all layers as volatile, will retry in %lld ms", this, initialLayerVolatilityTimerInterval.count());
     m_layerVolatilityTimer.startRepeating(initialLayerVolatilityTimerInterval);
@@ -2173,6 +2185,8 @@ static bool handleMouseEvent(const WebMouseEvent& mouseEvent, WebPage* page, boo
 
 void WebPage::mouseEvent(const WebMouseEvent& mouseEvent)
 {
+    m_userIsInteracting = true;
+
     m_page->pageThrottler().didReceiveUserInput();
 
     bool shouldHandleEvent = true;
@@ -2189,6 +2203,7 @@ void WebPage::mouseEvent(const WebMouseEvent& mouseEvent)
 
     if (!shouldHandleEvent) {
         send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(mouseEvent.type()), false));
+        m_userIsInteracting = false;
         return;
     }
 
@@ -2214,6 +2229,7 @@ void WebPage::mouseEvent(const WebMouseEvent& mouseEvent)
     }
 
     send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(mouseEvent.type()), handled));
+    m_userIsInteracting = false;
 }
 
 static bool handleWheelEvent(const WebWheelEvent& wheelEvent, Page* page)
@@ -2249,6 +2265,8 @@ static bool handleKeyEvent(const WebKeyboardEvent& keyboardEvent, Page* page)
 
 void WebPage::keyEvent(const WebKeyboardEvent& keyboardEvent)
 {
+    m_userIsInteracting = true;
+
     m_page->pageThrottler().didReceiveUserInput();
 
     CurrentEvent currentEvent(keyboardEvent);
@@ -2259,6 +2277,8 @@ void WebPage::keyEvent(const WebKeyboardEvent& keyboardEvent)
         handled = performDefaultBehaviorForKeyEvent(keyboardEvent);
 
     send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(keyboardEvent.type()), handled));
+
+    m_userIsInteracting = false;
 }
 
 void WebPage::validateCommand(const String& commandName, uint64_t callbackID)
@@ -2461,9 +2481,7 @@ void WebPage::setInitialFocus(bool forward, bool isKeyboardEventValid, const Web
     if (!m_page)
         return;
 
-#if PLATFORM(IOS)
     TemporaryChange<bool> userIsInteractingChange { m_userIsInteracting, true };
-#endif
 
     Frame& frame = m_page->focusController().focusedOrMainFrame();
     frame.document()->setFocusedElement(0);
@@ -2558,8 +2576,14 @@ void WebPage::didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, ui
 void WebPage::didStartPageTransition()
 {
     m_drawingArea->setLayerTreeStateIsFrozen(true);
-#if PLATFORM(IOS)
+
+#if PLATFORM(MAC)
+    bool hasPreviouslyFocusedDueToUserInteraction = m_hasFocusedDueToUserInteraction;
+#endif
     m_hasFocusedDueToUserInteraction = false;
+#if PLATFORM(MAC)
+    if (hasPreviouslyFocusedDueToUserInteraction)
+        send(Messages::WebPageProxy::SetHasHadSelectionChangesFromUserInteraction(m_hasFocusedDueToUserInteraction));
 #endif
 }
 
@@ -3125,6 +3149,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 #if ENABLE(WEBGL2)
     RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled(store.getBoolValueForKey(WebPreferencesKey::webGL2EnabledKey()));
 #endif
+
+    settings.setSpringTimingFunctionEnabled(store.getBoolValueForKey(WebPreferencesKey::springTimingFunctionEnabledKey()));
 
     bool processSuppressionEnabled = store.getBoolValueForKey(WebPreferencesKey::pageVisibilityBasedProcessSuppressionEnabledKey());
     if (m_processSuppressionEnabled != processSuppressionEnabled) {
@@ -4697,6 +4723,11 @@ void WebPage::didChangeSelection()
     m_isEditorStateMissingPostLayoutData = editorState.isMissingPostLayoutData;
 
 #if PLATFORM(MAC)
+    bool hasPreviouslyFocusedDueToUserInteraction = m_hasFocusedDueToUserInteraction;
+    m_hasFocusedDueToUserInteraction |= m_userIsInteracting;
+    if (!hasPreviouslyFocusedDueToUserInteraction && m_hasFocusedDueToUserInteraction)
+        send(Messages::WebPageProxy::SetHasHadSelectionChangesFromUserInteraction(m_hasFocusedDueToUserInteraction));
+
     // Abandon the current inline input session if selection changed for any other reason but an input method direct action.
     // FIXME: This logic should be in WebCore.
     // FIXME: Many changes that affect composition node do not go through didChangeSelection(). We need to do something when DOM manipulation affects the composition, because otherwise input method's idea about it will be different from Editor's.
@@ -5100,17 +5131,23 @@ bool WebPage::plugInIntersectsSearchRect(HTMLPlugInImageElement& plugInImageElem
 
 bool WebPage::plugInIsPrimarySize(WebCore::HTMLPlugInImageElement& plugInImageElement, unsigned& candidatePlugInArea)
 {
-    auto& pluginRenderBox = downcast<RenderBox>(*plugInImageElement.renderer());
-    if (pluginRenderBox.contentWidth() < primarySnapshottedPlugInMinimumWidth || pluginRenderBox.contentHeight() < primarySnapshottedPlugInMinimumHeight)
+    auto* renderer = plugInImageElement.renderer();
+    if (!is<RenderBox>(renderer))
         return false;
 
-    LayoutUnit contentArea = pluginRenderBox.contentWidth() * pluginRenderBox.contentHeight();
+    auto& box = downcast<RenderBox>(*renderer);
+    if (box.contentWidth() < primarySnapshottedPlugInMinimumWidth || box.contentHeight() < primarySnapshottedPlugInMinimumHeight)
+        return false;
+
+    LayoutUnit contentArea = box.contentWidth() * box.contentHeight();
     if (contentArea > candidatePlugInArea * primarySnapshottedPlugInSearchBucketSize) {
         candidatePlugInArea = contentArea.toUnsigned();
         return true;
     }
+
     return false;
 }
+
 #endif // ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
 
 PassRefPtr<Range> WebPage::currentSelectionAsRange()

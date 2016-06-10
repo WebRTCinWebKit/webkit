@@ -38,14 +38,13 @@
 #include "MediaStream.h"
 #include "MediaStreamEvent.h"
 #include "MediaStreamTrack.h"
-#include "PeerConnectionBackend.h"
+#include "NotImplemented.h"
 #include "PeerMediaDescription.h"
 #include "RTCConfiguration.h"
 #include "RTCIceCandidate.h"
 #include "RTCIceCandidateEvent.h"
 #include "RTCOfferAnswerOptions.h"
 #include "RTCRtpTransceiver.h"
-#include "RTCSessionDescription.h"
 #include "RTCTrackEvent.h"
 #include "SDPProcessor.h"
 #include "UUID.h"
@@ -100,10 +99,6 @@ MediaEndpointPeerConnection::MediaEndpointPeerConnection(PeerConnectionBackendCl
     m_mediaEndpoint->generateDtlsInfo();
 }
 
-MediaEndpointPeerConnection::~MediaEndpointPeerConnection()
-{
-}
-
 static RTCRtpTransceiver* matchTransceiver(const RtpTransceiverVector& transceivers, const std::function<bool(RTCRtpTransceiver&)>& matchFunction)
 {
     for (auto& transceiver : transceivers) {
@@ -127,14 +122,14 @@ static bool hasUnassociatedTransceivers(const RtpTransceiverVector& transceivers
     });
 }
 
-void MediaEndpointPeerConnection::runTask(std::function<void()> task)
+void MediaEndpointPeerConnection::runTask(NoncopyableFunction<void ()>&& task)
 {
     if (m_dtlsFingerprint.isNull()) {
         // Only one task needs to be deferred since it will hold off any others until completed.
         ASSERT(!m_initialDeferredTask);
-        m_initialDeferredTask = task;
+        m_initialDeferredTask = WTFMove(task);
     } else
-        callOnMainThread(task);
+        callOnMainThread(WTFMove(task));
 }
 
 void MediaEndpointPeerConnection::startRunningTasks()
@@ -361,7 +356,8 @@ void MediaEndpointPeerConnection::setLocalDescriptionTask(RefPtr<RTCSessionDescr
             if (m_client->internalIceConnectionState() != IceConnectionState::Completed)
                 m_client->updateIceConnectionState(IceConnectionState::Connected);
 
-            printf("ICE restart not implemented\n");
+            LOG_ERROR("ICE restart is not implemented");
+            notImplemented();
 
         } else if (result == MediaEndpoint::UpdateResult::Failed) {
             promise.reject(OperationError, "Unable to apply session description");
@@ -411,7 +407,6 @@ void MediaEndpointPeerConnection::setLocalDescriptionTask(RefPtr<RTCSessionDescr
         break;
 
     case RTCSessionDescription::SdpType::Rollback:
-        // FIXME: rollback is not supported in the platform yet
         m_pendingLocalDescription = nullptr;
         newSignalingState = SignalingState::Stable;
         break;
@@ -427,7 +422,6 @@ void MediaEndpointPeerConnection::setLocalDescriptionTask(RefPtr<RTCSessionDescr
         m_client->fireEvent(Event::create(eventNames().signalingstatechangeEvent, false, false));
     }
 
-    // FIXME: do this even if an ice start was done?
     if (m_client->internalIceGatheringState() == IceGatheringState::New && mediaDescriptions.size())
         m_client->updateIceGatheringState(IceGatheringState::Gathering);
 
@@ -518,10 +512,10 @@ void MediaEndpointPeerConnection::setRemoteDescriptionTask(RefPtr<RTCSessionDesc
             }
 
             if (!transceiver) {
-                RefPtr<RTCRtpSender> sender = RTCRtpSender::create(mediaDescription->type(), Vector<String>(), m_client->senderClient());
-                RefPtr<RTCRtpReceiver> receiver = createReceiver(mediaDescription->mid(), mediaDescription->type(), mediaDescription->mediaStreamTrackId());
+                auto sender = RTCRtpSender::create(mediaDescription->type(), Vector<String>(), m_client->senderClient());
+                auto receiver = createReceiver(mediaDescription->mid(), mediaDescription->type(), mediaDescription->mediaStreamTrackId());
 
-                Ref<RTCRtpTransceiver> newTransceiver = RTCRtpTransceiver::create(WTFMove(sender), WTFMove(receiver));
+                auto newTransceiver = RTCRtpTransceiver::create(WTFMove(sender), WTFMove(receiver));
                 newTransceiver->setMid(mediaDescription->mid());
                 if (receiveOnlyFlag)
                     newTransceiver->disableSendingDirection();
@@ -542,8 +536,9 @@ void MediaEndpointPeerConnection::setRemoteDescriptionTask(RefPtr<RTCSessionDesc
             if (!mediaDescription->mediaStreamId().isEmpty())
                 mediaStreamIds.append(mediaDescription->mediaStreamId());
 
-            // A remote track can be associated with 0..* MediaStreams. We create a new stream on
-            // an unrecognized stream id, and add the track if the stream has been created before.
+            // A remote track can be associated with 0..* MediaStreams. We create a new stream for
+            // a track in case of an unrecognized stream id, or just add the track if the stream
+            // already exists.
             HashMap<String, RefPtr<MediaStream>> trackEventMediaStreams;
             for (auto& id : mediaStreamIds) {
                 if (m_remoteStreamMap.contains(id)) {
@@ -551,7 +546,7 @@ void MediaEndpointPeerConnection::setRemoteDescriptionTask(RefPtr<RTCSessionDesc
                     stream->addTrack(*receiver.track());
                     trackEventMediaStreams.add(id, WTFMove(stream));
                 } else {
-                    Ref<MediaStream> newStream = MediaStream::create(*m_client->scriptExecutionContext(), MediaStreamTrackVector({ receiver.track() }));
+                    auto newStream = MediaStream::create(*m_client->scriptExecutionContext(), MediaStreamTrackVector({ receiver.track() }));
                     m_remoteStreamMap.add(id, newStream.copyRef());
                     legacyMediaStreamEvents.append(MediaStreamEvent::create(eventNames().addstreamEvent, false, false, newStream.copyRef()));
                     trackEventMediaStreams.add(id, WTFMove(newStream));
@@ -588,7 +583,6 @@ void MediaEndpointPeerConnection::setRemoteDescriptionTask(RefPtr<RTCSessionDesc
         break;
 
     case RTCSessionDescription::SdpType::Rollback:
-        // FIXME: rollback is not supported in the platform yet
         m_pendingRemoteDescription = nullptr;
         newSignalingState = SignalingState::Stable;
         break;

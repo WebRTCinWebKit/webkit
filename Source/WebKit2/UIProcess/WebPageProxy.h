@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2014-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebPageProxy_h
-#define WebPageProxy_h
+#pragma once
 
 #include "APIObject.h"
 #include "APISession.h"
@@ -257,6 +256,8 @@ struct NodeAssistanceArguments {
     bool m_blurPreviousNode;
     RefPtr<API::Object> m_userData;
 };
+
+using DrawToPDFCallback = GenericCallback<const IPC::DataReference&>;
 #endif
 
 #if PLATFORM(COCOA)
@@ -516,7 +517,6 @@ public:
     void commitPotentialTapFailed();
     void didNotHandleTapAsClick(const WebCore::IntPoint&);
     void disableDoubleTapGesturesDuringTapIfNecessary(uint64_t requestID);
-    void didFinishDrawingPagesToPDF(const IPC::DataReference&);
     void contentSizeCategoryDidChange(const String& contentSizeCategory);
     void getSelectionContext(std::function<void(const String&, const String&, const String&, CallbackBase::Error)>);
     void handleTwoFingerTapAtPoint(const WebCore::IntPoint&, std::function<void(const String&, CallbackBase::Error)>);
@@ -666,7 +666,7 @@ public:
     float deviceScaleFactor() const;
     void setIntrinsicDeviceScaleFactor(float);
     void setCustomDeviceScaleFactor(float);
-    void windowScreenDidChange(PlatformDisplayID);
+    void windowScreenDidChange(WebCore::PlatformDisplayID);
 
     void setUseFixedLayout(bool);
     void setFixedLayoutSize(const WebCore::IntSize&);
@@ -906,6 +906,10 @@ public:
 #if PLATFORM(COCOA)
     void drawRectToImage(WebFrameProxy*, const PrintInfo&, const WebCore::IntRect&, const WebCore::IntSize&, PassRefPtr<ImageCallback>);
     void drawPagesToPDF(WebFrameProxy*, const PrintInfo&, uint32_t first, uint32_t count, PassRefPtr<DataCallback>);
+#if PLATFORM(IOS)
+    uint32_t computePagesForPrintingAndDrawToPDF(uint64_t frameID, const PrintInfo&, DrawToPDFCallback::CallbackFunction&&);
+    void drawToPDFCallback(const IPC::DataReference& pdfData, uint64_t callbackID);
+#endif
 #elif PLATFORM(GTK)
     void drawPagesForPrinting(WebFrameProxy*, const PrintInfo&, PassRefPtr<PrintFinishedCallback>);
 #endif
@@ -1108,6 +1112,8 @@ public:
 
     UserInterfaceLayoutDirection userInterfaceLayoutDirection();
 
+    bool hasHadSelectionChangesFromUserInteraction() const { return m_hasHadSelectionChangesFromUserInteraction; }
+
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, Ref<API::PageConfiguration>&&);
     void platformInitialize();
@@ -1265,6 +1271,7 @@ private:
 
     void editorStateChanged(const EditorState&);
     void compositionWasCanceled(const EditorState&);
+    void setHasHadSelectionChangesFromUserInteraction(bool);
 
     // Back/Forward list management
     void backForwardAddItem(uint64_t itemID);
@@ -1807,6 +1814,8 @@ private:
 
     bool m_isResourceCachingDisabled { false };
 
+    bool m_hasHadSelectionChangesFromUserInteraction { false };
+
 #if ENABLE(MEDIA_SESSION)
     bool m_hasMediaSessionWithActiveMediaElements { false };
 #endif
@@ -1826,5 +1835,3 @@ private:
 };
 
 } // namespace WebKit
-
-#endif // WebPageProxy_h

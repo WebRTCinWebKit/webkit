@@ -75,12 +75,26 @@ bool EventTarget::isMessagePort() const
     return false;
 }
 
-bool EventTarget::addEventListener(const AtomicString& eventType, RefPtr<EventListener>&& listener, bool useCapture)
+bool EventTarget::addEventListener(const AtomicString& eventType, Ref<EventListener>&& listener, const AddEventListenerOptions& options)
 {
-    return ensureEventTargetData().eventListenerMap.add(eventType, WTFMove(listener), useCapture);
+    return ensureEventTargetData().eventListenerMap.add(eventType, WTFMove(listener), { options.capture, options.passive, options.once });
 }
 
-bool EventTarget::removeEventListener(const AtomicString& eventType, EventListener* listener, bool useCapture)
+void EventTarget::addEventListenerForBindings(const AtomicString& eventType, RefPtr<EventListener>&& listener, const AddEventListenerOptions& options)
+{
+    if (!listener)
+        return;
+    addEventListener(eventType, listener.releaseNonNull(), options);
+}
+
+void EventTarget::removeEventListenerForBindings(const AtomicString& eventType, RefPtr<EventListener>&& listener, const ListenerOptions& options)
+{
+    if (!listener)
+        return;
+    removeEventListener(eventType, *listener, options);
+}
+
+bool EventTarget::removeEventListener(const AtomicString& eventType, EventListener& listener, const ListenerOptions& options)
 {
     EventTargetData* d = eventTargetData();
     if (!d)
@@ -88,7 +102,7 @@ bool EventTarget::removeEventListener(const AtomicString& eventType, EventListen
 
     size_t indexOfRemovedListener;
 
-    if (!d->eventListenerMap.remove(eventType, listener, useCapture, indexOfRemovedListener))
+    if (!d->eventListenerMap.remove(eventType, listener, options.capture, indexOfRemovedListener))
         return false;
 
     // Notify firing events planning to invoke the listener at 'index' that
@@ -110,12 +124,12 @@ bool EventTarget::removeEventListener(const AtomicString& eventType, EventListen
     return true;
 }
 
-bool EventTarget::setAttributeEventListener(const AtomicString& eventType, PassRefPtr<EventListener> listener)
+bool EventTarget::setAttributeEventListener(const AtomicString& eventType, RefPtr<EventListener>&& listener)
 {
     clearAttributeEventListener(eventType);
     if (!listener)
         return false;
-    return addEventListener(eventType, listener, false);
+    return addEventListener(eventType, listener.releaseNonNull());
 }
 
 EventListener* EventTarget::getAttributeEventListener(const AtomicString& eventType)
@@ -132,7 +146,7 @@ bool EventTarget::clearAttributeEventListener(const AtomicString& eventType)
     EventListener* listener = getAttributeEventListener(eventType);
     if (!listener)
         return false;
-    return removeEventListener(eventType, listener, false);
+    return removeEventListener(eventType, *listener, false);
 }
 
 bool EventTarget::dispatchEventForBindings(Event* event, ExceptionCode& ec)
@@ -243,7 +257,8 @@ void EventTarget::fireEventListeners(Event& event, EventTargetData* d, EventList
     }
 
     for (; i < size; ++i) {
-        RegisteredEventListener& registeredListener = entry[i];
+        RegisteredEventListener registeredListener = entry[i];
+
         if (event.eventPhase() == Event::CAPTURING_PHASE && !registeredListener.useCapture)
             continue;
         if (event.eventPhase() == Event::BUBBLING_PHASE && registeredListener.useCapture)
@@ -254,12 +269,23 @@ void EventTarget::fireEventListeners(Event& event, EventTargetData* d, EventList
         if (event.immediatePropagationStopped())
             break;
 
+        // Do this before invocation to avoid reentrancy issues.
+        if (registeredListener.isOnce)
+            removeEventListener(event.type(), *registeredListener.listener, ListenerOptions(registeredListener.useCapture));
+
+        if (registeredListener.isPassive)
+            event.setInPassiveListener(true);
+
         InspectorInstrumentationCookie cookie = InspectorInstrumentation::willHandleEvent(context, event);
         // To match Mozilla, the AT_TARGET phase fires both capturing and bubbling
         // event listeners, even though that violates some versions of the DOM spec.
         registeredListener.listener->handleEvent(context, &event);
         InspectorInstrumentation::didHandleEvent(cookie);
+
+        if (registeredListener.isPassive)
+            event.setInPassiveListener(false);
     }
+
     d->firingEventIterators->removeLast();
 
     if (document)

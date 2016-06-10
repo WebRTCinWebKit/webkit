@@ -155,7 +155,7 @@ public:
     DocumentRuleSets& ruleSets() { return m_ruleSets; }
     const DocumentRuleSets& ruleSets() const { return m_ruleSets; }
 
-    const MediaQueryEvaluator& mediaQueryEvaluator() const { return *m_medium; }
+    const MediaQueryEvaluator& mediaQueryEvaluator() const { return m_mediaQueryEvaluator; }
 
     void setOverrideDocumentElementStyle(RenderStyle* style) { m_overrideDocumentElementStyle = style; }
 
@@ -201,11 +201,11 @@ public:
     ViewportStyleResolver* viewportStyleResolver() { return m_viewportStyleResolver.get(); }
 #endif
 
-    void addViewportDependentMediaQueryResult(const MediaQueryExp*, bool result);
+    void addViewportDependentMediaQueryResult(const MediaQueryExpression&, bool result);
     bool hasViewportDependentMediaQueries() const { return !m_viewportDependentMediaQueryResults.isEmpty(); }
     bool hasMediaQueriesAffectedByViewportChange() const;
 
-    void addKeyframeStyle(RefPtr<StyleRuleKeyframes>&&);
+    void addKeyframeStyle(Ref<StyleRuleKeyframes>&&);
 
     bool checkRegionStyle(const Element* regionElement);
 
@@ -456,7 +456,7 @@ public:
     State& state() { return m_state; }
 
     RefPtr<StyleImage> styleImage(CSSPropertyID, CSSValue&);
-    RefPtr<StyleImage> cachedOrPendingFromValue(CSSPropertyID, CSSImageValue&);
+    Ref<StyleImage> cachedOrPendingFromValue(CSSPropertyID, CSSImageValue&);
     Ref<StyleImage> generatedOrPendingFromValue(CSSPropertyID, CSSImageGeneratorValue&);
 #if ENABLE(CSS_IMAGE_SET)
     RefPtr<StyleImage> setOrPendingFromValue(CSSPropertyID, CSSImageSetValue&);
@@ -517,7 +517,7 @@ private:
 
     Timer m_matchedPropertiesCacheSweepTimer;
 
-    std::unique_ptr<MediaQueryEvaluator> m_medium;
+    MediaQueryEvaluator m_mediaQueryEvaluator;
     std::unique_ptr<RenderStyle> m_rootDefaultStyle;
 
     Document& m_document;
@@ -526,7 +526,7 @@ private:
 
     RenderStyle* m_overrideDocumentElementStyle { nullptr };
 
-    Vector<std::unique_ptr<MediaQueryResult>> m_viewportDependentMediaQueryResults;
+    Vector<MediaQueryResult> m_viewportDependentMediaQueryResults;
 
 #if ENABLE(CSS_DEVICE_ADAPTATION)
     RefPtr<ViewportStyleResolver> m_viewportStyleResolver;

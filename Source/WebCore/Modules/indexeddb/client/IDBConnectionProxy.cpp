@@ -41,23 +41,6 @@
 namespace WebCore {
 namespace IDBClient {
 
-template<typename T, typename... Parameters, typename... Arguments>
-void performCallbackOnCorrectThread(T& object, void (T::*method)(Parameters...), Arguments&&... arguments)
-{
-    ASSERT(isMainThread());
-
-    if (object.originThreadID() == currentThread()) {
-        (object.*method)(arguments...);
-        return;
-    }
-
-    ScriptExecutionContext* context = object.scriptExecutionContext();
-    if (!context)
-        return;
-
-    context->postCrossThreadTask(object, method, arguments...);
-}
-
 IDBConnectionProxy::IDBConnectionProxy(IDBConnectionToServer& connection)
     : m_connectionToServer(connection)
     , m_serverConnectionIdentifier(connection.identifier())
@@ -117,32 +100,20 @@ void IDBConnectionProxy::didDeleteDatabase(const IDBResultData& resultData)
     completeOpenDBRequest(resultData);
 }
 
-RefPtr<IDBOpenDBRequest> IDBConnectionProxy::takeIDBOpenDBRequest(IDBOpenDBRequest& request)
-{
-    ASSERT(request.originThreadID() == currentThread());
-
-    Locker<Lock> locker(m_openDBRequestMapLock);
-
-    auto mappedRequest = m_openDBRequestMap.take(request.resourceIdentifier());
-    ASSERT(mappedRequest.get() == &request);
-
-    return mappedRequest;
-}
-
 void IDBConnectionProxy::completeOpenDBRequest(const IDBResultData& resultData)
 {
     ASSERT(isMainThread());
 
-    IDBOpenDBRequest* request;
+    RefPtr<IDBOpenDBRequest> request;
     {
         Locker<Lock> locker(m_openDBRequestMapLock);
         request = m_openDBRequestMap.get(resultData.requestIdentifier());
-        ASSERT(request);
     }
 
-    ASSERT(request);
+    if (!request)
+        return;
 
-    performCallbackOnCorrectThread(*request, &IDBOpenDBRequest::requestCompleted, resultData);
+    request->performCallbackOnOriginThread(*request, &IDBOpenDBRequest::requestCompleted, resultData);
 }
 
 void IDBConnectionProxy::createObjectStore(TransactionOperation& operation, const IDBObjectStoreInfo& info)
@@ -185,12 +156,12 @@ void IDBConnectionProxy::deleteIndex(TransactionOperation& operation, uint64_t o
     callConnectionOnMainThread(&IDBConnectionToServer::deleteIndex, requestData, WTFMove(objectStoreIdentifier), indexName);
 }
 
-void IDBConnectionProxy::putOrAdd(TransactionOperation& operation, IDBKey* key, const IDBValue& value, const IndexedDB::ObjectStoreOverwriteMode mode)
+void IDBConnectionProxy::putOrAdd(TransactionOperation& operation, IDBKeyData&& keyData, const IDBValue& value, const IndexedDB::ObjectStoreOverwriteMode mode)
 {
     const IDBRequestData requestData(operation);
     saveOperation(operation);
 
-    callConnectionOnMainThread(&IDBConnectionToServer::putOrAdd, requestData, IDBKeyData(key), value, mode);
+    callConnectionOnMainThread(&IDBConnectionToServer::putOrAdd, requestData, keyData, value, mode);
 }
 
 void IDBConnectionProxy::getRecord(TransactionOperation& operation, const IDBKeyRangeData& keyRange)
@@ -252,7 +223,7 @@ void IDBConnectionProxy::completeOperation(const IDBResultData& resultData)
     if (!operation)
         return;
 
-    performCallbackOnCorrectThread(*operation, &TransactionOperation::completed, resultData);
+    operation->performCompleteOnOriginThread(resultData);
 }
 
 void IDBConnectionProxy::abortOpenAndUpgradeNeeded(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& transactionIdentifier)
@@ -271,7 +242,7 @@ void IDBConnectionProxy::fireVersionChangeEvent(uint64_t databaseConnectionIdent
     if (!database)
         return;
 
-    performCallbackOnCorrectThread(*database, &IDBDatabase::fireVersionChangeEvent, requestIdentifier, requestedVersion);
+    database->performCallbackOnOriginThread(*database, &IDBDatabase::fireVersionChangeEvent, requestIdentifier, requestedVersion);
 }
 
 void IDBConnectionProxy::didFireVersionChangeEvent(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& requestIdentifier)
@@ -289,9 +260,10 @@ void IDBConnectionProxy::notifyOpenDBRequestBlocked(const IDBResourceIdentifier&
         request = m_openDBRequestMap.get(requestIdentifier);
     }
 
-    ASSERT(request);
+    if (!request)
+        return;
 
-    performCallbackOnCorrectThread(*request, &IDBOpenDBRequest::requestBlocked, oldVersion, newVersion);
+    request->performCallbackOnOriginThread(*request, &IDBOpenDBRequest::requestBlocked, oldVersion, newVersion);
 }
 
 void IDBConnectionProxy::openDBRequestCancelled(const IDBRequestData& requestData)
@@ -320,7 +292,7 @@ void IDBConnectionProxy::didStartTransaction(const IDBResourceIdentifier& transa
 
     ASSERT(transaction);
 
-    performCallbackOnCorrectThread(*transaction, &IDBTransaction::didStart, error);
+    transaction->performCallbackOnOriginThread(*transaction, &IDBTransaction::didStart, error);
 }
 
 void IDBConnectionProxy::commitTransaction(IDBTransaction& transaction)
@@ -342,9 +314,10 @@ void IDBConnectionProxy::didCommitTransaction(const IDBResourceIdentifier& trans
         transaction = m_committingTransactions.take(transactionIdentifier);
     }
 
-    ASSERT(transaction);
+    if (!transaction)
+        return;
 
-    performCallbackOnCorrectThread(*transaction, &IDBTransaction::didCommit, error);
+    transaction->performCallbackOnOriginThread(*transaction, &IDBTransaction::didCommit, error);
 }
 
 void IDBConnectionProxy::abortTransaction(IDBTransaction& transaction)
@@ -366,9 +339,10 @@ void IDBConnectionProxy::didAbortTransaction(const IDBResourceIdentifier& transa
         transaction = m_abortingTransactions.take(transactionIdentifier);
     }
 
-    ASSERT(transaction);
+    if (!transaction)
+        return;
 
-    performCallbackOnCorrectThread(*transaction, &IDBTransaction::didAbort, error);
+    transaction->performCallbackOnOriginThread(*transaction, &IDBTransaction::didAbort, error);
 }
 
 bool IDBConnectionProxy::hasRecordOfTransaction(const IDBTransaction& transaction) const
@@ -404,7 +378,7 @@ void IDBConnectionProxy::didCloseFromServer(uint64_t databaseConnectionIdentifie
         return;
     }
 
-    performCallbackOnCorrectThread(*database, &IDBDatabase::didCloseFromServer, error);
+    database->performCallbackOnOriginThread(*database, &IDBDatabase::didCloseFromServer, error);
 }
 
 void IDBConnectionProxy::confirmDidCloseFromServer(IDBDatabase& database)
@@ -457,8 +431,7 @@ void IDBConnectionProxy::unregisterDatabaseConnection(IDBDatabase& database)
 {
     Locker<Lock> locker(m_databaseConnectionMapLock);
 
-    ASSERT(m_databaseConnectionMap.contains(database.databaseConnectionIdentifier()));
-    ASSERT(m_databaseConnectionMap.get(database.databaseConnectionIdentifier()) == &database);
+    ASSERT(!m_databaseConnectionMap.contains(database.databaseConnectionIdentifier()) || m_databaseConnectionMap.get(database.databaseConnectionIdentifier()) == &database);
     m_databaseConnectionMap.remove(database.databaseConnectionIdentifier());
 }
 
@@ -468,6 +441,46 @@ void IDBConnectionProxy::forgetActiveOperations(const Vector<RefPtr<TransactionO
 
     for (auto& operation : operations)
         m_activeOperations.remove(operation->identifier());
+}
+
+template<typename KeyType, typename ValueType>
+void removeItemsMatchingCurrentThread(HashMap<KeyType, ValueType>& map)
+{
+    auto currentThreadID = currentThread();
+
+    Vector<KeyType> keys;
+    keys.reserveInitialCapacity(map.size());
+    for (auto& iterator : map) {
+        if (iterator.value->originThreadID() == currentThreadID)
+            keys.uncheckedAppend(iterator.key);
+    }
+
+    for (auto& key : keys)
+        map.remove(key);
+}
+
+void IDBConnectionProxy::forgetActivityForCurrentThread()
+{
+    ASSERT(!isMainThread());
+
+    {
+        Locker<Lock> lock(m_databaseConnectionMapLock);
+        removeItemsMatchingCurrentThread(m_databaseConnectionMap);
+    }
+    {
+        Locker<Lock> lock(m_openDBRequestMapLock);
+        removeItemsMatchingCurrentThread(m_openDBRequestMap);
+    }
+    {
+        Locker<Lock> lock(m_transactionMapLock);
+        removeItemsMatchingCurrentThread(m_pendingTransactions);
+        removeItemsMatchingCurrentThread(m_committingTransactions);
+        removeItemsMatchingCurrentThread(m_abortingTransactions);
+    }
+    {
+        Locker<Lock> lock(m_transactionOperationLock);
+        removeItemsMatchingCurrentThread(m_activeOperations);
+    }
 }
 
 } // namesapce IDBClient

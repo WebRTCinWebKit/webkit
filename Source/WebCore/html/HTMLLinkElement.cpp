@@ -227,7 +227,7 @@ void HTMLLinkElement::process()
         if (m_cachedSheet) {
             removePendingSheet();
             m_cachedSheet->removeClient(this);
-            m_cachedSheet = 0;
+            m_cachedSheet = nullptr;
         }
 
         if (!shouldLoadLink())
@@ -240,9 +240,8 @@ void HTMLLinkElement::process()
             Optional<RenderStyle> documentStyle;
             if (document().hasLivingRenderTree())
                 documentStyle = Style::resolveForDocument(document());
-            RefPtr<MediaQuerySet> media = MediaQuerySet::createAllowingDescriptionSyntax(m_media);
-            MediaQueryEvaluator evaluator(document().frame()->view()->mediaType(), document().frame(), documentStyle ? &*documentStyle : nullptr);
-            mediaQueryMatches = evaluator.eval(media.get());
+            auto media = MediaQuerySet::createAllowingDescriptionSyntax(m_media);
+            mediaQueryMatches = MediaQueryEvaluator { document().frame()->view()->mediaType(), document(), documentStyle ? &*documentStyle : nullptr }.evaluate(media.get());
         }
 
         // Don't hold up render tree construction and script execution on stylesheets
@@ -254,7 +253,7 @@ void HTMLLinkElement::process()
         Optional<ResourceLoadPriority> priority;
         if (!isActive)
             priority = ResourceLoadPriority::VeryLow;
-        CachedResourceRequest request(ResourceRequest(document().completeURL(url)), charset, priority);
+        CachedResourceRequest request(url, charset, priority);
         request.setInitiator(this);
 
         if (document().contentSecurityPolicy()->allowStyleWithNonce(fastGetAttribute(HTMLNames::nonceAttr))) {
@@ -361,7 +360,7 @@ void HTMLLinkElement::setCSSStyleSheet(const String& href, const URL& baseURL, c
         return;
     }
 
-    Ref<StyleSheetContents> styleSheet(StyleSheetContents::create(href, parserContext));
+    auto styleSheet = StyleSheetContents::create(href, parserContext);
     m_sheet = CSSStyleSheet::create(styleSheet.copyRef(), this);
     m_sheet->setMediaQueries(MediaQuerySet::createAllowingDescriptionSyntax(m_media));
     m_sheet->setTitle(title());

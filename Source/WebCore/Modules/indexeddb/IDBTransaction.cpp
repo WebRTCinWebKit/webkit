@@ -123,7 +123,7 @@ Ref<IDBTransaction> IDBTransaction::create(IDBDatabase& database, const IDBTrans
 }
 
 IDBTransaction::IDBTransaction(IDBDatabase& database, const IDBTransactionInfo& info, IDBOpenDBRequest* request)
-    : WebCore::ActiveDOMObject(database.scriptExecutionContext())
+    : IDBActiveDOMObject(database.scriptExecutionContext())
     , m_database(database)
     , m_info(info)
     , m_operationTimer(*this, &IDBTransaction::operationTimerFired)
@@ -328,7 +328,7 @@ bool IDBTransaction::hasPendingActivity() const
 
 void IDBTransaction::stop()
 {
-    LOG(IndexedDB, "IDBTransaction::stop");
+    LOG(IndexedDB, "IDBTransaction::stop - %s", m_info.loggingString().utf8().data());
     ASSERT(currentThread() == m_database->originThreadID());
 
     // IDBDatabase::stop() calls IDBTransaction::stop() for each of its active transactions.
@@ -959,27 +959,25 @@ void IDBTransaction::putOrAddOnServer(IDBClient::TransactionOperation& operation
             // In that case, we cannot successfully store this record, so we callback with an error.
             RefPtr<IDBClient::TransactionOperation> protectedOperation(&operation);
             auto result = IDBResultData::error(operation.identifier(), { IDBDatabaseException::UnknownError, ASCIILiteral("Error preparing Blob/File data to be stored in object store") });
-            scriptExecutionContext()->postTask([protectedOperation, result](ScriptExecutionContext&) {
+            scriptExecutionContext()->postTask([protectedOperation = WTFMove(protectedOperation), result = WTFMove(result)](ScriptExecutionContext&) {
                 protectedOperation->completed(result);
             });
         }
         return;
     }
 
-    RefPtr<IDBTransaction> protectedThis(this);
-    RefPtr<IDBClient::TransactionOperation> protectedOperation(&operation);
-    value->writeBlobsToDiskForIndexedDB([protectedThis, this, protectedOperation, key, value, overwriteMode](const IDBValue& idbValue) {
+    value->writeBlobsToDiskForIndexedDB([protectedThis = Ref<IDBTransaction>(*this), this, protectedOperation = Ref<IDBClient::TransactionOperation>(operation), keyData = IDBKeyData(key.get()).isolatedCopy(), overwriteMode](const IDBValue& idbValue) mutable {
         ASSERT(currentThread() == originThreadID());
         ASSERT(isMainThread());
         if (idbValue.data().data()) {
-            m_database->connectionProxy().putOrAdd(*protectedOperation, key.get(), idbValue, overwriteMode);
+            m_database->connectionProxy().putOrAdd(protectedOperation.get(), WTFMove(keyData), idbValue, overwriteMode);
             return;
         }
 
         // If the IDBValue doesn't have any data, then something went wrong writing the blobs to disk.
         // In that case, we cannot successfully store this record, so we callback with an error.
         auto result = IDBResultData::error(protectedOperation->identifier(), { IDBDatabaseException::UnknownError, ASCIILiteral("Error preparing Blob/File data to be stored in object store") });
-        callOnMainThread([protectedThis, this, protectedOperation, result]() {
+        callOnMainThread([protectedThis = WTFMove(protectedThis), protectedOperation = WTFMove(protectedOperation), result = WTFMove(result)]() mutable {
             protectedOperation->completed(result);
         });
     });
@@ -1089,11 +1087,6 @@ void IDBTransaction::deactivate()
         m_state = IndexedDB::TransactionState::Inactive;
 
     scheduleOperationTimer();
-}
-
-ThreadIdentifier IDBTransaction::originThreadID() const
-{
-    return m_database->originThreadID();
 }
 
 void IDBTransaction::connectionClosedFromServer(const IDBError& error)

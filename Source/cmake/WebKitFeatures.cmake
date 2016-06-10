@@ -1,3 +1,13 @@
+# The settings in this file are the WebKit project default values, and
+# are recommended for most ports. Ports can override these settings in
+# Options*.cmake, but should do so only if there is strong reason to
+# deviate from the defaults of the WebKit project (e.g. if the feature
+# requires platform-specific implementation that does not exist).
+#
+# Most defaults in this file affect end users but not developers.
+# Defaults for development builds are set in FeatureList.pm. Most all
+# features enabled here should also be enabled in FeatureList.pm.
+
 set(_WEBKIT_AVAILABLE_OPTIONS "")
 
 set(PUBLIC YES)
@@ -80,7 +90,7 @@ macro(WEBKIT_OPTION_BEGIN)
     WEBKIT_OPTION_DEFINE(ENABLE_CSS_BOX_DECORATION_BREAK "Toggle Box Decoration break (CSS Backgrounds and Borders) support" PRIVATE ON)
     WEBKIT_OPTION_DEFINE(ENABLE_CSS_COMPOSITING "Toggle CSS COMPOSITING support" PRIVATE OFF)
     WEBKIT_OPTION_DEFINE(ENABLE_CSS_DEVICE_ADAPTATION "Toggle CSS Device Adaptation support" PRIVATE OFF)
-    WEBKIT_OPTION_DEFINE(ENABLE_CSS_GRID_LAYOUT "Toggle CSS Grid Layout support" PRIVATE OFF)
+    WEBKIT_OPTION_DEFINE(ENABLE_CSS_GRID_LAYOUT "Toggle CSS Grid Layout support" PRIVATE ON)
     WEBKIT_OPTION_DEFINE(ENABLE_CSS_IMAGE_ORIENTATION "Toggle CSS image-orientation support" PRIVATE OFF)
     WEBKIT_OPTION_DEFINE(ENABLE_CSS_IMAGE_RESOLUTION "Toggle CSS image-resolution support" PRIVATE OFF)
     WEBKIT_OPTION_DEFINE(ENABLE_CSS_IMAGE_SET "Toggle CSS image-set support" PRIVATE OFF)

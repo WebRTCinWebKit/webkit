@@ -150,7 +150,7 @@ void InlineStyleSheetOwner::createSheet(Element& element, const String& text)
 
     MediaQueryEvaluator screenEval(ASCIILiteral("screen"), true);
     MediaQueryEvaluator printEval(ASCIILiteral("print"), true);
-    if (!screenEval.eval(mediaQueries.get()) && !printEval.eval(mediaQueries.get()))
+    if (!screenEval.evaluate(*mediaQueries) && !printEval.evaluate(*mediaQueries))
         return;
 
     authorStyleSheetsForElement(element).addPendingSheet();
@@ -158,7 +158,7 @@ void InlineStyleSheetOwner::createSheet(Element& element, const String& text)
     m_loading = true;
 
     m_sheet = CSSStyleSheet::createInline(element, URL(), m_startTextPosition, document.encoding());
-    m_sheet->setMediaQueries(mediaQueries.release());
+    m_sheet->setMediaQueries(mediaQueries.releaseNonNull());
     m_sheet->setTitle(element.title());
     m_sheet->contents().parseStringAtPosition(text, m_startTextPosition, m_isParsingChildren);
 

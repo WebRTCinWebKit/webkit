@@ -792,54 +792,58 @@ WebInspector.DataGrid = class DataGrid extends WebInspector.View
     //
     // If this function is not called after the DataGrid is attached to its
     // parent element, then the DataGrid's columns will not be resizable.
-    layout(layoutReason)
+    layout()
     {
-        let firstUpdate = false;
-
         // Do not attempt to use offsets if we're not attached to the document tree yet.
         if (!this._columnWidthsInitialized && this.element.offsetWidth) {
             // Give all the columns initial widths now so that during a resize,
             // when the two columns that get resized get a percent value for
             // their widths, all the other columns already have percent values
             // for their widths.
-            var headerTableColumnElements = this._headerTableColumnGroupElement.children;
-            var tableWidth = this._dataTableElement.offsetWidth;
-            var numColumns = headerTableColumnElements.length;
-            var cells = this._headerTableBodyElement.rows[0].cells;
+            let headerTableColumnElements = this._headerTableColumnGroupElement.children;
+            let tableWidth = this._dataTableElement.offsetWidth;
+            let numColumns = headerTableColumnElements.length;
+            let cells = this._headerTableBodyElement.rows[0].cells;
 
             // Calculate widths.
-            var columnWidths = [];
-            for (var i = 0; i < numColumns; ++i) {
-                var headerCellElement = cells[i];
+            let columnWidths = [];
+            for (let i = 0; i < numColumns; ++i) {
+                let headerCellElement = cells[i];
                 if (this._isColumnVisible(headerCellElement.columnIdentifier)) {
-                    var columnWidth = headerCellElement.offsetWidth;
-                    var percentWidth = ((columnWidth / tableWidth) * 100) + "%";
+                    let columnWidth = headerCellElement.offsetWidth;
+                    let percentWidth = ((columnWidth / tableWidth) * 100) + "%";
                     columnWidths.push(percentWidth);
                 } else
                     columnWidths.push(0);
             }
 
             // Apply widths.
-            for (var i = 0; i < numColumns; i++) {
+            for (let i = 0; i < numColumns; i++) {
                 let percentWidth = columnWidths[i];
                 this._headerTableColumnGroupElement.children[i].style.width = percentWidth;
                 this._dataTableColumnGroupElement.children[i].style.width = percentWidth;
             }
 
             this._columnWidthsInitialized = true;
-            firstUpdate = true;
-        }
-
-        if (layoutReason === WebInspector.View.LayoutReason.Resize || firstUpdate) {
-            this._positionResizerElements();
-            this._positionHeaderViews();
-            this._updateScrollbarPadding();
-
-            this._cachedScrollTop = NaN;
-            this._cachedScrollableOffsetHeight = NaN;
+            this._updateHeaderAndScrollbar();
         }
 
         this._updateVisibleRows();
+    }
+
+    sizeDidChange()
+    {
+        this._updateHeaderAndScrollbar();
+    }
+
+    _updateHeaderAndScrollbar()
+    {
+        this._positionResizerElements();
+        this._positionHeaderViews();
+        this._updateScrollbarPadding();
+
+        this._cachedScrollTop = NaN;
+        this._cachedScrollableOffsetHeight = NaN;
     }
 
     columnWidthsMap()
@@ -998,6 +1002,19 @@ WebInspector.DataGrid = class DataGrid extends WebInspector.View
         this._previousRevealedRowCount = NaN;
 
         this.needsLayout();
+    }
+
+    _noteRowRemoved(dataGridNode)
+    {
+        if (this._inline || this._variableHeightRows) {
+            // Inline DataGrids rows are not updated in layout, so
+            // we need to remove rows immediately.
+            if (dataGridNode.element && dataGridNode.element.parentNode)
+                dataGridNode.element.parentNode.removeChild(dataGridNode.element);
+            return;
+        }
+
+        this._noteRowsChanged();
     }
 
     _noteScrollPositionChanged()
@@ -2462,7 +2479,7 @@ WebInspector.DataGridNode = class DataGridNode extends WebInspector.Object
         if (!this.hasChildren)
             return false;
         let cell = event.target.enclosingNodeOrSelfWithNodeName("td");
-        if (!cell.classList.contains("disclosure"))
+        if (!cell || !cell.classList.contains("disclosure"))
             return false;
 
         let computedLeftPadding = window.getComputedStyle(cell).getPropertyCSSValue("padding-left").getFloatValue(CSSPrimitiveValue.CSS_PX);
@@ -2509,7 +2526,7 @@ WebInspector.DataGridNode = class DataGridNode extends WebInspector.Object
         this._attached = false;
 
         this.dataGrid._rows.remove(this, true);
-        this.dataGrid._noteRowsChanged();
+        this.dataGrid._noteRowRemoved(this);
 
         for (var i = 0; i < this.children.length; ++i)
             this.children[i]._detach();

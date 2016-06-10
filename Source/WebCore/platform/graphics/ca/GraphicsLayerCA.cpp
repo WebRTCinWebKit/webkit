@@ -434,6 +434,9 @@ void GraphicsLayerCA::willBeDestroyed()
     if (m_backdropLayer)
         m_backdropLayer->setOwner(nullptr);
 
+    if (m_backdropClippingLayer)
+        m_backdropClippingLayer->setOwner(nullptr);
+
     removeCloneLayers();
 
     GraphicsLayer::willBeDestroyed();
@@ -673,6 +676,15 @@ void GraphicsLayerCA::setContentsVisible(bool contentsVisible)
         noteSublayersChanged();
 }
 
+void GraphicsLayerCA::setUserInteractionEnabled(bool userInteractionEnabled)
+{
+    if (userInteractionEnabled == m_userInteractionEnabled)
+        return;
+    
+    GraphicsLayer::setUserInteractionEnabled(userInteractionEnabled);
+    noteLayerPropertyChanged(UserInteractionEnabledChanged);
+}
+
 void GraphicsLayerCA::setAcceleratesDrawing(bool acceleratesDrawing)
 {
     if (acceleratesDrawing == m_acceleratesDrawing)
@@ -771,7 +783,7 @@ bool GraphicsLayerCA::setBackdropFilters(const FilterOperations& filterOperation
     return canCompositeFilters;
 }
 
-void GraphicsLayerCA::setBackdropFiltersRect(const FloatRect& backdropFiltersRect)
+void GraphicsLayerCA::setBackdropFiltersRect(const FloatRoundedRect& backdropFiltersRect)
 {
     if (backdropFiltersRect == m_backdropFiltersRect)
         return;
@@ -1576,6 +1588,9 @@ void GraphicsLayerCA::commitLayerChangesBeforeSublayers(CommitState& commitState
     if (m_uncommittedChanges & ContentsVisibilityChanged)
         updateContentsVisibility();
 
+    if (m_uncommittedChanges & UserInteractionEnabledChanged)
+        updateUserInteractionEnabled();
+
     // Note that contentsScale can affect whether the layer can be opaque.
     if (m_uncommittedChanges & ContentsOpaqueChanged)
         updateContentsOpaque(pageScaleFactor);
@@ -1881,6 +1896,11 @@ void GraphicsLayerCA::updateContentsVisibility()
     m_layer->setContentsHidden(!m_contentsVisible);
 }
 
+void GraphicsLayerCA::updateUserInteractionEnabled()
+{
+    m_layer->setUserInteractionEnabled(m_userInteractionEnabled);
+}
+
 void GraphicsLayerCA::updateContentsOpaque(float pageScaleFactor)
 {
     bool contentsOpaque = m_contentsOpaque;
@@ -1950,15 +1970,47 @@ void GraphicsLayerCA::updateBackdropFilters()
 
     m_backdropLayer->setHidden(!m_contentsVisible);
     m_backdropLayer->setFilters(m_backdropFilters);
+
+    if (LayerMap* layerCloneMap = m_backdropLayerClones.get()) {
+        for (auto& clone : *layerCloneMap) {
+            PlatformCALayer* cloneLayer = clone.value.get();
+            cloneLayer->setHidden(!m_contentsVisible);
+            cloneLayer->setFilters(m_backdropFilters);
+        }
+    }
 }
 
 void GraphicsLayerCA::updateBackdropFiltersRect()
 {
     if (!m_backdropLayer)
         return;
-    FloatRect contentBounds(0, 0, m_backdropFiltersRect.width(), m_backdropFiltersRect.height());
+
+    FloatRect contentBounds(0, 0, m_backdropFiltersRect.rect().width(), m_backdropFiltersRect.rect().height());
     m_backdropLayer->setBounds(contentBounds);
-    m_backdropLayer->setPosition(m_backdropFiltersRect.location());
+    m_backdropLayer->setPosition(m_backdropFiltersRect.rect().location());
+
+    updateClippingStrategy(*m_backdropLayer, m_backdropClippingLayer, m_backdropFiltersRect);
+
+    if (m_backdropLayerClones) {
+        for (auto& clone : *m_backdropLayerClones) {
+            PlatformCALayer* backdropCloneLayer = clone.value.get();
+            backdropCloneLayer->setBounds(contentBounds);
+            backdropCloneLayer->setPosition(m_backdropFiltersRect.rect().location());
+
+            CloneID cloneID = clone.key;
+            RefPtr<PlatformCALayer> backdropClippingLayerClone;
+            if (m_backdropClippingLayerClones)
+                backdropClippingLayerClone = m_backdropClippingLayerClones->get(cloneID);
+
+            bool hadBackdropClippingLayer = backdropClippingLayerClone;
+            updateClippingStrategy(*backdropCloneLayer, backdropClippingLayerClone, m_backdropFiltersRect);
+
+            if (!backdropClippingLayerClone && m_backdropClippingLayerClones)
+                m_backdropClippingLayerClones->remove(cloneID);
+            else if (backdropClippingLayerClone && !hadBackdropClippingLayer)
+                m_backdropClippingLayerClones->add(cloneID, backdropClippingLayerClone);
+        }
+    }
 }
 
 #if ENABLE(CSS_COMPOSITING)
@@ -1979,6 +2031,11 @@ void GraphicsLayerCA::updateBlendMode()
 void GraphicsLayerCA::updateShape()
 {
     m_layer->setShapePath(m_shapeLayerPath);
+
+    if (LayerMap* layerCloneMap = primaryLayerClones()) {
+        for (auto& layer : layerCloneMap->values())
+            layer->setShapePath(m_shapeLayerPath);
+    }
 }
 
 void GraphicsLayerCA::updateWindRule()
@@ -2455,6 +2512,15 @@ void GraphicsLayerCA::updateMaskLayer()
     PlatformCALayer* maskCALayer = m_maskLayer ? downcast<GraphicsLayerCA>(*m_maskLayer).primaryLayer() : nullptr;
     m_layer->setMask(maskCALayer);
 
+    if (m_backdropLayer) {
+        if (m_maskLayer) {
+            ReplicaState replicaState(ReplicaState::ChildBranch);
+            RefPtr<PlatformCALayer> maskClone = downcast<GraphicsLayerCA>(*m_maskLayer).fetchCloneLayers(this, replicaState, IntermediateCloneLevel);
+            m_backdropLayer->setMask(maskClone.get());
+        } else
+            m_backdropLayer->setMask(nullptr);
+    }
+
     LayerMap* maskLayerCloneMap = m_maskLayer ? downcast<GraphicsLayerCA>(*m_maskLayer).primaryLayerClones() : nullptr;
     
     if (LayerMap* layerCloneMap = m_layerClones.get()) {
@@ -2713,7 +2779,10 @@ bool GraphicsLayerCA::createAnimationFromKeyframes(const KeyframeValueList& valu
         caAnimation = createKeyframeAnimation(animation, propertyIdToString(valueList.property()), additive);
         valuesOK = setAnimationKeyframes(valueList, animation, caAnimation.get());
     } else {
-        caAnimation = createBasicAnimation(animation, propertyIdToString(valueList.property()), additive);
+        if (animation->timingFunction()->isSpringTimingFunction())
+            caAnimation = createSpringAnimation(animation, propertyIdToString(valueList.property()), additive);
+        else
+            caAnimation = createBasicAnimation(animation, propertyIdToString(valueList.property()), additive);
         valuesOK = setAnimationEndpoints(valueList, animation, caAnimation.get());
     }
     
@@ -2737,7 +2806,10 @@ bool GraphicsLayerCA::appendToUncommittedAnimations(const KeyframeValueList& val
         caAnimation = createKeyframeAnimation(animation, propertyIdToString(valueList.property()), additive);
         validMatrices = setTransformAnimationKeyframes(valueList, animation, caAnimation.get(), animationIndex, transformOp, isMatrixAnimation, boxSize);
     } else {
-        caAnimation = createBasicAnimation(animation, propertyIdToString(valueList.property()), additive);
+        if (animation->timingFunction()->isSpringTimingFunction())
+            caAnimation = createSpringAnimation(animation, propertyIdToString(valueList.property()), additive);
+        else
+            caAnimation = createBasicAnimation(animation, propertyIdToString(valueList.property()), additive);
         validMatrices = setTransformAnimationEndpoints(valueList, animation, caAnimation.get(), animationIndex, transformOp, isMatrixAnimation, boxSize);
     }
     
@@ -2871,11 +2943,18 @@ PassRefPtr<PlatformCAAnimation> GraphicsLayerCA::createBasicAnimation(const Anim
     return basicAnim;
 }
 
-PassRefPtr<PlatformCAAnimation>GraphicsLayerCA::createKeyframeAnimation(const Animation* anim, const String& keyPath, bool additive)
+PassRefPtr<PlatformCAAnimation> GraphicsLayerCA::createKeyframeAnimation(const Animation* anim, const String& keyPath, bool additive)
 {
     RefPtr<PlatformCAAnimation> keyframeAnim = createPlatformCAAnimation(PlatformCAAnimation::Keyframe, keyPath);
     setupAnimation(keyframeAnim.get(), anim, additive);
     return keyframeAnim;
+}
+
+RefPtr<PlatformCAAnimation> GraphicsLayerCA::createSpringAnimation(const Animation* anim, const String& keyPath, bool additive)
+{
+    auto basicAnim = createPlatformCAAnimation(PlatformCAAnimation::Spring, keyPath);
+    setupAnimation(basicAnim.get(), anim, additive);
+    return basicAnim;
 }
 
 void GraphicsLayerCA::setupAnimation(PlatformCAAnimation* propertyAnim, const Animation* anim, bool additive)
@@ -3408,6 +3487,7 @@ void GraphicsLayerCA::dumpAdditionalProperties(TextStream& textStream, int inden
         dumpInnerLayer(textStream, "structural layer", m_structuralLayer.get(), indent, behavior);
         dumpInnerLayer(textStream, "contents clipping layer", m_contentsClippingLayer.get(), indent, behavior);
         dumpInnerLayer(textStream, "shape mask layer", m_shapeMaskLayer.get(), indent, behavior);
+        dumpInnerLayer(textStream, "backdrop clipping layer", m_backdropClippingLayer.get(), indent, behavior);
         dumpInnerLayer(textStream, "contents layer", m_contentsLayer.get(), indent, behavior);
         dumpInnerLayer(textStream, "contents shape mask layer", m_contentsShapeMaskLayer.get(), indent, behavior);
         dumpInnerLayer(textStream, "backdrop layer", m_backdropLayer.get(), indent, behavior);
@@ -3566,7 +3646,7 @@ PassRefPtr<PlatformCALayer> GraphicsLayerCA::findOrMakeClone(CloneID cloneID, Pl
 }   
 
 void GraphicsLayerCA::ensureCloneLayers(CloneID cloneID, RefPtr<PlatformCALayer>& primaryLayer, RefPtr<PlatformCALayer>& structuralLayer,
-    RefPtr<PlatformCALayer>& contentsLayer, RefPtr<PlatformCALayer>& contentsClippingLayer, RefPtr<PlatformCALayer>& contentsShapeMaskLayer, RefPtr<PlatformCALayer>& shapeMaskLayer, CloneLevel cloneLevel)
+    RefPtr<PlatformCALayer>& contentsLayer, RefPtr<PlatformCALayer>& contentsClippingLayer, RefPtr<PlatformCALayer>& contentsShapeMaskLayer, RefPtr<PlatformCALayer>& shapeMaskLayer, RefPtr<PlatformCALayer>& backdropLayer, RefPtr<PlatformCALayer>& backdropClippingLayer, CloneLevel cloneLevel)
 {
     structuralLayer = nullptr;
     contentsLayer = nullptr;
@@ -3589,12 +3669,20 @@ void GraphicsLayerCA::ensureCloneLayers(CloneID cloneID, RefPtr<PlatformCALayer>
     if (!m_shapeMaskLayerClones && m_shapeMaskLayer)
         m_shapeMaskLayerClones = std::make_unique<LayerMap>();
 
+    if (!m_backdropLayerClones && m_backdropLayer)
+        m_backdropLayerClones = std::make_unique<LayerMap>();
+
+    if (!m_backdropClippingLayerClones && m_backdropClippingLayer)
+        m_backdropClippingLayerClones = std::make_unique<LayerMap>();
+
     primaryLayer = findOrMakeClone(cloneID, m_layer.get(), m_layerClones.get(), cloneLevel);
     structuralLayer = findOrMakeClone(cloneID, m_structuralLayer.get(), m_structuralLayerClones.get(), cloneLevel);
     contentsLayer = findOrMakeClone(cloneID, m_contentsLayer.get(), m_contentsLayerClones.get(), cloneLevel);
     contentsClippingLayer = findOrMakeClone(cloneID, m_contentsClippingLayer.get(), m_contentsClippingLayerClones.get(), cloneLevel);
     contentsShapeMaskLayer = findOrMakeClone(cloneID, m_contentsShapeMaskLayer.get(), m_contentsShapeMaskLayerClones.get(), cloneLevel);
     shapeMaskLayer = findOrMakeClone(cloneID, m_shapeMaskLayer.get(), m_shapeMaskLayerClones.get(), cloneLevel);
+    backdropLayer = findOrMakeClone(cloneID, m_backdropLayer.get(), m_backdropLayerClones.get(), cloneLevel);
+    backdropClippingLayer = findOrMakeClone(cloneID, m_backdropClippingLayer.get(), m_backdropClippingLayerClones.get(), cloneLevel);
 }
 
 void GraphicsLayerCA::clearClones(std::unique_ptr<LayerMap>& layerMap)
@@ -3616,6 +3704,8 @@ void GraphicsLayerCA::removeCloneLayers()
     clearClones(m_contentsClippingLayerClones);
     clearClones(m_contentsShapeMaskLayerClones);
     clearClones(m_shapeMaskLayerClones);
+    clearClones(m_backdropLayerClones);
+    clearClones(m_backdropClippingLayerClones);
 }
 
 FloatPoint GraphicsLayerCA::positionForCloneRootLayer() const
@@ -3649,7 +3739,9 @@ PassRefPtr<PlatformCALayer> GraphicsLayerCA::fetchCloneLayers(GraphicsLayer* rep
     RefPtr<PlatformCALayer> contentsClippingLayer;
     RefPtr<PlatformCALayer> contentsShapeMaskLayer;
     RefPtr<PlatformCALayer> shapeMaskLayer;
-    ensureCloneLayers(replicaState.cloneID(), primaryLayer, structuralLayer, contentsLayer, contentsClippingLayer, contentsShapeMaskLayer, shapeMaskLayer, cloneLevel);
+    RefPtr<PlatformCALayer> backdropLayer;
+    RefPtr<PlatformCALayer> backdropClippingLayer;
+    ensureCloneLayers(replicaState.cloneID(), primaryLayer, structuralLayer, contentsLayer, contentsClippingLayer, contentsShapeMaskLayer, shapeMaskLayer, backdropLayer, backdropClippingLayer, cloneLevel);
 
     if (m_maskLayer) {
         RefPtr<PlatformCALayer> maskClone = downcast<GraphicsLayerCA>(*m_maskLayer).fetchCloneLayers(replicaRoot, replicaState, IntermediateCloneLevel);
@@ -3693,9 +3785,14 @@ PassRefPtr<PlatformCALayer> GraphicsLayerCA::fetchCloneLayers(GraphicsLayer* rep
 
     if (shapeMaskLayer)
         primaryLayer->setMask(shapeMaskLayer.get());
-    
+
     if (replicaLayer || structuralLayer || contentsLayer || contentsClippingLayer || childLayers.size() > 0) {
         if (structuralLayer) {
+            if (backdropLayer) {
+                clonalSublayers.append(backdropLayer);
+                backdropLayer->setMask(backdropClippingLayer.get());
+            }
+            
             // Replicas render behind the actual layer content.
             if (replicaLayer)
                 clonalSublayers.append(replicaLayer);

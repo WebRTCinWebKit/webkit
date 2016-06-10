@@ -616,9 +616,8 @@ set(WebCore_NON_SVG_IDL_FILES
     page/UserMessageHandlersNamespace.idl
     page/WebKitNamespace.idl
     page/WebKitPoint.idl
-    page/WindowBase64.idl
     page/WindowEventHandlers.idl
-    page/WindowTimers.idl
+    page/WindowOrWorkerGlobalScope.idl
     page/WorkerNavigator.idl
 
     plugins/DOMMimeType.idl
@@ -1397,7 +1396,6 @@ set(WebCore_SOURCES
     dom/BeforeUnloadEvent.cpp
     dom/CDATASection.cpp
     dom/CharacterData.cpp
-    dom/CheckedRadioButtons.cpp
     dom/ChildListMutationScope.cpp
     dom/ChildNodeList.cpp
     dom/ClassCollection.cpp
@@ -1492,6 +1490,7 @@ set(WebCore_SOURCES
     dom/ProgressEvent.cpp
     dom/PseudoElement.cpp
     dom/QualifiedName.cpp
+    dom/RadioButtonGroups.cpp
     dom/Range.cpp
     dom/RegisteredEventListener.cpp
     dom/ScopedEventQueue.cpp
@@ -1988,6 +1987,7 @@ set(WebCore_SOURCES
 
     page/AutoscrollController.cpp
     page/BarProp.cpp
+    page/Base64Utilities.cpp
     page/CaptionUserPreferences.cpp
     page/Chrome.cpp
     page/ContextMenuContext.cpp
@@ -2100,7 +2100,6 @@ set(WebCore_SOURCES
     platform/ContentType.cpp
     platform/ContextMenu.cpp
     platform/ContextMenuItem.cpp
-    platform/CrossThreadCopier.cpp
     platform/Cursor.cpp
     platform/DateComponents.cpp
     platform/Decimal.cpp
@@ -2145,6 +2144,7 @@ set(WebCore_SOURCES
     platform/URL.cpp
     platform/UUID.cpp
     platform/UserActivity.cpp
+    platform/WebCoreCrossThreadCopier.cpp
     platform/Widget.cpp
 
     platform/animation/Animation.cpp
@@ -2516,6 +2516,7 @@ set(WebCore_SOURCES
     rendering/line/TrailingObjects.cpp
 
     rendering/mathml/MathMLOperatorDictionary.cpp
+    rendering/mathml/MathOperator.cpp
     rendering/mathml/RenderMathMLBlock.cpp
     rendering/mathml/RenderMathMLFenced.cpp
     rendering/mathml/RenderMathMLFraction.cpp
@@ -3410,6 +3411,7 @@ set(WebCoreTestSupport_IDL_INCLUDES
 )
 
 set(WebCoreTestSupport_IDL_FILES
+    testing/GCObservation.idl
     testing/InternalSettings.idl
     testing/Internals.idl
     testing/MallocStatistics.idl
@@ -3428,6 +3430,7 @@ list(APPEND WebCoreTestSupport_SOURCES
     platform/mock/mediasource/MockSourceBufferPrivate.cpp
     platform/mock/mediasource/MockTracks.cpp
 
+    testing/GCObservation.cpp
     testing/InternalSettings.cpp
     testing/Internals.cpp
     testing/MockPageOverlay.cpp
@@ -3593,14 +3596,12 @@ if (WebCore_USER_AGENT_SCRIPTS)
     # WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES containing the source file that will load the scripts to add the proper
     #   dependency and having them built at the right moment
 
-    add_custom_command(
-        OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScriptsData.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScripts.h
-        MAIN_DEPENDENCY ${WEBCORE_DIR}/Scripts/make-js-file-arrays.py
-        DEPENDS ${WebCore_USER_AGENT_SCRIPTS}
-        COMMAND "PYTHONPATH=${JavaScriptCore_SCRIPTS_DIR}" ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/Scripts/make-js-file-arrays.py ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScripts.h ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScriptsData.cpp ${WebCore_USER_AGENT_SCRIPTS}
-        VERBATIM)
-    list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScriptsData.cpp)
-    ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES} UserAgentScriptsData.cpp UserAgentScripts.h)
+    MAKE_JS_FILE_ARRAYS(
+        ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScriptsData.cpp
+        ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScripts.h
+        WebCore_USER_AGENT_SCRIPTS
+        WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES
+    )
 endif ()
 
 if (WebCore_SDP_PROCESSOR_SCRIPTS)
@@ -3609,14 +3610,12 @@ if (WebCore_SDP_PROCESSOR_SCRIPTS)
     # WebCore_SDP_PROCESSOR_SCRIPTS_DEPENDENCIES containing the source file that will load the scripts to add the proper
     #   dependency and having them built at the right moment
 
-    add_custom_command(
-        OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScriptsData.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScripts.h
-        MAIN_DEPENDENCY ${WEBCORE_DIR}/Scripts/make-js-file-arrays.py
-        DEPENDS ${WebCore_SDP_PROCESSOR_SCRIPTS}
-        COMMAND "PYTHONPATH=${JavaScriptCore_SCRIPTS_DIR}" ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/Scripts/make-js-file-arrays.py ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScripts.h ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScriptsData.cpp ${WebCore_SDP_PROCESSOR_SCRIPTS}
-        VERBATIM)
-    list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScriptsData.cpp)
-    ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WebCore_SDP_PROCESSOR_SCRIPTS_DEPENDENCIES} SDPProcessorScriptsData.cpp SDPProcessorScripts.h)
+    MAKE_JS_FILE_ARRAYS(
+        ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScriptsData.cpp
+        ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScripts.h
+        WebCore_SDP_PROCESSOR_SCRIPTS
+        WebCore_SDP_PROCESSOR_SCRIPTS_DEPENDENCIES
+    )
 endif ()
 
 # Generate plug-in resources

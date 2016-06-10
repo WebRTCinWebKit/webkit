@@ -154,10 +154,13 @@ void RenderReplaced::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
     }
 
     LayoutRect paintRect = LayoutRect(adjustedPaintOffset, size());
-    if ((paintInfo.phase == PaintPhaseOutline || paintInfo.phase == PaintPhaseSelfOutline) && style().outlineWidth())
-        paintOutline(paintInfo, paintRect);
-    
-    if (paintInfo.phase != PaintPhaseForeground && paintInfo.phase != PaintPhaseSelection && !canHaveChildren())
+    if (paintInfo.phase == PaintPhaseOutline || paintInfo.phase == PaintPhaseSelfOutline) {
+        if (style().outlineWidth())
+            paintOutline(paintInfo, paintRect);
+        return;
+    }
+
+    if (paintInfo.phase != PaintPhaseForeground && paintInfo.phase != PaintPhaseSelection)
         return;
     
     if (!paintInfo.shouldPaintWithinRoot(*this))
@@ -287,6 +290,31 @@ bool RenderReplaced::hasReplacedLogicalHeight() const
     return false;
 }
 
+bool RenderReplaced::setNeedsLayoutIfNeededAfterIntrinsicSizeChange()
+{
+    setPreferredLogicalWidthsDirty(true);
+    
+    // If the actual area occupied by the image has changed and it is not constrained by style then a layout is required.
+    bool imageSizeIsConstrained = style().logicalWidth().isSpecified() && style().logicalHeight().isSpecified();
+    
+    // FIXME: We only need to recompute the containing block's preferred size
+    // if the containing block's size depends on the image's size (i.e., the container uses shrink-to-fit sizing).
+    // There's no easy way to detect that shrink-to-fit is needed, always force a layout.
+    bool containingBlockNeedsToRecomputePreferredSize =
+        style().logicalWidth().isPercentOrCalculated()
+        || style().logicalMaxWidth().isPercentOrCalculated()
+        || style().logicalMinWidth().isPercentOrCalculated();
+    
+    bool layoutSizeDependsOnIntrinsicSize = style().aspectRatioType() == AspectRatioFromIntrinsic;
+    
+    if (!imageSizeIsConstrained || containingBlockNeedsToRecomputePreferredSize || layoutSizeDependsOnIntrinsicSize) {
+        setNeedsLayout();
+        return true;
+    }
+
+    return false;
+}
+    
 void RenderReplaced::computeAspectRatioInformationForRenderBox(RenderBox* contentRenderer, FloatSize& constrainedSize, double& intrinsicRatio) const
 {
     FloatSize intrinsicSize;

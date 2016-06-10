@@ -36,7 +36,7 @@
 #include "MediaEndpoint.h"
 #include "MediaEndpointSessionDescription.h"
 #include "PeerConnectionBackend.h"
-#include <wtf/RefCounted.h>
+#include <wtf/NoncopyableFunction.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
@@ -53,7 +53,6 @@ typedef Vector<RefPtr<RTCRtpTransceiver>> RtpTransceiverVector;
 class MediaEndpointPeerConnection : public PeerConnectionBackend, public MediaEndpointClient {
 public:
     MediaEndpointPeerConnection(PeerConnectionBackendClient*);
-    ~MediaEndpointPeerConnection();
 
     void createOffer(RTCOfferOptions&, PeerConnection::SessionDescriptionPromise&&) override;
     void createAnswer(RTCAnswerOptions&, PeerConnection::SessionDescriptionPromise&&) override;
@@ -85,7 +84,7 @@ public:
     void clearNegotiationNeededState() override { m_negotiationNeeded = false; };
 
 private:
-    void runTask(std::function<void()>);
+    void runTask(NoncopyableFunction<void ()>&&);
     void startRunningTasks();
 
     void createOfferTask(RTCOfferOptions&, PeerConnection::SessionDescriptionPromise&);
@@ -105,6 +104,16 @@ private:
     MediaEndpointSessionDescription* internalRemoteDescription() const;
     RefPtr<RTCSessionDescription> createRTCSessionDescription(MediaEndpointSessionDescription*) const;
 
+    void setLocalDescriptionTask(RefPtr<RTCSessionDescription>&&, PeerConnection::VoidPromise&);
+    void setRemoteDescriptionTask(RefPtr<RTCSessionDescription>&&, PeerConnection::VoidPromise&);
+
+    bool localDescriptionTypeValidForState(RTCSessionDescription::SdpType) const;
+    bool remoteDescriptionTypeValidForState(RTCSessionDescription::SdpType) const;
+
+    MediaEndpointSessionDescription* internalLocalDescription() const;
+    MediaEndpointSessionDescription* internalRemoteDescription() const;
+    RefPtr<RTCSessionDescription> createRTCSessionDescription(MediaEndpointSessionDescription*) const;
+
     // MediaEndpointClient
     void gotDtlsFingerprint(const String& fingerprint, const String& fingerprintFunction) override;
     void gotIceCandidate(const String& mid, RefPtr<IceCandidate>&&) override;
@@ -114,7 +123,7 @@ private:
     PeerConnectionBackendClient* m_client;
     std::unique_ptr<MediaEndpoint> m_mediaEndpoint;
 
-    std::function<void()> m_initialDeferredTask;
+    NoncopyableFunction<void ()> m_initialDeferredTask;
 
     std::unique_ptr<SDPProcessor> m_sdpProcessor;
 

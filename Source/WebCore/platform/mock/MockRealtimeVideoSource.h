@@ -57,7 +57,7 @@ public:
     void setFrameRate(float);
 
 protected:
-    MockRealtimeVideoSource(const String& name);
+    MockRealtimeVideoSource(const String& name = ASCIILiteral("Mock video device"));
     virtual void updatePlatformLayer() const { }
 
     ImageBuffer* imageBuffer() const;

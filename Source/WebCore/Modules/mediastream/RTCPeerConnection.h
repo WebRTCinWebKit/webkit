@@ -83,6 +83,16 @@ public:
     RefPtr<RTCRtpTransceiver> addTransceiver(Ref<MediaStreamTrack>&&, const RtpTransceiverInit&, ExceptionCode&);
     RefPtr<RTCRtpTransceiver> addTransceiver(const String& kind, const RtpTransceiverInit&, ExceptionCode&);
 
+    // This enum is mirrored in RTCRtpTransceiver.h
+    enum class RtpTransceiverDirection { Sendrecv, Sendonly, Recvonly, Inactive };
+
+    struct RtpTransceiverInit {
+        RtpTransceiverDirection direction;
+    };
+
+    RefPtr<RTCRtpTransceiver> addTransceiver(Ref<MediaStreamTrack>&&, const RtpTransceiverInit&, ExceptionCode&);
+    RefPtr<RTCRtpTransceiver> addTransceiver(const String& kind, const RtpTransceiverInit&, ExceptionCode&);
+
     void queuedCreateOffer(const Dictionary& offerOptions, PeerConnection::SessionDescriptionPromise&&);
     void queuedCreateAnswer(const Dictionary& answerOptions, PeerConnection::SessionDescriptionPromise&&);
 
@@ -122,7 +132,6 @@ public:
 private:
     RTCPeerConnection(ScriptExecutionContext&, RefPtr<RTCConfiguration>&&, ExceptionCode&);
 
-    RTCRtpSenderClient& senderClient() { return *this; }
     RefPtr<RTCRtpTransceiver> completeAddTransceiver(Ref<RTCRtpTransceiver>&&, const RtpTransceiverInit&);
 
     // EventTarget implementation.
@@ -142,6 +151,7 @@ private:
 
     void scheduleNegotiationNeededEvent() override;
 
+    RTCRtpSenderClient& senderClient() { return *this; }
     void fireEvent(Event&) override;
     PeerConnectionStates::SignalingState internalSignalingState() const override { return m_signalingState; }
     PeerConnectionStates::IceGatheringState internalIceGatheringState() const override { return m_iceGatheringState; }
@@ -155,6 +165,7 @@ private:
     PeerConnectionStates::IceConnectionState m_iceConnectionState;
 
     std::unique_ptr<RtpTransceiverSet> m_transceiverSet { std::unique_ptr<RtpTransceiverSet>(new RtpTransceiverSet()) };
+
     Vector<RefPtr<RTCDataChannel>> m_dataChannels;
 
     std::unique_ptr<PeerConnectionBackend> m_backend;

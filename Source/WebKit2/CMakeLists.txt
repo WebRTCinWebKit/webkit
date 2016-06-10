@@ -239,7 +239,6 @@ set(WebKit2_SOURCES
     Shared/FontInfo.cpp
     Shared/LayerTreeContext.cpp
     Shared/NavigationActionData.cpp
-    Shared/OriginAndDatabases.cpp
     Shared/PlatformPopupMenuData.cpp
     Shared/PrintInfo.cpp
     Shared/SessionState.cpp
@@ -259,7 +258,6 @@ set(WebKit2_SOURCES
     Shared/WebContextMenuItem.cpp
     Shared/WebContextMenuItemData.cpp
     Shared/WebCoreArgumentCoders.cpp
-    Shared/WebCrossThreadCopier.cpp
     Shared/WebEvent.cpp
     Shared/WebEventConversion.cpp
     Shared/WebGeolocationPosition.cpp

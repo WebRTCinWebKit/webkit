@@ -49,7 +49,7 @@ public:
     virtual ~MockRealtimeAudioSource() { }
 
 protected:
-    MockRealtimeAudioSource(const String& name);
+    MockRealtimeAudioSource(const String& name = ASCIILiteral("Mock audio device"));
 
 private:
     void updateSettings(RealtimeMediaSourceSettings&) override;

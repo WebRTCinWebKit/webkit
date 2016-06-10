@@ -87,49 +87,44 @@ using namespace std;
 
 namespace JSC {
 
-String StackFrame::friendlySourceURL() const
+intptr_t StackFrame::sourceID() const
 {
-    String traceLine;
-    
-    switch (codeType) {
-    case StackFrameEvalCode:
-    case StackFrameModuleCode:
-    case StackFrameFunctionCode:
-    case StackFrameGlobalCode:
-        if (!sourceURL.isEmpty())
-            traceLine = sourceURL.impl();
-        break;
-    case StackFrameNativeCode:
-        traceLine = "[native code]";
-        break;
-    }
-    return traceLine.isNull() ? emptyString() : traceLine;
+    if (!codeBlock)
+        return noSourceID;
+    return codeBlock->ownerScriptExecutable()->sourceID();
 }
 
-String StackFrame::friendlyFunctionName(CallFrame* callFrame) const
+String StackFrame::sourceURL() const
 {
-    String traceLine;
-    JSObject* stackFrameCallee = callee.get();
+    if (!codeBlock)
+        return ASCIILiteral("[native code]");
 
-    switch (codeType) {
-    case StackFrameEvalCode:
-        traceLine = "eval code";
-        break;
-    case StackFrameModuleCode:
-        traceLine = "module code";
-        break;
-    case StackFrameNativeCode:
-        if (callee)
-            traceLine = getCalculatedDisplayName(callFrame, stackFrameCallee).impl();
-        break;
-    case StackFrameFunctionCode:
-        traceLine = getCalculatedDisplayName(callFrame, stackFrameCallee).impl();
-        break;
-    case StackFrameGlobalCode:
-        traceLine = "global code";
-        break;
+    String sourceURL = codeBlock->ownerScriptExecutable()->sourceURL();
+    if (!sourceURL.isNull())
+        return sourceURL;
+    return emptyString();
+}
+
+String StackFrame::functionName(VM& vm) const
+{
+    if (codeBlock) {
+        switch (codeBlock->codeType()) {
+        case EvalCode:
+            return ASCIILiteral("eval code");
+        case ModuleCode:
+            return ASCIILiteral("module code");
+        case FunctionCode:
+            break;
+        case GlobalCode:
+            return ASCIILiteral("global code");
+        default:
+            ASSERT_NOT_REACHED();
+        }
     }
-    return traceLine.isNull() ? emptyString() : traceLine;
+    String name;
+    if (callee)
+        name = getCalculatedDisplayName(vm, callee.get()).impl();
+    return name.isNull() ? emptyString() : name;
 }
 
 JSValue eval(CallFrame* callFrame)
@@ -165,8 +160,15 @@ JSValue eval(CallFrame* callFrame)
             : DerivedContextType::DerivedMethodContext;
     }
 
-    EvalExecutable* eval = callerCodeBlock->evalCodeCache().tryGet(callerCodeBlock->isStrictMode(), programSource, isArrowFunctionContext, derivedContextType, callerScopeChain);
+    EvalContextType evalContextType;
+    if (isFunctionParseMode(callerUnlinkedCodeBlock->parseMode()))
+        evalContextType = EvalContextType::FunctionEvalContext;
+    else if (callerUnlinkedCodeBlock->codeType() == EvalCode)
+        evalContextType = callerUnlinkedCodeBlock->evalContextType();
+    else
+        evalContextType = EvalContextType::None;
 
+    EvalExecutable* eval = callerCodeBlock->evalCodeCache().tryGet(callerCodeBlock->isStrictMode(), programSource, derivedContextType, evalContextType, isArrowFunctionContext, callerScopeChain);
     if (!eval) {
         if (!callerCodeBlock->isStrictMode()) {
             if (programSource.is8Bit()) {
@@ -183,20 +185,7 @@ JSValue eval(CallFrame* callFrame)
         // If the literal parser bailed, it should not have thrown exceptions.
         ASSERT(!callFrame->vm().exception());
 
-        ThisTDZMode thisTDZMode = ThisTDZMode::CheckIfNeeded;
-        if (callerUnlinkedCodeBlock->constructorKind() == ConstructorKind::Derived)
-            thisTDZMode = ThisTDZMode::AlwaysCheck;
-
-        EvalContextType evalContextType;
-        
-        if (isFunctionParseMode(callerUnlinkedCodeBlock->parseMode()))
-            evalContextType = EvalContextType::FunctionEvalContext;
-        else if (callerUnlinkedCodeBlock->codeType() == EvalCode)
-            evalContextType = callerUnlinkedCodeBlock->evalContextType();
-        else
-            evalContextType = EvalContextType::None;
-
-        eval = callerCodeBlock->evalCodeCache().getSlow(callFrame, callerCodeBlock, callerCodeBlock->isStrictMode(), thisTDZMode, derivedContextType, isArrowFunctionContext, evalContextType, programSource, callerScopeChain);
+        eval = callerCodeBlock->evalCodeCache().getSlow(callFrame, callerCodeBlock, callerCodeBlock->isStrictMode(), derivedContextType, evalContextType, isArrowFunctionContext, programSource, callerScopeChain);
 
         if (!eval)
             return jsUndefined();
@@ -224,7 +213,7 @@ unsigned sizeOfVarargs(CallFrame* callFrame, JSValue arguments, uint32_t firstVa
         length = jsCast<DirectArguments*>(cell)->length(callFrame);
         break;
     case ScopedArgumentsType:
-        length =jsCast<ScopedArguments*>(cell)->length(callFrame);
+        length = jsCast<ScopedArguments*>(cell)->length(callFrame);
         break;
     case StringType:
         callFrame->vm().throwException(callFrame, createInvalidFunctionApplyParameterError(callFrame,  arguments));
@@ -232,8 +221,11 @@ unsigned sizeOfVarargs(CallFrame* callFrame, JSValue arguments, uint32_t firstVa
     default:
         ASSERT(arguments.isObject());
         length = getLength(callFrame, jsCast<JSObject*>(cell));
+        if (UNLIKELY(callFrame->hadException()))
+            return 0;
         break;
     }
+
     
     if (length >= firstVarArgOffset)
         length -= firstVarArgOffset;
@@ -452,26 +444,7 @@ bool Interpreter::isOpcode(Opcode opcode)
 #endif
 }
 
-static StackFrameCodeType getStackFrameCodeType(StackVisitor& visitor)
-{
-    switch (visitor->codeType()) {
-    case StackVisitor::Frame::Eval:
-        return StackFrameEvalCode;
-    case StackVisitor::Frame::Module:
-        return StackFrameModuleCode;
-    case StackVisitor::Frame::Function:
-        return StackFrameFunctionCode;
-    case StackVisitor::Frame::Global:
-        return StackFrameGlobalCode;
-    case StackVisitor::Frame::Native:
-        ASSERT_NOT_REACHED();
-        return StackFrameNativeCode;
-    }
-    RELEASE_ASSERT_NOT_REACHED();
-    return StackFrameGlobalCode;
-}
-
-void StackFrame::computeLineAndColumn(unsigned& line, unsigned& column)
+void StackFrame::computeLineAndColumn(unsigned& line, unsigned& column) const
 {
     if (!codeBlock) {
         line = 0;
@@ -482,34 +455,24 @@ void StackFrame::computeLineAndColumn(unsigned& line, unsigned& column)
     int divot = 0;
     int unusedStartOffset = 0;
     int unusedEndOffset = 0;
-    unsigned divotLine = 0;
-    unsigned divotColumn = 0;
-    expressionInfo(divot, unusedStartOffset, unusedEndOffset, divotLine, divotColumn);
+    codeBlock->expressionRangeForBytecodeOffset(bytecodeOffset, divot, unusedStartOffset, unusedEndOffset, line, column);
 
-    line = divotLine + lineOffset;
-    column = divotColumn + (divotLine ? 1 : firstLineColumnOffset);
-
+    ScriptExecutable* executable = codeBlock->ownerScriptExecutable();
     if (executable->hasOverrideLineNumber())
         line = executable->overrideLineNumber();
 }
 
-void StackFrame::expressionInfo(int& divot, int& startOffset, int& endOffset, unsigned& line, unsigned& column)
-{
-    codeBlock->expressionRangeForBytecodeOffset(bytecodeOffset, divot, startOffset, endOffset, line, column);
-    divot += characterOffset;
-}
-
-String StackFrame::toString(CallFrame* callFrame)
+String StackFrame::toString(VM& vm) const
 {
     StringBuilder traceBuild;
-    String functionName = friendlyFunctionName(callFrame);
-    String sourceURL = friendlySourceURL();
+    String functionName = this->functionName(vm);
+    String sourceURL = this->sourceURL();
     traceBuild.append(functionName);
     if (!sourceURL.isEmpty()) {
         if (!functionName.isEmpty())
             traceBuild.append('@');
         traceBuild.append(sourceURL);
-        if (codeType != StackFrameNativeCode) {
+        if (codeBlock) {
             unsigned line;
             unsigned column;
             computeLineAndColumn(line, column);
@@ -549,23 +512,18 @@ public:
             if (visitor->isJSFrame()
                 && !isWebAssemblyExecutable(visitor->codeBlock()->ownerExecutable())
                 && !visitor->codeBlock()->unlinkedCodeBlock()->isBuiltinFunction()) {
-                CodeBlock* codeBlock = visitor->codeBlock();
                 StackFrame s = {
                     Strong<JSObject>(vm, visitor->callee()),
-                    getStackFrameCodeType(visitor),
-                    Strong<ScriptExecutable>(vm, codeBlock->ownerScriptExecutable()),
-                    Strong<UnlinkedCodeBlock>(vm, codeBlock->unlinkedCodeBlock()),
-                    codeBlock->source(),
-                    codeBlock->ownerScriptExecutable()->firstLine(),
-                    codeBlock->firstLineColumnOffset(),
-                    codeBlock->sourceOffset(),
-                    visitor->bytecodeOffset(),
-                    visitor->sourceURL(),
-                    visitor->sourceID(),
+                    Strong<CodeBlock>(vm, visitor->codeBlock()),
+                    visitor->bytecodeOffset()
                 };
                 m_results.append(s);
             } else {
-                StackFrame s = { Strong<JSObject>(vm, visitor->callee()), StackFrameNativeCode, Strong<ScriptExecutable>(), Strong<UnlinkedCodeBlock>(), 0, 0, 0, 0, 0, String(), noSourceID};
+                StackFrame s = {
+                    Strong<JSObject>(vm, visitor->callee()),
+                    Strong<CodeBlock>(),
+                    0 // unused value because codeBlock is null.
+                };
                 m_results.append(s);
             }
     
@@ -596,8 +554,9 @@ JSString* Interpreter::stackTraceAsString(ExecState* exec, Vector<StackFrame> st
 {
     // FIXME: JSStringJoiner could be more efficient than StringBuilder here.
     StringBuilder builder;
+    VM& vm = exec->vm();
     for (unsigned i = 0; i < stackTrace.size(); i++) {
-        builder.append(String(stackTrace[i].toString(exec)));
+        builder.append(String(stackTrace[i].toString(vm)));
         if (i != stackTrace.size() - 1)
             builder.append('\n');
     }
@@ -866,6 +825,8 @@ JSValue Interpreter::execute(ProgramExecutable* program, CallFrame* callFrame, J
                     if (i == 0) {
                         PropertySlot slot(globalObject, PropertySlot::InternalMethodType::Get);
                         if (!globalObject->getPropertySlot(callFrame, JSONPPath[i].m_pathEntryName, slot)) {
+                            if (callFrame->hadException())
+                                return jsUndefined();
                             if (entry)
                                 return callFrame->vm().throwException(callFrame, createUndefinedVariableError(callFrame, JSONPPath[i].m_pathEntryName));
                             goto failedJSONP;
@@ -943,6 +904,9 @@ failedJSONP:
 
     if (UNLIKELY(vm.shouldTriggerTermination(callFrame)))
         return throwTerminatedExecutionException(callFrame);
+
+    if (scope->structure()->isUncacheableDictionary())
+        scope->flattenDictionaryObject(vm);
 
     ASSERT(codeBlock->numParameters() == 1); // 1 parameter for 'this'.
 
@@ -1192,6 +1156,9 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
         }
     }
 
+    if (variableObject->structure()->isUncacheableDictionary())
+        variableObject->flattenDictionaryObject(vm);
+
     if (numVariables || numFunctions) {
         BatchedTransitionOptimizer optimizer(vm, variableObject);
         if (variableObject->next())
@@ -1248,6 +1215,9 @@ JSValue Interpreter::execute(ModuleProgramExecutable* executable, CallFrame* cal
 
     if (UNLIKELY(vm.shouldTriggerTermination(callFrame)))
         return throwTerminatedExecutionException(callFrame);
+
+    if (scope->structure()->isUncacheableDictionary())
+        scope->flattenDictionaryObject(vm);
 
     ASSERT(codeBlock->numParameters() == 1); // 1 parameter for 'this'.
 

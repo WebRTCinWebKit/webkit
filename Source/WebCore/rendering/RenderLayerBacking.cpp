@@ -425,12 +425,18 @@ void RenderLayerBacking::updateBackdropFiltersGeometry()
         return;
 
     RenderBox& renderer = downcast<RenderBox>(this->renderer());
-    LayoutRect backdropFiltersRect = renderer.borderBoxRect();
+    LayoutRect boxRect = renderer.borderBoxRect();
     if (renderer.hasClip())
-        backdropFiltersRect.intersect(renderer.clipRect(LayoutPoint(), nullptr));
+        boxRect.intersect(renderer.clipRect(LayoutPoint(), nullptr));
+    boxRect.move(contentOffsetInCompostingLayer());
 
-    backdropFiltersRect.move(contentOffsetInCompostingLayer());
-    m_graphicsLayer->setBackdropFiltersRect(snapRectToDevicePixels(backdropFiltersRect, deviceScaleFactor()));
+    FloatRoundedRect backdropFiltersRect;
+    if (renderer.style().hasBorderRadius() && !renderer.hasClip())
+        backdropFiltersRect = renderer.style().getRoundedInnerBorderFor(boxRect).pixelSnappedRoundedRectForPainting(deviceScaleFactor());
+    else
+        backdropFiltersRect = FloatRoundedRect(snapRectToDevicePixels(boxRect, deviceScaleFactor()));
+
+    m_graphicsLayer->setBackdropFiltersRect(backdropFiltersRect);
 }
 #endif
 
@@ -1065,8 +1071,10 @@ void RenderLayerBacking::updateAfterDescendants()
     updateDrawsContent(isSimpleContainer);
 
     m_graphicsLayer->setContentsVisible(m_owningLayer.hasVisibleContent() || isPaintDestinationForDescendantLayers());
-    if (m_scrollingLayer)
+    if (m_scrollingLayer) {
         m_scrollingLayer->setContentsVisible(renderer().style().visibility() == VISIBLE);
+        m_scrollingLayer->setUserInteractionEnabled(renderer().style().pointerEvents() != PE_NONE);
+    }
 }
 
 // FIXME: Avoid repaints when clip path changes.

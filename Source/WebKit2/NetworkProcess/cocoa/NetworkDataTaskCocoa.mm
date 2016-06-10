@@ -30,6 +30,7 @@
 
 #import "Download.h"
 #import "DownloadProxyMessages.h"
+#import "Logging.h"
 #import "NetworkProcess.h"
 #import "SessionTracker.h"
 #import "WebCoreArgumentCoders.h"
@@ -109,6 +110,7 @@ NetworkDataTask::NetworkDataTask(NetworkSession& session, NetworkDataTaskClient&
         ASSERT(!m_session->m_dataTaskMapWithoutCredentials.contains([m_task taskIdentifier]));
         m_session->m_dataTaskMapWithoutCredentials.add([m_task taskIdentifier], this);
     }
+    LOG(NetworkSession, "%llu Creating NetworkDataTask with URL %s", [m_task taskIdentifier], nsRequest.URL.absoluteString.UTF8String);
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
     String storagePartition = WebCore::cookieStoragePartition(request);
@@ -173,7 +175,7 @@ void NetworkDataTask::didReceiveResponse(const WebCore::ResourceResponse& respon
     }
 }
 
-void NetworkDataTask::didReceiveData(RefPtr<WebCore::SharedBuffer>&& data)
+void NetworkDataTask::didReceiveData(Ref<WebCore::SharedBuffer>&& data)
 {
     if (m_client)
         m_client->didReceiveData(WTFMove(data));
@@ -185,7 +187,7 @@ void NetworkDataTask::didBecomeDownload()
         m_client->didBecomeDownload();
 }
 
-void NetworkDataTask::willPerformHTTPRedirection(const WebCore::ResourceResponse& redirectResponse, WebCore::ResourceRequest&& request, RedirectCompletionHandler completionHandler)
+void NetworkDataTask::willPerformHTTPRedirection(WebCore::ResourceResponse&& redirectResponse, WebCore::ResourceRequest&& request, RedirectCompletionHandler completionHandler)
 {
     if (redirectResponse.httpStatusCode() == 307 || redirectResponse.httpStatusCode() == 308) {
         ASSERT(m_lastHTTPMethod == request.httpMethod());
@@ -230,7 +232,7 @@ void NetworkDataTask::willPerformHTTPRedirection(const WebCore::ResourceResponse
     }
     
     if (m_client)
-        m_client->willPerformHTTPRedirection(redirectResponse, request, completionHandler);
+        m_client->willPerformHTTPRedirection(WTFMove(redirectResponse), WTFMove(request), completionHandler);
     else {
         ASSERT_NOT_REACHED();
         completionHandler({ });

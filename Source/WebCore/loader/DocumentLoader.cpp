@@ -651,10 +651,12 @@ void DocumentLoader::responseReceived(CachedResource* resource, const ResourceRe
     ASSERT(m_identifierForLoadWithoutResourceLoader || m_mainResource);
     unsigned long identifier = m_identifierForLoadWithoutResourceLoader ? m_identifierForLoadWithoutResourceLoader : m_mainResource->identifier();
     ASSERT(identifier);
+    
+    auto url = response.url();
 
-    ContentSecurityPolicy contentSecurityPolicy(SecurityOrigin::create(response.url()), m_frame);
+    ContentSecurityPolicy contentSecurityPolicy(SecurityOrigin::create(url), m_frame);
     contentSecurityPolicy.didReceiveHeaders(ContentSecurityPolicyResponseHeaders(response));
-    if (!contentSecurityPolicy.allowFrameAncestors(*m_frame, response.url())) {
+    if (!contentSecurityPolicy.allowFrameAncestors(*m_frame, url)) {
         stopLoadingAfterXFrameOptionsOrContentSecurityPolicyDenied(identifier, response);
         return;
     }
@@ -663,8 +665,8 @@ void DocumentLoader::responseReceived(CachedResource* resource, const ResourceRe
     auto it = commonHeaders.find(HTTPHeaderName::XFrameOptions);
     if (it != commonHeaders.end()) {
         String content = it->value;
-        if (frameLoader()->shouldInterruptLoadForXFrameOptions(content, response.url(), identifier)) {
-            String message = "Refused to display '" + response.url().stringCenterEllipsizedToLength() + "' in a frame because it set 'X-Frame-Options' to '" + content + "'.";
+        if (frameLoader()->shouldInterruptLoadForXFrameOptions(content, url, identifier)) {
+            String message = "Refused to display '" + url.stringCenterEllipsizedToLength() + "' in a frame because it set 'X-Frame-Options' to '" + content + "'.";
             m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier);
             stopLoadingAfterXFrameOptionsOrContentSecurityPolicyDenied(identifier, response);
             return;
@@ -713,9 +715,18 @@ void DocumentLoader::responseReceived(CachedResource* resource, const ResourceRe
 #endif
 
     if (m_response.isHttpVersion0_9()) {
+        // Non-HTTP responses are interpreted as HTTP/0.9 which may allow exfiltration of data
+        // from non-HTTP services. Therefore cancel if the request was to a non-default port.
+        if (!isDefaultPortForProtocol(url.port(), url.protocol())) {
+            String message = "Stopped document load from '" + url.string() + "' because it is using HTTP/0.9 on a non-default port.";
+            m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier);
+            stopLoading();
+            return;
+        }
+
         ASSERT(m_identifierForLoadWithoutResourceLoader || m_mainResource);
         unsigned long identifier = m_identifierForLoadWithoutResourceLoader ? m_identifierForLoadWithoutResourceLoader : m_mainResource->identifier();
-        String message = "Sandboxing '" + response.url().string() + "' because it is using HTTP/0.9.";
+        String message = "Sandboxing '" + url.string() + "' because it is using HTTP/0.9.";
         m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier);
         frameLoader()->forceSandboxFlags(SandboxScripts | SandboxPlugins);
     }
@@ -805,8 +816,9 @@ void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
     }
 
     if (!isStopping() && m_substituteData.isValid() && isLoadingMainResource()) {
-        if (m_substituteData.content()->size())
-            dataReceived(0, m_substituteData.content()->data(), m_substituteData.content()->size());
+        auto content = m_substituteData.content();
+        if (content && content->size())
+            dataReceived(nullptr, content->data(), content->size());
         if (isLoadingMainResource())
             finishedLoading(0);
     }
@@ -841,7 +853,7 @@ ResourceError DocumentLoader::interruptedForPolicyChangeError() const
 void DocumentLoader::stopLoadingForPolicyChange()
 {
     ResourceError error = interruptedForPolicyChangeError();
-    error.setIsCancellation(true);
+    error.setType(ResourceError::Type::Cancellation);
     cancelMainResourceLoad(error);
 }
 
@@ -1232,10 +1244,10 @@ void DocumentLoader::cancelPendingSubstituteLoad(ResourceLoader* loader)
 }
 
 #if ENABLE(WEB_ARCHIVE) || ENABLE(MHTML)
-bool DocumentLoader::scheduleArchiveLoad(ResourceLoader* loader, const ResourceRequest& request)
+bool DocumentLoader::scheduleArchiveLoad(ResourceLoader& loader, const ResourceRequest& request)
 {
     if (ArchiveResource* resource = archiveResourceForURL(request.url())) {
-        scheduleSubstituteResourceLoad(*loader, *resource);
+        scheduleSubstituteResourceLoad(loader, *resource);
         return true;
     }
 
@@ -1703,10 +1715,9 @@ void DocumentLoader::installContentFilterUnblockHandler(ContentFilter& contentFi
     String unblockRequestDeniedScript { contentFilter.unblockRequestDeniedScript() };
     if (!unblockRequestDeniedScript.isEmpty() && frame) {
         static_assert(std::is_base_of<ThreadSafeRefCounted<Frame>, Frame>::value, "Frame must be ThreadSafeRefCounted.");
-        StringCapture capturedScript { unblockRequestDeniedScript };
-        unblockHandler.wrapWithDecisionHandler([frame, capturedScript](bool unblocked) {
+        unblockHandler.wrapWithDecisionHandler([frame = WTFMove(frame), script = unblockRequestDeniedScript.isolatedCopy()](bool unblocked) {
             if (!unblocked)
-                frame->script().executeScript(capturedScript.string());
+                frame->script().executeScript(script);
         });
     }
     frameLoader()->client().contentFilterDidBlockLoad(WTFMove(unblockHandler));

@@ -112,7 +112,7 @@ public:
 
     virtual ~OpenDatabaseCallback() { }
 
-    bool operator==(const EventListener& other) override
+    bool operator==(const EventListener& other) const override
     {
         return this == &other;
     }
@@ -371,7 +371,7 @@ public:
 
     virtual ~OpenCursorCallback() { }
 
-    bool operator==(const EventListener& other) override
+    bool operator==(const EventListener& other) const override
     {
         return this == &other;
     }
@@ -394,7 +394,7 @@ public:
         }
         auto* cursorResult = request.cursorResult();
         if (!cursorResult) {
-            m_requestCallback->sendFailure("Unexpected result type.");
+            end(false);
             return;
         }
 
@@ -483,8 +483,7 @@ public:
             return;
         }
 
-        Ref<OpenCursorCallback> openCursorCallback = OpenCursorCallback::create(m_injectedScript, m_requestCallback.copyRef(), 0, m_pageSize);
-
+        TransactionActivator activator(idbTransaction.get());
         ExceptionCodeWithMessage ec;
         RefPtr<IDBRequest> idbRequest;
         if (!m_indexName.isEmpty()) {
@@ -503,6 +502,7 @@ public:
             return;
         }
 
+        Ref<OpenCursorCallback> openCursorCallback = OpenCursorCallback::create(m_injectedScript, m_requestCallback.copyRef(), 0, m_pageSize);
         idbRequest->addEventListener(eventNames().successEvent, WTFMove(openCursorCallback), false);
     }
 
@@ -600,7 +600,7 @@ void InspectorIndexedDBAgent::requestDatabaseNames(ErrorString& errorString, con
         return;
 
     RefPtr<RequestDatabaseNamesCallback> callback = WTFMove(requestCallback);
-    idbFactory->getAllDatabaseNames(*topOrigin, *openingOrigin, [callback](const Vector<String>& databaseNames) {
+    idbFactory->getAllDatabaseNames(*topOrigin, *openingOrigin, [callback](auto& databaseNames) {
         if (!callback->isActive())
             return;
 
@@ -660,7 +660,7 @@ public:
 
     virtual ~ClearObjectStoreListener() { }
 
-    bool operator==(const EventListener& other) override
+    bool operator==(const EventListener& other) const override
     {
         return this == &other;
     }

@@ -62,6 +62,8 @@
 #import <WebKit/DOMElement.h>
 #import <WebKit/DOMExtensions.h>
 #import <WebKit/DOMRange.h>
+#import <WebKit/WKString.h>
+#import <WebKit/WKStringCF.h>
 #import <WebKit/WebArchive.h>
 #import <WebKit/WebBackForwardList.h>
 #import <WebKit/WebCache.h>
@@ -1523,7 +1525,17 @@ static NSString *dumpFramesAsText(WebFrame *frame)
     if ([frame parentFrame])
         result = [NSMutableString stringWithFormat:@"\n--------\nFrame: '%@'\n--------\n", [frame name]];
 
-    [result appendFormat:@"%@\n", [documentElement innerText]];
+    NSString *innerText = [documentElement innerText];
+    // We use WKStringGetUTF8CStringNonStrict() to convert innerText to a WK String since
+    // WKStringGetUTF8CStringNonStrict() can handle dangling surrogates and the NSString
+    // conversion methods cannot. After the conversion to a buffer, we turn that buffer into
+    // a CFString via fromUTF8WithLatin1Fallback().createCFString() which can be appended to
+    // the result without any conversion.
+    WKStringRef stringRef = WKStringCreateWithCFString((CFStringRef)innerText);
+    size_t bufferSize = WKStringGetMaximumUTF8CStringSize(stringRef);
+    auto buffer = std::make_unique<char[]>(bufferSize);
+    size_t stringLength = WKStringGetUTF8CStringNonStrict(stringRef, buffer.get(), bufferSize);
+    [result appendFormat:@"%@\n", String::fromUTF8WithLatin1Fallback(buffer.get(), stringLength - 1).createCFString().get()];
 
     if (gTestRunner->dumpChildFramesAsText()) {
         NSArray *kids = [frame childFrames];
@@ -1609,16 +1621,18 @@ static void dumpBackForwardListForWebView(WebView *view)
 #if !PLATFORM(IOS)
 static void changeWindowScaleIfNeeded(const char* testPathOrUR)
 {
-    bool hasHighDPIWindow = [[[mainFrame webView] window] backingScaleFactor] != 1;
     WTF::String localPathOrUrl = String(testPathOrUR);
-    bool needsHighDPIWindow = localPathOrUrl.findIgnoringCase("/hidpi-") != notFound;
-    if (hasHighDPIWindow == needsHighDPIWindow)
+    float currentScaleFactor = [[[mainFrame webView] window] backingScaleFactor];
+    float requiredScaleFactor = 1;
+    if (localPathOrUrl.findIgnoringCase("/hidpi-3x-") != notFound)
+        requiredScaleFactor = 3;
+    else if (localPathOrUrl.findIgnoringCase("/hidpi-") != notFound)
+        requiredScaleFactor = 2;
+    if (currentScaleFactor == requiredScaleFactor)
         return;
-
-    CGFloat newScaleFactor = needsHighDPIWindow ? 2 : 1;
     // When the new scale factor is set on the window first, WebView doesn't see it as a new scale and stops propagating the behavior change to WebCore::Page.
-    gTestRunner->setBackingScaleFactor(newScaleFactor);
-    [[[mainFrame webView] window] _setWindowResolution:newScaleFactor displayIfChanged:YES];
+    gTestRunner->setBackingScaleFactor(requiredScaleFactor);
+    [[[mainFrame webView] window] _setWindowResolution:requiredScaleFactor displayIfChanged:YES];
 }
 #endif
 
@@ -1846,6 +1860,7 @@ static void resetWebViewToConsistentStateBeforeTesting()
     resetWebPreferencesToConsistentValues();
 
     TestRunner::setSerializeHTTPLoads(false);
+    TestRunner::setAllowsAnySSLCertificate(false);
 
     setlocale(LC_ALL, "");
 

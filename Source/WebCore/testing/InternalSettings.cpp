@@ -93,6 +93,7 @@ InternalSettings::Backup::Backup(Settings& settings)
     , m_pluginReplacementEnabled(RuntimeEnabledFeatures::sharedFeatures().pluginReplacementEnabled())
     , m_shouldConvertPositionStyleOnCopy(settings.shouldConvertPositionStyleOnCopy())
     , m_fontFallbackPrefersPictographs(settings.fontFallbackPrefersPictographs())
+    , m_webFontsAlwaysFallBack(settings.webFontsAlwaysFallBack())
     , m_backgroundShouldExtendBeyondPage(settings.backgroundShouldExtendBeyondPage())
     , m_storageBlockingPolicy(settings.storageBlockingPolicy())
     , m_scrollingTreeIncludesFrames(settings.scrollingTreeIncludesFrames())
@@ -169,6 +170,7 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
     settings.setAutoscrollForDragAndDropEnabled(m_autoscrollForDragAndDropEnabled);
     settings.setShouldConvertPositionStyleOnCopy(m_shouldConvertPositionStyleOnCopy);
     settings.setFontFallbackPrefersPictographs(m_fontFallbackPrefersPictographs);
+    settings.setWebFontsAlwaysFallBack(m_webFontsAlwaysFallBack);
     settings.setBackgroundShouldExtendBeyondPage(m_backgroundShouldExtendBeyondPage);
     settings.setStorageBlockingPolicy(m_storageBlockingPolicy);
     settings.setScrollingTreeIncludesFrames(m_scrollingTreeIncludesFrames);
@@ -184,6 +186,7 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
 #endif
     settings.setUserInterfaceDirectionPolicy(m_userInterfaceDirectionPolicy);
     settings.setSystemLayoutDirection(m_systemLayoutDirection);
+    Settings::setAllowsAnySSLCertificate(false);
 }
 
 class InternalSettingsWrapper : public Supplement<Page> {
@@ -514,6 +517,12 @@ void InternalSettings::setFontFallbackPrefersPictographs(bool preferPictographs,
     settings()->setFontFallbackPrefersPictographs(preferPictographs);
 }
 
+void InternalSettings::setWebFontsAlwaysFallBack(bool enable, ExceptionCode& ec)
+{
+    InternalSettingsGuardForSettings();
+    settings()->setWebFontsAlwaysFallBack(enable);
+}
+
 void InternalSettings::setPluginReplacementEnabled(bool enabled)
 {
     RuntimeEnabledFeatures::sharedFeatures().setPluginReplacementEnabled(enabled);
@@ -616,6 +625,11 @@ void InternalSettings::setSystemLayoutDirection(const String& direction, Excepti
         return;
     }
     ec = INVALID_ACCESS_ERR;
+}
+
+void InternalSettings::setAllowsAnySSLCertificate(bool allowsAnyCertificate)
+{
+    Settings::setAllowsAnySSLCertificate(allowsAnyCertificate);
 }
 
 // If you add to this list, make sure that you update the Backup class for test reproducability!

@@ -90,7 +90,7 @@ void WebPlaybackSessionModelMediaElement::setMediaElement(HTMLMediaElement* medi
 
     if (m_mediaElement && m_isListening) {
         for (auto& eventName : observedEventNames())
-            m_mediaElement->removeEventListener(eventName, this, false);
+            m_mediaElement->removeEventListener(eventName, *this, false);
     }
     m_isListening = false;
 
@@ -100,7 +100,7 @@ void WebPlaybackSessionModelMediaElement::setMediaElement(HTMLMediaElement* medi
         return;
 
     for (auto& eventName : observedEventNames())
-        m_mediaElement->addEventListener(eventName, this, false);
+        m_mediaElement->addEventListener(eventName, *this, false);
     m_isListening = true;
 
     updateForEventName(eventNameAll());
@@ -229,6 +229,9 @@ void WebPlaybackSessionModelMediaElement::endScanning()
 
 void WebPlaybackSessionModelMediaElement::selectAudioMediaOption(uint64_t selectedAudioIndex)
 {
+    if (!m_mediaElement)
+        return;
+
     ASSERT(selectedAudioIndex < std::numeric_limits<size_t>::max());
     AudioTrack* selectedAudioTrack = nullptr;
 
@@ -244,6 +247,9 @@ void WebPlaybackSessionModelMediaElement::selectAudioMediaOption(uint64_t select
 
 void WebPlaybackSessionModelMediaElement::selectLegibleMediaOption(uint64_t index)
 {
+    if (!m_mediaElement)
+        return;
+
     ASSERT(index < std::numeric_limits<size_t>::max());
     TextTrack* textTrack = nullptr;
 

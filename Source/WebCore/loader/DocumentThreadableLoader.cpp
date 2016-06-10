@@ -160,8 +160,7 @@ void DocumentThreadableLoader::cancel()
     // Cancel can re-enter and m_resource might be null here as a result.
     if (m_client && m_resource) {
         // FIXME: This error is sent to the client in didFail(), so it should not be an internal one. Use FrameLoaderClient::cancelledError() instead.
-        ResourceError error(errorDomainWebKitInternal, 0, m_resource->url(), "Load cancelled");
-        error.setIsCancellation(true);
+        ResourceError error(errorDomainWebKitInternal, 0, m_resource->url(), "Load cancelled", ResourceError::Type::Cancellation);
         didFail(m_resource->identifier(), error);
     }
     clearResource();
@@ -325,11 +324,6 @@ void DocumentThreadableLoader::notifyFinished(CachedResource* resource)
 
 void DocumentThreadableLoader::didFinishLoading(unsigned long identifier, double finishTime)
 {
-#if ENABLE(WEB_TIMING)
-    if (RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled())
-        m_resourceTimingInfo.addResourceTiming(m_resource.get(), &m_document);
-#endif
-
     if (m_actualRequest) {
         InspectorInstrumentation::didFinishLoading(m_document.frame(), m_document.frame()->loader().documentLoader(), identifier, finishTime);
 
@@ -395,14 +389,8 @@ void DocumentThreadableLoader::loadRequest(const ResourceRequest& request, Secur
             newRequest.setInitiator(m_options.initiator);
         ASSERT(!m_resource);
         m_resource = m_document.cachedResourceLoader().requestRawResource(newRequest);
-        if (m_resource) {
+        if (m_resource)
             m_resource->addClient(this);
-
-#if ENABLE(WEB_TIMING)
-            if (RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled())
-                m_resourceTimingInfo.storeResourceTimingInitiatorInformation(m_resource, newRequest, m_document.frame());
-#endif
-        }
 
         return;
     }

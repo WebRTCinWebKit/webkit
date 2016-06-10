@@ -188,7 +188,6 @@ VM::VM(VMType vmType, HeapType heapType)
 #if !ENABLE(JIT)
     , m_jsStackLimit(0)
 #endif
-    , m_inDefineOwnProperty(false)
     , m_codeCache(std::make_unique<CodeCache>())
     , m_builtinExecutables(std::make_unique<BuiltinExecutables>(*this))
     , m_typeProfilerEnabledCount(0)
@@ -315,6 +314,8 @@ VM::VM(VMType vmType, HeapType heapType)
         Ref<Stopwatch> stopwatch = Stopwatch::create();
         stopwatch->start();
         m_samplingProfiler = adoptRef(new SamplingProfiler(*this, WTFMove(stopwatch)));
+        if (Options::samplingProfilerPath())
+            m_samplingProfiler->registerForReportAtExit();
         m_samplingProfiler->start();
     }
 #endif // ENABLE(SAMPLING_PROFILER)
@@ -335,8 +336,10 @@ VM::~VM()
     heap.incrementDeferralDepth();
 
 #if ENABLE(SAMPLING_PROFILER)
-    if (m_samplingProfiler)
+    if (m_samplingProfiler) {
+        m_samplingProfiler->reportDataToOptionFile();
         m_samplingProfiler->shutdown();
+    }
 #endif // ENABLE(SAMPLING_PROFILER)
     
 #if ENABLE(DFG_JIT)
@@ -546,15 +549,6 @@ void VM::deleteAllLinkedCode()
 {
     whenIdle([this]() {
         heap.deleteAllCodeBlocks();
-        heap.reportAbandonedObjectGraph();
-    });
-}
-
-void VM::deleteAllRegExpCode()
-{
-    whenIdle([this]() {
-        m_regExpCache->deleteAllCode();
-        heap.reportAbandonedObjectGraph();
     });
 }
 

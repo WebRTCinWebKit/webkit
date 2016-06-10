@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
- * Copyright (C) 2013, 2014, 2015, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -93,6 +93,7 @@ public:
         bool m_pluginReplacementEnabled;
         bool m_shouldConvertPositionStyleOnCopy;
         bool m_fontFallbackPrefersPictographs;
+        bool m_webFontsAlwaysFallBack;
         bool m_backgroundShouldExtendBeyondPage;
         SecurityOrigin::StorageBlockingPolicy m_storageBlockingPolicy;
         bool m_scrollingTreeIncludesFrames;
@@ -150,6 +151,7 @@ public:
     void setUseLegacyBackgroundSizeShorthandBehavior(bool, ExceptionCode&);
     void setAutoscrollForDragAndDropEnabled(bool, ExceptionCode&);
     void setFontFallbackPrefersPictographs(bool, ExceptionCode&);
+    void setWebFontsAlwaysFallBack(bool, ExceptionCode&);
     void setPluginReplacementEnabled(bool);
     void setBackgroundShouldExtendBeyondPage(bool, ExceptionCode&);
     void setShouldConvertPositionStyleOnCopy(bool, ExceptionCode&);
@@ -162,6 +164,8 @@ public:
     void setUserInterfaceDirectionPolicy(const String& policy, ExceptionCode&);
     String systemLayoutDirection(ExceptionCode&);
     void setSystemLayoutDirection(const String& direction, ExceptionCode&);
+
+    static void setAllowsAnySSLCertificate(bool);
 
 private:
     explicit InternalSettings(Page*);

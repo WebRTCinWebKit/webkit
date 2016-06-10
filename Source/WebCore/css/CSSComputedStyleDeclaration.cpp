@@ -683,7 +683,7 @@ static Ref<CSSValue> valueForReflection(const StyleReflection* reflection, const
         break;
     }
 
-    return CSSReflectValue::create(direction.release(), offset.release(), valueForNinePieceImage(reflection->mask()));
+    return CSSReflectValue::create(direction.releaseNonNull(), offset.releaseNonNull(), valueForNinePieceImage(reflection->mask()));
 }
 
 static Ref<CSSValueList> createPositionListForLayer(CSSPropertyID propertyID, const FillLayer* layer, const RenderStyle& style)
@@ -907,13 +907,13 @@ Ref<CSSValue> ComputedStyleExtractor::valueForShadow(const ShadowData* shadow, C
 
     auto list = CSSValueList::createCommaSeparated();
     for (const ShadowData* currShadowData = shadow; currShadowData; currShadowData = currShadowData->next()) {
-        RefPtr<CSSPrimitiveValue> x = adjustLengthForZoom(currShadowData->x(), style, adjust);
-        RefPtr<CSSPrimitiveValue> y = adjustLengthForZoom(currShadowData->y(), style, adjust);
-        RefPtr<CSSPrimitiveValue> blur = adjustLengthForZoom(currShadowData->radius(), style, adjust);
-        RefPtr<CSSPrimitiveValue> spread = propertyID == CSSPropertyTextShadow ? PassRefPtr<CSSPrimitiveValue>() : adjustLengthForZoom(currShadowData->spread(), style, adjust);
-        RefPtr<CSSPrimitiveValue> style = propertyID == CSSPropertyTextShadow || currShadowData->style() == Normal ? PassRefPtr<CSSPrimitiveValue>() : cssValuePool.createIdentifierValue(CSSValueInset);
-        RefPtr<CSSPrimitiveValue> color = cssValuePool.createColorValue(currShadowData->color().rgb());
-        list.get().prepend(CSSShadowValue::create(x.release(), y.release(), blur.release(), spread.release(), style.release(), color.release()));
+        auto x = adjustLengthForZoom(currShadowData->x(), style, adjust);
+        auto y = adjustLengthForZoom(currShadowData->y(), style, adjust);
+        auto blur = adjustLengthForZoom(currShadowData->radius(), style, adjust);
+        auto spread = propertyID == CSSPropertyTextShadow ? RefPtr<CSSPrimitiveValue>() : adjustLengthForZoom(currShadowData->spread(), style, adjust);
+        auto style = propertyID == CSSPropertyTextShadow || currShadowData->style() == Normal ? RefPtr<CSSPrimitiveValue>() : cssValuePool.createIdentifierValue(CSSValueInset);
+        auto color = cssValuePool.createColorValue(currShadowData->color().rgb());
+        list->prepend(CSSShadowValue::create(WTFMove(x), WTFMove(y), WTFMove(blur), WTFMove(spread), WTFMove(style), WTFMove(color)));
     }
     return WTFMove(list);
 }
@@ -1029,10 +1029,10 @@ static Ref<CSSValue> specifiedValueForGridTrackSize(const GridTrackSize& trackSi
         return specifiedValueForGridTrackBreadth(trackSize.length(), style);
     default:
         ASSERT(trackSize.type() == MinMaxTrackSizing);
-        RefPtr<CSSValueList> minMaxTrackBreadths = CSSValueList::createCommaSeparated();
+        auto minMaxTrackBreadths = CSSValueList::createCommaSeparated();
         minMaxTrackBreadths->append(specifiedValueForGridTrackBreadth(trackSize.minTrackBreadth(), style));
         minMaxTrackBreadths->append(specifiedValueForGridTrackBreadth(trackSize.maxTrackBreadth(), style));
-        return CSSFunctionValue::create("minmax(", minMaxTrackBreadths);
+        return CSSFunctionValue::create("minmax(", WTFMove(minMaxTrackBreadths));
     }
 }
 
@@ -1498,10 +1498,10 @@ static Ref<CSSValue> createTimingFunctionValue(const TimingFunction* timingFunct
 {
     switch (timingFunction->type()) {
     case TimingFunction::CubicBezierFunction: {
-        const CubicBezierTimingFunction* bezierTimingFunction = static_cast<const CubicBezierTimingFunction*>(timingFunction);
-        if (bezierTimingFunction->timingFunctionPreset() != CubicBezierTimingFunction::Custom) {
+        auto& function = *static_cast<const CubicBezierTimingFunction*>(timingFunction);
+        if (function.timingFunctionPreset() != CubicBezierTimingFunction::Custom) {
             CSSValueID valueId = CSSValueInvalid;
-            switch (bezierTimingFunction->timingFunctionPreset()) {
+            switch (function.timingFunctionPreset()) {
             case CubicBezierTimingFunction::Ease:
                 valueId = CSSValueEase;
                 break;
@@ -1512,17 +1512,21 @@ static Ref<CSSValue> createTimingFunctionValue(const TimingFunction* timingFunct
                 valueId = CSSValueEaseOut;
                 break;
             default:
-                ASSERT(bezierTimingFunction->timingFunctionPreset() == CubicBezierTimingFunction::EaseInOut);
+                ASSERT(function.timingFunctionPreset() == CubicBezierTimingFunction::EaseInOut);
                 valueId = CSSValueEaseInOut;
                 break;
             }
             return CSSValuePool::singleton().createIdentifierValue(valueId);
         }
-        return CSSCubicBezierTimingFunctionValue::create(bezierTimingFunction->x1(), bezierTimingFunction->y1(), bezierTimingFunction->x2(), bezierTimingFunction->y2());
+        return CSSCubicBezierTimingFunctionValue::create(function.x1(), function.y1(), function.x2(), function.y2());
     }
     case TimingFunction::StepsFunction: {
-        const StepsTimingFunction* stepsTimingFunction = static_cast<const StepsTimingFunction*>(timingFunction);
-        return CSSStepsTimingFunctionValue::create(stepsTimingFunction->numberOfSteps(), stepsTimingFunction->stepAtStart());
+        auto& function = *static_cast<const StepsTimingFunction*>(timingFunction);
+        return CSSStepsTimingFunctionValue::create(function.numberOfSteps(), function.stepAtStart());
+    }
+    case TimingFunction::SpringFunction: {
+        auto& function = *static_cast<const SpringTimingFunction*>(timingFunction);
+        return CSSSpringTimingFunctionValue::create(function.mass(), function.stiffness(), function.damping(), function.initialVelocity());
     }
     default:
         ASSERT(timingFunction->type() == TimingFunction::LinearFunction);
@@ -2275,25 +2279,47 @@ Node* ComputedStyleExtractor::styledNode() const
     return &element;
 }
 
-static ItemPosition resolveContainerAlignmentAuto(ItemPosition position, RenderObject* element)
+static StyleSelfAlignmentData resolveLegacyJustifyItems(const StyleSelfAlignmentData& data)
 {
-    if (position != ItemPositionAuto || !element)
-        return position;
-
-    return element->style().isDisplayFlexibleOrGridBox() ? ItemPositionStretch : ItemPositionStart;
+    if (data.positionType() == LegacyPosition)
+        return { data.position(), OverflowAlignmentDefault };
+    return data;
 }
 
-static ItemPosition resolveSelfAlignmentAuto(ItemPosition position, OverflowAlignment& overflow, RenderObject* element)
+static StyleSelfAlignmentData resolveJustifyItemsAuto(const StyleSelfAlignmentData& data, Node* parent)
 {
-    if (position != ItemPositionAuto || !element || element->isOutOfFlowPositioned())
-        return position;
+    if (data.position() != ItemPositionAuto)
+        return data;
 
-    RenderBlock* parent = element->containingBlock();
-    if (!parent)
-        return ItemPositionStart;
+    // If the inherited value of justify-items includes the 'legacy' keyword, 'auto' computes to the inherited value.
+    const auto& inheritedValue = (!parent || !parent->computedStyle()) ? RenderStyle::initialDefaultAlignment() : parent->computedStyle()->justifyItems();
+    if (inheritedValue.positionType() == LegacyPosition)
+        return inheritedValue;
+    if (inheritedValue.position() == ItemPositionAuto)
+        return resolveJustifyItemsAuto(inheritedValue, parent->parentNode());
+    return { ItemPositionNormal, OverflowAlignmentDefault };
+}
 
-    overflow = parent->style().alignItemsOverflowAlignment();
-    return resolveContainerAlignmentAuto(parent->style().alignItemsPosition(), parent);
+static StyleSelfAlignmentData resolveJustifySelfAuto(const StyleSelfAlignmentData& data, Node* parent)
+{
+    if (data.position() != ItemPositionAuto)
+        return data;
+
+    // The 'auto' keyword computes to the computed value of justify-items on the parent or 'normal' if the box has no parent.
+    if (!parent || !parent->computedStyle())
+        return { ItemPositionNormal, OverflowAlignmentDefault };
+    return resolveLegacyJustifyItems(resolveJustifyItemsAuto(parent->computedStyle()->justifyItems(), parent->parentNode()));
+}
+
+static StyleSelfAlignmentData resolveAlignSelfAuto(const StyleSelfAlignmentData& data, Node* parent)
+{
+    if (data.position() != ItemPositionAuto)
+        return data;
+
+    // The 'auto' keyword computes to the computed value of align-items on the parent or 'normal' if the box has no parent.
+    if (!parent || !parent->computedStyle())
+        return { ItemPositionNormal, OverflowAlignmentDefault };
+    return parent->computedStyle()->alignItems();
 }
 
 RefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropertyID propertyID, EUpdateLayout updateLayout) const
@@ -2376,30 +2402,31 @@ static Ref<CSSValue> shapePropertyValue(const RenderStyle& style, const ShapeVal
 }
 #endif
 
-static RefPtr<CSSValueList> valueForItemPositionWithOverflowAlignment(ItemPosition itemPosition, OverflowAlignment overflowAlignment, ItemPositionType positionType)
+static Ref<CSSValueList> valueForItemPositionWithOverflowAlignment(const StyleSelfAlignmentData& data)
 {
     auto& cssValuePool = CSSValuePool::singleton();
-    RefPtr<CSSValueList> result = CSSValueList::createSpaceSeparated();
-    if (positionType == LegacyPosition)
-        result->append(CSSPrimitiveValue::createIdentifier(CSSValueLegacy));
-    result->append(cssValuePool.createValue(itemPosition));
-    if (overflowAlignment != OverflowAlignmentDefault)
-        result->append(cssValuePool.createValue(overflowAlignment));
-    ASSERT(result->length() <= 2);
+    auto result = CSSValueList::createSpaceSeparated();
+    if (data.positionType() == LegacyPosition)
+        result.get().append(cssValuePool.createIdentifierValue(CSSValueLegacy));
+    result.get().append(cssValuePool.createValue(data.position()));
+    if (data.position() >= ItemPositionCenter && data.overflow() != OverflowAlignmentDefault)
+        result.get().append(cssValuePool.createValue(data.overflow()));
+    ASSERT(result.get().length() <= 2);
     return result;
 }
 
-static RefPtr<CSSValueList> valueForContentPositionAndDistributionWithOverflowAlignment(const StyleContentAlignmentData& data)
+static Ref<CSSValueList> valueForContentPositionAndDistributionWithOverflowAlignment(const StyleContentAlignmentData& data)
 {
-    RefPtr<CSSValueList> result = CSSValueList::createSpaceSeparated();
+    auto& cssValuePool = CSSValuePool::singleton();
+    auto result = CSSValueList::createSpaceSeparated();
     if (data.distribution() != ContentDistributionDefault)
-        result->append(CSSPrimitiveValue::create(data.distribution()));
+        result.get().append(cssValuePool.createValue(data.distribution()));
     if (data.distribution() == ContentDistributionDefault || data.position() != ContentPositionNormal)
-        result->append(CSSPrimitiveValue::create(data.position()));
+        result.get().append(cssValuePool.createValue(data.position()));
     if ((data.position() >= ContentPositionCenter || data.distribution() != ContentDistributionDefault) && data.overflow() != OverflowAlignmentDefault)
-        result->append(CSSPrimitiveValue::create(data.overflow()));
-    ASSERT(result->length() > 0);
-    ASSERT(result->length() <= 3);
+        result.get().append(cssValuePool.createValue(data.overflow()));
+    ASSERT(result.get().length() > 0);
+    ASSERT(result.get().length() <= 3);
     return result;
 }
 
@@ -2779,12 +2806,9 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         case CSSPropertyAlignContent:
             return valueForContentPositionAndDistributionWithOverflowAlignment(style->alignContent());
         case CSSPropertyAlignItems:
-            return valueForItemPositionWithOverflowAlignment(resolveContainerAlignmentAuto(style->alignItemsPosition(), renderer), style->alignItemsOverflowAlignment(), NonLegacyPosition);
-        case CSSPropertyAlignSelf: {
-            OverflowAlignment overflow = style->alignSelfOverflowAlignment();
-            ItemPosition alignSelf = resolveSelfAlignmentAuto(style->alignSelfPosition(), overflow, renderer);
-            return valueForItemPositionWithOverflowAlignment(alignSelf, overflow, NonLegacyPosition);
-        }
+            return valueForItemPositionWithOverflowAlignment(style->alignItems());
+        case CSSPropertyAlignSelf:
+            return valueForItemPositionWithOverflowAlignment(resolveAlignSelfAuto(style->alignSelf(), styledNode->parentNode()));
         case CSSPropertyFlex:
             return getCSSPropertyValuesForShorthandProperties(flexShorthand());
         case CSSPropertyFlexBasis:
@@ -2802,12 +2826,9 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         case CSSPropertyJustifyContent:
             return valueForContentPositionAndDistributionWithOverflowAlignment(style->justifyContent());
         case CSSPropertyJustifyItems:
-            return valueForItemPositionWithOverflowAlignment(resolveContainerAlignmentAuto(style->justifyItemsPosition(), renderer), style->justifyItemsOverflowAlignment(), style->justifyItemsPositionType());
-        case CSSPropertyJustifySelf: {
-            OverflowAlignment overflow = style->justifySelfOverflowAlignment();
-            ItemPosition justifySelf = resolveSelfAlignmentAuto(style->justifySelfPosition(), overflow, renderer);
-            return valueForItemPositionWithOverflowAlignment(justifySelf, overflow, NonLegacyPosition);
-        }
+            return valueForItemPositionWithOverflowAlignment(resolveJustifyItemsAuto(style->justifyItems(), styledNode->parentNode()));
+        case CSSPropertyJustifySelf:
+            return valueForItemPositionWithOverflowAlignment(resolveJustifySelfAuto(style->justifySelf(), styledNode->parentNode()));
         case CSSPropertyOrder:
             return cssValuePool.createValue(style->order(), CSSPrimitiveValue::CSS_NUMBER);
         case CSSPropertyFloat:

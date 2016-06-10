@@ -32,14 +32,14 @@ namespace WebKit {
 
 class BlobRegistryProxy final : public WebCore::BlobRegistry {
 public:
-    void registerFileBlobURL(const WebCore::URL&, RefPtr<WebCore::BlobDataFileReference>&&, const String& contentType) override;
+    void registerFileBlobURL(const WebCore::URL&, Ref<WebCore::BlobDataFileReference>&&, const String& contentType) override;
     void registerBlobURL(const WebCore::URL&, Vector<WebCore::BlobPart>, const String& contentType) override;
     void registerBlobURL(const WebCore::URL&, const WebCore::URL& srcURL) override;
     void registerBlobURLOptionallyFileBacked(const WebCore::URL&, const WebCore::URL& srcURL, RefPtr<WebCore::BlobDataFileReference>&&) override;
     void unregisterBlobURL(const WebCore::URL&) override;
     void registerBlobURLForSlice(const WebCore::URL&, const WebCore::URL& srcURL, long long start, long long end) override;
     unsigned long long blobSize(const WebCore::URL&) override;
-    void writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, std::function<void (const Vector<String>& filePaths)> completionHandler) override;
+    void writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, NoncopyableFunction<void (const Vector<String>& filePaths)>&& completionHandler) override;
 };
 
 }

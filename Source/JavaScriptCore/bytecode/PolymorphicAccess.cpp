@@ -1087,6 +1087,8 @@ void AccessCase::generateImpl(AccessGenerationState& state)
             // getter: EncodedJSValue (*GetValueFunc)(ExecState*, EncodedJSValue thisValue, PropertyName);
             // setter: void (*PutValueFunc)(ExecState*, EncodedJSValue thisObject, EncodedJSValue value);
             // Custom values are passed the slotBase (the property holder), custom accessors are passed the thisVaule (reciever).
+            // FIXME: Remove this differences in custom values and custom accessors.
+            // https://bugs.webkit.org/show_bug.cgi?id=158014
             GPRReg baseForCustomValue = m_type == CustomValueGetter || m_type == CustomValueSetter ? baseForAccessGPR : baseForGetGPR;
 #if USE(JSVALUE64)
             if (m_type == CustomValueGetter || m_type == CustomAccessorGetter) {
@@ -1417,7 +1419,7 @@ PolymorphicAccess::~PolymorphicAccess() { }
 
 AccessGenerationResult PolymorphicAccess::addCases(
     VM& vm, CodeBlock* codeBlock, StructureStubInfo& stubInfo, const Identifier& ident,
-    Vector<std::unique_ptr<AccessCase>> originalCasesToAdd)
+    Vector<std::unique_ptr<AccessCase>, 2> originalCasesToAdd)
 {
     SuperSamplerScope superSamplerScope(false);
     
@@ -1478,7 +1480,7 @@ AccessGenerationResult PolymorphicAccess::addCase(
     VM& vm, CodeBlock* codeBlock, StructureStubInfo& stubInfo, const Identifier& ident,
     std::unique_ptr<AccessCase> newAccess)
 {
-    Vector<std::unique_ptr<AccessCase>> newAccesses;
+    Vector<std::unique_ptr<AccessCase>, 2> newAccesses;
     newAccesses.append(WTFMove(newAccess));
     return addCases(vm, codeBlock, stubInfo, ident, WTFMove(newAccesses));
 }

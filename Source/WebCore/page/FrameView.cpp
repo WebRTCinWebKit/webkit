@@ -2100,8 +2100,14 @@ bool FrameView::scrollToAnchor(const String& name)
     maintainScrollPositionAtAnchor(scrollPositionAnchor);
     
     // If the anchor accepts keyboard focus, move focus there to aid users relying on keyboard navigation.
-    if (anchorElement && anchorElement->isFocusable())
-        document.setFocusedElement(anchorElement);
+    if (anchorElement) {
+        if (anchorElement->isFocusable())
+            document.setFocusedElement(anchorElement);
+        else {
+            document.setFocusedElement(nullptr);
+            document.setFocusNavigationStartingNode(anchorElement);
+        }
+    }
     
     return true;
 }
@@ -3133,9 +3139,9 @@ void FrameView::flushAnyPendingPostLayoutTasks()
         updateEmbeddedObjectsTimerFired();
 }
 
-void FrameView::queuePostLayoutCallback(std::function<void()> callback)
+void FrameView::queuePostLayoutCallback(NoncopyableFunction<void()>&& callback)
 {
-    m_postLayoutCallbackQueue.append(callback);
+    m_postLayoutCallbackQueue.append(WTFMove(callback));
 }
 
 void FrameView::flushPostLayoutTasksQueue()
@@ -3146,10 +3152,9 @@ void FrameView::flushPostLayoutTasksQueue()
     if (!m_postLayoutCallbackQueue.size())
         return;
 
-    const auto queue = m_postLayoutCallbackQueue;
-    m_postLayoutCallbackQueue.clear();
-    for (size_t i = 0; i < queue.size(); ++i)
-        queue[i]();
+    Vector<NoncopyableFunction<void()>> queue = WTFMove(m_postLayoutCallbackQueue);
+    for (auto& task : queue)
+        task();
 }
 
 void FrameView::performPostLayoutTasks()

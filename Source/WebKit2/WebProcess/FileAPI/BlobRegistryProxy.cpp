@@ -36,7 +36,7 @@ using namespace WebCore;
 
 namespace WebKit {
 
-void BlobRegistryProxy::registerFileBlobURL(const WebCore::URL& url, RefPtr<BlobDataFileReference>&& file, const String& contentType)
+void BlobRegistryProxy::registerFileBlobURL(const WebCore::URL& url, Ref<BlobDataFileReference>&& file, const String& contentType)
 {
     SandboxExtension::Handle extensionHandle;
 
@@ -81,9 +81,9 @@ unsigned long long BlobRegistryProxy::blobSize(const URL& url)
     return resultSize;
 }
 
-void BlobRegistryProxy::writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, std::function<void (const Vector<String>& filePaths)> completionHandler)
+void BlobRegistryProxy::writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, NoncopyableFunction<void (const Vector<String>& filePaths)>&& completionHandler)
 {
-    WebProcess::singleton().networkConnection()->writeBlobsToTemporaryFiles(blobURLs, completionHandler);
+    WebProcess::singleton().networkConnection()->writeBlobsToTemporaryFiles(blobURLs, WTFMove(completionHandler));
 }
 
 }

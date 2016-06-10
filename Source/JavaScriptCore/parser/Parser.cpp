@@ -93,7 +93,7 @@ void Parser<LexerType>::logError(bool)
         return;
     StringPrintStream stream;
     printUnexpectedTokenText(stream);
-    setErrorMessage(stream.toString());
+    setErrorMessage(stream.toStringWithLatin1Fallback());
 }
 
 template <typename LexerType> template <typename A>
@@ -107,7 +107,7 @@ void Parser<LexerType>::logError(bool shouldPrintToken, const A& value1)
         stream.print(". ");
     }
     stream.print(value1, ".");
-    setErrorMessage(stream.toString());
+    setErrorMessage(stream.toStringWithLatin1Fallback());
 }
 
 template <typename LexerType> template <typename A, typename B>
@@ -121,7 +121,7 @@ void Parser<LexerType>::logError(bool shouldPrintToken, const A& value1, const B
         stream.print(". ");
     }
     stream.print(value1, value2, ".");
-    setErrorMessage(stream.toString());
+    setErrorMessage(stream.toStringWithLatin1Fallback());
 }
 
 template <typename LexerType> template <typename A, typename B, typename C>
@@ -135,7 +135,7 @@ void Parser<LexerType>::logError(bool shouldPrintToken, const A& value1, const B
         stream.print(". ");
     }
     stream.print(value1, value2, value3, ".");
-    setErrorMessage(stream.toString());
+    setErrorMessage(stream.toStringWithLatin1Fallback());
 }
 
 template <typename LexerType> template <typename A, typename B, typename C, typename D>
@@ -149,7 +149,7 @@ void Parser<LexerType>::logError(bool shouldPrintToken, const A& value1, const B
         stream.print(". ");
     }
     stream.print(value1, value2, value3, value4, ".");
-    setErrorMessage(stream.toString());
+    setErrorMessage(stream.toStringWithLatin1Fallback());
 }
 
 template <typename LexerType> template <typename A, typename B, typename C, typename D, typename E>
@@ -163,7 +163,7 @@ void Parser<LexerType>::logError(bool shouldPrintToken, const A& value1, const B
         stream.print(". ");
     }
     stream.print(value1, value2, value3, value4, value5, ".");
-    setErrorMessage(stream.toString());
+    setErrorMessage(stream.toStringWithLatin1Fallback());
 }
 
 template <typename LexerType> template <typename A, typename B, typename C, typename D, typename E, typename F>
@@ -177,7 +177,7 @@ void Parser<LexerType>::logError(bool shouldPrintToken, const A& value1, const B
         stream.print(". ");
     }
     stream.print(value1, value2, value3, value4, value5, value6, ".");
-    setErrorMessage(stream.toString());
+    setErrorMessage(stream.toStringWithLatin1Fallback());
 }
 
 template <typename LexerType> template <typename A, typename B, typename C, typename D, typename E, typename F, typename G>
@@ -191,11 +191,11 @@ void Parser<LexerType>::logError(bool shouldPrintToken, const A& value1, const B
         stream.print(". ");
     }
     stream.print(value1, value2, value3, value4, value5, value6, value7, ".");
-    setErrorMessage(stream.toString());
+    setErrorMessage(stream.toStringWithLatin1Fallback());
 }
 
 template <typename LexerType>
-Parser<LexerType>::Parser(VM* vm, const SourceCode& source, JSParserBuiltinMode builtinMode, JSParserStrictMode strictMode, SourceParseMode parseMode, SuperBinding superBinding, ConstructorKind defaultConstructorKind, ThisTDZMode thisTDZMode, DerivedContextType derivedContextType, bool isEvalContext, EvalContextType evalContextType)
+Parser<LexerType>::Parser(VM* vm, const SourceCode& source, JSParserBuiltinMode builtinMode, JSParserStrictMode strictMode, SourceParseMode parseMode, SuperBinding superBinding, ConstructorKind defaultConstructorKind, DerivedContextType derivedContextType, bool isEvalContext, EvalContextType evalContextType)
     : m_vm(vm)
     , m_source(&source)
     , m_hasStackOverflow(false)
@@ -206,7 +206,6 @@ Parser<LexerType>::Parser(VM* vm, const SourceCode& source, JSParserBuiltinMode 
     , m_parsingBuiltin(builtinMode == JSParserBuiltinMode::Builtin)
     , m_superBinding(superBinding)
     , m_defaultConstructorKind(defaultConstructorKind)
-    , m_thisTDZMode(thisTDZMode)
     , m_immediateParentAllowsFunctionDeclarationInStatement(false)
 {
     m_lexer = std::make_unique<LexerType>(vm, builtinMode);
@@ -322,9 +321,8 @@ String Parser<LexerType>::parseInner(const Identifier& calleeName, SourceParseMo
     if (m_parsingBuiltin && isProgramParseMode(parseMode)) {
         VariableEnvironment& lexicalVariables = scope->lexicalVariables();
         const HashSet<UniquedStringImpl*>& closedVariableCandidates = scope->closedVariableCandidates();
-        const BuiltinNames& builtinNames = m_vm->propertyNames->builtinNames();
         for (UniquedStringImpl* candidate : closedVariableCandidates) {
-            if (!lexicalVariables.contains(candidate) && !varDeclarations.contains(candidate) && !builtinNames.isPrivateName(*candidate)) {
+            if (!lexicalVariables.contains(candidate) && !varDeclarations.contains(candidate) && !candidate->isSymbol()) {
                 dataLog("Bad global capture in builtin: '", candidate, "'\n");
                 dataLog(m_source->view());
                 CRASH();
@@ -1747,6 +1745,9 @@ template <class TreeBuilder> bool Parser<LexerType>::parseFormalParameters(TreeB
         TreeDestructuringPattern parameter = 0;
         TreeExpression defaultValue = 0;
 
+        if (UNLIKELY(match(CLOSEPAREN)))
+            break;
+        
         if (match(DOTDOTDOT)) {
             next();
             failIfFalse(matchSpecIdentifier(), "Rest parameter '...' should be followed by a variable identifier");
@@ -3718,7 +3719,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parsePrimaryExpre
         next();
         if (currentScope()->isArrowFunction())
             currentScope()->setInnerArrowFunctionUsesThis();
-        return context.createThisExpr(location, m_thisTDZMode);
+        return context.createThisExpr(location);
     }
     case IDENT: {
     identifierExpression:
@@ -3827,6 +3828,9 @@ template <class TreeBuilder> TreeArguments Parser<LexerType>::parseArguments(Tre
         JSTokenLocation argumentLocation(tokenLocation());
         next(TreeBuilder::DontBuildStrings);
 
+        if (UNLIKELY(match(CLOSEPAREN)))
+            break;
+        
         TreeExpression arg = parseArgument(context, argType);
         propagateError();
         semanticFailIfTrue(match(DOTDOTDOT), "The '...' operator should come before the target expression");

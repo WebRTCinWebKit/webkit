@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -914,7 +914,7 @@ PassRefPtr<Range> WebPage::rangeForWebSelectionAtPosition(const IntPoint& point,
     if (!currentNode->isTextNode() && !canShrinkToTextSelection(currentNode) && hasCustomLineHeight(*currentNode)) {
         auto* renderer = currentNode->renderer();
         if (is<RenderBlockFlow>(renderer)) {
-            auto *renderText = downcast<RenderBlockFlow>(renderer)->findClosestTextAtAbsolutePoint(point);
+            auto* renderText = downcast<RenderBlockFlow>(*renderer).findClosestTextAtAbsolutePoint(point);
             if (renderText && renderText->textNode())
                 currentNode = renderText->textNode();
         }
@@ -1875,13 +1875,13 @@ void WebPage::selectTextWithGranularityAtPoint(const WebCore::IntPoint& point, u
         m_blockSelectionDesiredSize.setWidth(blockSelectionStartWidth);
         m_blockSelectionDesiredSize.setHeight(blockSelectionStartHeight);
         m_currentBlockSelection = nullptr;
-        auto* renderer = range->startContainer().renderer();
-        if (renderer->style().preserveNewline())
+        auto* renderer = range ? range->startContainer().renderer() : nullptr;
+        if (renderer && renderer->style().preserveNewline())
             m_blockRectForTextSelection = renderer->absoluteBoundingBoxRect(true);
         else {
-            auto* paragraphRange = enclosingTextUnitOfGranularity(visiblePositionInFocusedNodeForPoint(frame, point, isInteractingWithAssistedNode), ParagraphGranularity, DirectionForward).get();
+            auto paragraphRange = enclosingTextUnitOfGranularity(visiblePositionInFocusedNodeForPoint(frame, point, isInteractingWithAssistedNode), ParagraphGranularity, DirectionForward);
             if (paragraphRange && !paragraphRange->collapsed())
-                m_blockRectForTextSelection = selectionBoxForRange(paragraphRange);
+                m_blockRectForTextSelection = selectionBoxForRange(paragraphRange.get());
         }
         
         if (rectIsTooBigForSelection(m_blockRectForTextSelection, frame))
@@ -2547,6 +2547,7 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
     information.minimumScaleFactor = minimumPageScaleFactor();
     information.maximumScaleFactor = maximumPageScaleFactor();
     information.allowsUserScaling = m_viewportConfiguration.allowsUserScaling();
+    information.allowsUserScalingIgnoringForceAlwaysScaling = m_viewportConfiguration.allowsUserScalingIgnoringForceAlwaysScaling();
     information.hasNextNode = hasAssistableElement(m_assistedNode.get(), *m_page, true);
     information.hasPreviousNode = hasAssistableElement(m_assistedNode.get(), *m_page, false);
 
@@ -2972,12 +2973,14 @@ void WebPage::applicationDidEnterBackground(bool isSuspendedUnderLock)
 {
     [[NSNotificationCenter defaultCenter] postNotificationName:WebUIApplicationDidEnterBackgroundNotification object:nil userInfo:@{@"isSuspendedUnderLock": [NSNumber numberWithBool:isSuspendedUnderLock]}];
 
+    m_isSuspendedUnderLock = isSuspendedUnderLock;
     setLayerTreeStateIsFrozen(true);
     markLayersVolatile();
 }
 
 void WebPage::applicationWillEnterForeground(bool isSuspendedUnderLock)
 {
+    m_isSuspendedUnderLock = false;
     cancelMarkLayersVolatile();
     setLayerTreeStateIsFrozen(false);
 
@@ -3125,17 +3128,21 @@ void WebPage::dispatchAsynchronousTouchEvents(const Vector<WebTouchEvent, 1>& qu
 }
 #endif
 
-void WebPage::computePagesForPrintingAndStartDrawingToPDF(uint64_t frameID, const PrintInfo& printInfo, uint32_t firstPage, PassRefPtr<Messages::WebPage::ComputePagesForPrintingAndStartDrawingToPDF::DelayedReply> reply)
+void WebPage::computePagesForPrintingAndDrawToPDF(uint64_t frameID, const PrintInfo& printInfo, uint64_t callbackID, PassRefPtr<Messages::WebPage::ComputePagesForPrintingAndDrawToPDF::DelayedReply> reply)
 {
     Vector<WebCore::IntRect> pageRects;
-    double totalScaleFactor = 1;
+    double totalScaleFactor;
     computePagesForPrintingImpl(frameID, printInfo, pageRects, totalScaleFactor);
+
     std::size_t pageCount = pageRects.size();
-    reply->send(WTFMove(pageRects), totalScaleFactor);
+    ASSERT(pageCount <= std::numeric_limits<uint32_t>::max());
+    reply->send(pageCount);
 
     RetainPtr<CFMutableDataRef> pdfPageData;
-    drawPagesToPDFImpl(frameID, printInfo, firstPage, pageCount - firstPage, pdfPageData);
-    send(Messages::WebPageProxy::DidFinishDrawingPagesToPDF(IPC::DataReference(CFDataGetBytePtr(pdfPageData.get()), CFDataGetLength(pdfPageData.get()))));
+    drawPagesToPDFImpl(frameID, printInfo, 0, pageCount, pdfPageData);
+    send(Messages::WebPageProxy::DrawToPDFCallback(IPC::DataReference(CFDataGetBytePtr(pdfPageData.get()), CFDataGetLength(pdfPageData.get())), callbackID));
+
+    endPrinting();
 }
 
 void WebPage::contentSizeCategoryDidChange(const String& contentSizeCategory)

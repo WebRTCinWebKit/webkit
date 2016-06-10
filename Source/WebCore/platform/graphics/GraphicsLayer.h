@@ -346,6 +346,9 @@ public:
     bool contentsAreVisible() const { return m_contentsVisible; }
     virtual void setContentsVisible(bool b) { m_contentsVisible = b; }
 
+    bool userInteractionEnabled() const { return m_userInteractionEnabled; }
+    virtual void setUserInteractionEnabled(bool b) { m_userInteractionEnabled = b; }
+    
     bool acceleratesDrawing() const { return m_acceleratesDrawing; }
     virtual void setAcceleratesDrawing(bool b) { m_acceleratesDrawing = b; }
 
@@ -377,8 +380,8 @@ public:
     const FilterOperations& backdropFilters() const { return m_backdropFilters; }
     virtual bool setBackdropFilters(const FilterOperations& filters) { m_backdropFilters = filters; return true; }
 
-    virtual void setBackdropFiltersRect(const FloatRect& backdropFiltersRect) { m_backdropFiltersRect = backdropFiltersRect; }
-    FloatRect backdropFiltersRect() const { return m_backdropFiltersRect; }
+    virtual void setBackdropFiltersRect(const FloatRoundedRect& backdropFiltersRect) { m_backdropFiltersRect = backdropFiltersRect; }
+    const FloatRoundedRect& backdropFiltersRect() const { return m_backdropFiltersRect; }
 
 #if ENABLE(CSS_COMPOSITING)
     BlendMode blendMode() const { return m_blendMode; }
@@ -626,6 +629,7 @@ protected:
     bool m_showRepaintCounter : 1;
     bool m_isMaskLayer : 1;
     bool m_isTrackingDisplayListReplay : 1;
+    bool m_userInteractionEnabled : 1;
     
     GraphicsLayerPaintingPhase m_paintingPhase;
     CompositingCoordinatesOrientation m_contentsOrientation; // affects orientation of layer contents
@@ -645,7 +649,7 @@ protected:
     FloatRoundedRect m_masksToBoundsRect;
     FloatSize m_contentsTilePhase;
     FloatSize m_contentsTileSize;
-    FloatRect m_backdropFiltersRect;
+    FloatRoundedRect m_backdropFiltersRect;
 
     int m_repaintCount;
     CustomAppearance m_customAppearance;

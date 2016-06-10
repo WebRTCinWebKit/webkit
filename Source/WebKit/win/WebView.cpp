@@ -402,6 +402,7 @@ WebView::WebView()
 {
     JSC::initializeThreading();
     WTF::initializeMainThread();
+    RunLoop::initializeMainRunLoop();
 
     m_backingStoreSize.cx = m_backingStoreSize.cy = 0;
 
@@ -2910,7 +2911,7 @@ HRESULT WebView::initWithFrame(RECT frame, _In_ BSTR frameName, _In_ BSTR groupN
     PageConfiguration configuration;
     configuration.chromeClient = new WebChromeClient(this);
     configuration.contextMenuClient = new WebContextMenuClient(this);
-    configuration.editorClient = new WebEditorClient(this);
+    configuration.editorClient = std::make_unique<WebEditorClient>(this);
     configuration.dragClient = new WebDragClient(this);
     configuration.inspectorClient = m_inspectorClient;
     configuration.loaderClientForMainFrame = new WebFrameLoaderClient;
@@ -2921,7 +2922,7 @@ HRESULT WebView::initWithFrame(RECT frame, _In_ BSTR frameName, _In_ BSTR groupN
     configuration.userContentProvider = &m_webViewGroup->userContentController();
     configuration.visitedLinkStore = &m_webViewGroup->visitedLinkStore();
 
-    m_page = new Page(configuration);
+    m_page = new Page(WTFMove(configuration));
     provideGeolocationTo(m_page, new WebGeolocationClient(this));
 
     unsigned layoutMilestones = DidFirstLayout | DidFirstVisuallyNonEmptyLayout;
@@ -5032,8 +5033,24 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         return hr;
     settings.setPluginsEnabled(!!enabled);
 
+    // FIXME: Add preferences for the runtime enabled features.
+
 #if ENABLE(INDEXED_DATABASE)
     RuntimeEnabledFeatures::sharedFeatures().setWebkitIndexedDBEnabled(true);
+#endif
+
+#if ENABLE(FETCH_API)
+    hr = prefsPrivate->fetchAPIEnabled(&enabled);
+    if (FAILED(hr))
+        return hr;
+    RuntimeEnabledFeatures::sharedFeatures().setFetchAPIEnabled(!!enabled);
+#endif
+
+#if ENABLE(SHADOW_DOM)
+    hr = prefsPrivate->shadowDOMEnabled(&enabled);
+    if (FAILED(hr))
+        return hr;
+    RuntimeEnabledFeatures::sharedFeatures().setShadowDOMEnabled(!!enabled);
 #endif
 
     hr = preferences->privateBrowsingEnabled(&enabled);
@@ -6770,7 +6787,16 @@ HRESULT WebView::removeUserStyleSheetsFromGroup(_In_ BSTR groupName, _In_opt_ IW
 
 HRESULT WebView::removeAllUserContentFromGroup(_In_ BSTR groupName)
 {
-    return E_NOTIMPL;
+    String group = toString(groupName);
+    if (group.isEmpty())
+        return E_FAIL;
+
+    auto viewGroup = WebViewGroup::get(group);
+    if (!viewGroup)
+        return S_OK;
+
+    viewGroup->userContentController().removeAllUserContent();
+    return S_OK;
 }
 
 HRESULT WebView::invalidateBackingStore(_In_ const RECT* rect)

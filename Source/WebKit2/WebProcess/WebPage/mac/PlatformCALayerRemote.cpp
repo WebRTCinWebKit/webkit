@@ -134,6 +134,9 @@ void PlatformCALayerRemote::updateClonedLayerProperties(PlatformCALayerRemote& c
     clone.setContentsScale(contentsScale());
     clone.setCornerRadius(cornerRadius());
 
+    if (!m_properties.shapePath.isNull())
+        clone.setShapePath(m_properties.shapePath);
+
     if (m_properties.shapeRoundedRect)
         clone.setShapeRoundedRect(*m_properties.shapeRoundedRect);
 
@@ -350,7 +353,7 @@ void PlatformCALayerRemote::addAnimationForKey(const String& key, PlatformCAAnim
 void PlatformCALayerRemote::removeAnimationForKey(const String& key)
 {
     if (m_animations.remove(key)) {
-        m_properties.addedAnimations.removeFirstMatching([&key] (const std::pair<String, PlatformCAAnimationRemote::Properties>& pair) {
+        m_properties.addedAnimations.removeFirstMatching([&key](auto& pair) {
             return pair.first == key;
         });
     }
@@ -522,6 +525,20 @@ void PlatformCALayerRemote::setContentsHidden(bool value)
 
     m_properties.contentsHidden = value;
     m_properties.notePropertiesChanged(RemoteLayerTreeTransaction::ContentsHiddenChanged);
+}
+
+bool PlatformCALayerRemote::userInteractionEnabled() const
+{
+    return m_properties.userInteractionEnabled;
+}
+
+void PlatformCALayerRemote::setUserInteractionEnabled(bool value)
+{
+    if (m_properties.userInteractionEnabled == value)
+        return;
+    
+    m_properties.userInteractionEnabled = value;
+    m_properties.notePropertiesChanged(RemoteLayerTreeTransaction::UserInteractionEnabledChanged);
 }
 
 void PlatformCALayerRemote::setBackingStoreAttached(bool value)

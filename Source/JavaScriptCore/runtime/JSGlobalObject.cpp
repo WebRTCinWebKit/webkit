@@ -239,7 +239,6 @@ const GlobalObjectMethodTable JSGlobalObject::s_globalObjectMethodTable = { &all
   Float64Array          JSGlobalObject::m_typedArrayFloat64          DontEnum|ClassStructure
   DataView              JSGlobalObject::m_typedArrayDataView         DontEnum|ClassStructure
   Set                   JSGlobalObject::m_setStructure               DontEnum|ClassStructure
-  Map                   JSGlobalObject::m_mapStructure               DontEnum|ClassStructure
   Date                  JSGlobalObject::m_dateStructure              DontEnum|ClassStructure
   Boolean               JSGlobalObject::m_booleanObjectStructure     DontEnum|ClassStructure
   Number                JSGlobalObject::m_numberObjectStructure      DontEnum|ClassStructure
@@ -320,6 +319,8 @@ void JSGlobalObject::init(VM& vm)
 {
     ASSERT(vm.currentThreadIsHoldingAPILock());
 
+    Base::setStructure(vm, Structure::toCacheableDictionaryTransition(vm, structure()));
+
     JSGlobalObject::globalExec()->init(0, 0, CallFrame::noCaller(), 0, 0);
 
     m_debugger = 0;
@@ -383,25 +384,9 @@ void JSGlobalObject::init(VM& vm)
             getterSetter->setSetter(init.vm, init.owner, thrower);
             init.set(getterSetter);
         });
-    m_throwTypeErrorCalleeAndCallerGetterSetter.initLater(
+    m_throwTypeErrorArgumentsCalleeAndCallerGetterSetter.initLater(
         [] (const Initializer<GetterSetter>& init) {
-            JSFunction* thrower = JSFunction::create(init.vm, init.owner, 0, String(), globalFuncThrowTypeErrorCalleeAndCaller);
-            GetterSetter* getterSetter = GetterSetter::create(init.vm, init.owner);
-            getterSetter->setGetter(init.vm, init.owner, thrower);
-            getterSetter->setSetter(init.vm, init.owner, thrower);
-            init.set(getterSetter);
-        });
-    m_throwTypeErrorArgumentsAndCallerInStrictModeGetterSetter.initLater(
-        [] (const Initializer<GetterSetter>& init) {
-            JSFunction* thrower = JSFunction::create(init.vm, init.owner, 0, String(), globalFuncThrowTypeErrorArgumentsAndCallerInStrictMode);
-            GetterSetter* getterSetter = GetterSetter::create(init.vm, init.owner);
-            getterSetter->setGetter(init.vm, init.owner, thrower);
-            getterSetter->setSetter(init.vm, init.owner, thrower);
-            init.set(getterSetter);
-        });
-    m_throwTypeErrorArgumentsAndCallerInClassContextGetterSetter.initLater(
-        [] (const Initializer<GetterSetter>& init) {
-            JSFunction* thrower = JSFunction::create(init.vm, init.owner, 0, String(), globalFuncThrowTypeErrorArgumentsAndCallerInClassContext);
+            JSFunction* thrower = JSFunction::create(init.vm, init.owner, 0, String(), globalFuncThrowTypeErrorArgumentsCalleeAndCaller);
             GetterSetter* getterSetter = GetterSetter::create(init.vm, init.owner);
             getterSetter->setGetter(init.vm, init.owner, thrower);
             getterSetter->setSetter(init.vm, init.owner, thrower);
@@ -872,7 +857,8 @@ void JSGlobalObject::addGlobalVar(const Identifier& ident)
 void JSGlobalObject::addFunction(ExecState* exec, const Identifier& propertyName)
 {
     VM& vm = exec->vm();
-    removeDirect(vm, propertyName); // Newly declared functions overwrite existing properties.
+    VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
+    methodTable(vm)->deleteProperty(this, exec, propertyName);
     addGlobalVar(propertyName);
 }
 
@@ -1073,9 +1059,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_newPromiseCapabilityFunction);
     visitor.append(&thisObject->m_functionProtoHasInstanceSymbolFunction);
     thisObject->m_throwTypeErrorGetterSetter.visit(visitor);
-    thisObject->m_throwTypeErrorCalleeAndCallerGetterSetter.visit(visitor);
-    thisObject->m_throwTypeErrorArgumentsAndCallerInStrictModeGetterSetter.visit(visitor);
-    thisObject->m_throwTypeErrorArgumentsAndCallerInClassContextGetterSetter.visit(visitor);
+    thisObject->m_throwTypeErrorArgumentsCalleeAndCallerGetterSetter.visit(visitor);
     visitor.append(&thisObject->m_moduleLoader);
 
     visitor.append(&thisObject->m_objectPrototype);
@@ -1194,10 +1178,9 @@ void JSGlobalObject::addStaticGlobals(GlobalPropertyInfo* globals, int count)
 
 bool JSGlobalObject::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
-    JSGlobalObject* thisObject = jsCast<JSGlobalObject*>(object);
-    if (getStaticPropertySlot<JSGlobalObject, Base>(exec, globalObjectTable, thisObject, propertyName, slot))
+    if (Base::getOwnPropertySlot(object, exec, propertyName, slot))
         return true;
-    return symbolTableGet(thisObject, propertyName, slot);
+    return symbolTableGet(jsCast<JSGlobalObject*>(object), propertyName, slot);
 }
 
 void JSGlobalObject::clearRareData(JSCell* cell)
@@ -1231,7 +1214,7 @@ UnlinkedProgramCodeBlock* JSGlobalObject::createProgramCodeBlock(CallFrame* call
     return unlinkedCodeBlock;
 }
 
-UnlinkedEvalCodeBlock* JSGlobalObject::createEvalCodeBlock(CallFrame* callFrame, EvalExecutable* executable, ThisTDZMode thisTDZMode, const VariableEnvironment* variablesUnderTDZ)
+UnlinkedEvalCodeBlock* JSGlobalObject::createEvalCodeBlock(CallFrame* callFrame, EvalExecutable* executable, const VariableEnvironment* variablesUnderTDZ)
 {
     ParserError error;
     JSParserStrictMode strictMode = executable->isStrictMode() ? JSParserStrictMode::Strict : JSParserStrictMode::NotStrict;
@@ -1239,7 +1222,7 @@ UnlinkedEvalCodeBlock* JSGlobalObject::createEvalCodeBlock(CallFrame* callFrame,
     EvalContextType evalContextType = executable->executableInfo().evalContextType();
     
     UnlinkedEvalCodeBlock* unlinkedCodeBlock = vm().codeCache()->getEvalCodeBlock(
-        vm(), executable, executable->source(), JSParserBuiltinMode::NotBuiltin, strictMode, thisTDZMode, debuggerMode, error, evalContextType, variablesUnderTDZ);
+        vm(), executable, executable->source(), JSParserBuiltinMode::NotBuiltin, strictMode, debuggerMode, error, evalContextType, variablesUnderTDZ);
 
     if (hasDebugger())
         debugger()->sourceParsed(callFrame, executable->source().provider(), error.line(), error.message());
@@ -1356,14 +1339,14 @@ const HashSet<String>& JSGlobalObject::intlNumberFormatAvailableLocales()
 }
 #endif // ENABLE(INTL)
 
-void JSGlobalObject::queueMicrotask(PassRefPtr<Microtask> task)
+void JSGlobalObject::queueMicrotask(Ref<Microtask>&& task)
 {
     if (globalObjectMethodTable()->queueTaskToEventLoop) {
-        globalObjectMethodTable()->queueTaskToEventLoop(this, task);
+        globalObjectMethodTable()->queueTaskToEventLoop(this, WTFMove(task));
         return;
     }
 
-    vm().queueMicrotask(this, task);
+    vm().queueMicrotask(this, WTFMove(task));
 }
 
 bool JSGlobalObject::hasDebugger() const

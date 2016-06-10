@@ -243,6 +243,8 @@ video::-webkit-media-controls-start-playback-button .webkit-media-controls-start
     background-repeat: no-repeat;
     background-position: 50% 50%;
     background-size: 100% 100%;
+    /* FIXME This is an ad-hoc fix until we fix the real compositing issue tracked by webkit.org/b/158147 */
+    will-change: opacity;
 }
 
 video::-webkit-media-controls-start-playback-button .webkit-media-controls-start-playback-glyph.active {
@@ -461,6 +463,7 @@ audio::-webkit-media-controls-time-remaining-display {
     height: 50px;
     font-size: 13px;
     font-family: -apple-system-monospaced-numbers;
+    -webkit-text-zoom: reset;
 }
 
 audio::-webkit-media-controls-current-time-display,

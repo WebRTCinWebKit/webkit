@@ -500,6 +500,8 @@ http/tests/navigation/redirect-to-random-url-versus-memory-cache.html
 http/tests/security/aboutBlank/xss-DENIED-navigate-opener-document-write.html
 http/tests/security/aboutBlank/xss-DENIED-navigate-opener-javascript-url.html
 http/tests/security/aboutBlank/xss-DENIED-set-opener.html
+http/tests/security/canvas-remote-read-remote-video-allowed-anonymous.html [ Failure ]
+http/tests/security/canvas-remote-read-remote-video-allowed-with-credentials.html [ Failure ]
 http/tests/security/cookies/third-party-cookie-blocking-user-action.html
 http/tests/security/isolatedWorld/cross-origin-xhr.html
 http/tests/security/isolatedWorld/userGestureEvents.html
@@ -1893,3 +1895,7 @@ webkit.org/b/156620 fast/animation/request-animation-frame-iframe2.html [ Pass F
 webkit.org/b/153049 perf/array-binary-search.html [ Pass Failure Timeout ]
 
 fast/scrolling/ios/scroll-events-back-forward-after-pageshow.html [ Pass Failure ]
+
+webkit.org/b/157589 fast/text-autosizing/ios/text-autosizing-after-back.html [ Pass Timeout ]
+
+webkit.org/b/157990 [ Release ] mathml/wbr-in-mroot-crash.html [ Pass Timeout ]

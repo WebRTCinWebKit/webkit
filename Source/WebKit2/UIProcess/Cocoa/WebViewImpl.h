@@ -80,6 +80,10 @@ OBJC_CLASS _WKThumbnailView;
 
 - (void)_web_didChangeContentSize:(NSSize)newSize;
 
+@optional
+- (void)_web_didAddMediaControlsManager:(id)controlsManager;
+- (void)_web_didRemoveMediaControlsManager;
+
 @end
 
 namespace WebCore {
@@ -478,6 +482,9 @@ public:
 
     bool windowIsFrontWindowUnderMouse(NSEvent *);
 
+    void setRequiresUserActionForEditingControlsManager(bool requiresUserActionForEditingControlsManager) { m_requiresUserActionForEditingControlsManager = requiresUserActionForEditingControlsManager; }
+    bool requiresUserActionForEditingControlsManager() const { return m_requiresUserActionForEditingControlsManager; }
+
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 
     void handleAcceptedCandidate(NSTextCheckingResult *acceptedCandidate);
 #if USE(APPLE_INTERNAL_SDK)
@@ -635,6 +642,7 @@ private:
 #endif
     NSRange m_softSpaceRange { NSNotFound, 0 };
     bool m_isHandlingAcceptedCandidate { false };
+    bool m_requiresUserActionForEditingControlsManager { false };
 };
     
 } // namespace WebKit

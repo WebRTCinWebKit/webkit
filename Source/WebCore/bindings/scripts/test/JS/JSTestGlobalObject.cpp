@@ -108,14 +108,6 @@ static const HashTableValue JSTestGlobalObjectPrototypeTableValues[] =
 static const HashTable JSTestGlobalObjectPrototypeTable = { 1, 1, true, JSTestGlobalObjectPrototypeTableValues, JSTestGlobalObjectPrototypeTableIndex };
 const ClassInfo JSTestGlobalObjectPrototype::s_info = { "TestGlobalObjectPrototype", &Base::s_info, &JSTestGlobalObjectPrototypeTable, CREATE_METHOD_TABLE(JSTestGlobalObjectPrototype) };
 
-bool JSTestGlobalObjectPrototype::getOwnPropertySlot(JSObject* object, ExecState* state, PropertyName propertyName, PropertySlot& slot)
-{
-    VM& vm = state->vm();
-    UNUSED_PARAM(vm);
-    auto* thisObject = jsCast<JSTestGlobalObjectPrototype*>(object);
-    return getStaticPropertySlot<JSTestGlobalObjectPrototype, JSObject>(state, JSTestGlobalObjectPrototypeTable, thisObject, propertyName, slot);
-}
-
 const ClassInfo JSTestGlobalObject::s_info = { "TestGlobalObject", &Base::s_info, &JSTestGlobalObjectTable, CREATE_METHOD_TABLE(JSTestGlobalObject) };
 
 JSTestGlobalObject::JSTestGlobalObject(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestGlobalObject>&& impl)
@@ -123,9 +115,9 @@ JSTestGlobalObject::JSTestGlobalObject(Structure* structure, JSDOMGlobalObject& 
 {
 }
 
-void JSTestGlobalObject::finishCreation(VM& vm)
+void JSTestGlobalObject::finishCreation(VM& vm, JSProxy* proxy)
 {
-    Base::finishCreation(vm);
+    Base::finishCreation(vm, proxy);
 
 #if ENABLE(TEST_FEATURE)
     if (RuntimeEnabledFeatures::sharedFeatures().testFeatureEnabled()) {
@@ -143,15 +135,6 @@ void JSTestGlobalObject::destroy(JSC::JSCell* cell)
 {
     JSTestGlobalObject* thisObject = static_cast<JSTestGlobalObject*>(cell);
     thisObject->JSTestGlobalObject::~JSTestGlobalObject();
-}
-
-bool JSTestGlobalObject::getOwnPropertySlot(JSObject* object, ExecState* state, PropertyName propertyName, PropertySlot& slot)
-{
-    auto* thisObject = jsCast<JSTestGlobalObject*>(object);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    if (getStaticPropertySlot<JSTestGlobalObject, Base>(state, JSTestGlobalObjectTable, thisObject, propertyName, slot))
-        return true;
-    return false;
 }
 
 EncodedJSValue jsTestGlobalObjectRegularAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)

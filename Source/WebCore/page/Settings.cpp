@@ -101,6 +101,7 @@ bool Settings::gShouldUseHighResolutionTimers = true;
 bool Settings::gShouldRespectPriorityInCSSAttributeSetters = false;
 bool Settings::gLowPowerVideoAudioBufferSizeEnabled = false;
 bool Settings::gResourceLoadStatisticsEnabledEnabled = false;
+bool Settings::gAllowsAnySSLCertificate = false;
 
 #if PLATFORM(IOS)
 bool Settings::gNetworkDataUsageTrackingEnabled = false;
@@ -208,6 +209,7 @@ Settings::Settings(Page* page)
     , m_hiddenPageDOMTimerThrottlingEnabled(false)
     , m_hiddenPageCSSAnimationSuspensionEnabled(false)
     , m_fontFallbackPrefersPictographs(false)
+    , m_webFontsAlwaysFallBack(false)
     , m_forcePendingWebGLPolicy(false)
 {
     // A Frame may not have been created yet, so we initialize the AtomicString
@@ -695,6 +697,14 @@ void Settings::setFontFallbackPrefersPictographs(bool preferPictographs)
         m_page->setNeedsRecalcStyleInAllFrames();
 }
 
+void Settings::setWebFontsAlwaysFallBack(bool enable)
+{
+    if (m_webFontsAlwaysFallBack == enable)
+        return;
+
+    m_webFontsAlwaysFallBack = enable;
+}
+
 void Settings::setLowPowerVideoAudioBufferSizeEnabled(bool flag)
 {
     gLowPowerVideoAudioBufferSizeEnabled = flag;
@@ -752,6 +762,16 @@ bool Settings::globalConstRedeclarationShouldThrow()
 #else
     return true;
 #endif
+}
+
+void Settings::setAllowsAnySSLCertificate(bool allowAnySSLCertificate)
+{
+    gAllowsAnySSLCertificate = allowAnySSLCertificate;
+}
+
+bool Settings::allowsAnySSLCertificate()
+{
+    return gAllowsAnySSLCertificate;
 }
 
 } // namespace WebCore

@@ -2714,7 +2714,7 @@ void WebPageProxy::getBytecodeProfile(std::function<void (const String&, Callbac
 void WebPageProxy::isWebProcessResponsive(std::function<void (bool isWebProcessResponsive)> callbackFunction)
 {
     if (!isValid()) {
-        RunLoop::main().dispatch([callbackFunction] {
+        RunLoop::main().dispatch([callbackFunction = WTFMove(callbackFunction)] {
             bool isWebProcessResponsive = true;
             callbackFunction(isWebProcessResponsive);
         });
@@ -4075,6 +4075,11 @@ void WebPageProxy::setAllowsMediaDocumentInlinePlayback(bool allows)
     m_process->send(Messages::WebPage::SetAllowsMediaDocumentInlinePlayback(allows), m_pageID);
 }
 #endif
+
+void WebPageProxy::setHasHadSelectionChangesFromUserInteraction(bool hasHadUserSelectionChanges)
+{
+    m_hasHadSelectionChangesFromUserInteraction = hasHadUserSelectionChanges;
+}
 
 // BackForwardList
 

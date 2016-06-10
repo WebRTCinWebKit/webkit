@@ -327,6 +327,7 @@ typedef const char* optionString;
     v(bool, useSamplingProfiler, false, Normal, nullptr) \
     v(unsigned, sampleInterval, 1000, Normal, "Time between stack traces in microseconds.") \
     v(bool, collectSamplingProfilerDataForJSCShell, false, Normal, "This corresponds to the JSC shell's --sample option.") \
+    v(optionString, samplingProfilerPath, nullptr, Normal, "The path to the directory to write sampiling profiler output to. This probably will not work with WK2 unless the path is in the whitelist.") \
     \
     v(bool, alwaysGeneratePCToCodeOriginMap, false, Normal, "This will make sure we always generate a PCToCodeOriginMap for JITed code.") \
     \
@@ -361,9 +362,14 @@ typedef const char* optionString;
     \
     v(bool, useICStats, false, Normal, nullptr) \
     \
+    v(unsigned, prototypeHitCountForLLIntCaching, 2, Normal, "Number of prototype property hits before caching a prototype in the LLInt. A count of 0 means never cache.") \
+    \
     v(bool, dumpModuleRecord, false, Normal, nullptr) \
     v(bool, dumpModuleLoadingState, false, Normal, nullptr) \
     v(bool, exposeInternalModuleLoader, false, Normal, "expose the internal module loader object to the global space for debugging") \
+    \
+    v(bool, dumpAirAsJSBeforeAllocateStack, false, Normal, nullptr) \
+    v(bool, dumpAirAfterAllocateStack, false, Normal, nullptr) \
     \
     v(bool, useSuperSampler, false, Normal, nullptr)
 

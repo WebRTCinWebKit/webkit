@@ -175,7 +175,7 @@ void CSSStyleSheet::didMutateRules(RuleMutationType mutationType, WhetherContent
     if (mutationType == RuleInsertion && !contentsWereClonedForMutation && !owner->authorStyleSheets().activeStyleSheetsContains(this)) {
         if (insertedKeyframesRule) {
             if (StyleResolver* resolver = owner->styleResolverIfExists())
-                resolver->addKeyframeStyle(insertedKeyframesRule);
+                resolver->addKeyframeStyle(*insertedKeyframesRule);
             return;
         }
         owner->scheduleOptimizedStyleSheetUpdate();
@@ -222,16 +222,12 @@ void CSSStyleSheet::setDisabled(bool disabled)
     didMutate();
 }
 
-void CSSStyleSheet::setMediaQueries(PassRefPtr<MediaQuerySet> mediaQueries)
+void CSSStyleSheet::setMediaQueries(Ref<MediaQuerySet>&& mediaQueries)
 {
-    m_mediaQueries = mediaQueries;
+    m_mediaQueries = WTFMove(mediaQueries);
     if (m_mediaCSSOMWrapper && m_mediaQueries)
         m_mediaCSSOMWrapper->reattach(m_mediaQueries.get());
-
-#if ENABLE(RESOLUTION_MEDIA_QUERY)
-    // Add warning message to inspector whenever dpi/dpcm values are used for "screen" media.
     reportMediaQueryWarningIfNeeded(ownerDocument(), m_mediaQueries.get());
-#endif
 }
 
 unsigned CSSStyleSheet::length() const
@@ -310,7 +306,7 @@ unsigned CSSStyleSheet::insertRule(const String& ruleString, unsigned index, Exc
 
     RuleMutationScope mutationScope(this, RuleInsertion, is<StyleRuleKeyframes>(*rule) ? downcast<StyleRuleKeyframes>(rule.get()) : nullptr);
 
-    bool success = m_contents.get().wrapperInsertRule(rule, index);
+    bool success = m_contents.get().wrapperInsertRule(rule.releaseNonNull(), index);
     if (!success) {
         ec = HIERARCHY_REQUEST_ERR;
         return 0;
@@ -336,7 +332,7 @@ void CSSStyleSheet::deleteRule(unsigned index, ExceptionCode& ec)
 
     if (!m_childRuleCSSOMWrappers.isEmpty()) {
         if (m_childRuleCSSOMWrappers[index])
-            m_childRuleCSSOMWrappers[index]->setParentStyleSheet(0);
+            m_childRuleCSSOMWrappers[index]->setParentStyleSheet(nullptr);
         m_childRuleCSSOMWrappers.remove(index);
     }
 }
@@ -381,9 +377,9 @@ bool CSSStyleSheet::isLoading() const
 }
 
 MediaList* CSSStyleSheet::media() const 
-{ 
+{
     if (!m_mediaQueries)
-        return 0;
+        return nullptr;
 
     if (!m_mediaCSSOMWrapper)
         m_mediaCSSOMWrapper = MediaList::create(m_mediaQueries.get(), const_cast<CSSStyleSheet*>(this));
@@ -392,7 +388,7 @@ MediaList* CSSStyleSheet::media() const
 
 CSSStyleSheet* CSSStyleSheet::parentStyleSheet() const 
 { 
-    return m_ownerRule ? m_ownerRule->parentStyleSheet() : 0; 
+    return m_ownerRule ? m_ownerRule->parentStyleSheet() : nullptr;
 }
 
 Document* CSSStyleSheet::ownerDocument() const
@@ -400,7 +396,7 @@ Document* CSSStyleSheet::ownerDocument() const
     const CSSStyleSheet* root = this;
     while (root->parentStyleSheet())
         root = root->parentStyleSheet();
-    return root->ownerNode() ? &root->ownerNode()->document() : 0;
+    return root->ownerNode() ? &root->ownerNode()->document() : nullptr;
 }
 
 void CSSStyleSheet::clearChildRuleCSSOMWrappers()
@@ -418,7 +414,7 @@ CSSStyleSheet::RuleMutationScope::RuleMutationScope(CSSStyleSheet* sheet, RuleMu
 }
 
 CSSStyleSheet::RuleMutationScope::RuleMutationScope(CSSRule* rule)
-    : m_styleSheet(rule ? rule->parentStyleSheet() : 0)
+    : m_styleSheet(rule ? rule->parentStyleSheet() : nullptr)
     , m_mutationType(OtherMutation)
     , m_contentsWereClonedForMutation(ContentsWereNotClonedForMutation)
     , m_insertedKeyframesRule(nullptr)

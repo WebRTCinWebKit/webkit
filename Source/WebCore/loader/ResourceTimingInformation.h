@@ -41,13 +41,15 @@ class Frame;
 class ResourceTimingInformation {
 public:
 
-    void addResourceTiming(CachedResource*, Document*);
+    void addResourceTiming(CachedResource*, Document&);
     void storeResourceTimingInitiatorInformation(const CachedResourceHandle<CachedResource>&, const CachedResourceRequest&, Frame*);
 
 private:
+    enum AlreadyAdded { NotYetAdded, Added };
     struct InitiatorInfo {
         AtomicString name;
         double startTime;
+        AlreadyAdded added;
     };
     HashMap<CachedResource*, InitiatorInfo> m_initiatorMap;
 };

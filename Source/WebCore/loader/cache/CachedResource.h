@@ -199,7 +199,8 @@ public:
     virtual void redirectReceived(ResourceRequest&, const ResourceResponse&);
     virtual void responseReceived(const ResourceResponse&);
     virtual bool shouldCacheResponse(const ResourceResponse&) { return true; }
-    void setResponse(const ResourceResponse& response) { m_response = response; }
+    void setResponse(const ResourceResponse&);
+    void setOpaqueRedirect() { m_responseType = ResourceResponseBase::Type::Opaqueredirect; }
     const ResourceResponse& response() const { return m_response; }
     // This is the same as response() except after HTTP redirect to data: URL.
     const ResourceResponse& responseForSameOriginPolicyChecks() const;
@@ -241,6 +242,8 @@ public:
     virtual RevalidationDecision makeRevalidationDecision(CachePolicy) const;
     bool redirectChainAllowsReuse(ReuseExpiredRedirectionOrNot) const;
 
+    bool varyHeaderValuesMatch(const ResourceRequest&, const CachedResourceLoader&);
+
     bool isCacheValidator() const { return m_resourceToRevalidate; }
     CachedResource* resourceToRevalidate() const { return m_resourceToRevalidate; }
     
@@ -281,6 +284,7 @@ protected:
     RefPtr<SubresourceLoader> m_loader;
     ResourceLoaderOptions m_options;
     ResourceResponse m_response;
+    ResourceResponseBase::Type m_responseType { ResourceResponseBase::Type::Basic };
     ResourceResponse m_redirectResponseForSameOriginPolicyChecks;
     RefPtr<SharedBuffer> m_data;
     DeferrableOneShotTimer m_decodedDataDeletionTimer;
@@ -351,6 +355,8 @@ private:
     HashSet<CachedResourceHandleBase*> m_handlesToRevalidate;
 
     RedirectChainCacheStatus m_redirectChainCacheStatus;
+
+    Vector<std::pair<String, String>> m_varyingHeaderValues;
 
     unsigned long m_identifierForLoadWithoutResourceLoader { 0 };
 };

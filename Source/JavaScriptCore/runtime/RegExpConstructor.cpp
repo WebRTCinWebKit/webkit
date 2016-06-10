@@ -37,15 +37,8 @@ static EncodedJSValue regExpConstructorLastMatch(ExecState*, EncodedJSValue, Pro
 static EncodedJSValue regExpConstructorLastParen(ExecState*, EncodedJSValue, PropertyName);
 static EncodedJSValue regExpConstructorLeftContext(ExecState*, EncodedJSValue, PropertyName);
 static EncodedJSValue regExpConstructorRightContext(ExecState*, EncodedJSValue, PropertyName);
-static EncodedJSValue regExpConstructorDollar1(ExecState*, EncodedJSValue, PropertyName);
-static EncodedJSValue regExpConstructorDollar2(ExecState*, EncodedJSValue, PropertyName);
-static EncodedJSValue regExpConstructorDollar3(ExecState*, EncodedJSValue, PropertyName);
-static EncodedJSValue regExpConstructorDollar4(ExecState*, EncodedJSValue, PropertyName);
-static EncodedJSValue regExpConstructorDollar5(ExecState*, EncodedJSValue, PropertyName);
-static EncodedJSValue regExpConstructorDollar6(ExecState*, EncodedJSValue, PropertyName);
-static EncodedJSValue regExpConstructorDollar7(ExecState*, EncodedJSValue, PropertyName);
-static EncodedJSValue regExpConstructorDollar8(ExecState*, EncodedJSValue, PropertyName);
-static EncodedJSValue regExpConstructorDollar9(ExecState*, EncodedJSValue, PropertyName);
+template<int N>
+static EncodedJSValue regExpConstructorDollar(ExecState*, EncodedJSValue, PropertyName);
 
 static bool setRegExpConstructorInput(ExecState*, EncodedJSValue, EncodedJSValue);
 static bool setRegExpConstructorMultiline(ExecState*, EncodedJSValue, EncodedJSValue);
@@ -72,15 +65,15 @@ const ClassInfo RegExpConstructor::s_info = { "Function", &InternalFunction::s_i
     $`              regExpConstructorLeftContext    DontDelete|ReadOnly|DontEnum
     rightContext    regExpConstructorRightContext   DontDelete|ReadOnly
     $'              regExpConstructorRightContext   DontDelete|ReadOnly|DontEnum
-    $1              regExpConstructorDollar1        DontDelete|ReadOnly
-    $2              regExpConstructorDollar2        DontDelete|ReadOnly
-    $3              regExpConstructorDollar3        DontDelete|ReadOnly
-    $4              regExpConstructorDollar4        DontDelete|ReadOnly
-    $5              regExpConstructorDollar5        DontDelete|ReadOnly
-    $6              regExpConstructorDollar6        DontDelete|ReadOnly
-    $7              regExpConstructorDollar7        DontDelete|ReadOnly
-    $8              regExpConstructorDollar8        DontDelete|ReadOnly
-    $9              regExpConstructorDollar9        DontDelete|ReadOnly
+    $1              regExpConstructorDollar<1>      DontDelete|ReadOnly
+    $2              regExpConstructorDollar<2>      DontDelete|ReadOnly
+    $3              regExpConstructorDollar<3>      DontDelete|ReadOnly
+    $4              regExpConstructorDollar<4>      DontDelete|ReadOnly
+    $5              regExpConstructorDollar<5>      DontDelete|ReadOnly
+    $6              regExpConstructorDollar<6>      DontDelete|ReadOnly
+    $7              regExpConstructorDollar<7>      DontDelete|ReadOnly
+    $8              regExpConstructorDollar<8>      DontDelete|ReadOnly
+    $9              regExpConstructorDollar<9>      DontDelete|ReadOnly
 @end
 */
 
@@ -152,55 +145,11 @@ JSValue RegExpConstructor::getRightContext(ExecState* exec)
 {
     return m_cachedResult.rightContext(exec, this);
 }
-    
-bool RegExpConstructor::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
-{
-    return getStaticValueSlot<RegExpConstructor, InternalFunction>(exec, regExpConstructorTable, jsCast<RegExpConstructor*>(object), propertyName, slot);
-}
-    
-EncodedJSValue regExpConstructorDollar1(ExecState* exec, EncodedJSValue thisValue, PropertyName)
-{
-    return JSValue::encode(asRegExpConstructor(JSValue::decode(thisValue))->getBackref(exec, 1));
-}
 
-EncodedJSValue regExpConstructorDollar2(ExecState* exec, EncodedJSValue thisValue, PropertyName)
+template<int N>
+EncodedJSValue regExpConstructorDollar(ExecState* exec, EncodedJSValue thisValue, PropertyName)
 {
-    return JSValue::encode(asRegExpConstructor(JSValue::decode(thisValue))->getBackref(exec, 2));
-}
-
-EncodedJSValue regExpConstructorDollar3(ExecState* exec, EncodedJSValue thisValue, PropertyName)
-{
-    return JSValue::encode(asRegExpConstructor(JSValue::decode(thisValue))->getBackref(exec, 3));
-}
-
-EncodedJSValue regExpConstructorDollar4(ExecState* exec, EncodedJSValue thisValue, PropertyName)
-{
-    return JSValue::encode(asRegExpConstructor(JSValue::decode(thisValue))->getBackref(exec, 4));
-}
-
-EncodedJSValue regExpConstructorDollar5(ExecState* exec, EncodedJSValue thisValue, PropertyName)
-{
-    return JSValue::encode(asRegExpConstructor(JSValue::decode(thisValue))->getBackref(exec, 5));
-}
-
-EncodedJSValue regExpConstructorDollar6(ExecState* exec, EncodedJSValue thisValue, PropertyName)
-{
-    return JSValue::encode(asRegExpConstructor(JSValue::decode(thisValue))->getBackref(exec, 6));
-}
-
-EncodedJSValue regExpConstructorDollar7(ExecState* exec, EncodedJSValue thisValue, PropertyName)
-{
-    return JSValue::encode(asRegExpConstructor(JSValue::decode(thisValue))->getBackref(exec, 7));
-}
-
-EncodedJSValue regExpConstructorDollar8(ExecState* exec, EncodedJSValue thisValue, PropertyName)
-{
-    return JSValue::encode(asRegExpConstructor(JSValue::decode(thisValue))->getBackref(exec, 8));
-}
-
-EncodedJSValue regExpConstructorDollar9(ExecState* exec, EncodedJSValue thisValue, PropertyName)
-{
-    return JSValue::encode(asRegExpConstructor(JSValue::decode(thisValue))->getBackref(exec, 9));
+    return JSValue::encode(asRegExpConstructor(JSValue::decode(thisValue))->getBackref(exec, N));
 }
 
 EncodedJSValue regExpConstructorInput(ExecState*, EncodedJSValue thisValue, PropertyName)

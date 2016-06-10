@@ -326,6 +326,9 @@ PassRefPtr<PlatformCALayer> PlatformCALayerCocoa::clone(PlatformCALayerClient* o
     case LayerTypeShapeLayer:
         type = LayerTypeShapeLayer;
         break;
+    case LayerTypeBackdropLayer:
+        type = LayerTypeBackdropLayer;
+        break;
     case LayerTypeLayer:
     default:
         type = LayerTypeLayer;
@@ -622,6 +625,15 @@ bool PlatformCALayerCocoa::contentsHidden() const
 }
 
 void PlatformCALayerCocoa::setContentsHidden(bool)
+{
+}
+
+bool PlatformCALayerCocoa::userInteractionEnabled() const
+{
+    return true;
+}
+
+void PlatformCALayerCocoa::setUserInteractionEnabled(bool)
 {
 }
 

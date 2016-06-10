@@ -2463,6 +2463,8 @@ DeserializationResult CloneDeserializer::deserialize()
                 goto error;
             }
             JSArray* outArray = constructEmptyArray(m_exec, 0, m_globalObject, length);
+            if (UNLIKELY(m_exec->hadException()))
+                goto error;
             m_gcBuffer.append(outArray);
             outputObjectStack.append(outArray);
         }
@@ -2796,13 +2798,13 @@ Vector<String> SerializedScriptValue::blobURLsIsolatedCopy() const
     return result;
 }
 
-void SerializedScriptValue::writeBlobsToDiskForIndexedDB(std::function<void (const IDBValue&)> completionHandler)
+void SerializedScriptValue::writeBlobsToDiskForIndexedDB(NoncopyableFunction<void (const IDBValue&)>&& completionHandler)
 {
     ASSERT(isMainThread());
     ASSERT(hasBlobURLs());
 
     RefPtr<SerializedScriptValue> protectedThis(this);
-    blobRegistry().writeBlobsToTemporaryFiles(m_blobURLs, [completionHandler, this, protectedThis](const Vector<String>& blobFilePaths) {
+    blobRegistry().writeBlobsToTemporaryFiles(m_blobURLs, [completionHandler = WTFMove(completionHandler), this, protectedThis = WTFMove(protectedThis)](auto& blobFilePaths) {
         ASSERT(isMainThread());
 
         if (blobFilePaths.isEmpty()) {
@@ -2823,14 +2825,11 @@ IDBValue SerializedScriptValue::writeBlobsToDiskForIndexedDBSynchronously()
     ASSERT(!isMainThread());
 
     IDBValue value;
-    IDBValue* valuePtr = &value;
-
     Lock lock;
     Condition condition;
-    Condition* conditionPtr = &condition;
     lock.lock();
 
-    RunLoop::main().dispatch([this, conditionPtr, valuePtr] {
+    RunLoop::main().dispatch([this, conditionPtr = &condition, valuePtr = &value] {
         writeBlobsToDiskForIndexedDB([conditionPtr, valuePtr](const IDBValue& result) {
             ASSERT(isMainThread());
             valuePtr->setAsIsolatedCopy(result);

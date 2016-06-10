@@ -53,25 +53,16 @@
 #include <wtf/Ref.h>
 
 #if ENABLE(CONTENT_EXTENSIONS)
-#include "ResourceLoadInfo.h"
 #include "UserContentController.h"
 #endif
 
 namespace WebCore {
 
-ResourceLoader::ResourceLoader(Frame* frame, ResourceLoaderOptions options)
-    : m_frame(frame)
-    , m_documentLoader(frame->loader().activeDocumentLoader())
-    , m_identifier(0)
-    , m_reachedTerminalState(false)
-    , m_notifiedLoadComplete(false)
-    , m_cancellationStatus(NotCancelled)
-    , m_defersLoading(options.defersLoadingPolicy() == DefersLoadingPolicy::AllowDefersLoading && frame->page()->defersLoading())
+ResourceLoader::ResourceLoader(Frame& frame, ResourceLoaderOptions options)
+    : m_frame(&frame)
+    , m_documentLoader(frame.loader().activeDocumentLoader())
+    , m_defersLoading(options.defersLoadingPolicy() == DefersLoadingPolicy::AllowDefersLoading && frame.page()->defersLoading())
     , m_options(options)
-    , m_isQuickLookResource(false)
-#if ENABLE(CONTENT_EXTENSIONS)
-    , m_resourceType(ResourceType::Invalid)
-#endif
 {
 }
 
@@ -179,7 +170,7 @@ void ResourceLoader::deliverResponseAndData(const ResourceResponse& response, Re
 
     if (buffer) {
         unsigned size = buffer->size();
-        didReceiveBuffer(buffer.release(), size, DataPayloadWholeResource);
+        didReceiveBuffer(buffer.releaseNonNull(), size, DataPayloadWholeResource);
         if (reachedTerminalState())
             return;
     }
@@ -195,11 +186,11 @@ void ResourceLoader::start()
     ASSERT(frameLoader());
 
 #if ENABLE(WEB_ARCHIVE) || ENABLE(MHTML)
-    if (m_documentLoader->scheduleArchiveLoad(this, m_request))
+    if (m_documentLoader->scheduleArchiveLoad(*this, m_request))
         return;
 #endif
 
-    if (m_documentLoader->applicationCacheHost()->maybeLoadResource(this, m_request, m_request.url()))
+    if (m_documentLoader->applicationCacheHost()->maybeLoadResource(*this, m_request, m_request.url()))
         return;
 
     if (m_defersLoading) {
@@ -253,7 +244,7 @@ void ResourceLoader::loadDataURL()
     if (auto* scheduledPairs = m_frame->page()->scheduledRunLoopPairs())
         scheduleContext.scheduledPairs = *scheduledPairs;
 #endif
-    DataURLDecoder::decode(url, scheduleContext, [protectedThis, url] (Optional<DataURLDecoder::Result> decodeResult) {
+    DataURLDecoder::decode(url, scheduleContext, [protectedThis, url](auto decodeResult) {
         if (protectedThis->reachedTerminalState())
             return;
         if (!decodeResult) {
@@ -263,13 +254,13 @@ void ResourceLoader::loadDataURL()
         if (protectedThis->wasCancelled())
             return;
         auto& result = decodeResult.value();
-        auto dataSize = result.data->size();
+        auto dataSize = result.data ? result.data->size() : 0;
 
         ResourceResponse dataResponse { url, result.mimeType, dataSize, result.charset };
         protectedThis->didReceiveResponse(dataResponse);
 
         if (!protectedThis->reachedTerminalState() && dataSize)
-            protectedThis->didReceiveBuffer(result.data.get(), dataSize, DataPayloadWholeResource);
+            protectedThis->didReceiveBuffer(result.data.releaseNonNull(), dataSize, DataPayloadWholeResource);
 
         if (!protectedThis->reachedTerminalState())
             protectedThis->didFinishLoading(currentTime());
@@ -298,19 +289,18 @@ void ResourceLoader::addDataOrBuffer(const char* data, unsigned length, SharedBu
     if (m_options.dataBufferingPolicy() == DoNotBufferData)
         return;
 
-    if (dataPayloadType == DataPayloadWholeResource) {
-        m_resourceData = buffer ? buffer : SharedBuffer::create(data, length);
+    if (!m_resourceData || dataPayloadType == DataPayloadWholeResource) {
+        if (buffer)
+            m_resourceData = buffer;
+        else
+            m_resourceData = SharedBuffer::create(data, length);
         return;
     }
-        
-    if (!m_resourceData)
-        m_resourceData = buffer ? buffer : SharedBuffer::create(data, length);
-    else {
-        if (buffer)
-            m_resourceData->append(buffer);
-        else
-            m_resourceData->append(data, length);
-    }
+    
+    if (buffer)
+        m_resourceData->append(*buffer);
+    else
+        m_resourceData->append(data, length);
 }
 
 void ResourceLoader::clearResourceData()
@@ -442,6 +432,25 @@ void ResourceLoader::didReceiveResponse(const ResourceResponse& r)
     m_response = r;
 
     if (m_response.isHttpVersion0_9()) {
+        auto url = m_response.url();
+        // Non-HTTP responses are interpreted as HTTP/0.9 which may allow exfiltration of data
+        // from non-HTTP services. Therefore cancel if the document was loaded with different
+        // HTTP version or if the resource request was to a non-default port.
+        if (!m_documentLoader->response().isHttpVersion0_9()) {
+            String message = "Cancelled resource load from '" + url.string() + "' because it is using HTTP/0.9 and the document was loaded with a different HTTP version.";
+            m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier());
+            ResourceError error("", 0, url, message);
+            didFail(error);
+            return;
+        }
+        if (!isDefaultPortForProtocol(url.port(), url.protocol())) {
+            String message = "Cancelled resource load from '" + url.string() + "' because it is using HTTP/0.9 on a non-default port.";
+            m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier());
+            ResourceError error("", 0, url, message);
+            didFail(error);
+            return;
+        }
+            
         String message = "Sandboxing '" + m_response.url().string() + "' because it is using HTTP/0.9.";
         m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, m_identifier);
         frameLoader()->forceSandboxFlags(SandboxScripts | SandboxPlugins);
@@ -462,23 +471,22 @@ void ResourceLoader::didReceiveData(const char* data, unsigned length, long long
     // ASSERT(con == connection);
     // ASSERT(!m_reachedTerminalState);
 
-    didReceiveDataOrBuffer(data, length, 0, encodedDataLength, dataPayloadType);
+    didReceiveDataOrBuffer(data, length, nullptr, encodedDataLength, dataPayloadType);
 }
 
-void ResourceLoader::didReceiveBuffer(PassRefPtr<SharedBuffer> buffer, long long encodedDataLength, DataPayloadType dataPayloadType)
+void ResourceLoader::didReceiveBuffer(Ref<SharedBuffer>&& buffer, long long encodedDataLength, DataPayloadType dataPayloadType)
 {
-    didReceiveDataOrBuffer(0, 0, buffer, encodedDataLength, dataPayloadType);
+    didReceiveDataOrBuffer(nullptr, 0, WTFMove(buffer), encodedDataLength, dataPayloadType);
 }
 
-void ResourceLoader::didReceiveDataOrBuffer(const char* data, unsigned length, PassRefPtr<SharedBuffer> prpBuffer, long long encodedDataLength, DataPayloadType dataPayloadType)
+void ResourceLoader::didReceiveDataOrBuffer(const char* data, unsigned length, RefPtr<SharedBuffer>&& buffer, long long encodedDataLength, DataPayloadType dataPayloadType)
 {
     // This method should only get data+length *OR* a SharedBuffer.
-    ASSERT(!prpBuffer || (!data && !length));
+    ASSERT(!buffer || (!data && !length));
 
     // Protect this in this delegate method since the additional processing can do
     // anything including possibly derefing this; one example of this is Radar 3266216.
     Ref<ResourceLoader> protectedThis(*this);
-    RefPtr<SharedBuffer> buffer = prpBuffer;
 
     addDataOrBuffer(data, length, buffer.get(), dataPayloadType);
     
@@ -616,11 +624,12 @@ ResourceError ResourceLoader::cannotShowURLError()
     return frameLoader()->client().cannotShowURLError(m_request);
 }
 
-void ResourceLoader::willSendRequest(ResourceHandle*, ResourceRequest& request, const ResourceResponse& redirectResponse)
+ResourceRequest ResourceLoader::willSendRequest(ResourceHandle*, ResourceRequest&& request, ResourceResponse&& redirectResponse)
 {
     if (documentLoader()->applicationCacheHost()->maybeLoadFallbackForRedirect(this, request, redirectResponse))
-        return;
+        return WTFMove(request);
     willSendRequestInternal(request, redirectResponse);
+    return WTFMove(request);
 }
 
 void ResourceLoader::didSendData(ResourceHandle*, unsigned long long bytesSent, unsigned long long totalBytesToBeSent)
@@ -640,9 +649,9 @@ void ResourceLoader::didReceiveData(ResourceHandle*, const char* data, unsigned 
     didReceiveData(data, length, encodedDataLength, DataPayloadBytes);
 }
 
-void ResourceLoader::didReceiveBuffer(ResourceHandle*, PassRefPtr<SharedBuffer> buffer, int encodedDataLength)
+void ResourceLoader::didReceiveBuffer(ResourceHandle*, Ref<SharedBuffer>&& buffer, int encodedDataLength)
 {
-    didReceiveBuffer(buffer, encodedDataLength, DataPayloadBytes);
+    didReceiveBuffer(WTFMove(buffer), encodedDataLength, DataPayloadBytes);
 }
 
 void ResourceLoader::didFinishLoading(ResourceHandle*, double finishTime)

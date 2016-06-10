@@ -386,14 +386,14 @@ LayoutRect RenderTableCell::clippedOverflowRectForRepaint(const RenderLayerModel
     return computeRectForRepaint(r, repaintContainer);
 }
 
-LayoutRect RenderTableCell::computeRectForRepaint(const LayoutRect& r, const RenderLayerModelObject* repaintContainer, bool fixed) const
+LayoutRect RenderTableCell::computeRectForRepaint(const LayoutRect& rect, const RenderLayerModelObject* repaintContainer, RepaintContext context) const
 {
     if (repaintContainer == this)
-        return r;
-    LayoutRect adjustedRect = r;
+        return rect;
+    LayoutRect adjustedRect = rect;
     if ((!view().layoutStateEnabled() || repaintContainer) && parent())
         adjustedRect.moveBy(-parentBox()->location()); // Rows are in the same coordinate space, so don't add their offset in.
-    return RenderBlockFlow::computeRectForRepaint(adjustedRect, repaintContainer, fixed);
+    return RenderBlockFlow::computeRectForRepaint(adjustedRect, repaintContainer, context);
 }
 
 LayoutUnit RenderTableCell::cellBaselinePosition() const
@@ -402,6 +402,13 @@ LayoutUnit RenderTableCell::cellBaselinePosition() const
     // the first in-flow line box in the cell, or the first in-flow table-row in the cell, whichever comes first. If there
     // is no such line box or table-row, the baseline is the bottom of content edge of the cell box.
     return firstLineBaseline().valueOr(borderAndPaddingBefore() + contentLogicalHeight());
+}
+
+static inline void markCellDirtyWhenCollapsedBorderChanges(RenderTableCell* cell)
+{
+    if (!cell)
+        return;
+    cell->setNeedsLayoutAndPrefWidthsRecalc();
 }
 
 void RenderTableCell::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
@@ -422,8 +429,15 @@ void RenderTableCell::styleDidChange(StyleDifference diff, const RenderStyle* ol
 
     // If border was changed, notify table.
     RenderTable* table = this->table();
-    if (table && oldStyle && oldStyle->border() != style().border())
+    if (table && oldStyle && oldStyle->border() != style().border()) {
         table->invalidateCollapsedBorders(this);
+        if (table->collapseBorders() && diff == StyleDifferenceLayout) {
+            markCellDirtyWhenCollapsedBorderChanges(table->cellBelow(this));
+            markCellDirtyWhenCollapsedBorderChanges(table->cellAbove(this));
+            markCellDirtyWhenCollapsedBorderChanges(table->cellBefore(this));
+            markCellDirtyWhenCollapsedBorderChanges(table->cellAfter(this));
+        }
+    }
 }
 
 // The following rules apply for resolving conflicts and figuring out which border

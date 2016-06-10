@@ -26,6 +26,7 @@
 
 #pragma once
 
+#include "Base64Utilities.h"
 #include "EventListener.h"
 #include "EventTarget.h"
 #include "ScriptExecutionContext.h"
@@ -57,7 +58,7 @@ namespace IDBClient {
 class IDBConnectionProxy;
 }
 
-class WorkerGlobalScope : public RefCounted<WorkerGlobalScope>, public Supplementable<WorkerGlobalScope>, public ScriptExecutionContext, public EventTargetWithInlineData {
+class WorkerGlobalScope : public RefCounted<WorkerGlobalScope>, public Supplementable<WorkerGlobalScope>, public ScriptExecutionContext, public EventTargetWithInlineData, public Base64Utilities {
 public:
     virtual ~WorkerGlobalScope();
 
@@ -76,6 +77,7 @@ public:
 
 #if ENABLE(INDEXED_DATABASE)
     IDBClient::IDBConnectionProxy* idbConnectionProxy() final;
+    void stopIndexedDatabase();
 #endif
 
     bool shouldBypassMainWorldContentSecurityPolicy() const final { return m_shouldBypassMainWorldContentSecurityPolicy; }
@@ -87,7 +89,7 @@ public:
 
     using ScriptExecutionContext::hasPendingActivity;
 
-    void postTask(Task) override; // Executes the task on context's thread asynchronously.
+    void postTask(Task&&) final; // Executes the task on context's thread asynchronously.
 
     // WorkerGlobalScope
     WorkerGlobalScope& self() { return *this; }

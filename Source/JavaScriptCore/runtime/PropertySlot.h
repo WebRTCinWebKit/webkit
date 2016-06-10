@@ -94,6 +94,8 @@ public:
     {
     }
 
+    // FIXME: Remove this slotBase / receiver behavior difference in custom values and custom accessors.
+    // https://bugs.webkit.org/show_bug.cgi?id=158014
     typedef EncodedJSValue (*GetValueFunc)(ExecState*, EncodedJSValue thisValue, PropertyName);
 
     JSValue getValue(ExecState*, PropertyName) const;
@@ -242,6 +244,11 @@ public:
         m_slotBase = slotBase;
         m_propertyType = TypeGetter;
         m_offset = offset;
+    }
+
+    JSValue thisValue() const
+    {
+        return m_thisValue;
     }
 
     void setThisValue(JSValue thisValue)

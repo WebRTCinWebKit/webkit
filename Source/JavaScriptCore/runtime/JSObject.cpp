@@ -319,10 +319,11 @@ String JSObject::calculatedClassName(JSObject* object)
             if (constructorValue.isCell()) {
                 if (JSCell* constructorCell = constructorValue.asCell()) {
                     if (JSObject* ctorObject = constructorCell->getObject()) {
+                        VM& vm = exec->vm();
                         if (JSFunction* constructorFunction = jsDynamicCast<JSFunction*>(ctorObject))
-                            prototypeFunctionName = constructorFunction->calculatedDisplayName(exec);
+                            prototypeFunctionName = constructorFunction->calculatedDisplayName(vm);
                         else if (InternalFunction* constructorFunction = jsDynamicCast<InternalFunction*>(ctorObject))
-                            prototypeFunctionName = constructorFunction->calculatedDisplayName(exec);
+                            prototypeFunctionName = constructorFunction->calculatedDisplayName(vm);
                     }
                 }
             }
@@ -567,7 +568,7 @@ bool JSObject::putInlineSlow(ExecState* exec, PropertyName propertyName, JSValue
             // prototypes it should be replaced, so break here.
             break;
         }
-        if (!obj->staticFunctionsReified()) {
+        if (!obj->staticPropertiesReified()) {
             if (obj->classInfo()->hasStaticSetterOrReadonlyProperties()) {
                 if (auto* entry = obj->findPropertyHashEntry(propertyName))
                     return putEntry(exec, entry, obj, this, propertyName, value, slot);
@@ -1495,14 +1496,36 @@ bool JSObject::deleteProperty(JSCell* cell, ExecState* exec, PropertyName proper
     if (Optional<uint32_t> index = parseIndex(propertyName))
         return thisObject->methodTable(vm)->deletePropertyByIndex(thisObject, exec, index.value());
 
-    if (!thisObject->staticFunctionsReified())
-        thisObject->reifyAllStaticProperties(exec);
-
     unsigned attributes;
-    if (isValidOffset(thisObject->structure(vm)->get(vm, propertyName, attributes))) {
-        if (attributes & DontDelete && !vm.isInDefineOwnProperty())
+
+    if (!thisObject->staticPropertiesReified()) {
+        if (auto* entry = thisObject->findPropertyHashEntry(propertyName)) {
+            // If the static table contains a non-configurable (DontDelete) property then we can return early;
+            // if there is a property in the storage array it too must be non-configurable (the language does
+            // not allow repacement of a non-configurable property with a configurable one).
+            if (entry->attributes() & DontDelete && vm.deletePropertyMode() != VM::DeletePropertyMode::IgnoreConfigurable) {
+                ASSERT(!isValidOffset(thisObject->structure(vm)->get(vm, propertyName, attributes)) || attributes & DontDelete);
+                return false;
+            }
+            thisObject->reifyAllStaticProperties(exec);
+        }
+    }
+
+    Structure* structure = thisObject->structure(vm);
+
+    bool propertyIsPresent = isValidOffset(structure->get(vm, propertyName, attributes));
+    if (propertyIsPresent) {
+        if (attributes & DontDelete && vm.deletePropertyMode() != VM::DeletePropertyMode::IgnoreConfigurable)
             return false;
-        thisObject->removeDirect(vm, propertyName);
+
+        PropertyOffset offset;
+        if (structure->isUncacheableDictionary())
+            offset = structure->removePropertyWithoutTransition(vm, propertyName);
+        else
+            thisObject->setStructure(vm, Structure::removePropertyTransition(vm, structure, propertyName, offset));
+
+        if (offset != invalidOffset)
+            thisObject->putDirectUndefined(offset);
     }
 
     return true;
@@ -1667,6 +1690,17 @@ bool JSObject::getPrimitiveNumber(ExecState* exec, double& number, JSValue& resu
     result = toPrimitive(exec, PreferNumber);
     number = result.toNumber(exec);
     return !result.isString();
+}
+
+bool JSObject::getOwnStaticPropertySlot(VM& vm, PropertyName propertyName, PropertySlot& slot)
+{
+    for (auto* info = classInfo(); info; info = info->parentClass) {
+        if (auto* table = info->staticPropHashTable) {
+            if (getStaticPropertySlotFromTable(vm, *table, this, propertyName, slot))
+                return true;
+        }
+    }
+    return false;
 }
 
 const HashTableValue* JSObject::findPropertyHashEntry(PropertyName propertyName) const
@@ -1856,7 +1890,7 @@ void JSObject::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyNa
 
 void JSObject::getOwnNonIndexPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
 {
-    if (!object->staticFunctionsReified())
+    if (!object->staticPropertiesReified())
         getClassPropertyNames(exec, object->classInfo(), propertyNames, mode);
 
     if (!mode.includeJSObjectProperties())
@@ -1931,18 +1965,18 @@ bool JSObject::isExtensible(ExecState* exec)
 
 void JSObject::reifyAllStaticProperties(ExecState* exec)
 {
-    ASSERT(!staticFunctionsReified());
+    ASSERT(!staticPropertiesReified());
     VM& vm = exec->vm();
 
     // If this object's ClassInfo has no static properties, then nothing to reify!
     // We can safely set the flag to avoid the expensive check again in the future.
-    if (!classInfo()->hasStaticProperties()) {
-        structure(vm)->setStaticFunctionsReified(true);
+    if (!TypeInfo::hasStaticPropertyTable(inlineTypeFlags())) {
+        structure(vm)->setStaticPropertiesReified(true);
         return;
     }
 
-    if (!structure(vm)->isUncacheableDictionary())
-        setStructure(vm, Structure::toUncacheableDictionaryTransition(vm, structure(vm)));
+    if (!structure(vm)->isDictionary())
+        setStructure(vm, Structure::toCacheableDictionaryTransition(vm, structure(vm)));
 
     for (const ClassInfo* info = classInfo(); info; info = info->parentClass) {
         const HashTable* hashTable = info->staticPropHashTable;
@@ -1958,37 +1992,18 @@ void JSObject::reifyAllStaticProperties(ExecState* exec)
         }
     }
 
-    structure(vm)->setStaticFunctionsReified(true);
-}
-
-bool JSObject::removeDirect(VM& vm, PropertyName propertyName)
-{
-    Structure* structure = this->structure(vm);
-    if (!isValidOffset(structure->get(vm, propertyName)))
-        return false;
-
-    PropertyOffset offset;
-    if (structure->isUncacheableDictionary()) {
-        offset = structure->removePropertyWithoutTransition(vm, propertyName);
-        if (offset == invalidOffset)
-            return false;
-        putDirectUndefined(offset);
-        return true;
-    }
-
-    setStructure(vm, Structure::removePropertyTransition(vm, structure, propertyName, offset));
-    if (offset == invalidOffset)
-        return false;
-    putDirectUndefined(offset);
-    return true;
+    structure(vm)->setStaticPropertiesReified(true);
 }
 
 NEVER_INLINE void JSObject::fillGetterPropertySlot(PropertySlot& slot, JSValue getterSetter, unsigned attributes, PropertyOffset offset)
 {
-    if (structure()->isDictionary()) {
+    if (structure()->isUncacheableDictionary()) {
         slot.setGetterSlot(this, attributes, jsCast<GetterSetter*>(getterSetter));
         return;
     }
+
+    // This access is cacheable because Structure requires an attributeChangedTransition
+    // if this property stops being an accessor.
     slot.setCacheableGetterSlot(this, attributes, jsCast<GetterSetter*>(getterSetter), offset);
 }
 
@@ -2914,24 +2929,6 @@ bool JSObject::putDirectMayBeIndex(ExecState* exec, PropertyName propertyName, J
     return putDirect(exec->vm(), propertyName, value);
 }
 
-class DefineOwnPropertyScope {
-public:
-    DefineOwnPropertyScope(ExecState* exec)
-        : m_vm(exec->vm())
-    {
-        m_vm.setInDefineOwnProperty(true);
-    }
-
-    ~DefineOwnPropertyScope()
-    {
-        m_vm.setInDefineOwnProperty(false);
-    }
-
-private:
-    VM& m_vm;
-};
-
-
 // 9.1.6.3 of the spec
 // http://www.ecma-international.org/ecma-262/6.0/index.html#sec-validateandapplypropertydescriptor
 bool validateAndApplyPropertyDescriptor(ExecState* exec, JSObject* object, PropertyName propertyName, bool isExtensible,
@@ -3085,7 +3082,7 @@ bool JSObject::defineOwnNonIndexProperty(ExecState* exec, PropertyName propertyN
     // Currently DefineOwnProperty uses delete to remove properties when they are being replaced
     // (particularly when changing attributes), however delete won't allow non-configurable (i.e.
     // DontDelete) properties to be deleted. For now, we can use this flag to make this work.
-    DefineOwnPropertyScope scope(exec);
+    VM::DeletePropertyModeScope scope(exec->vm(), VM::DeletePropertyMode::IgnoreConfigurable);
     PropertyDescriptor current;
     bool isCurrentDefined = getOwnPropertyDescriptor(exec, propertyName, current);
     bool isExtensible = this->isExtensible(exec);

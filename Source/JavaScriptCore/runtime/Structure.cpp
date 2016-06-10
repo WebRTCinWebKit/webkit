@@ -205,8 +205,7 @@ Structure::Structure(VM& vm, JSGlobalObject* globalObject, JSValue prototype, co
     setAttributesInPrevious(0);
     setDidPreventExtensions(false);
     setDidTransition(false);
-    setStaticFunctionsReified(false);
-    setHasRareData(false);
+    setStaticPropertiesReified(false);
     setTransitionWatchpointIsLikelyToBeFired(false);
     setHasBeenDictionary(false);
  
@@ -237,8 +236,7 @@ Structure::Structure(VM& vm)
     setAttributesInPrevious(0);
     setDidPreventExtensions(false);
     setDidTransition(false);
-    setStaticFunctionsReified(false);
-    setHasRareData(false);
+    setStaticPropertiesReified(false);
     setTransitionWatchpointIsLikelyToBeFired(false);
     setHasBeenDictionary(false);
  
@@ -268,8 +266,7 @@ Structure::Structure(VM& vm, Structure* previous, DeferredStructureTransitionWat
     setAttributesInPrevious(0);
     setDidPreventExtensions(previous->didPreventExtensions());
     setDidTransition(true);
-    setStaticFunctionsReified(previous->staticFunctionsReified());
-    setHasRareData(false);
+    setStaticPropertiesReified(previous->staticPropertiesReified());
     setHasBeenDictionary(previous->hasBeenDictionary());
  
     TypeInfo typeInfo = previous->typeInfo();
@@ -823,11 +820,9 @@ void Structure::pin()
 void Structure::allocateRareData(VM& vm)
 {
     ASSERT(!hasRareData());
-    StructureRareData* rareData = StructureRareData::create(vm, previous());
+    StructureRareData* rareData = StructureRareData::create(vm, previousID());
     WTF::storeStoreFence();
     m_previousOrRareData.set(vm, this, rareData);
-    WTF::storeStoreFence();
-    setHasRareData(true);
     ASSERT(hasRareData());
 }
 
