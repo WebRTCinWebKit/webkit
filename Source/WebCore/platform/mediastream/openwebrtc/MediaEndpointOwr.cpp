@@ -157,6 +157,15 @@ MediaPayloadVector MediaEndpointOwr::getDefaultVideoPayloads()
     return payloads;
 }
 
+static bool payloadsContainType(MediaPayloadVector payloads, unsigned payloadType)
+{
+    for (auto& payload : payloads) {
+        if (payload->type() == payloadType)
+            return true;
+    }
+    return false;
+}
+
 MediaPayloadVector MediaEndpointOwr::filterPayloads(const MediaPayloadVector& remotePayloads, const MediaPayloadVector& defaultPayloads)
 {
     MediaPayloadVector filteredPayloads;
@@ -179,7 +188,15 @@ MediaPayloadVector MediaEndpointOwr::filterPayloads(const MediaPayloadVector& re
         filteredPayloads.append(remotePayload);
     }
 
-    return filteredPayloads;
+    MediaPayloadVector filteredAptPayloads;
+
+    for (auto& filteredPayload: filteredPayloads) {
+        if (filteredPayload->parameters().contains("apt") && (!payloadsContainType(filteredPayloads, filteredPayload->parameters().get("apt"))))
+            continue;
+        filteredAptPayloads.append(filteredPayload);
+    }
+
+    return filteredAptPayloads;
 }
 
 MediaEndpoint::UpdateResult MediaEndpointOwr::updateReceiveConfiguration(MediaEndpointSessionConfiguration* configuration, bool isInitiator)
