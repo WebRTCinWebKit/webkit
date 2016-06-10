@@ -104,16 +104,6 @@ private:
     MediaEndpointSessionDescription* internalRemoteDescription() const;
     RefPtr<RTCSessionDescription> createRTCSessionDescription(MediaEndpointSessionDescription*) const;
 
-    void setLocalDescriptionTask(RefPtr<RTCSessionDescription>&&, PeerConnection::VoidPromise&);
-    void setRemoteDescriptionTask(RefPtr<RTCSessionDescription>&&, PeerConnection::VoidPromise&);
-
-    bool localDescriptionTypeValidForState(RTCSessionDescription::SdpType) const;
-    bool remoteDescriptionTypeValidForState(RTCSessionDescription::SdpType) const;
-
-    MediaEndpointSessionDescription* internalLocalDescription() const;
-    MediaEndpointSessionDescription* internalRemoteDescription() const;
-    RefPtr<RTCSessionDescription> createRTCSessionDescription(MediaEndpointSessionDescription*) const;
-
     // MediaEndpointClient
     void gotDtlsFingerprint(const String& fingerprint, const String& fingerprintFunction) override;
     void gotIceCandidate(const String& mid, RefPtr<IceCandidate>&&) override;

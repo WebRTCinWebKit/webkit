@@ -1,3 +1,56 @@
+2016-06-10  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Imlement MediaEndpointPeerConnection::createAnswer()
+        https://bugs.webkit.org/show_bug.cgi?id=158566
+
+        Reviewed by Eric Carlson.
+
+        Add test for RTCPeerConnection.createAnswer.
+
+        * fast/mediastream/RTCPeerConnection-inspect-answer-expected.txt: Added.
+        * fast/mediastream/RTCPeerConnection-inspect-answer.html: Added.
+        Generate two answers, one with audio only and a second with audio and video, and inspect
+        the result.
+        * platform/mac/TestExpectations:
+        Skip tests for mac that require building with WEB_RTC enabled.
+
+2016-06-08  Sergio Villar Senin  <svillar@igalia.com>
+
+        [css-grid] CRASH when getting the computed style of a grid with only absolutely positioned children
+        https://bugs.webkit.org/show_bug.cgi?id=158537
+
+        Reviewed by Darin Adler.
+
+        * fast/css-grid-layout/grid-only-abspos-item-computed-style-crash-expected.txt: Added.
+        * fast/css-grid-layout/grid-only-abspos-item-computed-style-crash.html: Added.
+        * fast/css-grid-layout/grid-template-shorthand-get-set-expected.txt: Adjusted, grid-template
+        does create explicit tracks so we should return 0px instead of none.
+        * fast/css-grid-layout/grid-template-shorthand-get-set.html: Ditto.
+
+2016-06-10  Chris Dumez  <cdumez@apple.com>
+
+        DOMException should be exposed to workers
+        https://bugs.webkit.org/show_bug.cgi?id=158608
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline existing test.
+
+        * js/dom/global-constructors-attributes-dedicated-worker-expected.txt:
+
+2016-06-09  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: VoiceOver Unable to View Download Progress or Completion Status for Mail Attachments
+        https://bugs.webkit.org/show_bug.cgi?id=158581
+
+        Reviewed by Darin Adler.
+
+        * accessibility/attachment-element-expected.txt:
+        * accessibility/attachment-element.html:
+        * accessibility/ios-simulator/attributed-string-for-range-expected.txt:
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator/accessibility/attachment-element-expected.txt: Added.
+
 2016-06-09  Zalan Bujtas  <zalan@apple.com>
 
         Hairline borders do not show up on 3x displays.
