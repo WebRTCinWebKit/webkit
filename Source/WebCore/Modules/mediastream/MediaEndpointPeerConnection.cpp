@@ -672,7 +672,7 @@ void MediaEndpointPeerConnection::addIceCandidateTask(RTCIceCandidate& rtcCandid
     SDPProcessor::Result result = m_sdpProcessor->parseCandidateLine(rtcCandidate.candidate(), candidate);
     if (result != SDPProcessor::Result::Success) {
         if (result == SDPProcessor::Result::ParseError)
-            promise.reject(OperationError, "Unable to apply candidate");
+            promise.reject(OperationError, "Invalid candidate content");
         else
             LOG_ERROR("SDPProcessor internal error");
         return;
