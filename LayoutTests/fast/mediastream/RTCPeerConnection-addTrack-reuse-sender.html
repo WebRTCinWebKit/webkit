@@ -1,4 +1,4 @@
-<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<!DOCTYPE html>
 <html>
     <head>
         <script src="../../resources/js-test-pre.js"></script>
@@ -44,29 +44,26 @@
                 shouldBe("pc.getReceivers().length", "1");
                 shouldBe("pc.getReceivers()[0].track.kind", "'audio'");
                 shouldBe("pc.getTransceivers().length", "1");
-                debug("");
 
-                debug("*** Check unused sender");
+                debug("<br>*** Check unused sender");
                 evalAndLog("audioSender = pc.getSenders()[0]");
                 shouldBe("audioSender.track", "null");
-                debug("");
 
-                debug("*** Adding a video track should not reuse audioSender (wrong kind)");
+                debug("<br>*** Adding a video track should not reuse audioSender (wrong kind)");
                 evalAndLog("senderFromAddTrack = pc.addTrack(videoTrack, stream)");
                 shouldNotBe("senderFromAddTrack", "audioSender");
 
-                debug("*** An extra sender should have been added");
+                debug("<br>*** An extra sender should have been added");
                 shouldBe("pc.getSenders().length", "2");
                 shouldBeTrue("pc.getSenders().includes(audioSender)");
                 shouldBeTrue("pc.getSenders().includes(senderFromAddTrack)");
-                debug("");
 
-                debug("*** Adding an audio track should reuse audioSender");
+                debug("<br>*** Adding an audio track should reuse audioSender");
                 evalAndLog("senderFromAddTrack = pc.addTrack(audioTrack, stream)");
                 shouldBe("senderFromAddTrack", "audioSender");
                 shouldBe("audioSender.track", "audioTrack");
 
-                debug("*** The number of senders should not have changed");
+                debug("<br>*** The number of senders should not have changed");
                 shouldBe("pc.getSenders().length", "2");
 
                 finishJSTest();

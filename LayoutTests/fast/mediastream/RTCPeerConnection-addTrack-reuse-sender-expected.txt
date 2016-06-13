@@ -16,6 +16,7 @@ PASS audioSender.track is null
 *** Adding a video track should not reuse audioSender (wrong kind)
 senderFromAddTrack = pc.addTrack(videoTrack, stream)
 PASS senderFromAddTrack is not audioSender
+
 *** An extra sender should have been added
 PASS pc.getSenders().length is 2
 PASS pc.getSenders().includes(audioSender) is true
@@ -25,6 +26,7 @@ PASS pc.getSenders().includes(senderFromAddTrack) is true
 senderFromAddTrack = pc.addTrack(audioTrack, stream)
 PASS senderFromAddTrack is audioSender
 PASS audioSender.track is audioTrack
+
 *** The number of senders should not have changed
 PASS pc.getSenders().length is 2
 PASS successfullyParsed is true
