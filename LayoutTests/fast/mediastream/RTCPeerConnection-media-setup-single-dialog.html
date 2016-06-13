@@ -26,9 +26,8 @@
             shouldBeNull("pcA.currentLocalDescription");
             shouldBeNull("pcA.pendingRemoteDescription");
             shouldBeNull("pcA.currentRemoteDescription");
-            debug("");
 
-            debug("Create RTCPeerConnection B");
+            debug("<br>Create RTCPeerConnection B");
             const pcB = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
 
             shouldBe("pcB.signalingState", "'stable'");
@@ -39,15 +38,15 @@
             debug("");
 
             pcA.ontrack = function () {
-                debug("");
+                debug("----------");
                 testPassed("A: got remote track event");
-                debug("");
+                debug("----------");
             };
 
             pcB.ontrack = function () {
-                debug("");
+                debug("----------");
                 testPassed("B: got remote track event");
-                debug("");
+                debug("----------");
             };
 
             navigator.mediaDevices.getUserMedia({ "audio": true })
@@ -69,9 +68,8 @@
                 shouldBe("pcA.signalingState", "'have-local-offer'");
                 shouldBeType("pcA.pendingLocalDescription", "RTCSessionDescription");
                 shouldBeNull("pcA.currentLocalDescription");
-                debug("");
 
-                debug("A: send offer to B");
+                debug("<br>A: send offer to B");
                 debug("A --- offer --> B");
                 debug("B: got offer from A, set it as remote description");
                 return pcB.setRemoteDescription(pcA.localDescription);
@@ -81,9 +79,8 @@
                 shouldBe("pcB.signalingState", "'have-remote-offer'");
                 shouldBeType("pcB.pendingRemoteDescription", "RTCSessionDescription");
                 shouldBeNull("pcB.currentRemoteDescription");
-                debug("");
 
-                debug("B: add media (to include in answer)");
+                debug("<br>B: add media (to include in answer)");
                 pcB.addTrack(stream.getAudioTracks()[0], stream);
 
                 debug("B: create answer");
@@ -100,9 +97,8 @@
                 shouldBeType("pcB.currentLocalDescription", "RTCSessionDescription");
                 shouldBeNull("pcB.pendingRemoteDescription");
                 shouldBeType("pcB.currentRemoetDescription", "RTCSessionDescription");
-                debug("");
 
-                debug("B: send answer to A");
+                debug("<br>B: send answer to A");
                 debug("A <-- answer -- B");
                 debug("A: got answer from B, set it as remote description");
                 return pcA.setRemoteDescription(pcB.localDescription);
