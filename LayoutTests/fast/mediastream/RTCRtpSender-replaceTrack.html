@@ -80,6 +80,10 @@
                 .then(function () {
                     debug("End of promise chain");
                     finishJSTest();
+                })
+                .catch(function (error) {
+                    testFailed("Error in promise chain: " + error);
+                    finishJSTest();
                 });
             })
             .catch(function (error) {
