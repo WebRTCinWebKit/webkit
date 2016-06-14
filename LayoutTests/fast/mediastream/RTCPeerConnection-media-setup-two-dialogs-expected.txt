@@ -1,4 +1,4 @@
-Test setting up media between two RTCPeerConnection instances with one single SDP dialog.
+Test setting up media between two RTCPeerConnection instances with a single SDP dialog.
 
 On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
 
@@ -55,7 +55,7 @@ PASS pcA.currentLocalDescription is an instance of RTCSessionDescription
 PASS pcA.pendingRemoteDescription is null
 PASS pcA.currentRemoteDescription is an instance of RTCSessionDescription
 
-PASS Frist offer/answer dialog completed
+PASS First offer/answer dialog completed
 ========================================
 
 PASS pcB.getSenders().length is 1

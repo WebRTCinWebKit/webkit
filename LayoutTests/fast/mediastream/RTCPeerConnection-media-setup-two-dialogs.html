@@ -9,7 +9,7 @@
             let stream;
             let offer;
 
-            description("Test setting up media between two RTCPeerConnection instances with one single SDP dialog.");
+            description("Test setting up media between two RTCPeerConnection instances with a single SDP dialog.");
 
             if (window.testRunner)
                 testRunner.setUserMediaPermission(true);
@@ -109,7 +109,7 @@
                 shouldBeType("pcA.currentRemoteDescription", "RTCSessionDescription");
                 debug("");
 
-                testPassed("Frist offer/answer dialog completed")
+                testPassed("First offer/answer dialog completed")
                 debug("========================================<br>")
 
                 shouldBe("pcB.getSenders().length", "1");
