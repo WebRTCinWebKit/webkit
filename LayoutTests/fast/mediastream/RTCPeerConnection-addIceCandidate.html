@@ -28,15 +28,9 @@
             const pc = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
             const remotePc = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
 
-            shouldThrow("new RTCIceCandidate()");
-            shouldThrow("new RTCIceCandidate({candidate: validCandidate, sdpMLineIndex: -1})");
-            debug("*** At least one of the sdpMid and sdpMLineIndex dictionary members must be present");
-            shouldThrow("new RTCIceCandidate({candidate: validCandidate})");
-
             debug("<br>*** A remote description is needed before a candidate can be added");
             shouldBe("pc.remoteDescription", "null");
-            promiseShouldReject("pc.addIceCandidate(new RTCIceCandidate({candidate: 'foo', sdpMid: 0}))",
-                "'Error: InvalidStateError: DOM Exception 11'").then(function () {
+            promiseShouldReject("pc.addIceCandidate(new RTCIceCandidate({candidate: 'foo', sdpMid: 0}))").then(function () {
                 return navigator.mediaDevices.getUserMedia({ "audio": true, "video": true });
             })
             .then(function (s) {
