@@ -28,9 +28,9 @@ PASS pcA.currentLocalDescription is null
 A: send offer to B
 A --- offer --> B
 B: got offer from A, set it as remote description
-
+----------
 PASS B: got remote track event
-
+----------
 B: remote offer set
 PASS pcB.signalingState is 'have-remote-offer'
 PASS pcB.pendingRemoteDescription is an instance of RTCSessionDescription
@@ -71,9 +71,9 @@ PASS pcB.currentLocalDescription is an instance of RTCSessionDescription
 B: send offer to A
 A <-- offer --- B
 A: got offer from B, set it as remote description
-
+----------
 PASS A: got remote track event
-
+----------
 A: remote offer set (session update so we have both pending and current remote descriptions)
 PASS pcA.signalingState is 'have-remote-offer'
 PASS pcA.pendingRemoteDescription is an instance of RTCSessionDescription
