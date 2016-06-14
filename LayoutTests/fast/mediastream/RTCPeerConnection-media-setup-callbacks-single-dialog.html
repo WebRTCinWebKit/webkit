@@ -9,7 +9,7 @@
             let stream;
             let offer;
 
-            description("Test setting up media between two RTCPeerConnection instances with one single SDP dialog using legacy callbacks API.");
+            description("Test setting up media between two RTCPeerConnection instances with a single SDP dialog using legacy callbacks API.");
 
             if (window.testRunner)
                 testRunner.setUserMediaPermission(true);
@@ -25,15 +25,15 @@
             const pcB = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
 
             pcA.ontrack = function () {
-                debug("");
+                debug("----------");
                 testPassed("A: got remote track event");
-                debug("");
+                debug("----------");
             };
 
             pcB.ontrack = function () {
-                debug("");
+                debug("----------");
                 testPassed("B: got remote track event");
-                debug("");
+                debug("----------");
             };
 
             navigator.mediaDevices.getUserMedia({ "audio": true })
