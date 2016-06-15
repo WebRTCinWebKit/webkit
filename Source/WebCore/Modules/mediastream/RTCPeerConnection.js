@@ -34,6 +34,9 @@ function addTrack()
 {
     "use strict";
 
+    if (!@isRTCPeerConnection(this))
+        throw new @TypeError("Function should be called on an RTCPeerConnection");
+
     if (arguments.length < 1)
         throw new @TypeError("Not enough arguments");
 
@@ -52,6 +55,9 @@ function removeTrack()
 {
     "use strict";
 
+    if (!@isRTCPeerConnection(this))
+        throw new @TypeError("Function should be called on an RTCPeerConnection");
+
     if (arguments.length < 1)
         throw new @TypeError("Not enough arguments");
 
@@ -66,6 +72,9 @@ function getLocalStreams()
 {
     "use strict";
 
+    if (!@isRTCPeerConnection(this))
+        throw new @TypeError("Function should be called on an RTCPeerConnection");
+
     if (!this.@localStreams)
         return [];
 
@@ -76,12 +85,18 @@ function getRemoteStreams()
 {
     "use strict";
 
+    if (!@isRTCPeerConnection(this))
+        throw new @TypeError("Function should be called on an RTCPeerConnection");
+
     return this.@privateGetRemoteStreams();
 }
 
 function getStreamById()
 {
     "use strict";
+
+    if (!@isRTCPeerConnection(this))
+        throw new @TypeError("Function should be called on an RTCPeerConnection");
 
     if (arguments.length < 1)
         throw new @TypeError("Not enough arguments");
@@ -108,6 +123,9 @@ function addStream()
 {
     "use strict";
 
+    if (!@isRTCPeerConnection(this))
+        throw new @TypeError("Function should be called on an RTCPeerConnection");
+
     if (arguments.length < 1)
         throw new @TypeError("Not enough arguments");
 
@@ -131,6 +149,9 @@ function addStream()
 function removeStream()
 {
     "use strict";
+
+    if (!@isRTCPeerConnection(this))
+        throw new @TypeError("Function should be called on an RTCPeerConnection");
 
     if (arguments.length < 1)
         throw new @TypeError("Not enough arguments");

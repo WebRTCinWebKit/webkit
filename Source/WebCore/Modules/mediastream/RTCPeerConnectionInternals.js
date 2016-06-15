@@ -128,3 +128,10 @@ function callbacksAndDictionaryOverload(args, functionName, promiseMode, legacyM
 
     return legacyMode(successCallback, errorCallback, args[2]);
 }
+
+function isRTCPeerConnection(connection)
+{
+    "use strict";
+
+    return @isObject(connection) && connection.@queuedCreateOffer;
+}
