@@ -38,15 +38,29 @@
     CustomConstructor(Dictionary rtcConfiguration),
     InterfaceName=webkitRTCPeerConnection,
 ] interface RTCPeerConnection : EventTarget {
+    // RTP Media API extensions
+    sequence<RTCRtpSender> getSenders();
+    sequence<RTCRtpReceiver> getReceivers();
+    sequence<RTCRtpTransceiver> getTransceivers();
 
-    // Private functions called by runQueuedOperation() (RTCPeerConnectionInternals.js)
-    [Private] Promise queuedCreateOffer(optional Dictionary offerOptions);
-    [Private] Promise queuedCreateAnswer(optional Dictionary answerOptions);
-    [Private] Promise queuedSetLocalDescription(RTCSessionDescription description);
-    [Private] Promise queuedSetRemoteDescription(RTCSessionDescription description);
-    [Private] Promise queuedAddIceCandidate(RTCIceCandidate candidate);
+    [JSBuiltin] RTCRtpSender addTrack(MediaStreamTrack track, MediaStream... streams);
+    [JSBuiltin] void removeTrack(RTCRtpSender sender);
 
-    [Private] Promise privateGetStats(MediaStreamTrack? selector);
+    [StrictTypeChecking, RaisesException] RTCRtpTransceiver addTransceiver(MediaStreamTrack track, optional RTCRtpTransceiverInit init);
+    [StrictTypeChecking, RaisesException] RTCRtpTransceiver addTransceiver(DOMString kind, optional RTCRtpTransceiverInit init);
+
+    // Legacy MediaSream-based API
+    [JSBuiltin] sequence<MediaStream> getLocalStreams();
+    [JSBuiltin]sequence<MediaStream> getRemoteStreams();
+    [JSBuiltin] MediaStream getStreamById(DOMString streamId);
+
+    [JSBuiltin] void addStream(MediaStream stream);
+    [JSBuiltin] void removeStream(MediaStream stream);
+
+    // Private API used to implement both the RTP Media API and the legacy MediaStream-based API.
+    [Private, StrictTypeChecking, RaisesException] RTCRtpSender privateAddTrack(MediaStreamTrack track, MediaStream... streams);
+    [Private, StrictTypeChecking, RaisesException] void privateRemoveTrack(RTCRtpSender sender);
+    [Private] sequence<MediaStream> privateGetRemoteStreams();
 
     [JSBuiltin] Promise createOffer(optional Dictionary offerOptions);
     // Legacy signature: Promise createOffer(RTCSessionDescriptionCallback successCallback
@@ -57,30 +71,6 @@
     // Legacy signature: Promise createAnswer(RTCSessionDescriptionCallback successCallback
     //                                        RTCPeerConnectionErrorCallback errorCallback,
     //                                        optional Dictionary answerOptions);
-
-    sequence<RTCRtpSender> getSenders();
-    sequence<RTCRtpReceiver> getReceivers();
-    sequence<RTCRtpTransceiver> getTransceivers();
-
-    // Legacy
-    [JSBuiltin] sequence<MediaStream> getLocalStreams();
-    [JSBuiltin]sequence<MediaStream> getRemoteStreams();
-    [JSBuiltin] MediaStream getStreamById(DOMString streamId);
-    [Private] sequence<MediaStream> privateGetRemoteStreams();
-
-    [JSBuiltin] RTCRtpSender addTrack(MediaStreamTrack track, MediaStream... streams);
-    [JSBuiltin] void removeTrack(RTCRtpSender sender);
-
-    // Private functions used to implement both the supported add/removeTrack() API and the legacy add/removeStream() API.
-    [Private, StrictTypeChecking, RaisesException] RTCRtpSender privateAddTrack(MediaStreamTrack track, MediaStream... streams);
-    [Private, StrictTypeChecking, RaisesException] void privateRemoveTrack(RTCRtpSender sender);
-
-    // Legacy
-    [JSBuiltin] void addStream(MediaStream stream);
-    [JSBuiltin] void removeStream(MediaStream stream);
-
-    [StrictTypeChecking, RaisesException] RTCRtpTransceiver addTransceiver(MediaStreamTrack track, optional RTCRtpTransceiverInit init);
-    [StrictTypeChecking, RaisesException] RTCRtpTransceiver addTransceiver(DOMString kind, optional RTCRtpTransceiverInit init);
 
     [JSBuiltin] Promise setLocalDescription(RTCSessionDescription description);
     // Legacy signature: Promise setLocalDescription(RTCSessionDescription description
@@ -118,6 +108,15 @@
     //                                    RTCStatsCallback successCallback,
     //                                    RTCPeerConnectionErrorCallback errorCallback);
 
+    // Private API used to implement the overloaded operations above. Queued functions are called by
+    // runQueuedOperation() (defined in RTCPeerConnectionInternals.js).
+    [Private] Promise queuedCreateOffer(optional Dictionary offerOptions);
+    [Private] Promise queuedCreateAnswer(optional Dictionary answerOptions);
+    [Private] Promise queuedSetLocalDescription(RTCSessionDescription description);
+    [Private] Promise queuedSetRemoteDescription(RTCSessionDescription description);
+    [Private] Promise queuedAddIceCandidate(RTCIceCandidate candidate);
+    [Private] Promise privateGetStats(MediaStreamTrack? selector);
+
     [RaisesException] RTCDataChannel createDataChannel([TreatNullAs=EmptyString] DOMString label, optional Dictionary options);
 
     void close();
@@ -126,10 +125,12 @@
     attribute EventHandler onicecandidate;
     attribute EventHandler onsignalingstatechange;
     attribute EventHandler ontrack;
-    attribute EventHandler onaddstream;
     attribute EventHandler oniceconnectionstatechange;
     attribute EventHandler onicegatheringstatechange;
     attribute EventHandler ondatachannel;
+
+    // Legacy event handler (MediaStream-based API)
+    attribute EventHandler onaddstream;
 };
 
 // This enum is mirrored in RTCRtpTransceiver.idl
