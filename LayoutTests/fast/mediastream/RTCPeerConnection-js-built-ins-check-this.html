@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="../../resources/js-test-pre.js"></script>
+        <script src="resources/promise-utils.js"></script>
+    </head>
+    <body>
+        <script>
+            description("Verify that the RTCPeerConnection JS built-in methods checks calling 'this'");
+
+            const desc = new RTCSessionDescription({ type: "offer", sdp: "foo"});
+            const candidate = new RTCIceCandidate({ candidate: "", sdpMid: "foo"});
+
+            const reason = "TypeError: Function should be called on an RTCPeerConnection";
+
+            promiseShouldReject("webkitRTCPeerConnection.prototype.createOffer.call({})", "reason")
+            .then(() => promiseShouldReject("webkitRTCPeerConnection.prototype.createAnswer.call({})", "reason"))
+            .then(() => promiseShouldReject("webkitRTCPeerConnection.prototype.setLocalDescription.call({}, desc)", "reason"))
+            .then(() => promiseShouldReject("webkitRTCPeerConnection.prototype.setRemoteDescription.call({}, desc)", "reason"))
+            .then(() => promiseShouldReject("webkitRTCPeerConnection.prototype.addIceCandidate.call({})", "reason"))
+            .then(() => promiseShouldReject("webkitRTCPeerConnection.prototype.getStats.call({}, null)", "reason"))
+            .then(() => {
+                testPassed("End of test promise chain");
+                finishJSTest();
+            })
+            .catch(error => {
+                testFailed("Error in promise chain: " + error);
+                finishJSTest();
+            });
+
+            window.jsTestIsAsync = true;
+            window.successfullyParsed = true;
+
+        </script>
+        <script src="../../resources/js-test-post.js"></script>
+    </body>
+</html>

@@ -133,5 +133,5 @@ function isRTCPeerConnection(connection)
 {
     "use strict";
 
-    return @isObject(connection) && connection.@queuedCreateOffer;
+    return @isObject(connection) && !!connection.@queuedCreateOffer;
 }

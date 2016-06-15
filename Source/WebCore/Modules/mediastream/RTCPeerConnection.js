@@ -187,6 +187,9 @@ function createOffer()
 {
     "use strict";
 
+    if (!@isRTCPeerConnection(this))
+        return @Promise.@reject(new @TypeError("Function should be called on an RTCPeerConnection"));
+
     const peerConnection = this;
 
     return @callbacksAndDictionaryOverload(arguments, "createOffer", function (options) {
@@ -208,6 +211,9 @@ function createAnswer()
 {
     "use strict";
 
+    if (!@isRTCPeerConnection(this))
+        return @Promise.@reject(new @TypeError("Function should be called on an RTCPeerConnection"));
+
     const peerConnection = this;
 
     return @callbacksAndDictionaryOverload(arguments, "createAnswer", function (options) {
@@ -228,6 +234,9 @@ function createAnswer()
 function setLocalDescription()
 {
     "use strict";
+
+    if (!@isRTCPeerConnection(this))
+        return @Promise.@reject(new @TypeError("Function should be called on an RTCPeerConnection"));
 
     const peerConnection = this;
 
@@ -255,6 +264,9 @@ function setRemoteDescription()
 {
     "use strict";
 
+    if (!@isRTCPeerConnection(this))
+        return @Promise.@reject(new @TypeError("Function should be called on an RTCPeerConnection"));
+
     const peerConnection = this;
 
     const objectInfo = {
@@ -281,6 +293,9 @@ function addIceCandidate()
 {
     "use strict";
 
+    if (!@isRTCPeerConnection(this))
+        return @Promise.@reject(new @TypeError("Function should be called on an RTCPeerConnection"));
+
     const peerConnection = this;
 
     const objectInfo = {
@@ -306,6 +321,9 @@ function addIceCandidate()
 function getStats()
 {
     "use strict";
+
+    if (!@isRTCPeerConnection(this))
+        return @Promise.@reject(new @TypeError("Function should be called on an RTCPeerConnection"));
 
     const peerConnection = this;
 
