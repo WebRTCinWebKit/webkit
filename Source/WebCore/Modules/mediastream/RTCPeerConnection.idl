@@ -41,28 +41,23 @@
     [PrivateIdentifier, CallWith=Document, RaisesException] void initializeWith(Dictionary parameters);
 
     // RTP Media API extensions
-    sequence<RTCRtpSender> getSenders();
+    [PrivateIdentifier, PublicIdentifier] sequence<RTCRtpSender> getSenders();
     sequence<RTCRtpReceiver> getReceivers();
     sequence<RTCRtpTransceiver> getTransceivers();
 
-    [JSBuiltin] RTCRtpSender addTrack(MediaStreamTrack track, MediaStream... streams);
-    [JSBuiltin] void removeTrack(RTCRtpSender sender);
+    [PrivateIdentifier, PublicIdentifier, StrictTypeChecking, RaisesException] RTCRtpSender addTrack(MediaStreamTrack track, MediaStream... streams);
+    [PrivateIdentifier, PublicIdentifier, StrictTypeChecking, RaisesException] void removeTrack(RTCRtpSender sender);
 
     [StrictTypeChecking, RaisesException] RTCRtpTransceiver addTransceiver(MediaStreamTrack track, optional RTCRtpTransceiverInit init);
     [StrictTypeChecking, RaisesException] RTCRtpTransceiver addTransceiver(DOMString kind, optional RTCRtpTransceiverInit init);
 
-    // Legacy MediaSream-based API
+    // Legacy MediaSream-based API (implemented on top of the RTP Media API)
     [JSBuiltin] sequence<MediaStream> getLocalStreams();
-    [JSBuiltin]sequence<MediaStream> getRemoteStreams();
+    [PrivateIdentifier, PublicIdentifier] sequence<MediaStream> getRemoteStreams();
     [JSBuiltin] MediaStream getStreamById(DOMString streamId);
 
     [JSBuiltin] void addStream(MediaStream stream);
     [JSBuiltin] void removeStream(MediaStream stream);
-
-    // Private API used to implement both the RTP Media API and the legacy MediaStream-based API.
-    [PrivateIdentifier, StrictTypeChecking, RaisesException] RTCRtpSender privateAddTrack(MediaStreamTrack track, MediaStream... streams);
-    [PrivateIdentifier, StrictTypeChecking, RaisesException] void privateRemoveTrack(RTCRtpSender sender);
-    [PrivateIdentifier] sequence<MediaStream> privateGetRemoteStreams();
 
     [JSBuiltin] Promise createOffer(optional Dictionary offerOptions);
     // Legacy signature: Promise createOffer(RTCSessionDescriptionCallback successCallback

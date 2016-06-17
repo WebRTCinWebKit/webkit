@@ -69,11 +69,11 @@ public:
     const Vector<RefPtr<RTCRtpReceiver>>& getReceivers() const { return m_transceiverSet->getReceivers(); }
     const Vector<RefPtr<RTCRtpTransceiver>>& getTransceivers() const override { return m_transceiverSet->list(); }
 
-    // Legacy
-    Vector<RefPtr<MediaStream>> privateGetRemoteStreams() const;
+    // Part of legacy MediaStream-based API (mostly implemented as JS built-ins)
+    Vector<RefPtr<MediaStream>> getRemoteStreams() const { return m_backend->getRemoteStreams(); }
 
-    RefPtr<RTCRtpSender> privateAddTrack(Ref<MediaStreamTrack>&&, Vector<MediaStream*>, ExceptionCode&);
-    void privateRemoveTrack(RTCRtpSender&, ExceptionCode&);
+    RefPtr<RTCRtpSender> addTrack(Ref<MediaStreamTrack>&&, Vector<MediaStream*>, ExceptionCode&);
+    void removeTrack(RTCRtpSender&, ExceptionCode&);
 
     // This enum is mirrored in RTCRtpTransceiver.h
     enum class RtpTransceiverDirection { Sendrecv, Sendonly, Recvonly, Inactive };

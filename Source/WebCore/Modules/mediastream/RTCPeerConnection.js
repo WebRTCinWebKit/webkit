@@ -54,44 +54,6 @@ function initializeRTCPeerConnection(configuration)
     return this;
 }
 
-function addTrack()
-{
-    "use strict";
-
-    if (!@isRTCPeerConnection(this))
-        throw new @TypeError("Function should be called on an RTCPeerConnection");
-
-    if (arguments.length < 1)
-        throw new @TypeError("Not enough arguments");
-
-    if (!(arguments[0] instanceof @MediaStreamTrack))
-        throw new @TypeError("Argument 1 ('track') to RTCPeerConnection.addTrack must be an instance of MediaStreamTrack");
-
-    for (let i = 1; i < arguments.length; ++i) {
-        if (!(arguments[i] instanceof @MediaStream))
-            throw new @TypeError(`Argument ${i + 1} ('streams') to RTCPeerConnection.addTrack must be an instance of MediaStream`);
-    }
-
-    return this.@privateAddTrack.@apply(this, arguments);
-}
-
-function removeTrack()
-{
-    "use strict";
-
-    if (!@isRTCPeerConnection(this))
-        throw new @TypeError("Function should be called on an RTCPeerConnection");
-
-    if (arguments.length < 1)
-        throw new @TypeError("Not enough arguments");
-
-    const sender = arguments[0];
-    if (!(sender instanceof @RTCRtpSender))
-        throw new @TypeError("Argument 1 ('sender') to RTCPeerConnection.removeTrack must be an instance of RTCRtpSender");
-
-    return this.@privateRemoveTrack.@call(this, sender);
-}
-
 function getLocalStreams()
 {
     "use strict";
@@ -105,17 +67,7 @@ function getLocalStreams()
     return this.@localStreams.slice();
 }
 
-function getRemoteStreams()
-{
-    "use strict";
-
-    if (!@isRTCPeerConnection(this))
-        throw new @TypeError("Function should be called on an RTCPeerConnection");
-
-    return this.@privateGetRemoteStreams();
-}
-
-function getStreamById()
+function getStreamById(streamIdArg)
 {
     "use strict";
 
@@ -125,7 +77,7 @@ function getStreamById()
     if (arguments.length < 1)
         throw new @TypeError("Not enough arguments");
 
-    const streamId = @String(arguments[0]);
+    const streamId = @String(streamIdArg);
 
     if (this.@localStreams) {
         for (let i = 0; i < this.@localStreams.length; ++i) {
@@ -134,7 +86,7 @@ function getStreamById()
         }
     }
 
-    const remoteStreams = this.@privateGetRemoteStreams();
+    const remoteStreams = this.@getRemoteStreams();
     for (let i = 0; i < remoteStreams.length; ++i) {
         if (remoteStreams[i].id === streamId)
             return remoteStreams[i];
@@ -143,7 +95,7 @@ function getStreamById()
     return null;
 }
 
-function addStream()
+function addStream(stream)
 {
     "use strict";
 
@@ -153,7 +105,6 @@ function addStream()
     if (arguments.length < 1)
         throw new @TypeError("Not enough arguments");
 
-    const stream = arguments[0];
     if (!(stream instanceof @MediaStream))
         throw new @TypeError("Argument 1 ('stream') to RTCPeerConnection.addStream must be an instance of MediaStream");
 
@@ -167,10 +118,10 @@ function addStream()
 
     this.@localStreams.push(stream);
 
-    stream.getTracks().forEach(track => this.@privateAddTrack(track, stream));
+    stream.getTracks().forEach(track => this.@addTrack(track, stream));
 }
 
-function removeStream()
+function removeStream(stream)
 {
     "use strict";
 
@@ -180,14 +131,13 @@ function removeStream()
     if (arguments.length < 1)
         throw new @TypeError("Not enough arguments");
 
-    const stream = arguments[0];
     if (!(stream instanceof @MediaStream))
         throw new @TypeError("Argument 1 ('stream') to RTCPeerConnection.removeStream must be an instance of MediaStream");
 
     if (!this.@localStreams)
         return;
 
-    const senders = this.getSenders();
+    const senders = this.@getSenders();
     for (let i = 0; i < this.@localStreams.length; ++i) {
         if (this.@localStreams[i].id === stream.id) {
             this.@localStreams[i].getTracks().forEach(track => {
@@ -195,7 +145,7 @@ function removeStream()
                 for (let j = 0; j < senders.length; ++j) {
                     let sender = senders[j];
                     if (sender.track && sender.track.id === track.id) {
-                        this.@privateRemoveTrack(sender);
+                        this.@removeTrack(sender);
                         break;
                     }
                 }
