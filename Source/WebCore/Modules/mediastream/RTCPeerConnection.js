@@ -80,19 +80,12 @@ function getStreamById(streamIdArg)
     const streamId = @String(streamIdArg);
 
     if (this.@localStreams) {
-        for (let i = 0; i < this.@localStreams.length; ++i) {
-            if (this.@localStreams[i].id === streamId)
-                return this.@localStreams[i];
-        }
+        const stream = this.@localStreams.find(stream => stream.id === streamId);
+        if (stream)
+            return stream;
     }
 
-    const remoteStreams = this.@getRemoteStreams();
-    for (let i = 0; i < remoteStreams.length; ++i) {
-        if (remoteStreams[i].id === streamId)
-            return remoteStreams[i];
-    }
-
-    return null;
+    return this.@getRemoteStreams().find(stream => stream.id === streamId) || null;
 }
 
 function addStream(stream)
@@ -109,10 +102,8 @@ function addStream(stream)
         throw new @TypeError("Argument 1 ('stream') to RTCPeerConnection.addStream must be an instance of MediaStream");
 
     if (this.@localStreams) {
-        for (let i = 0; i < this.@localStreams.length; ++i) {
-            if (this.@localStreams[i].id === stream.id)
-                return
-        }
+        if (this.@localStreams.find(localStream => localStream.id === stream.id))
+            return;
     } else
         this.@localStreams = [];
 
@@ -137,24 +128,18 @@ function removeStream(stream)
     if (!this.@localStreams)
         return;
 
-    const senders = this.@getSenders();
-    for (let i = 0; i < this.@localStreams.length; ++i) {
-        if (this.@localStreams[i].id === stream.id) {
-            this.@localStreams[i].getTracks().forEach(track => {
-                // Find track's sender and call removeTrack with it.
-                for (let j = 0; j < senders.length; ++j) {
-                    let sender = senders[j];
-                    if (sender.track && sender.track.id === track.id) {
-                        this.@removeTrack(sender);
-                        break;
-                    }
-                }
-            });
+    const indexOfStreamToRemove = this.@localStreams.findIndex(localStream => localStream.id === stream.id);
+    if (indexOfStreamToRemove === -1)
+        return;
 
-            this.@localStreams.splice(i, 1);
-            break;
-        }
-    }
+    const senders = this.@getSenders();
+    this.@localStreams[indexOfStreamToRemove].getTracks().forEach(track => {
+        const senderForTrack = senders.find(sender => sender.track && sender.track.id === track.id);
+        if (senderForTrack)
+            this.@removeTrack(senderForTrack);
+    });
+
+    this.@localStreams.splice(indexOfStreamToRemove, 1);
 }
 
 function createOffer()
