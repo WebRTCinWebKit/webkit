@@ -15,6 +15,9 @@ PASS pc.getLocalStreams()[0] is stream
 PASS pc.getStreamById(stream.id) is stream
 PASS pc.getSenders().length is 1
 PASS pc.getSenders()[0].track is audioTrack
+Adding the same stream again should be a no-op
+PASS pc.addStream(stream) did not throw exception.
+PASS pc.getLocalStreams().length is 1
 
 Test with audio and video MediaStream
 audioTrack = stream.getAudioTracks()[0]
@@ -28,6 +31,7 @@ PASS audioTrackFoundAmongSenders is true
 PASS videoTrackFoundAmongSenders is true
 
 Test removeStream
+Remove a non-existent stream
 otherStream = stream.clone()
 PASS pc.removeStream(otherStream) did not throw exception.
 Both streams should still be present
@@ -37,6 +41,9 @@ PASS pc.getLocalStreams().length is 1
 PASS pc.getStreamById(stream.id) is null
 All senders should still be present
 PASS pc.getSenders().length is 3
+Removing the same stream again should be a no-op
+PASS pc.removeStream(stream) did not throw exception.
+PASS pc.getLocalStreams().length is 1
 
 Test applying a remote description offering a stream with two tracks
 Create remote offer

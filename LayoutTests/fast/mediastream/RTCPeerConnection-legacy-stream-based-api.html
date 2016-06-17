@@ -57,6 +57,10 @@
                 shouldBe("pc.getSenders().length", "1");
                 shouldBe("pc.getSenders()[0].track", "audioTrack");
 
+                debug("Adding the same stream again should be a no-op");
+                shouldNotThrow("pc.addStream(stream)");
+                shouldBe("pc.getLocalStreams().length", "1");
+
                 return navigator.mediaDevices.getUserMedia({ "audio": true, "video": true });  
             })
             .then(s => {
@@ -88,6 +92,7 @@
                 shouldBeTrue("videoTrackFoundAmongSenders");
 
                 debug("<br>Test removeStream");
+                debug("Remove a non-existent stream");
                 evalAndLog("otherStream = stream.clone()");
                 shouldNotThrow("pc.removeStream(otherStream)");
 
@@ -101,6 +106,10 @@
                 
                 debug("All senders should still be present")
                 shouldBe("pc.getSenders().length", "3");
+
+                debug("Removing the same stream again should be a no-op");
+                shouldNotThrow("pc.removeStream(stream)");
+                shouldBe("pc.getLocalStreams().length", "1");
 
                 debug("<br>Test applying a remote description offering a stream with two tracks");
                 remotePc.addStream(stream);
