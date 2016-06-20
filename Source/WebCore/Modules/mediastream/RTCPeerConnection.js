@@ -50,6 +50,7 @@ function initializeRTCPeerConnection(configuration)
     }
 
     this.@operations = [];
+    this.@localStreams = [];
 
     return this;
 }
@@ -60,9 +61,6 @@ function getLocalStreams()
 
     if (!@isRTCPeerConnection(this))
         throw new @TypeError("Function should be called on an RTCPeerConnection");
-
-    if (!this.@localStreams)
-        return [];
 
     return this.@localStreams.slice();
 }
@@ -79,13 +77,9 @@ function getStreamById(streamIdArg)
 
     const streamId = @String(streamIdArg);
 
-    if (this.@localStreams) {
-        const stream = this.@localStreams.find(stream => stream.id === streamId);
-        if (stream)
-            return stream;
-    }
-
-    return this.@getRemoteStreams().find(stream => stream.id === streamId) || null;
+    return this.@localStreams.find(stream => stream.id === streamId)
+        || this.@getRemoteStreams().find(stream => stream.id === streamId)
+        || null;
 }
 
 function addStream(stream)
@@ -101,14 +95,10 @@ function addStream(stream)
     if (!(stream instanceof @MediaStream))
         throw new @TypeError("Argument 1 ('stream') to RTCPeerConnection.addStream must be an instance of MediaStream");
 
-    if (this.@localStreams) {
-        if (this.@localStreams.find(localStream => localStream.id === stream.id))
-            return;
-    } else
-        this.@localStreams = [];
+    if (this.@localStreams.find(localStream => localStream.id === stream.id))
+        return;
 
     this.@localStreams.push(stream);
-
     stream.getTracks().forEach(track => this.@addTrack(track, stream));
 }
 
@@ -124,9 +114,6 @@ function removeStream(stream)
 
     if (!(stream instanceof @MediaStream))
         throw new @TypeError("Argument 1 ('stream') to RTCPeerConnection.removeStream must be an instance of MediaStream");
-
-    if (!this.@localStreams)
-        return;
 
     const indexOfStreamToRemove = this.@localStreams.findIndex(localStream => localStream.id === stream.id);
     if (indexOfStreamToRemove === -1)
