@@ -41,6 +41,9 @@ function initializeRTCPeerConnection(configuration)
         throw new @TypeError("RTCPeerConnection argument must be a valid Dictionary");
 
     this.@initializeWith(configuration);
+
+    this.@operations = [];
+
     return this;
 }
 
