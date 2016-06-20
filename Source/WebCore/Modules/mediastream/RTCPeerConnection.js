@@ -30,6 +30,20 @@
 
 // @conditional=ENABLE(WEB_RTC)
 
+function initializeRTCPeerConnection(configuration)
+{
+    "use strict";
+
+    if (arguments.length < 1)
+        throw new @TypeError("Not enough arguments");
+
+    if (!@isDictionary(configuration))
+        throw new @TypeError("RTCPeerConnection argument must be a valid Dictionary");
+
+    this.@initializeWith(configuration);
+    return this;
+}
+
 function addTrack()
 {
     "use strict";
