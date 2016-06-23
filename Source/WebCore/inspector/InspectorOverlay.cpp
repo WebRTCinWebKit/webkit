@@ -505,7 +505,7 @@ void InspectorOverlay::showPaintRect(const FloatRect& rect)
 
     IntRect rootRect = m_page.mainFrame().view()->contentsToRootView(enclosingIntRect(rect));
 
-    const std::chrono::milliseconds removeDelay = std::chrono::milliseconds(250);
+    const auto removeDelay = 250ms;
 
     std::chrono::steady_clock::time_point removeTime = std::chrono::steady_clock::now() + removeDelay;
     m_paintRects.append(TimeRectPair(removeTime, rootRect));
@@ -864,7 +864,7 @@ Page* InspectorOverlay::overlayPage()
     if (m_overlayPage)
         return m_overlayPage.get();
 
-    PageConfiguration pageConfiguration;
+    PageConfiguration pageConfiguration(makeUniqueRef<EmptyEditorClient>(), makeUniqueRef<EmptySocketProvider>());
     fillWithEmptyClients(pageConfiguration);
     m_overlayPage = std::make_unique<Page>(WTFMove(pageConfiguration));
 

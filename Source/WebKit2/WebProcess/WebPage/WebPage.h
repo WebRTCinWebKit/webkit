@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebPage_h
-#define WebPage_h
+#pragma once
 
 #include "APIInjectedBundleFormClient.h"
 #include "APIInjectedBundlePageContextMenuClient.h"
@@ -66,6 +65,7 @@
 #include <WebCore/TextIndicator.h>
 #include <WebCore/UserActivity.h>
 #include <WebCore/UserContentTypes.h>
+#include <WebCore/UserInterfaceLayoutDirection.h>
 #include <WebCore/UserScriptTypes.h>
 #include <WebCore/ViewState.h>
 #include <WebCore/ViewportConfiguration.h>
@@ -819,6 +819,7 @@ public:
     void willStartUserTriggeredZooming();
     void applicationWillResignActive();
     void applicationDidEnterBackground(bool isSuspendedUnderLock);
+    void applicationDidFinishSnapshottingAfterEnteringBackground();
     void applicationWillEnterForeground(bool isSuspendedUnderLock);
     void applicationDidBecomeActive();
     void zoomToRect(WebCore::FloatRect, double minimumScale, double maximumScale);
@@ -1199,6 +1200,7 @@ private:
 #endif
 
     void setResourceCachingDisabled(bool);
+    void setUserInterfaceLayoutDirection(uint32_t);
 
     uint64_t m_pageID;
 
@@ -1468,8 +1470,9 @@ private:
 #if USE(OS_STATE)
     std::chrono::system_clock::time_point m_loadCommitTime;
 #endif
+
+    WebCore::UserInterfaceLayoutDirection m_userInterfaceLayoutDirection { WebCore::UserInterfaceLayoutDirection::LTR };
 };
 
 } // namespace WebKit
 
-#endif // WebPage_h

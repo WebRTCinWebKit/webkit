@@ -1056,7 +1056,18 @@ private:
             fixEdge<Int32Use>(node->child1());
             break;
         }
-            
+
+        case CallObjectConstructor: {
+            if (node->child1()->shouldSpeculateObject()) {
+                fixEdge<ObjectUse>(node->child1());
+                node->convertToIdentity();
+                break;
+            }
+
+            fixEdge<UntypedUse>(node->child1());
+            break;
+        }
+
         case ToThis: {
             fixupToThis(node);
             break;
@@ -1321,7 +1332,6 @@ private:
         case PhantomCreateActivation:
         case PhantomDirectArguments:
         case PhantomClonedArguments:
-        case ForwardVarargs:
         case GetMyArgumentByVal:
         case GetMyArgumentByValOutOfBounds:
         case PutHint:
@@ -1451,7 +1461,11 @@ private:
                 fixEdge<OtherUse>(node->child1());
                 node->remove();
             } else if (typeSet->doesTypeConformTo(TypeObject)) {
-                StructureSet set = typeSet->structureSet();
+                StructureSet set;
+                {
+                    ConcurrentJITLocker locker(typeSet->m_lock);
+                    set = typeSet->structureSet(locker);
+                }
                 if (!set.isEmpty()) {
                     fixEdge<CellUse>(node->child1());
                     node->convertToCheckStructure(m_graph.addStructureSet(set));
@@ -1529,12 +1543,15 @@ private:
         case TailCallForwardVarargs:
         case TailCallForwardVarargsInlinedCaller:
         case LoadVarargs:
+        case ForwardVarargs:
         case ProfileControlFlow:
         case NewObject:
         case NewArrayBuffer:
         case NewRegexp:
         case DeleteById:
         case DeleteByVal:
+        case IsJSArray:
+        case IsTypedArrayView:
         case IsEmpty:
         case IsUndefined:
         case IsBoolean:

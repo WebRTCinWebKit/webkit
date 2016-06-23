@@ -43,6 +43,8 @@ class Identifier;
     macro(argumentCount) \
     macro(assert) \
     macro(isObject) \
+    macro(isJSArray) \
+    macro(tailCallForwardArguments) \
     macro(tryGetById) \
     macro(putByValDirect) \
     macro(toString)
@@ -54,6 +56,13 @@ class Identifier;
     macro(arrayIterationKindValue) \
     macro(arrayIterationKindKeyValue) \
     macro(MAX_STRING_LENGTH) \
+    macro(MAX_SAFE_INTEGER) \
+    macro(ModuleFetch) \
+    macro(ModuleTranslate) \
+    macro(ModuleInstantiate) \
+    macro(ModuleResolveDependencies) \
+    macro(ModuleLink) \
+    macro(ModuleReady) \
     macro(promiseStatePending) \
     macro(promiseStateFulfilled) \
     macro(promiseStateRejected) \

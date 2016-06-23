@@ -35,7 +35,6 @@
 #include "JSCell.h"
 #include "JSObject.h"
 #include "JSStack.h"
-#include "LLIntData.h"
 #include "Opcode.h"
 #include "SourceProvider.h"
 #include "StackAlignment.h"
@@ -217,7 +216,7 @@ namespace JSC {
         NEVER_INLINE HandlerInfo* unwind(VM&, CallFrame*&, Exception*, UnwindStart);
         void notifyDebuggerOfExceptionToBeThrown(CallFrame*, Exception*);
         NEVER_INLINE void debug(CallFrame*, DebugHookID);
-        JSString* stackTraceAsString(ExecState*, Vector<StackFrame>);
+        static JSString* stackTraceAsString(VM&, const Vector<StackFrame>&);
 
         static EncodedJSValue JSC_HOST_CALL constructWithErrorConstructor(ExecState*);
         static EncodedJSValue JSC_HOST_CALL callErrorConstructor(ExecState*);
@@ -226,7 +225,7 @@ namespace JSC {
 
         JS_EXPORT_PRIVATE void dumpCallFrame(CallFrame*);
 
-        void getStackTrace(Vector<StackFrame>& results, size_t maxStackSize = std::numeric_limits<size_t>::max());
+        void getStackTrace(Vector<StackFrame>& results, size_t framesToSkip = 0, size_t maxStackSize = std::numeric_limits<size_t>::max());
 
     private:
         enum ExecutionFlag { Normal, InitializeAndReturn };
@@ -275,9 +274,12 @@ namespace JSC {
     unsigned sizeOfVarargs(CallFrame* exec, JSValue arguments, uint32_t firstVarArgOffset);
     static const unsigned maxArguments = 0x10000;
     unsigned sizeFrameForVarargs(CallFrame* exec, JSStack*, JSValue arguments, unsigned numUsedStackSlots, uint32_t firstVarArgOffset);
+    unsigned sizeFrameForForwardArguments(CallFrame* exec, JSStack*, unsigned numUsedStackSlots);
     void loadVarargs(CallFrame* execCaller, VirtualRegister firstElementDest, JSValue source, uint32_t offset, uint32_t length);
     void setupVarargsFrame(CallFrame* execCaller, CallFrame* execCallee, JSValue arguments, uint32_t firstVarArgOffset, uint32_t length);
     void setupVarargsFrameAndSetThis(CallFrame* execCaller, CallFrame* execCallee, JSValue thisValue, JSValue arguments, uint32_t firstVarArgOffset, uint32_t length);
+    void setupForwardArgumentsFrame(CallFrame* execCaller, CallFrame* execCallee, uint32_t length);
+    void setupForwardArgumentsFrameAndSetThis(CallFrame* execCaller, CallFrame* execCallee, JSValue thisValue, uint32_t length);
     
 } // namespace JSC
 

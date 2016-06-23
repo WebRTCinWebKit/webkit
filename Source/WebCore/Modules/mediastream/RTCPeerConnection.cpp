@@ -38,6 +38,7 @@
 
 #include "Document.h"
 #include "Event.h"
+#include "EventNames.h"
 #include "ExceptionCode.h"
 #include "Frame.h"
 #include "MediaStream.h"
@@ -77,10 +78,8 @@ RTCPeerConnection::~RTCPeerConnection()
     stop();
 }
 
-void RTCPeerConnection::initializeWith(const Dictionary& rtcConfiguration, ExceptionCode& ec)
+void RTCPeerConnection::initializeWith(Document& document, const Dictionary& rtcConfiguration, ExceptionCode& ec)
 {
-    Document& document = downcast<Document>(*scriptExecutionContext());
-
     if (!document.frame()) {
         ec = NOT_SUPPORTED_ERR;
         return;
@@ -114,8 +113,7 @@ RefPtr<RTCRtpSender> RTCPeerConnection::privateAddTrack(Ref<MediaStreamTrack>&& 
 
     for (auto& sender : m_transceiverSet->getSenders()) {
         if (sender->trackId() == track->id()) {
-            // FIXME: Spec says InvalidParameter
-            ec = INVALID_MODIFICATION_ERR;
+            ec = INVALID_ACCESS_ERR;
             return nullptr;
         }
     }

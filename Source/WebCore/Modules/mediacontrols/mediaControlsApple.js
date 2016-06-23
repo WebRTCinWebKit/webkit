@@ -117,6 +117,7 @@ Controller.prototype = {
         out: 'out',
         pictureInPictureButton: 'picture-in-picture-button',
         placeholderShowing: 'placeholder-showing',
+        usesLTRUserInterfaceLayoutDirection: 'uses-ltr-user-interface-layout-direction'
     },
     KeyCodes: {
         enter: 13,
@@ -623,8 +624,10 @@ Controller.prototype = {
         this.controls.panel.appendChild(this.controls.seekForwardButton);
         this.controls.panel.appendChild(this.controls.wirelessTargetPicker);
         this.controls.panel.appendChild(this.controls.captionButton);
-        if (!this.isAudio())
+        if (!this.isAudio()) {
+            this.updatePictureInPictureButton();
             this.controls.panel.appendChild(this.controls.fullscreenButton);
+        }
         if (!this.isLive) {
             this.controls.panel.appendChild(this.controls.timelineBox);
             this.controls.timelineBox.appendChild(this.controls.currentTime);
@@ -2035,10 +2038,11 @@ Controller.prototype = {
 
     updateHasVideo: function()
     {
-        if (this.hasVideo())
-            this.controls.panel.classList.remove(this.ClassNames.noVideo);
-        else
-            this.controls.panel.classList.add(this.ClassNames.noVideo);
+        this.controls.panel.classList.toggle(this.ClassNames.noVideo, !this.hasVideo());
+        // The availability of the picture-in-picture button as well as the full-screen
+        // button depends no the value returned by hasVideo(), so make sure we invalidate
+        // the availability of both controls.
+        this.updateFullscreenButtons();
     },
 
     updateVolume: function()
@@ -2233,6 +2237,11 @@ Controller.prototype = {
             return;
 
         this._pageScaleFactor = newScaleFactor;
+    },
+
+    set usesLTRUserInterfaceLayoutDirection(usesLTRUserInterfaceLayoutDirection)
+    {
+        this.controls.volumeBox.classList.toggle(this.ClassNames.usesLTRUserInterfaceLayoutDirection, usesLTRUserInterfaceLayoutDirection);
     },
 
     handleRootResize: function(event)

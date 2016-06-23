@@ -115,6 +115,7 @@ class DriverOutput(object):
         for pattern in patterns:
             self.error = re.sub(pattern[0], pattern[1], self.error)
 
+
 class Driver(object):
     """object for running test(s) using DumpRenderTree/WebKitTestRunner."""
 
@@ -322,6 +323,7 @@ class Driver(object):
 
     def _setup_environ_for_driver(self, environment):
         build_root_path = str(self._port._build_path())
+        # FIXME: DYLD_* variables should be Mac-only. Even iOS Simulator doesn't need them, as LayoutTestRelay is a host binary.
         self._append_environment_variable_path(environment, 'DYLD_LIBRARY_PATH', build_root_path)
         self._append_environment_variable_path(environment, '__XPC_DYLD_LIBRARY_PATH', build_root_path)
         self._append_environment_variable_path(environment, 'DYLD_FRAMEWORK_PATH', build_root_path)
@@ -622,6 +624,7 @@ class ContentBlock(object):
             self.decoded_content = base64.b64decode(self.content)
         else:
             self.decoded_content = self.content
+
 
 class DriverProxy(object):
     """A wrapper for managing two Driver instances, one with pixel tests and

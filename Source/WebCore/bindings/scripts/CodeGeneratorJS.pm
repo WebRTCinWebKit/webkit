@@ -1104,6 +1104,8 @@ sub GenerateHeader
     # Static create methods
     push(@headerContent, "public:\n");
     push(@headerContent, "    typedef $parentClassName Base;\n");
+    push(@headerContent, "    typedef $implType DOMWrapped;\n") if $interface->parent;
+
     if ($interfaceName eq "DOMWindow") {
         push(@headerContent, "    static $className* create(JSC::VM& vm, JSC::Structure* structure, Ref<$implType>&& impl, JSDOMWindowShell* windowShell)\n");
         push(@headerContent, "    {\n");
@@ -1152,9 +1154,6 @@ sub GenerateHeader
 
     if (InstancePropertyCount($interface) > 0) {
         $structureFlags{"JSC::HasStaticPropertyTable"} = 1;
-        push(@headerContent, "    static const bool hasStaticPropertyTable = true;\n\n");
-    } else {
-        push(@headerContent, "    static const bool hasStaticPropertyTable = false;\n\n");
     }
 
     # Prototype
@@ -1619,7 +1618,7 @@ sub GeneratePropertiesHashTable
     my @functions = @{$interface->functions};
     push(@functions, @{$interface->iterable->functions}) if $interface->iterable;
     foreach my $function (@functions) {
-        next if ($function->signature->extendedAttributes->{"Private"});
+        next if ($function->signature->extendedAttributes->{"PrivateIdentifier"} and not $function->signature->extendedAttributes->{"PublicIdentifier"});
         next if ($function->isStatic);
         next if $function->{overloadIndex} && $function->{overloadIndex} > 1;
         next if OperationShouldBeOnInstance($interface, $function) != $isInstance;
@@ -2315,7 +2314,7 @@ sub GenerateImplementation
 
         my $firstPrivateFunction = 1;
         foreach my $function (@{$interface->functions}) {
-            next unless ($function->signature->extendedAttributes->{"Private"});
+            next unless ($function->signature->extendedAttributes->{"PrivateIdentifier"});
             AddToImplIncludes("WebCoreJSClientData.h");
             push(@implContent, "    JSVMClientData& clientData = *static_cast<JSVMClientData*>(vm.clientData);\n") if $firstPrivateFunction;
             $firstPrivateFunction = 0;
@@ -2675,6 +2674,7 @@ sub GenerateImplementation
                 push(@implContent, "    auto& impl = thisObject->wrapped();\n");
                 push(@implContent, "    return shouldAllowAccessToNode(state, impl." . $attribute->signature->name . "()) ? " . NativeToJSValue($attribute->signature, 0, $interface, "impl.$implGetterFunctionName()", "thisObject") . " : jsNull();\n");
             } elsif ($type eq "EventHandler") {
+                $implIncludes{"EventNames.h"} = 1;
                 my $getter = $attribute->signature->extendedAttributes->{"WindowEventHandler"} ? "windowEventHandlerAttribute"
                     : $attribute->signature->extendedAttributes->{"DocumentEventHandler"} ? "documentEventHandlerAttribute"
                     : "eventHandlerAttribute";
@@ -3194,8 +3194,7 @@ END
                         push(@implContent, "    ExceptionCode ec = 0;\n");
                     }
 
-                    my $numParameters = @{$function->parameters};
-                    my ($functionString, $dummy) = GenerateParametersCheck(\@implContent, $function, $interface, $numParameters, $functionImplementationName, $svgPropertyType, $svgPropertyOrListPropertyType, $svgListPropertyType);
+                    my ($functionString, $dummy) = GenerateParametersCheck(\@implContent, $function, $interface, $functionImplementationName, $svgPropertyType, $svgPropertyOrListPropertyType, $svgListPropertyType);
                     GenerateImplementationFunctionCall($function, $functionString, "    ", $svgPropertyType, $interface);
                 }
             } else {
@@ -3243,8 +3242,7 @@ END
                         $implIncludes{"JSDOMBinding.h"} = 1;
                     }
 
-                    my $numParameters = @{$function->parameters};
-                    my ($functionString, $dummy) = GenerateParametersCheck(\@implContent, $function, $interface, $numParameters, $functionImplementationName, $svgPropertyType, $svgPropertyOrListPropertyType, $svgListPropertyType);
+                    my ($functionString, $dummy) = GenerateParametersCheck(\@implContent, $function, $interface, $functionImplementationName, $svgPropertyType, $svgPropertyOrListPropertyType, $svgListPropertyType);
                     GenerateImplementationFunctionCall($function, $functionString, "    ", $svgPropertyType, $interface);
                 }
             }
@@ -3639,12 +3637,14 @@ sub WillConvertUndefinedToDefaultParameterValue
 
 sub GenerateParametersCheck
 {
-    my ($outputArray, $function, $interface, $numParameters, $functionImplementationName, $svgPropertyType, $svgPropertyOrListPropertyType, $svgListPropertyType) = @_;
+    my ($outputArray, $function, $interface, $functionImplementationName, $svgPropertyType, $svgPropertyOrListPropertyType, $svgListPropertyType) = @_;
 
     my $interfaceName = $interface->name;
     my @arguments;
     my $functionName;
     my $implementedBy = $function->signature->extendedAttributes->{"ImplementedBy"};
+    my $numParameters = @{$function->parameters};
+
     if ($implementedBy) {
         AddToImplIncludes("${implementedBy}.h", $function->signature->extendedAttributes->{"Conditional"});
         unshift(@arguments, "impl") if !$function->isStatic;
@@ -3674,6 +3674,7 @@ sub GenerateParametersCheck
         my $type = $parameter->type;
 
         die "Optional parameters of non-nullable wrapper types are not supported" if $parameter->isOptional && !$parameter->isNullable && $codeGenerator->IsWrapperType($type);
+        die "Optional parameters preceding variadic parameters are not supported" if ($parameter->isOptional &&  @{$function->parameters}[$numParameters - 1]->isVariadic);
 
         if ($parameter->isOptional && !defined($parameter->default)) {
             # As per Web IDL, optional dictionary parameters are always considered to have a default value of an empty dictionary, unless otherwise specified.
@@ -3734,16 +3735,20 @@ sub GenerateParametersCheck
             my $nativeElementType = GetNativeType($interface, $type);
             if (!IsNativeType($type)) {
                 push(@$outputArray, "    Vector<$nativeElementType> $name;\n");
+                push(@$outputArray, "    ASSERT($argumentIndex <= state->argumentCount());\n");
+                push(@$outputArray, "    $name.reserveInitialCapacity(state->argumentCount() - $argumentIndex);\n");
                 push(@$outputArray, "    for (unsigned i = $argumentIndex, count = state->argumentCount(); i < count; ++i) {\n");
-                push(@$outputArray, "        if (!state->uncheckedArgument(i).inherits(JS${type}::info()))\n");
+                push(@$outputArray, "        auto* item = JS${type}::toWrapped(state->uncheckedArgument(i));\n");
+                push(@$outputArray, "        if (!item)\n");
                 push(@$outputArray, "            return throwArgumentTypeError(*state, i, \"$name\", \"$interfaceName\", $quotedFunctionName, \"$type\");\n");
-                push(@$outputArray, "        $name.append(JS${type}::toWrapped(state->uncheckedArgument(i)));\n");
+                push(@$outputArray, "        $name.uncheckedAppend(item);\n");
                 push(@$outputArray, "    }\n")
             } else {
                 push(@$outputArray, "    Vector<$nativeElementType> $name = toNativeArguments<$nativeElementType>(state, $argumentIndex);\n");
                 push(@$outputArray, "    if (UNLIKELY(state->hadException()))\n");
                 push(@$outputArray, "        return JSValue::encode(jsUndefined());\n");
             }
+            $value = "WTFMove($name)";
         } elsif ($codeGenerator->IsEnumType($type)) {
             my $className = GetEnumerationClassName($interface, $type);
 
@@ -5123,8 +5128,7 @@ END
 
             # FIXME: For now, we do not support SVG constructors.
             # FIXME: Currently [Constructor(...)] does not yet support optional arguments without [Default=...]
-            my $numParameters = @{$function->parameters};
-            my ($dummy, $paramIndex) = GenerateParametersCheck($outputArray, $function, $interface, $numParameters, "constructorCallback", undef, undef, undef);
+            my ($dummy, $paramIndex) = GenerateParametersCheck($outputArray, $function, $interface, "constructorCallback", undef, undef, undef);
 
             if ($codeGenerator->ExtendedAttributeContains($interface->extendedAttributes->{"ConstructorCallWith"}, "ScriptState")) {
                 push(@constructorArgList, "*state");

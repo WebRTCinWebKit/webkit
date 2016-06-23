@@ -783,6 +783,7 @@ private:
         case OverridesHasInstance:
         case InstanceOf:
         case InstanceOfCustom:
+        case IsJSArray:
         case IsEmpty:
         case IsUndefined:
         case IsBoolean:
@@ -791,7 +792,8 @@ private:
         case IsObject:
         case IsObjectOrNull:
         case IsFunction:
-        case IsRegExpObject: {
+        case IsRegExpObject:
+        case IsTypedArrayView: {
             setPrediction(SpecBoolean);
             break;
         }
@@ -808,6 +810,10 @@ private:
             break;
         }
 
+        case CallObjectConstructor: {
+            setPrediction(SpecObject);
+            break;
+        }
         case SkipScope:
         case GetGlobalObject: {
             setPrediction(SpecObjectOther);
@@ -972,7 +978,6 @@ private:
         case PhantomClonedArguments:
         case GetMyArgumentByVal:
         case GetMyArgumentByValOutOfBounds:
-        case ForwardVarargs:
         case PutHint:
         case CheckStructureImmediate:
         case MaterializeNewObject:
@@ -1055,6 +1060,7 @@ private:
         case ZombieHint:
         case ExitOK:
         case LoadVarargs:
+        case ForwardVarargs:
         case CopyRest:
         case PutDynamicVar:
             break;

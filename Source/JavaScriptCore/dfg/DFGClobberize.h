@@ -164,6 +164,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case GetGlobalObject:
     case StringCharCodeAt:
     case CompareStrictEq:
+    case IsJSArray:
     case IsEmpty:
     case IsUndefined:
     case IsBoolean:
@@ -171,6 +172,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case IsString:
     case IsObject:
     case IsRegExpObject:
+    case IsTypedArrayView:
     case LogicalNot:
     case CheckInBounds:
     case DoubleRep:
@@ -205,7 +207,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         read(MathDotRandomState);
         write(MathDotRandomState);
         return;
-        
+
     case HasGenericProperty:
     case HasStructureProperty:
     case GetEnumerableLength:
@@ -420,6 +422,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         write(HeapObjectCount);
         return;
 
+    case CallObjectConstructor:
     case ToThis:
     case CreateThis:
         read(MiscFields);

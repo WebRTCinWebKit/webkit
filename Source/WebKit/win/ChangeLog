@@ -1,3 +1,74 @@
+2016-06-22  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] The test storage/indexeddb/modern/handle-user-delete.html is timing out.
+        https://bugs.webkit.org/show_bug.cgi?id=158934
+
+        Reviewed by Brent Fulgham.
+
+        Add a method to delete all indexed databases.
+
+        * Interfaces/IWebDatabaseManager.idl:
+        * WebDatabaseManager.cpp:
+        (WebDatabaseManager::QueryInterface):
+        (WebDatabaseManager::deleteAllIndexedDatabases):
+        * WebDatabaseManager.h:
+
+2016-06-17  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Rendering is not scaled correctly if process is DPI aware.
+        https://bugs.webkit.org/show_bug.cgi?id=158781
+
+        Reviewed by Brent Fulgham.
+
+        Scale the root graphics layer with the device scale factor.
+
+        * WebView.cpp:
+        (WebView::setAcceleratedCompositing):
+
+2016-06-15  Chris Dumez  <cdumez@apple.com>
+
+        Drop some unnecessary header includes
+        https://bugs.webkit.org/show_bug.cgi?id=158788
+
+        Reviewed by Alexey Proskuryakov.
+
+        Drop some unnecessary header includes in headers to speed up build time.
+
+        * Plugins/PluginView.cpp:
+
+2016-06-15  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        Enabling Shadow DOM for all platforms
+        https://bugs.webkit.org/show_bug.cgi?id=158738
+
+        Reviewed by Ryosuke Niwa.
+
+        Removed Shadow DOM from options (enabled by default)
+        (comprises removal of corresponding preprocessor directives)
+
+        * WebView.cpp:
+
+2016-06-13  Alex Christensen  <achristensen@webkit.org>
+
+        Add WebSocketProvider stub
+        https://bugs.webkit.org/show_bug.cgi?id=158702
+
+        Reviewed by Brady Eidson.
+
+        * WebSocketProvider.h: Added.
+        * WebView.cpp:
+        (WebView::initWithFrame):
+
+2016-06-10  Alex Christensen  <achristensen@webkit.org>
+
+        Introduce WTF::UniqueRef
+        https://bugs.webkit.org/show_bug.cgi?id=158596
+
+        Reviewed by Brady Eidson.
+
+        * WebView.cpp:
+        (WebView::initWithFrame):
+
 2016-06-09  Alex Christensen  <achristensen@webkit.org>
 
         Fix Windows build.

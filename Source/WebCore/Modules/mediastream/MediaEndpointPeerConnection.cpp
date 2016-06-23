@@ -33,6 +33,7 @@
 #if ENABLE(WEB_RTC)
 #include "MediaEndpointPeerConnection.h"
 
+#include "EventNames.h"
 #include "JSRTCSessionDescription.h"
 #include "MediaEndpointSessionConfiguration.h"
 #include "MediaStream.h"
@@ -41,7 +42,6 @@
 #include "NotImplemented.h"
 #include "PeerMediaDescription.h"
 #include "RTCConfiguration.h"
-#include "RTCIceCandidate.h"
 #include "RTCIceCandidateEvent.h"
 #include "RTCOfferAnswerOptions.h"
 #include "RTCRtpTransceiver.h"
@@ -715,6 +715,7 @@ void MediaEndpointPeerConnection::replaceTrack(RTCRtpSender& sender, RefPtr<Medi
     RTCRtpTransceiver* transceiver = matchTransceiver(m_client->getTransceivers(), [&sender] (RTCRtpTransceiver& current) {
         return current.sender() == &sender;
     });
+    ASSERT(transceiver);
 
     const String& mid = transceiver->mid();
     if (mid.isNull()) {

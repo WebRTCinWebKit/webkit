@@ -127,6 +127,7 @@
 #include "PageTransitionEvent.h"
 #include "PlatformLocale.h"
 #include "PlatformMediaSessionManager.h"
+#include "PlatformScreen.h"
 #include "PlatformStrategies.h"
 #include "PlugInsResources.h"
 #include "PluginDocument.h"
@@ -167,6 +168,7 @@
 #include "StyleSheetList.h"
 #include "StyleTreeResolver.h"
 #include "SubresourceLoader.h"
+#include "TextAutoSizing.h"
 #include "TextEvent.h"
 #include "TextNodeTraversal.h"
 #include "TransformSource.h"
@@ -347,19 +349,6 @@ static inline bool isValidNamePart(UChar32 c)
     return true;
 }
 
-static bool shouldInheritSecurityOriginFromOwner(const URL& url)
-{
-    // http://www.whatwg.org/specs/web-apps/current-work/#origin-0
-    //
-    // If a Document has the address "about:blank"
-    //     The origin of the Document is the origin it was assigned when its browsing context was created.
-    //
-    // Note: We generalize this to all "blank" URLs and invalid URLs because we
-    // treat all of these URLs as about:blank.
-    //
-    return url.isEmpty() || url.isBlankURL();
-}
-
 static Widget* widgetForElement(Element* focusedElement)
 {
     if (!focusedElement)
@@ -419,6 +408,20 @@ static void printNavigationErrorMessage(Frame* frame, const URL& activeURL, cons
     frame->document()->domWindow()->printErrorMessage(message);
 }
 
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+
+void TextAutoSizingTraits::constructDeletedValue(TextAutoSizingKey& slot)
+{
+    new (NotNull, &slot) TextAutoSizingKey(TextAutoSizingKey::Deleted);
+}
+
+bool TextAutoSizingTraits::isDeletedValue(const TextAutoSizingKey& value)
+{
+    return value.isDeleted();
+}
+
+#endif
+
 uint64_t Document::s_globalTreeVersion = 0;
 
 HashSet<Document*>& Document::allDocuments()
@@ -431,8 +434,6 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     : ContainerNode(*this, CreateDocument)
     , TreeScope(*this)
 #if ENABLE(IOS_TOUCH_EVENTS)
-    , m_handlingTouchEvent(false)
-    , m_touchEventRegionsDirty(false)
     , m_touchEventsChangedTimer(*this, &Document::touchEventsChangedTimerFired)
 #endif
     , m_referencingNodeCount(0)
@@ -1118,7 +1119,6 @@ Ref<Element> Document::createElement(const QualifiedName& name, bool createdByPa
     return element.releaseNonNull();
 }
 
-#if ENABLE(CUSTOM_ELEMENTS) || ENABLE(SHADOW_DOM)
 CustomElementNameValidationStatus Document::validateCustomElementName(const AtomicString& localName)
 {
     bool containsHyphen = false;
@@ -1150,7 +1150,6 @@ CustomElementNameValidationStatus Document::validateCustomElementName(const Atom
 
     return CustomElementNameValidationStatus::Valid;
 }
-#endif
 
 #if ENABLE(CSS_GRID_LAYOUT)
 bool Document::isCSSGridLayoutEnabled() const
@@ -2850,13 +2849,13 @@ bool Document::isLayoutTimerActive()
 std::chrono::milliseconds Document::minimumLayoutDelay()
 {
     if (m_overMinimumLayoutThreshold)
-        return std::chrono::milliseconds(0);
+        return 0ms;
     
-    std::chrono::milliseconds elapsed = elapsedTime();
+    auto elapsed = elapsedTime();
     m_overMinimumLayoutThreshold = elapsed > settings()->layoutInterval();
 
     // We'll want to schedule the timer to fire at the minimum layout threshold.
-    return std::max(std::chrono::milliseconds(0), settings()->layoutInterval() - elapsed);
+    return std::max(0ms, settings()->layoutInterval() - elapsed);
 }
 
 std::chrono::milliseconds Document::elapsedTime() const
@@ -4878,6 +4877,22 @@ void Document::pageScaleFactorChangedAndStable()
     for (HTMLMediaElement* mediaElement : m_pageScaleFactorChangedElements)
         mediaElement->pageScaleFactorChanged();
 }
+
+void Document::registerForUserInterfaceLayoutDirectionChangedCallbacks(HTMLMediaElement& element)
+{
+    m_userInterfaceLayoutDirectionChangedElements.add(&element);
+}
+
+void Document::unregisterForUserInterfaceLayoutDirectionChangedCallbacks(HTMLMediaElement& element)
+{
+    m_userInterfaceLayoutDirectionChangedElements.remove(&element);
+}
+
+void Document::userInterfaceLayoutDirectionChanged()
+{
+    for (auto* mediaElement : m_userInterfaceLayoutDirectionChangedElements)
+        mediaElement->userInterfaceLayoutDirectionChanged();
+}
 #endif
 
 void Document::setShouldCreateRenderers(bool f)
@@ -5261,7 +5276,7 @@ void Document::initSecurityContext()
         setBaseURLOverride(parentDocument->baseURL());
     }
 
-    if (!shouldInheritSecurityOriginFromOwner(m_url))
+    if (!m_url.shouldInheritSecurityOriginFromOwner())
         return;
 
     // If we do not obtain a meaningful origin from the URL, then we try to
@@ -5304,7 +5319,7 @@ void Document::initSecurityContext()
 
 void Document::initContentSecurityPolicy()
 {
-    if (!m_frame->tree().parent() || (!shouldInheritSecurityOriginFromOwner(m_url) && !isPluginDocument()))
+    if (!m_frame->tree().parent() || (!m_url.shouldInheritSecurityOriginFromOwner() && !isPluginDocument()))
         return;
 
     contentSecurityPolicy()->copyStateFrom(m_frame->tree().parent()->document()->contentSecurityPolicy());
@@ -6284,7 +6299,7 @@ void Document::wheelEventHandlersChanged()
 
     if (FrameView* frameView = view()) {
         if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator())
-            scrollingCoordinator->frameViewNonFastScrollableRegionChanged(*frameView);
+            scrollingCoordinator->frameViewEventTrackingRegionsChanged(*frameView);
     }
 
     bool haveHandlers = m_wheelEventTargets && !m_wheelEventTargets->isEmpty();

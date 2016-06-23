@@ -43,7 +43,7 @@ public:
     RenderMathMLOperator(MathMLElement&, RenderStyle&&);
     RenderMathMLOperator(Document&, RenderStyle&&, const String& operatorString, MathMLOperatorDictionary::Form, unsigned short flags = 0);
 
-    virtual void stretchTo(LayoutUnit heightAboveBaseline, LayoutUnit depthBelowBaseline);
+    void stretchTo(LayoutUnit heightAboveBaseline, LayoutUnit depthBelowBaseline);
     void stretchTo(LayoutUnit width);
     LayoutUnit stretchSize() const { return m_isVertical ? m_stretchHeightAboveBaseline + m_stretchDepthBelowBaseline : m_stretchWidth; }
     void resetStretchSize();
@@ -57,18 +57,17 @@ public:
     void styleDidChange(StyleDifference, const RenderStyle* oldStyle) final;
     void updateStyle() final;
 
-    void paint(PaintInfo&, const LayoutPoint&) override;
+    void paint(PaintInfo&, const LayoutPoint&) final;
 
     void updateTokenContent(const String& operatorString);
     void updateTokenContent() final;
     void updateOperatorProperties();
     void updateFromElement() final;
-    LayoutUnit trailingSpaceError();
 
 protected:
     virtual void setOperatorProperties();
-    void computePreferredLogicalWidths() override;
-    void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const override;
+    void computePreferredLogicalWidths() final;
+    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) final;
     void setLeadingSpace(LayoutUnit leadingSpace) { m_leadingSpace = leadingSpace; }
     void setTrailingSpace(LayoutUnit trailingSpace) { m_trailingSpace = trailingSpace; }
     UChar textContent() const { return m_textContent; }
@@ -86,6 +85,7 @@ private:
     void rebuildTokenContent(const String& operatorString);
 
     bool shouldAllowStretching() const;
+    bool useMathOperator() const;
 
     void setOperatorFlagFromAttribute(MathMLOperatorDictionary::Flag, const QualifiedName&);
     void setOperatorFlagFromAttributeValue(MathMLOperatorDictionary::Flag, const AtomicString& attributeValue);

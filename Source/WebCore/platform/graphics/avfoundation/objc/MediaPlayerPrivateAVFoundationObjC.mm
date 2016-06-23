@@ -734,23 +734,17 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayerLayer()
     [m_videoLayer setPlayer:m_avPlayer.get()];
     [m_videoLayer setBackgroundColor:cachedCGColor(Color::black)];
 
-    m_secondaryVideoLayer = adoptNS([allocAVPlayerLayerInstance() init]);
-    [m_secondaryVideoLayer setPlayer:m_avPlayer.get()];
-    [m_secondaryVideoLayer setBackgroundColor:cachedCGColor(Color::black)];
-
 #ifndef NDEBUG
     [m_videoLayer setName:@"MediaPlayerPrivate AVPlayerLayer"];
-    [m_secondaryVideoLayer setName:@"MediaPlayerPrivate AVPlayerLayer secondary"];
 #endif
     [m_videoLayer addObserver:m_objcObserver.get() forKeyPath:@"readyForDisplay" options:NSKeyValueObservingOptionNew context:(void *)MediaPlayerAVFoundationObservationContextAVPlayerLayer];
     updateVideoLayerGravity();
     [m_videoLayer setContentsScale:player()->client().mediaPlayerContentsScale()];
-    [m_secondaryVideoLayer setContentsScale:player()->client().mediaPlayerContentsScale()];
     IntSize defaultSize = snappedIntRect(player()->client().mediaPlayerContentBoxRect()).size();
     LOG(Media, "MediaPlayerPrivateAVFoundationObjC::createVideoLayer(%p) - returning %p", this, m_videoLayer.get());
 
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-    m_videoFullscreenLayerManager->setVideoLayers(m_videoLayer.get(), m_secondaryVideoLayer.get(), defaultSize);
+    m_videoFullscreenLayerManager->setVideoLayer(m_videoLayer.get(), defaultSize);
 
 #if PLATFORM(IOS)
     if ([m_videoLayer respondsToSelector:@selector(setPIPModeEnabled:)])
@@ -758,7 +752,6 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayerLayer()
 #endif
 #else
     [m_videoLayer setFrame:CGRectMake(0, 0, defaultSize.width(), defaultSize.height())];
-    [m_secondaryVideoLayer setFrame:CGRectMake(0, 0, defaultSize.width(), defaultSize.height())];
 #endif
 }
 
@@ -771,14 +764,12 @@ void MediaPlayerPrivateAVFoundationObjC::destroyVideoLayer()
 
     [m_videoLayer removeObserver:m_objcObserver.get() forKeyPath:@"readyForDisplay"];
     [m_videoLayer setPlayer:nil];
-    [m_secondaryVideoLayer setPlayer:nil];
 
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     m_videoFullscreenLayerManager->didDestroyVideoLayer();
 #endif
 
     m_videoLayer = nil;
-    m_secondaryVideoLayer = nil;
 }
 
 MediaTime MediaPlayerPrivateAVFoundationObjC::getStartDate() const
@@ -1056,6 +1047,12 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayer()
     }
 #endif
 
+    if (m_muted) {
+        // Clear m_muted so setMuted doesn't return without doing anything.
+        m_muted = false;
+        [m_avPlayer.get() setMuted:m_muted];
+    }
+
     if (player()->client().mediaPlayerIsVideo())
         createAVPlayerLayer();
 
@@ -1223,8 +1220,7 @@ void MediaPlayerPrivateAVFoundationObjC::setVideoFullscreenGravity(MediaPlayer::
 {
     m_videoFullscreenGravity = gravity;
 
-    auto activeLayer = m_secondaryVideoLayer.get() ?: m_videoLayer.get();
-    if (!activeLayer)
+    if (!m_videoLayer)
         return;
 
     NSString *videoGravity = AVLayerVideoGravityResizeAspect;
@@ -1237,10 +1233,10 @@ void MediaPlayerPrivateAVFoundationObjC::setVideoFullscreenGravity(MediaPlayer::
     else
         ASSERT_NOT_REACHED();
     
-    if ([activeLayer videoGravity] == videoGravity)
+    if ([m_videoLayer videoGravity] == videoGravity)
         return;
 
-    [activeLayer setVideoGravity:videoGravity];
+    [m_videoLayer setVideoGravity:videoGravity];
     syncTextTrackBounds();
 }
 
@@ -1393,11 +1389,26 @@ void MediaPlayerPrivateAVFoundationObjC::setVolume(float volume)
     UNUSED_PARAM(volume);
     return;
 #else
-    if (!metaDataAvailable())
+    if (!m_avPlayer)
         return;
 
     [m_avPlayer.get() setVolume:volume];
 #endif
+}
+
+void MediaPlayerPrivateAVFoundationObjC::setMuted(bool muted)
+{
+    if (m_muted == muted)
+        return;
+
+    LOG(Media, "MediaPlayerPrivateAVFoundationObjC::setMuted(%p) - set to %s", this, boolString(muted));
+
+    m_muted = muted;
+
+    if (!m_avPlayer)
+        return;
+
+    [m_avPlayer.get() setMuted:m_muted];
 }
 
 void MediaPlayerPrivateAVFoundationObjC::setClosedCaptionsVisible(bool closedCaptionsVisible)
@@ -1878,7 +1889,6 @@ void MediaPlayerPrivateAVFoundationObjC::updateVideoLayerGravity()
     [CATransaction setDisableActions:YES];    
     NSString* gravity = shouldMaintainAspectRatio() ? AVLayerVideoGravityResizeAspect : AVLayerVideoGravityResize;
     [m_videoLayer.get() setVideoGravity:gravity];
-    [m_secondaryVideoLayer.get() setVideoGravity:gravity];
     [CATransaction commit];
 }
 
@@ -2174,8 +2184,7 @@ void MediaPlayerPrivateAVFoundationObjC::syncTextTrackBounds()
         return;
 
     FloatRect videoFullscreenFrame = m_videoFullscreenLayerManager->videoFullscreenFrame();
-    auto activeLayer = m_secondaryVideoLayer.get() ?: m_videoLayer.get();
-    CGRect textFrame = activeLayer ? [activeLayer videoRect] : CGRectMake(0, 0, videoFullscreenFrame.width(), videoFullscreenFrame.height());
+    CGRect textFrame = m_videoLayer ? [m_videoLayer videoRect] : CGRectMake(0, 0, videoFullscreenFrame.width(), videoFullscreenFrame.height());
     [m_textTrackRepresentationLayer setFrame:textFrame];
 #endif
 }

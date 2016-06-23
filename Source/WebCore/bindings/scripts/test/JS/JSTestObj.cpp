@@ -26,6 +26,7 @@
 #include "Dictionary.h"
 #include "Document.h"
 #include "Element.h"
+#include "EventNames.h"
 #include "ExceptionCode.h"
 #include "Frame.h"
 #include "HTMLNames.h"
@@ -607,6 +608,7 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithExceptionW
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionCustomMethod(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionCustomMethodWithArgs(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionPrivateMethod(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionPublicAndPrivateMethod(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionAddEventListener(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionRemoveEventListener(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptStateVoid(JSC::ExecState*);
@@ -1188,6 +1190,7 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
 #else
     { 0, 0, NoIntrinsic, { 0, 0 } },
 #endif
+    { "publicAndPrivateMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionPublicAndPrivateMethod), (intptr_t) (1) } },
     { "addEventListener", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionAddEventListener), (intptr_t) (2) } },
     { "removeEventListener", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionRemoveEventListener), (intptr_t) (2) } },
     { "withScriptStateVoid", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionWithScriptStateVoid), (intptr_t) (0) } },
@@ -1327,6 +1330,7 @@ void JSTestObjPrototype::finishCreation(VM& vm)
 #endif
     JSVMClientData& clientData = *static_cast<JSVMClientData*>(vm.clientData);
     putDirect(vm, clientData.builtinNames().privateMethodPrivateName(), JSFunction::create(vm, globalObject(), 0, String(), jsTestObjPrototypeFunctionPrivateMethod), ReadOnly | DontEnum);
+    putDirect(vm, clientData.builtinNames().publicAndPrivateMethodPrivateName(), JSFunction::create(vm, globalObject(), 0, String(), jsTestObjPrototypeFunctionPublicAndPrivateMethod), ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->iteratorSymbol, JSFunction::create(vm, globalObject(), 0, ASCIILiteral("[Symbol.Iterator]"), jsTestObjPrototypeFunctionSymbolIterator), ReadOnly | DontEnum);
 }
 
@@ -5144,6 +5148,23 @@ EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionPrivateMethod(ExecState* 
     return JSValue::encode(result);
 }
 
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionPublicAndPrivateMethod(ExecState* state)
+{
+    JSValue thisValue = state->thisValue();
+    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
+    if (UNLIKELY(!castedThis))
+        return throwThisTypeError(*state, "TestObj", "publicAndPrivateMethod");
+    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, createNotEnoughArgumentsError(state));
+    auto argument = state->argument(0).toWTFString(state);
+    if (UNLIKELY(state->hadException()))
+        return JSValue::encode(jsUndefined());
+    JSValue result = jsStringWithCache(state, impl.publicAndPrivateMethod(WTFMove(argument)));
+    return JSValue::encode(result);
+}
+
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionAddEventListener(ExecState* state)
 {
     JSValue thisValue = state->thisValue();
@@ -6147,12 +6168,15 @@ static inline EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethod12(ExecSt
     ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
     auto& impl = castedThis->wrapped();
     Vector<Blob*> blobArgs;
+    ASSERT(0 <= state->argumentCount());
+    blobArgs.reserveInitialCapacity(state->argumentCount() - 0);
     for (unsigned i = 0, count = state->argumentCount(); i < count; ++i) {
-        if (!state->uncheckedArgument(i).inherits(JSBlob::info()))
+        auto* item = JSBlob::toWrapped(state->uncheckedArgument(i));
+        if (!item)
             return throwArgumentTypeError(*state, i, "blobArgs", "TestObj", "overloadedMethod", "Blob");
-        blobArgs.append(JSBlob::toWrapped(state->uncheckedArgument(i)));
+        blobArgs.uncheckedAppend(item);
     }
-    impl.overloadedMethod(blobArgs);
+    impl.overloadedMethod(WTFMove(blobArgs));
     return JSValue::encode(jsUndefined());
 }
 
@@ -6673,7 +6697,7 @@ EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVariadicStringMethod(Exec
     Vector<String> tail = toNativeArguments<String>(state, 1);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    impl.variadicStringMethod(WTFMove(head), tail);
+    impl.variadicStringMethod(WTFMove(head), WTFMove(tail));
     return JSValue::encode(jsUndefined());
 }
 
@@ -6693,7 +6717,7 @@ EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVariadicDoubleMethod(Exec
     Vector<double> tail = toNativeArguments<double>(state, 1);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    impl.variadicDoubleMethod(WTFMove(head), tail);
+    impl.variadicDoubleMethod(WTFMove(head), WTFMove(tail));
     return JSValue::encode(jsUndefined());
 }
 
@@ -6711,12 +6735,15 @@ EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVariadicNodeMethod(ExecSt
     if (UNLIKELY(!head))
         return throwArgumentTypeError(*state, 0, "head", "TestObj", "variadicNodeMethod", "Node");
     Vector<Node*> tail;
+    ASSERT(1 <= state->argumentCount());
+    tail.reserveInitialCapacity(state->argumentCount() - 1);
     for (unsigned i = 1, count = state->argumentCount(); i < count; ++i) {
-        if (!state->uncheckedArgument(i).inherits(JSNode::info()))
+        auto* item = JSNode::toWrapped(state->uncheckedArgument(i));
+        if (!item)
             return throwArgumentTypeError(*state, i, "tail", "TestObj", "variadicNodeMethod", "Node");
-        tail.append(JSNode::toWrapped(state->uncheckedArgument(i)));
+        tail.uncheckedAppend(item);
     }
-    impl.variadicNodeMethod(*head, tail);
+    impl.variadicNodeMethod(*head, WTFMove(tail));
     return JSValue::encode(jsUndefined());
 }
 

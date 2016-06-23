@@ -155,6 +155,7 @@ bool doesGC(Graph& graph, Node* node)
     case OverridesHasInstance:
     case InstanceOf:
     case InstanceOfCustom:
+    case IsJSArray:
     case IsEmpty:
     case IsUndefined:
     case IsBoolean:
@@ -164,6 +165,7 @@ bool doesGC(Graph& graph, Node* node)
     case IsObjectOrNull:
     case IsFunction:
     case IsRegExpObject:
+    case IsTypedArrayView:
     case TypeOf:
     case LogicalNot:
     case ToPrimitive:
@@ -253,6 +255,7 @@ bool doesGC(Graph& graph, Node* node)
     case CreateDirectArguments:
     case CreateScopedArguments:
     case CreateClonedArguments:
+    case CallObjectConstructor:
     case ToThis:
     case CreateThis:
     case AllocatePropertyStorage:

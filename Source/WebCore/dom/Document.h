@@ -38,7 +38,6 @@
 #include "MutationObserver.h"
 #include "PageVisibilityState.h"
 #include "PlatformEvent.h"
-#include "PlatformScreen.h"
 #include "ReferrerPolicy.h"
 #include "Region.h"
 #include "RenderPtr.h"
@@ -46,7 +45,6 @@
 #include "StringWithDirection.h"
 #include "StyleChange.h"
 #include "Supplementable.h"
-#include "TextAutoSizing.h"
 #include "TextResourceDecoder.h"
 #include "Timer.h"
 #include "TreeScope.h"
@@ -55,9 +53,15 @@
 #include <chrono>
 #include <memory>
 #include <wtf/Deque.h>
+#include <wtf/HashCountedSet.h>
 #include <wtf/HashSet.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/WeakPtr.h>
+#include <wtf/text/AtomicStringHash.h>
+
+#if PLATFORM(IOS)
+#include "EventTrackingRegions.h"
+#endif
 
 namespace JSC {
 class ExecState;
@@ -168,6 +172,8 @@ class XPathResult;
 
 enum class ShouldOpenExternalURLsPolicy;
 
+using PlatformDisplayID = uint32_t;
+
 #if ENABLE(XSLT)
 class TransformSource;
 #endif
@@ -213,6 +219,12 @@ class DeviceOrientationController;
 struct TextAutoSizingHash;
 class TextAutoSizingKey;
 class TextAutoSizingValue;
+
+struct TextAutoSizingTraits : WTF::GenericHashTraits<TextAutoSizingKey> {
+    static const bool emptyValueIsZero = true;
+    static void constructDeletedValue(TextAutoSizingKey& slot);
+    static bool isDeletedValue(const TextAutoSizingKey& value);
+};
 #endif
 
 #if ENABLE(MEDIA_SESSION)
@@ -268,11 +280,6 @@ enum DimensionsCheck { WidthDimensionsCheck = 1 << 0, HeightDimensionsCheck = 1 
 enum class SelectionRestorationMode {
     Restore,
     SetDefault,
-};
-
-enum class SelectionRevealMode {
-    Reveal,
-    DoNotReveal
 };
 
 enum class HttpEquivPolicy {
@@ -389,9 +396,7 @@ public:
     WEBCORE_EXPORT RefPtr<Element> createElementNS(const String& namespaceURI, const String& qualifiedName, ExceptionCode&);
     WEBCORE_EXPORT Ref<Element> createElement(const QualifiedName&, bool createdByParser);
 
-#if ENABLE(CUSTOM_ELEMENTS) || ENABLE(SHADOW_DOM)
     static CustomElementNameValidationStatus validateCustomElementName(const AtomicString&);
-#endif
 
 #if ENABLE(CSS_GRID_LAYOUT)
     bool isCSSGridLayoutEnabled() const;
@@ -1028,6 +1033,9 @@ public:
     void registerForPageScaleFactorChangedCallbacks(HTMLMediaElement*);
     void unregisterForPageScaleFactorChangedCallbacks(HTMLMediaElement*);
     void pageScaleFactorChangedAndStable();
+    void registerForUserInterfaceLayoutDirectionChangedCallbacks(HTMLMediaElement&);
+    void unregisterForUserInterfaceLayoutDirectionChangedCallbacks(HTMLMediaElement&);
+    void userInterfaceLayoutDirectionChanged();
 #endif
 
     void registerForVisibilityStateChangedCallbacks(Element*);
@@ -1597,6 +1605,7 @@ private:
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     HashSet<HTMLMediaElement*> m_pageScaleFactorChangedElements;
+    HashSet<HTMLMediaElement*> m_userInterfaceLayoutDirectionChangedElements;
 #endif
 
     HashSet<Element*> m_visibilityStateCallbackElements;

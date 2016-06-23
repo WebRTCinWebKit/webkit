@@ -230,6 +230,7 @@ Page::Page(PageConfiguration&& pageConfiguration)
 #endif
     , m_lastSpatialNavigationCandidatesCount(0) // NOTE: Only called from Internals for Spatial Navigation testing.
     , m_forbidPromptsDepth(0)
+    , m_socketProvider(WTFMove(pageConfiguration.socketProvider))
     , m_applicationCacheStorage(*WTFMove(pageConfiguration.applicationCacheStorage))
     , m_databaseProvider(*WTFMove(pageConfiguration.databaseProvider))
     , m_storageNamespaceProvider(*WTFMove(pageConfiguration.storageNamespaceProvider))
@@ -238,7 +239,6 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_sessionID(SessionID::defaultSessionID())
     , m_isClosing(false)
 {
-    ASSERT(m_editorClient);
     updateTimerThrottlingState();
 
     m_storageNamespaceProvider->addPage(*this);
@@ -373,7 +373,7 @@ Ref<ClientRectList> Page::nonFastScrollableRects()
 
     Vector<IntRect> rects;
     if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
-        rects = scrollingCoordinator->absoluteNonFastScrollableRegion().rects();
+        rects = scrollingCoordinator->absoluteEventTrackingRegions().synchronousDispatchRegion.rects();
 
     Vector<FloatQuad> quads(rects.size());
     for (size_t i = 0; i < rects.size(); ++i)
@@ -895,6 +895,21 @@ void Page::setDeviceScaleFactor(float scaleFactor)
     GraphicsContext::updateDocumentMarkerResources();
 
     mainFrame().pageOverlayController().didChangeDeviceScaleFactor();
+}
+
+void Page::setUserInterfaceLayoutDirection(UserInterfaceLayoutDirection userInterfaceLayoutDirection)
+{
+    if (m_userInterfaceLayoutDirection == userInterfaceLayoutDirection)
+        return;
+
+    m_userInterfaceLayoutDirection = userInterfaceLayoutDirection;
+#if ENABLE(MEDIA_CONTROLS_SCRIPT)
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        if (!frame->document())
+            continue;
+        frame->document()->userInterfaceLayoutDirectionChanged();
+    }
+#endif
 }
 
 void Page::setTopContentInset(float contentInset)

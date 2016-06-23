@@ -44,7 +44,6 @@
 #include "ProcessThrottler.h"
 #include "SandboxExtension.h"
 #include "ShareableBitmap.h"
-#include "UserInterfaceLayoutDirection.h"
 #include "UserMediaPermissionRequestManagerProxy.h"
 #include "VisibleContentRectUpdateInfo.h"
 #include "WKBase.h"
@@ -63,6 +62,7 @@
 #include "WebProcessLifetimeTracker.h"
 #include <WebCore/Color.h>
 #include <WebCore/DragActions.h>
+#include <WebCore/EventTrackingRegions.h>
 #include <WebCore/FrameLoaderTypes.h>
 #include <WebCore/HitTestResult.h>
 #include <WebCore/MediaProducer.h>
@@ -72,6 +72,7 @@
 #include <WebCore/SearchPopupMenu.h>
 #include <WebCore/TextChecking.h>
 #include <WebCore/TextGranularity.h>
+#include <WebCore/UserInterfaceLayoutDirection.h>
 #include <WebCore/ViewState.h>
 #include <WebCore/VisibleSelection.h>
 #include <memory>
@@ -510,6 +511,7 @@ public:
     void setAssistedNodeValueAsNumber(double);
     void setAssistedNodeSelectedIndex(uint32_t index, bool allowMultipleSelection = false);
     void applicationDidEnterBackground();
+    void applicationDidFinishSnapshottingAfterEnteringBackground();
     void applicationWillEnterForeground();
     void applicationWillResignActive();
     void applicationDidBecomeActive();
@@ -615,7 +617,7 @@ public:
 #endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
-    void handleTouchEventSynchronously(const NativeWebTouchEvent&);
+    void handleTouchEventSynchronously(NativeWebTouchEvent&);
     void handleTouchEventAsynchronously(const NativeWebTouchEvent&);
 
 #elif ENABLE(TOUCH_EVENTS)
@@ -1110,9 +1112,12 @@ public:
     bool isResourceCachingDisabled() const { return m_isResourceCachingDisabled; }
     void setResourceCachingDisabled(bool);
 
-    UserInterfaceLayoutDirection userInterfaceLayoutDirection();
+    WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection();
+    void setUserInterfaceLayoutDirection(WebCore::UserInterfaceLayoutDirection);
 
     bool hasHadSelectionChangesFromUserInteraction() const { return m_hasHadSelectionChangesFromUserInteraction; }
+
+    bool isAlwaysOnLoggingAllowed() const;
 
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, Ref<API::PageConfiguration>&&);
@@ -1463,7 +1468,7 @@ private:
     void sendWheelEvent(const WebWheelEvent&);
 
 #if ENABLE(TOUCH_EVENTS)
-    bool shouldStartTrackingTouchEvents(const WebTouchEvent&) const;
+    WebCore::TrackingType touchEventTrackingType(const WebTouchEvent&) const;
 #endif
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -1614,7 +1619,7 @@ private:
     bool m_alwaysRunsAtForegroundPriority;
     ProcessThrottler::ForegroundActivityToken m_activityToken;
 #endif
-        
+    bool m_initialCapitalizationEnabled;
     Ref<WebBackForwardList> m_backForwardList;
         
     bool m_maintainsInactiveSelection;
@@ -1690,7 +1695,7 @@ private:
     std::unique_ptr<NativeWebMouseEvent> m_currentlyProcessedMouseDownEvent;
 
 #if ENABLE(TOUCH_EVENTS)
-    bool m_isTrackingTouchEvents;
+    WebCore::TrackingType m_touchEventsTrackingType { WebCore::TrackingType::NotTracking };
 #endif
 #if ENABLE(TOUCH_EVENTS) && !ENABLE(IOS_TOUCH_EVENTS)
     Deque<QueuedTouchEvents> m_touchEventQueue;

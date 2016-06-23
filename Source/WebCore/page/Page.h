@@ -33,6 +33,7 @@
 #include "ScrollTypes.h"
 #include "SessionID.h"
 #include "Supplementable.h"
+#include "UserInterfaceLayoutDirection.h"
 #include "ViewState.h"
 #include "ViewportArguments.h"
 #include "WheelEventTestTrigger.h"
@@ -44,6 +45,7 @@
 #include <wtf/Optional.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
+#include <wtf/UniqueRef.h>
 #include <wtf/text/WTFString.h>
 
 #if OS(SOLARIS)
@@ -119,6 +121,7 @@ class VisibleSelection;
 class ScrollableArea;
 class ScrollingCoordinator;
 class Settings;
+class SocketProvider;
 class StorageNamespace;
 class StorageNamespaceProvider;
 class UserContentProvider;
@@ -157,7 +160,7 @@ public:
     WEBCORE_EXPORT void setCanStartMedia(bool);
     bool canStartMedia() const { return m_canStartMedia; }
 
-    EditorClient& editorClient() const { return *m_editorClient; }
+    EditorClient& editorClient() { return m_editorClient.get(); }
     PlugInClient* plugInClient() const { return m_plugInClient; }
 
     MainFrame& mainFrame() { return m_mainFrame.get(); }
@@ -174,7 +177,6 @@ public:
     WEBCORE_EXPORT const String& groupName() const;
 
     PageGroup& group();
-    PageGroup* groupPtr() { return m_group; } // can return 0
 
     static void forEachPage(std::function<void(Page&)>);
 
@@ -279,6 +281,9 @@ public:
 
     WEBCORE_EXPORT void setPageScaleFactor(float scale, const IntPoint& origin, bool inStableState = true);
     float pageScaleFactor() const { return m_pageScaleFactor; }
+
+    UserInterfaceLayoutDirection userInterfaceLayoutDirection() const { return m_userInterfaceLayoutDirection; }
+    WEBCORE_EXPORT void setUserInterfaceLayoutDirection(UserInterfaceLayoutDirection);
 
     // The view scale factor is multiplied into the page scale factor by all
     // callers of setPageScaleFactor.
@@ -456,6 +461,7 @@ public:
 
     ApplicationCacheStorage& applicationCacheStorage() { return m_applicationCacheStorage; }
     DatabaseProvider& databaseProvider() { return m_databaseProvider; }
+    SocketProvider& socketProvider() { return m_socketProvider; }
 
     StorageNamespaceProvider& storageNamespaceProvider() { return m_storageNamespaceProvider.get(); }
     void setStorageNamespaceProvider(Ref<StorageNamespaceProvider>&&);
@@ -583,7 +589,7 @@ private:
 
     RefPtr<RenderTheme> m_theme;
 
-    std::unique_ptr<EditorClient> m_editorClient;
+    UniqueRef<EditorClient> m_editorClient;
     PlugInClient* m_plugInClient;
     ValidationMessageClient* m_validationMessageClient;
     std::unique_ptr<DiagnosticLoggingClient> m_diagnosticLoggingClient;
@@ -690,6 +696,7 @@ private:
     unsigned m_lastSpatialNavigationCandidatesCount;
     unsigned m_forbidPromptsDepth;
 
+    UniqueRef<SocketProvider> m_socketProvider;
     Ref<ApplicationCacheStorage> m_applicationCacheStorage;
     Ref<DatabaseProvider> m_databaseProvider;
     Ref<StorageNamespaceProvider> m_storageNamespaceProvider;
@@ -713,6 +720,7 @@ private:
     bool m_showAllPlugins { false };
     bool m_controlledByAutomation { false };
     bool m_resourceCachingDisabled { false };
+    UserInterfaceLayoutDirection m_userInterfaceLayoutDirection { UserInterfaceLayoutDirection::LTR };
 };
 
 inline PageGroup& Page::group()
