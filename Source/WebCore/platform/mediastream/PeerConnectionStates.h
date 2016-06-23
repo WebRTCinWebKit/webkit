@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Ericsson AB. All rights reserved.
+ * Copyright (C) 2015, 2016 Ericsson AB. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -70,6 +70,17 @@ enum class IceTransportState {
     Failed = 5,
     Disconnected = 6,
     Closed = 7
+};
+
+enum class IceTransportPolicy {
+    Relay,
+    All
+};
+
+enum class BundlePolicy {
+    Balanced,
+    MaxCompat,
+    MaxBundle
 };
 
 }
