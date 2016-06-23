@@ -62,6 +62,16 @@ enum class IceGatheringState {
     Complete = 3
 };
 
+enum class IceTransportState {
+    New = 1,
+    Checking = 2,
+    Connected = 3,
+    Completed = 4,
+    Failed = 5,
+    Disconnected = 6,
+    Closed = 7
+};
+
 }
 
 } // namespace WebCore

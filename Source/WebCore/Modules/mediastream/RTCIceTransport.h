@@ -33,6 +33,7 @@
 
 #if ENABLE(WEB_RTC)
 
+#include "PeerConnectionStates.h"
 #include "ScriptWrappable.h"
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -41,21 +42,9 @@ namespace WebCore {
 
 class RTCIceTransport : public RefCounted<RTCIceTransport>, public ScriptWrappable {
 public:
-    enum class TransportState {
-        New = 1,
-        Checking = 2,
-        Connected = 3,
-        Completed = 4,
-        Failed = 5,
-        Disconnected = 6,
-        Closed = 7
-    };
 
-    enum class GatheringState {
-        New = 1,
-        Gathering = 2,
-        Complete = 3
-    };
+    using TransportState = PeerConnectionStates::IceTransportState;
+    using GatheringState = PeerConnectionStates::IceGatheringState;
 
     static Ref<RTCIceTransport> create()
     {
