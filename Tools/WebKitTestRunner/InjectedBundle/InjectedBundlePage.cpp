@@ -896,7 +896,7 @@ void InjectedBundlePage::dump()
 
     if (injectedBundle.shouldDumpPixels() && injectedBundle.testRunner()->shouldDumpPixels()) {
 #if PLATFORM(IOS)
-        // IOS doesn't implement PlatformWebView::windowSnapshotImage() yet, so we need to generate the snapshot in the web process.
+        // PlatformWebView::windowSnapshotImage() has timing problems, so use WebProcess snapshots for now.
         bool shouldCreateSnapshot = true;
 #else
         bool shouldCreateSnapshot = injectedBundle.testRunner()->isPrinting();

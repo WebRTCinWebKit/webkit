@@ -1,3 +1,189 @@
+2016-06-23  Benjamin Poulain  <bpoulain@apple.com>
+
+        OOM Assertion failure in Array.prototype.toString
+        https://bugs.webkit.org/show_bug.cgi?id=158793
+
+        Reviewed by Saam Barati.
+
+        * js/script-tests/stringimpl-to-jsstring-on-large-strings-1.js: Added.
+        (string_appeared_here.createStrings):
+        * js/script-tests/stringimpl-to-jsstring-on-large-strings-2.js: Added.
+        (string_appeared_here.createRegexp):
+        (catch):
+        * js/script-tests/stringimpl-to-jsstring-on-large-strings-3.js: Added.
+        (string_appeared_here.createStrings):
+        (catch):
+        * js/stringimpl-to-jsstring-on-large-strings-1-expected.txt: Added.
+        * js/stringimpl-to-jsstring-on-large-strings-1.html: Added.
+        * js/stringimpl-to-jsstring-on-large-strings-2-expected.txt: Added.
+        * js/stringimpl-to-jsstring-on-large-strings-2.html: Added.
+        * js/stringimpl-to-jsstring-on-large-strings-3-expected.txt: Added.
+        * js/stringimpl-to-jsstring-on-large-strings-3.html: Added.
+
+2016-06-23  Brady Eidson  <beidson@apple.com>
+
+        Retrieving Blobs from IndexedDB using cursors fails in WK2 (Sandboxing)
+        https://bugs.webkit.org/show_bug.cgi?id=158991
+
+        Reviewed by Alex Christensen.
+
+        * storage/indexeddb/modern/blob-cursor-expected.txt: Added.
+        * storage/indexeddb/modern/blob-cursor.html: Added.
+        * storage/indexeddb/modern/resources/blob-cursor.js: Added.
+        * storage/indexeddb/modern/resources/blob-cursor1.html: Added.
+        * storage/indexeddb/modern/resources/blob-cursor2.html: Added.
+
+2016-06-23  Joseph Pecoraro  <pecoraro@apple.com> and Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Implement isFinite / isNaN in JS and make DFG ToNumber accept non number values
+        https://bugs.webkit.org/show_bug.cgi?id=154022
+
+        Reviewed by Filip Pizlo.
+
+        * js/regress/Number-isNaN-expected.txt: Added.
+        * js/regress/Number-isNaN.html: Added.
+        * js/regress/global-isNaN-expected.txt: Added.
+        * js/regress/global-isNaN.html: Added.
+        * js/regress/script-tests/Number-isNaN.js: Added.
+        * js/regress/script-tests/global-isNaN.js: Added.
+        * js/regress/script-tests/many-foreach-calls.js:
+        (i.4.forEach):
+        (i.array.forEach): Deleted.
+        * js/regress/script-tests/to-number-constructor-number-string-number-string.js: Added.
+        (test):
+        * js/regress/script-tests/to-number-constructor-only-number.js: Added.
+        (test):
+        * js/regress/script-tests/to-number-constructor-only-string.js: Added.
+        (test):
+        * js/regress/script-tests/to-number-constructor-string-number-string-number.js: Added.
+        (test):
+        * js/regress/script-tests/to-number-number-string-number-string.js: Added.
+        (test):
+        * js/regress/script-tests/to-number-only-number.js: Added.
+        (test):
+        * js/regress/script-tests/to-number-only-string.js: Added.
+        (test):
+        * js/regress/script-tests/to-number-string-number-string-number.js: Added.
+        (test):
+        * js/regress/to-number-constructor-number-string-number-string-expected.txt: Added.
+        * js/regress/to-number-constructor-number-string-number-string.html: Added.
+        * js/regress/to-number-constructor-only-number-expected.txt: Added.
+        * js/regress/to-number-constructor-only-number.html: Added.
+        * js/regress/to-number-constructor-only-string-expected.txt: Added.
+        * js/regress/to-number-constructor-only-string.html: Added.
+        * js/regress/to-number-constructor-string-number-string-number-expected.txt: Added.
+        * js/regress/to-number-constructor-string-number-string-number.html: Added.
+        * js/regress/to-number-number-string-number-string-expected.txt: Added.
+        * js/regress/to-number-number-string-number-string.html: Added.
+        * js/regress/to-number-only-number-expected.txt: Added.
+        * js/regress/to-number-only-number.html: Added.
+        * js/regress/to-number-only-string-expected.txt: Added.
+        * js/regress/to-number-only-string.html: Added.
+        * js/regress/to-number-string-number-string-number-expected.txt: Added.
+        * js/regress/to-number-string-number-string-number.html: Added.
+
+2016-06-23  Simon Fraser  <simon.fraser@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=159077
+
+        Mark fast/harness/snapshot-captures-compositing.html as an image failure.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-06-23  Benjamin Poulain  <benjamin@webkit.org>
+
+        Specialize synchronous event tracking per event type
+        https://bugs.webkit.org/show_bug.cgi?id=158826
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/tap-with-active-listener-inside-document-with-passive-listener-expected.txt: Added.
+        * fast/events/touch/ios/tap-with-active-listener-inside-document-with-passive-listener.html: Added.
+        * fast/events/touch/ios/tap-with-active-listener-inside-window-with-passive-listener-expected.txt: Added.
+        * fast/events/touch/ios/tap-with-active-listener-inside-window-with-passive-listener.html: Added.
+        * fast/events/touch/ios/tap-with-active-touch-end-listener-expected.txt: Added.
+        * fast/events/touch/ios/tap-with-active-touch-end-listener.html: Added.
+        * fast/events/touch/ios/tap-with-passive-listener-inside-active-listener.html: Added.
+        * fast/events/touch/ios/tap-with-passive-touch-end-listener-expected.txt: Added.
+        * fast/events/touch/ios/tap-with-passive-touch-end-listener.html: Added.
+        * fast/events/touch/ios/tap-with-passive-touch-start-active-touch-end-listeners-on-elements-expected.txt: Added.
+        * fast/events/touch/ios/tap-with-passive-touch-start-active-touch-end-listeners-on-elements.html: Added.
+        * fast/events/touch/ios/tap-with-passive-touch-start-active-touch-move-listeners-on-elements-expected.txt: Added.
+        * fast/events/touch/ios/tap-with-passive-touch-start-active-touch-move-listeners-on-elements.html: Added.
+
+2016-06-23  Alexey Proskuryakov  <ap@apple.com>
+
+        Update TestExpectations for a couple video track tests.
+
+        * platform/mac/TestExpectations:
+
+2016-06-23  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS] Make DumpRenderTree and WebKitTestRunner in the simulator use render server snapshotting
+        https://bugs.webkit.org/show_bug.cgi?id=159077
+
+        Reviewed by Tim Horton.
+
+        Test that fails if snapshotting doesn't correctly snapshot 3D transforms.
+
+        * fast/harness/snapshot-captures-compositing-expected.html: Added.
+        * fast/harness/snapshot-captures-compositing.html: Added.
+
+2016-06-23  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        requestFrameAnimation() callback timestamp should be very close to Performance.now() 
+        https://bugs.webkit.org/show_bug.cgi?id=159038
+
+        Reviewed by Simon Fraser.
+
+        * animations/animation-callback-timestamp-expected.txt: Added.
+        * animations/animation-callback-timestamp.html: Added.
+        * animations/animation-multiple-callbacks-timestamp-expected.txt: Added.
+        * animations/animation-multiple-callbacks-timestamp.html: Added.
+
+2016-06-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Land test expectations for rdar://problem/26952627.
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-06-23  Alexey Proskuryakov  <ap@apple.com>
+
+        Handle (0, 0) ranges from Lookup
+        https://bugs.webkit.org/show_bug.cgi?id=159062
+        rdar://problem/26960385
+
+        Reviewed by Tim Horton.
+
+        * platform/mac/TestExpectations: Unmark the test that was broken due to this.
+
+2016-06-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        CSSComputedStyleDeclaration::length should recalculate styles if needed to provide the correct value
+        https://bugs.webkit.org/show_bug.cgi?id=159053
+        <rdar://problem/26638119>
+
+        Reviewed by Simon Fraser.
+
+        * fast/css/variables/custom-property-computed-style-length-update-expected.txt: Added.
+        * fast/css/variables/custom-property-computed-style-length-update.html: Added.
+
+2016-06-23  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Add support for RTCPeerConnection legacy MediaStream-based API
+        https://bugs.webkit.org/show_bug.cgi?id=158940
+
+        Reviewed by Eric Carlson.
+
+        Add test for RTCPeerConnection legacy MediaStream-based API.
+
+        * fast/mediastream/RTCPeerConnection-legacy-stream-based-api-expected.txt: Added.
+        * fast/mediastream/RTCPeerConnection-legacy-stream-based-api.html: Added.
+        * platform/mac/TestExpectations:
+        Skip test for mac port (not building with WEB_RTC yet)
+
 2016-06-23  Per Arne Vollan  <pvollan@apple.com>
 
         Unreviewed test gardening.

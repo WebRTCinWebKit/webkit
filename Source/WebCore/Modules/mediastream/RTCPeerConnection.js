@@ -98,8 +98,8 @@ function addStream(stream)
     if (this.@localStreams.find(localStream => localStream.id === stream.id))
         return;
 
-    this.@localStreams.push(stream);
-    stream.getTracks().forEach(track => this.@addTrack(track, stream));
+    this.@localStreams.@push(stream);
+    stream.@getTracks().forEach(track => this.@addTrack(track, stream));
 }
 
 function removeStream(stream)
@@ -120,7 +120,7 @@ function removeStream(stream)
         return;
 
     const senders = this.@getSenders();
-    this.@localStreams[indexOfStreamToRemove].getTracks().forEach(track => {
+    this.@localStreams[indexOfStreamToRemove].@getTracks().forEach(track => {
         const senderForTrack = senders.find(sender => sender.track && sender.track.id === track.id);
         if (senderForTrack)
             this.@removeTrack(senderForTrack);

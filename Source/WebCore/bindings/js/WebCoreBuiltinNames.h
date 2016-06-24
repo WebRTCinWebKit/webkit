@@ -43,6 +43,7 @@ namespace WebCore {
     macro(getUserMediaFromJS) \
     macro(getRemoteStreams) \
     macro(getSenders) \
+    macro(getTracks) \
     macro(initializeWith) \
     macro(localStreams) \
     macro(operations) \

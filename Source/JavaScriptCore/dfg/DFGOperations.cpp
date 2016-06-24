@@ -731,6 +731,14 @@ EncodedJSValue JIT_OPERATION operationToPrimitive(ExecState* exec, EncodedJSValu
     return JSValue::encode(JSValue::decode(value).toPrimitive(exec));
 }
 
+EncodedJSValue JIT_OPERATION operationToNumber(ExecState* exec, EncodedJSValue value)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+
+    return JSValue::encode(jsNumber(JSValue::decode(value).toNumber(exec)));
+}
+
 EncodedJSValue JIT_OPERATION operationGetByIdWithThis(ExecState* exec, EncodedJSValue encodedBase, EncodedJSValue encodedThis, UniquedStringImpl* impl)
 {
     VM& vm = exec->vm();
@@ -1818,7 +1826,7 @@ void JIT_OPERATION triggerTierUpNow(ExecState* exec)
 {
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
-    DeferGC deferGC(vm->heap);
+    DeferGCForAWhile deferGC(vm->heap);
     CodeBlock* codeBlock = exec->codeBlock();
     
     if (codeBlock->jitType() != JITCode::DFGJIT) {
@@ -2000,7 +2008,7 @@ void JIT_OPERATION triggerTierUpNowInLoop(ExecState* exec, unsigned bytecodeInde
 {
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
-    DeferGC deferGC(vm->heap);
+    DeferGCForAWhile deferGC(vm->heap);
     CodeBlock* codeBlock = exec->codeBlock();
 
     if (codeBlock->jitType() != JITCode::DFGJIT) {
@@ -2034,7 +2042,7 @@ char* JIT_OPERATION triggerOSREntryNow(ExecState* exec, unsigned bytecodeIndex)
 {
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
-    DeferGC deferGC(vm->heap);
+    DeferGCForAWhile deferGC(vm->heap);
     CodeBlock* codeBlock = exec->codeBlock();
 
     if (codeBlock->jitType() != JITCode::DFGJIT) {

@@ -24,7 +24,7 @@
 
             const pc = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
             const remotePc = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
-            
+
             debug("Stream sets should be empty initially")
             shouldBe("pc.getLocalStreams().length", "0");
             shouldBe("pc.getRemoteStreams().length", "0");
@@ -61,7 +61,7 @@
                 shouldNotThrow("pc.addStream(stream)");
                 shouldBe("pc.getLocalStreams().length", "1");
 
-                return navigator.mediaDevices.getUserMedia({ "audio": true, "video": true });  
+                return navigator.mediaDevices.getUserMedia({ "audio": true, "video": true });
             })
             .then(s => {
                 stream = s;
@@ -69,7 +69,7 @@
                 debug("<br>Test with audio and video MediaStream");
                 evalAndLog("audioTrack = stream.getAudioTracks()[0]");
                 evalAndLog("videoTrack = stream.getVideoTracks()[0]");
-                
+
                 shouldNotThrow("pc.addStream(stream)");
 
                 shouldBe("pc.getLocalStreams().length", "2");
@@ -103,7 +103,7 @@
 
                 shouldBe("pc.getLocalStreams().length", "1");
                 shouldBe("pc.getStreamById(stream.id)", "null");
-                
+
                 debug("All senders should still be present")
                 shouldBe("pc.getSenders().length", "3");
 

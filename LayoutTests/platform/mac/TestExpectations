@@ -204,6 +204,7 @@ fast/mediastream/RTCPeerConnection-inspect-answer.html
 fast/mediastream/RTCPeerConnection-media-setup-single-dialog.html
 fast/mediastream/RTCPeerConnection-media-setup-two-dialogs.html
 fast/mediastream/RTCPeerConnection-media-setup-callbacks-single-dialog.html
+fast/mediastream/RTCPeerConnection-legacy-stream-based-api.html
 
 # Asserts in debug.
 [ Debug ] fast/images/large-size-image-crash.html [ Skip ]
@@ -936,8 +937,9 @@ webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/pauseOnExit.html [ P
 webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/startTime.html [ Pass Failure ]
 webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/track.html [ Pass Failure ]
 webkit.org/b/135071 media/video-seek-with-negative-playback.html [ Pass Timeout ]
-webkit.org/b/135160 [ Yosemite+ ] media/track/track-in-band-subtitles-too-large.html [ Pass Failure Timeout Crash ]
-webkit.org/b/135160 media/track/track-long-word-container-sizing.html [ Pass Failure ]
+[ Yosemite ] media/track/track-in-band-subtitles-too-large.html [ Skip ]
+webkit.org/b/135160 [ ElCapitan+ ] media/track/track-in-band-subtitles-too-large.html [ Failure ]
+webkit.org/b/135160 media/track/track-long-word-container-sizing.html [ Failure ]
 webkit.org/b/137311 media/video-fullscreeen-only-playback.html [ Pass Timeout Crash ]
 webkit.org/b/139789 media/media-controls-timeline-updates.html [ Pass Failure ]
 webkit.org/b/139825 media/video-seek-past-end-paused.html [ Pass Timeout ]
@@ -1440,5 +1442,6 @@ webkit.org/b/158889 media/video-controls-show-on-kb-or-ax-event.html [ Pass Fail
 # rdar://problem/26950065
 [ Sierra+ ] editing/mac/input/unconfirmed-text-navigation-with-page-cache.html [ Skip ]
 
-# rdar://problem/26960385
-[ Sierra+ ] editing/mac/dictionary-lookup/dictionary-lookup-input.html [ Failure ]
+# rdar://problem/26952627
+[ Sierra+ ] css3/filters/backdrop/backdrop-filter-with-border-radius-and-reflection-add.html [ Pass ImageOnlyFailure ]
+[ Sierra+ ] css3/filters/backdrop/backdrop-filter-with-border-radius-and-reflection.html [ Pass ImageOnlyFailure ]
