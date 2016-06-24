@@ -68,20 +68,20 @@ static RefPtr<RTCIceServer> parseIceServer(const Dictionary& iceServer, Exceptio
     // then checking for a comma in the string assures that a string was a sequence and then we convert
     // it to a sequence safely.
     if (urlString.isEmpty()) {
-        ec = TypeError;
+        ec = INVALID_ACCESS_ERR;
         return nullptr;
     }
 
     if (urlString.find(',') != notFound && iceServer.get("urls", urlsList) && urlsList.size()) {
         for (auto iter = urlsList.begin(); iter != urlsList.end(); ++iter) {
             if (!validateIceServerURL(*iter)) {
-                ec = TypeError;
+                ec = INVALID_ACCESS_ERR;
                 return nullptr;
             }
         }
     } else {
         if (!validateIceServerURL(urlString)) {
-            ec = TypeError;
+            ec = INVALID_ACCESS_ERR;
             return nullptr;
         }
 
@@ -113,14 +113,14 @@ void RTCConfiguration::initialize(const Dictionary& configuration, ExceptionCode
     ArrayValue iceServers;
     bool ok = configuration.get("iceServers", iceServers);
     if (!ok || iceServers.isUndefinedOrNull()) {
-        ec = TypeError;
+        ec = TYPE_MISMATCH_ERR;
         return;
     }
 
     size_t numberOfServers;
     ok = iceServers.length(numberOfServers);
     if (!ok || !numberOfServers) {
-        ec = TypeError;
+        ec = !ok ? TYPE_MISMATCH_ERR : INVALID_ACCESS_ERR;
         return;
     }
 
@@ -128,7 +128,7 @@ void RTCConfiguration::initialize(const Dictionary& configuration, ExceptionCode
         Dictionary iceServerDict;
         ok = iceServers.get(i, iceServerDict);
         if (!ok) {
-            ec = TypeError;
+            ec = TYPE_MISMATCH_ERR;
             return;
         }
 
