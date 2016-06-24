@@ -60,9 +60,9 @@
     [JSBuiltin] void removeStream(MediaStream stream);
 
     // Private API used to implement both the RTP Media API and the legacy MediaStream-based API.
-    [Private, StrictTypeChecking, RaisesException] RTCRtpSender privateAddTrack(MediaStreamTrack track, MediaStream... streams);
-    [Private, StrictTypeChecking, RaisesException] void privateRemoveTrack(RTCRtpSender sender);
-    [Private] sequence<MediaStream> privateGetRemoteStreams();
+    [PrivateIdentifier, StrictTypeChecking, RaisesException] RTCRtpSender privateAddTrack(MediaStreamTrack track, MediaStream... streams);
+    [PrivateIdentifier, StrictTypeChecking, RaisesException] void privateRemoveTrack(RTCRtpSender sender);
+    [PrivateIdentifier] sequence<MediaStream> privateGetRemoteStreams();
 
     [JSBuiltin] Promise createOffer(optional Dictionary offerOptions);
     // Legacy signature: Promise createOffer(RTCSessionDescriptionCallback successCallback

@@ -42,6 +42,7 @@
 #include "NotImplemented.h"
 #include "PeerMediaDescription.h"
 #include "RTCConfiguration.h"
+#include "RTCIceCandidate.h"
 #include "RTCIceCandidateEvent.h"
 #include "RTCOfferAnswerOptions.h"
 #include "RTCRtpTransceiver.h"
