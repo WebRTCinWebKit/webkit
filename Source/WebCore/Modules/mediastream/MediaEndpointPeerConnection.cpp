@@ -504,9 +504,10 @@ void MediaEndpointPeerConnection::setRemoteDescriptionTask(RefPtr<RTCSessionDesc
                     return !current.stopped() && current.mid().isNull() && current.sender()->trackKind() == mediaDescription->type();
                 });
 
-                if (transceiver)
+                if (transceiver) {
                     transceiver->setMid(mediaDescription->mid());
-                else
+                    m_mediaEndpoint->replaceMutedRemoteSourceMid(transceiver->provisionalMid(), mediaDescription->mid());
+                } else
                     receiveOnlyFlag = true;
             }
 

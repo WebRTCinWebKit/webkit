@@ -197,6 +197,12 @@ void MockMediaEndpoint::replaceSendSource(RealtimeMediaSource& newSource, const 
     UNUSED_PARAM(mid);
 }
 
+void MockMediaEndpoint::replaceMutedRemoteSourceMid(const String& oldMid, const String& newMid)
+{
+    UNUSED_PARAM(oldMid);
+    UNUSED_PARAM(newMid);
+}
+
 void MockMediaEndpoint::stop()
 {
 }
