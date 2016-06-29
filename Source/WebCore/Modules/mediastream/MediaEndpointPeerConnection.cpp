@@ -72,15 +72,6 @@ static String randomString(size_t length)
     return base64Encode(randomValues, size);
 }
 
-static RefPtr<MediaEndpointConfiguration> createMediaEndpointConfiguration(RTCConfiguration& rtcConfig)
-{
-    Vector<RefPtr<IceServerInfo>> iceServers;
-    for (auto& server : rtcConfig.iceServers())
-        iceServers.append(IceServerInfo::create(server->urls(), server->credential(), server->username()));
-
-    return MediaEndpointConfiguration::create(iceServers, rtcConfig.iceTransportPolicy(), rtcConfig.bundlePolicy());
-}
-
 MediaEndpointPeerConnection::MediaEndpointPeerConnection(PeerConnectionBackendClient* client)
     : m_client(client)
     , m_sdpProcessor(std::unique_ptr<SDPProcessor>(new SDPProcessor(m_client->scriptExecutionContext())))
@@ -618,7 +609,11 @@ RefPtr<RTCSessionDescription> MediaEndpointPeerConnection::pendingRemoteDescript
 
 void MediaEndpointPeerConnection::setConfiguration(RTCConfiguration& configuration)
 {
-    m_mediaEndpoint->setConfiguration(createMediaEndpointConfiguration(configuration));
+    Vector<RefPtr<IceServerInfo>> iceServers;
+    for (auto& server : configuration.iceServers())
+        iceServers.append(IceServerInfo::create(server->urls(), server->credential(), server->username()));
+
+    m_mediaEndpoint->setConfiguration(MediaEndpointConfiguration::create(iceServers, configuration.iceTransportPolicy(), configuration.bundlePolicy()));
 }
 
 void MediaEndpointPeerConnection::addIceCandidate(RTCIceCandidate& rtcCandidate, PeerConnection::VoidPromise&& promise)
