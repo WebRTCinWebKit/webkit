@@ -15,12 +15,6 @@ PASS promise objectWithPcPrototype.setLocalDescription() rejected with TypeError
 PASS promise objectWithPcPrototype.setRemoteDescription() rejected with TypeError: Function should be called on an RTCPeerConnection
 PASS promise objectWithPcPrototype.addIceCandidate() rejected with TypeError: Function should be called on an RTCPeerConnection
 PASS promise objectWithPcPrototype.getStats() rejected with TypeError: Function should be called on an RTCPeerConnection
-FAIL promise pcWithEmptyPrototype.createOffer() fulfilled unexpectedly.
-FAIL promise pcWithEmptyPrototype.createAnswer() rejected with Error: InvalidStateError: DOM Exception 11; expected reason TypeError: Function should be called on an RTCPeerConnection
-FAIL promise pcWithEmptyPrototype.setLocalDescription() rejected with TypeError: Not enough arguments; expected reason TypeError: Function should be called on an RTCPeerConnection
-FAIL promise pcWithEmptyPrototype.setRemoteDescription() rejected with TypeError: Not enough arguments; expected reason TypeError: Function should be called on an RTCPeerConnection
-FAIL promise pcWithEmptyPrototype.addIceCandidate() rejected with TypeError: Not enough arguments; expected reason TypeError: Function should be called on an RTCPeerConnection
-FAIL promise pcWithEmptyPrototype.getStats() rejected with Error: NotSupportedError: DOM Exception 9; expected reason TypeError: Function should be called on an RTCPeerConnection
 PASS End of test promise chain
 PASS successfullyParsed is true
 

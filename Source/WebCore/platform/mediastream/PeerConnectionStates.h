@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PeerConnectionStates_h
-#define PeerConnectionStates_h
+#pragma once
 
 #if ENABLE(WEB_RTC)
 
@@ -88,5 +87,3 @@ enum class BundlePolicy {
 } // namespace WebCore
 
 #endif // ENABLE(WEB_RTC)
-
-#endif // PeerConnectionStates_h

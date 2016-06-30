@@ -33,9 +33,9 @@
 
 namespace WebCore {
 
+class PaymentMerchantSession;
 class URL;
 enum class PaymentAuthorizationStatus;
-struct PaymentMerchantSession;
 
 class PaymentCoordinatorClient {
 public:
@@ -50,7 +50,7 @@ public:
     virtual void completePaymentMethodSelection(Optional<WebCore::PaymentRequest::TotalAndLineItems> newTotalAndItems) = 0;
     virtual void completePaymentSession(PaymentAuthorizationStatus) = 0;
     virtual void abortPaymentSession() = 0;
-    virtual void mainFrameDestroyed() = 0;
+    virtual void paymentCoordinatorDestroyed() = 0;
 
 protected:
     virtual ~PaymentCoordinatorClient() { }

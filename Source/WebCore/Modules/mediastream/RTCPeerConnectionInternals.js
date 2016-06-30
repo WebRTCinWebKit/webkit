@@ -130,6 +130,5 @@ function isRTCPeerConnection(connection)
 {
     "use strict";
 
-    // FIXME: Robustify this check (http://webkit.org/b/158831)
     return @isObject(connection) && !!connection.@operations;
 }

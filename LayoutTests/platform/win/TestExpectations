@@ -460,9 +460,6 @@ webkit.org/b/58845 fast/dom/title-directionality-removeChild.html [ Skip ]
 # TODO CSS Grid Layout is not yet enabled.
 webkit.org/b/60731 fast/css-grid-layout/ [ Skip ]
 
-# <style scoped> is not yet enabled.
-webkit.org/b/49142 fast/css/style-scoped/ [ Skip ]
-
 # TODO ENABLE(CSS_SCROLL_SNAP) is disabled.
 css3/scroll-snap/ [ Skip ]
 
@@ -1967,7 +1964,6 @@ webkit.org/b/119038 mathml/presentation/roots.xhtml [ Failure ]
 mathml/opentype/opentype-stretchy-horizontal.html [ Skip ]  # Crashing
 mathml/presentation/style-changed.html [ Crash Pass ]
 webkit.org/b/140522 mathml/opentype/munderover-layout-resize.html [ Skip ]  # Crashing
-mathml/very-large-stretchy-operators.html [ Skip ]
 ################################################################################
 #################          End MathML Issues                ####################
 ################################################################################
@@ -3321,6 +3317,8 @@ webkit.org/b/152411 http/tests/contentdispositionattachmentsandbox/referer-heade
 webkit.org/b/152411 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-origin.html [ Failure ]
 webkit.org/b/152411 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-unsafe-url.html [ Failure ]
 webkit.org/b/152411 http/tests/contentdispositionattachmentsandbox/referer-header-stripped.html [ Failure ]
+
+webkit.org/b/150225 fast/custom-elements [ Pass ]
 
 webkit.org/b/148695 fast/shadow-dom [ Pass ]
 

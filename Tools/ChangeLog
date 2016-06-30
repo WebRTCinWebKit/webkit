@@ -1,3 +1,333 @@
+2016-06-29  Mark Lam  <mark.lam@apple.com>
+
+        Add support for collecting cumulative LLINT stats via a JSC_llintStatsFile option.
+        https://bugs.webkit.org/show_bug.cgi?id=159274
+
+        Reviewed by Keith Miller.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (DumpRenderTreeMain):
+
+2016-06-29  Alex Christensen  <achristensen@webkit.org>
+
+        WKWebView should ask WKNavigationDelegate about bad ssl certificates
+        https://bugs.webkit.org/show_bug.cgi?id=159176
+
+        Reviewed by Sam Weinig.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController webView:didFinishLoadingNavigation:]):
+        (-[WK2BrowserWindowController webView:didReceiveAuthenticationChallenge:completionHandler:]):
+        (-[WK2BrowserWindowController webView:didFailNavigation:withError:]):
+
+2016-06-29  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Add missing install dependency after r202619
+        https://bugs.webkit.org/show_bug.cgi?id=156716
+
+        Unreviewed.
+
+        * gtk/install-dependencies: Missed to add the GLES headers that are needed for building mesa on Debian.
+
+2016-06-29  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][Wayland] Implement support for running the layout tests under a (virtualized) Wayland environment.
+        https://bugs.webkit.org/show_bug.cgi?id=156716
+
+        Reviewed by Carlos Garcia Campos and Michael Catanzaro.
+
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py: Allow to run the layout tests on Wayland by passing --wayland
+        (parse_args):
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort.__init__):
+        (GtkPort._driver_class):
+        (GtkPort.setup_environ_for_server): Set the softgl renderer (now with EGL support) for the wayland tests.
+        (GtkPort._search_paths): When running inside the wayland environment, use ${port}-wayland as an additional
+        platform directory for storing the wayland specific layout test results and expectations for ${port}.
+        For example, the file LayoutTests/platform/gtk-wayland/TestExpectations will be used as the most specific
+        test expectations file on the GTK port when running the tests with the --wayland command line switch.
+        Baseline search path: gtk-wayland -> gtk -> wk2 -> generic.
+        * Scripts/webkitpy/port/westondriver.py: Run the weston display server inside Xvfb.
+        (WestonDriver.check_driver):
+        (WestonDriver.__init__):
+        (WestonDriver._start):
+        * Scripts/webkitpy/port/westondriver_unittest.py: Fix unittests for the new Weston inside Xvfb driver.
+        (WestonXvfbDriverDisplayTest):
+        (WestonXvfbDriverDisplayTest.__init__):
+        (WestonXvfbDriverDisplayTest._xvfb_run):
+        (WestonDriverTest.make_driver):
+        (WestonDriverTest.test_start):
+        * gtk/install-dependencies: Add the new dependencies that are required for either building weston,
+        or to satisfy the pkg-config check of the new added modules in JHBuild.
+        * gtk/jhbuild.modules: For building weston new enough on Debian Jessie we also need to build wayland
+        and libinput. Declare a pkg-config entry on all this modules to avoid building them if the ones
+        provided by the system are already new enough.
+        Switch the Mesa software rasterizer from a Xlib based GLX renderer to a DRI based EGL/GLX one.
+        It was the only way to get the software EGL rasterizer working without depending on user drivers.
+        Due to this the Mesa build now depends on a modern enough libdrm, so we also use JHBuild pkg-config
+        feature to avoid building libdrm when the one provided by the system is new enough.
+        * gtk/jhbuildrc:
+        * gtk/patches/xserver-search-for-DRI-drivers-at-LIBGL_DRIVERS_PATH-environ.patch: Added.
+        Xorg had no support for searching the DRI drivers on a custom path at runtime.
+        This patch implements support for that reusing the same variable that we use with Mesa to set the
+        custom path for the DRI drivers path.
+
+2016-06-29  Alejandro G. Castro  <alex@igalia.com>
+
+        [WebRTC][OWR] Bump gst-plugins-openwebrtc jhbuild version to get scream fixes
+        https://bugs.webkit.org/show_bug.cgi?id=159256
+
+        Reviewed by Philippe Normand.
+
+        We need the last fixes in the repository to make the scream queue
+        work with apprtc.
+
+        * gtk/jhbuild.modules:
+
+2016-06-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202580.
+        https://bugs.webkit.org/show_bug.cgi?id=159245
+
+        Caused all WKTR tests to fail on GuardMalloc and Production
+        only for unknown reasons, investigating offline. (Requested by
+        brrian on #webkit).
+
+        Reverted changeset:
+
+        "RunLoop::Timer should use constructor templates instead of
+        class templates"
+        https://bugs.webkit.org/show_bug.cgi?id=159153
+        http://trac.webkit.org/changeset/202580
+
+2016-06-28  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        Use a regex to check if a test step is for JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=159224
+
+        Reviewed by Geoffrey Garen.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotCombinedQueueView.js:
+        (BuildbotCombinedQueueView.prototype.update): Replace array membership test with regex test.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration.prototype._parseData): Replace array membership test with regex test.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTesterQueueView.js:
+        (BuildbotTesterQueueView.prototype.appendBuilderQueueStatus): Replace array membership test with regex test.
+
+2016-06-28  Michael Saboff  <msaboff@apple.com>
+
+        btjs no longer accepts optional frame count argument
+        https://bugs.webkit.org/show_bug.cgi?id=159235
+
+        Reviewed by Saam Barati.
+
+        Fix the detection of optional backtrace-depth parameter to use the length
+        of the command.
+
+        * lldb/lldb_webkit.py:
+        (btjs):
+
+2016-06-28  Jon Lee  <jonlee@apple.com>
+
+        Update animometer.plan
+
+        Rubber-stamped by Said Abou-Hallawa.
+
+        * Scripts/webkitpy/benchmark_runner/data/plans/animometer.plan: Update to r202601.
+
+2016-06-28  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix JSC tests. Air.js moved, and the harness needs to know.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests):
+
+2016-06-28  Brian Burg  <bburg@apple.com>
+
+        RunLoop::Timer should use constructor templates instead of class templates
+        https://bugs.webkit.org/show_bug.cgi?id=159153
+
+        Reviewed by Alex Christensen.
+
+        Remove the RunLoop::Timer class template argument, and pass its constructor
+        a reference to `this` instead of a pointer to `this`.
+
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::TestRunner):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * TestWebKitAPI/Tests/WTF/RunLoop.cpp:
+        (TestWebKitAPI::TEST):
+
+2016-06-28  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r201471): FormClient.textFieldDidEndEditing is no longer called when a text field is removed
+        https://bugs.webkit.org/show_bug.cgi?id=159199
+
+        Reviewed by Alexey Proskuryakov.
+
+        Added a test case for removing a text field. Also fixed the flakiness and re-enabled it on Mac.
+
+        * TestWebKitAPI/Tests/WebKit2/TextFieldDidBeginAndEndEditing.cpp:
+        * TestWebKitAPI/Tests/WebKit2/TextFieldDidBeginAndEndEditing_Bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2/input-focus-blur.html: Focus a div upfront to avoid the flakiness from
+        an input element getting automatically focused on Mac.
+
+2016-06-28  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Custom elements tests are failing.
+        https://bugs.webkit.org/show_bug.cgi?id=159139
+
+        Reviewed by Alex Christensen.
+
+        Enable custom element API when running tests.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues):
+
+2016-06-27  Lucas Forschler  <lforschler@apple.com>
+
+        Test commit. Please ignore.
+        
+2016-06-27  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK][EFL] Disable subtle-crypto in FeatureList.pm
+        https://bugs.webkit.org/show_bug.cgi?id=155073
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2016-06-27  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS] Make DumpRenderTree and WebKitTestRunner in the simulator use render server snapshotting
+        https://bugs.webkit.org/show_bug.cgi?id=159077
+
+        Reviewed by Tim Horton.
+
+        Re-enable render server snapshotting for iOS WTR via the change in InjectedBundlePage.cpp.
+
+        Fix WebPageProxy::forceRepaint() to correctly wait for the next commit from the web process,
+        which is necessary for UI-side compositing.
+
+        Add some null checks to fix issues when the WKWebView gets resized to be empty, which
+        seems to happen for some tests that call window.resizeTo().
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::dump): Deleted.
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::dumpResults):
+        * WebKitTestRunner/cg/TestInvocationCG.cpp:
+        (WTR::createCGContextFromImage):
+        (WTR::computeMD5HashStringForContext):
+        (WTR::TestInvocation::dumpPixelsAndCompareWithExpected):
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        (WTR::PlatformWebView::windowSnapshotImage):
+
+2016-06-27  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Support to build on Debian linux
+        https://bugs.webkit.org/show_bug.cgi?id=159123
+
+        Reviewed by Antonio Gomes.
+
+        * efl/install-dependencies: Install libgnutls28-dev.
+
+2016-06-27  Alex Christensen  <achristensen@webkit.org>
+
+        Send canAuthenticateAgainstProtectionSpace calls from NetworkProcess directly to UIProcess
+        https://bugs.webkit.org/show_bug.cgi?id=159071
+
+        Reviewed by Brady Eidson.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setHandlesAuthenticationChallenges):
+        (WTR::TestRunner::setShouldLogCanAuthenticateAgainstProtectionSpace):
+        (WTR::TestRunner::setAuthenticationUsername):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::TestController):
+        (WTR::TestController::resetStateToConsistentValues):
+        (WTR::TestController::didFinishNavigation):
+        (WTR::TestController::canAuthenticateAgainstProtectionSpace):
+        (WTR::TestController::didReceiveAuthenticationChallenge):
+        (WTR::TestController::didCommitNavigation):
+        * WebKitTestRunner/TestController.h:
+        (WTR::TestController::setBlockAllPlugins):
+        (WTR::TestController::setShouldLogHistoryClientCallbacks):
+        (WTR::TestController::setShouldLogCanAuthenticateAgainstProtectionSpace):
+        (WTR::TestController::isCurrentInvocation):
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle):
+        Added output so we can see when canAuthenticateAgainstProtectionSpace is called from the test expectations.
+
+2016-06-27  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] The test fast/events/wheel-event-outside-body.html is timing out.
+        https://bugs.webkit.org/show_bug.cgi?id=159129
+
+        Reviewed by Alex Christensen.
+
+        Implement the function mouseScrollBy in the Windows event sender.
+
+        * DumpRenderTree/win/EventSender.cpp:
+        (mouseScrollBy):
+        (mouseScrollByWithWheelAndMomentumPhasesCallback):
+
+2016-06-25  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION: Weak symbol warning when linking TestWebKitAPI
+        https://bugs.webkit.org/show_bug.cgi?id=159104
+
+        Reviewed by Dan Bernstein.
+        
+        This uses a better approach to turn on -fvisility=hidden. All of the other projects set
+        this flag in xcconfig, using "GCC_SYMBOLS_PRIVATE_EXTERN = YES;".
+
+        * TestWebKitAPI/Configurations/TestWTFLibrary.xcconfig: Use GCC_SYMBOLS_PRIVATE_EXTERN here.
+        * TestWebKitAPI/Configurations/TestWebKitAPILibrary.xcconfig: Use GCC_SYMBOLS_PRIVATE_EXTERN here.
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Revert r202461.
+
+2016-06-25  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] The test fast/events/wheel-event-destroys-frame.html is timing out.
+        https://bugs.webkit.org/show_bug.cgi?id=159086
+
+        Reviewed by Alex Christensen.
+
+        Implement required wheel event function in event sender.
+ 
+        * DumpRenderTree/win/EventSender.cpp:
+        (mouseScrollByWithWheelAndMomentumPhasesCallback):
+
+2016-06-24  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION: Weak symbol warning when linking TestWebKitAPI
+        https://bugs.webkit.org/show_bug.cgi?id=159104
+
+        Reviewed by Mark Lam.
+        
+        The problem is that the tests were not compiled with -fvisibility=hidden like the rest of
+        WK.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+
+2016-06-24  David Kilzer  <ddkilzer@apple.com>
+
+        parser_unittests.pl should not hardcode list of tests
+        <https://webkit.org/b/159074>
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitperl/prepare-ChangeLog_unittest/parser_unittests.pl:
+        Update to read the list of tests from the 'resources' directory,
+        and instead map file extensions to subroutine names.  Switch to
+        use File::Basename::fileparse() to get basename and file
+        extension for each test.
+        (readTestFiles): Added.  Reads files from the directory passed
+        in and ignores: hidden files, anything that isn't a plain file,
+        and expected test results files.
+
 2016-06-23  Simon Fraser  <simon.fraser@apple.com>
 
         Fix Windows build.

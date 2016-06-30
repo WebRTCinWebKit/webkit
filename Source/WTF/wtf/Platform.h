@@ -302,6 +302,7 @@
 /* Only one of these will be defined. */
 #if !defined(WTF_CPU_ARM_TRADITIONAL) && !defined(WTF_CPU_ARM_THUMB2)
 #  if defined(thumb2) || defined(__thumb2__) \
+    || (defined(__ARM_ARCH_ISA_THUMB) && __ARM_ARCH_ISA_THUMB == 2) \
     || ((defined(__thumb) || defined(__thumb__)) && WTF_THUMB_ARCH_VERSION == 4)
 #    define WTF_CPU_ARM_TRADITIONAL 0
 #    define WTF_CPU_ARM_THUMB2 1
@@ -1209,6 +1210,10 @@
 #else
 #define USE_GENERIC_EVENT_LOOP 1
 #endif
+#endif
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+#define USE_MEDIAREMOTE 1
 #endif
 
 #endif /* WTF_Platform_h */
