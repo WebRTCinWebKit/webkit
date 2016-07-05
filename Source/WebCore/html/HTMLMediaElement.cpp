@@ -1002,7 +1002,7 @@ void HTMLMediaElement::setSrcObject(ScriptExecutionContext& context, MediaStream
     // https://bugs.webkit.org/show_bug.cgi?id=124896
 
     m_mediaStreamSrcObject = mediaStream;
-    setSrc(DOMURL::createPublicURL(context, mediaStream));
+    setSrc(mediaStream ? DOMURL::createPublicURL(context, mediaStream) : String());
 }
 #endif
 
