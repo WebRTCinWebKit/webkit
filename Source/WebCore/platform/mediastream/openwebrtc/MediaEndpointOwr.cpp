@@ -485,7 +485,7 @@ void MediaEndpointOwr::prepareMediaSession(OwrMediaSession* mediaSession, PeerMe
         RefPtr<MediaPayload> rtxPayload = findRtxPayload(mediaDescription->payloads(), payload->type());
 
         ASSERT(codecTypes.find(payload->encodingName()) != notFound);
-        OwrCodecType codecType = static_cast<OwrCodecType>(codecTypes.find(payload->encodingName()));
+        OwrCodecType codecType = static_cast<OwrCodecType>(codecTypes.find(payload->encodingName().convertToASCIIUppercase()));
 
         OwrPayload* receivePayload;
         if (mediaDescription->type() == "audio")
