@@ -304,7 +304,6 @@ static RealtimeMediaSourceMap createSourceMap(const MediaDescriptionVector& remo
         if (transceiver) {
             if (transceiver->hasSendingDirection() && transceiver->sender()->track())
                 sourceMap.set(transceiver->mid(), &transceiver->sender()->track()->source());
-            break;
         }
     }
 
