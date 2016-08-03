@@ -259,11 +259,18 @@ void MediaPlayerPrivateGStreamerOwr::createGSTAudioSinkBin()
     LOG_MEDIA_MESSAGE("Creating audio sink");
     // FIXME: volume/mute support: https://webkit.org/b/153828.
 
-    GRefPtr<GstElement> sink = gst_element_factory_make("autoaudiosink", 0);
+    // Pre-roll an autoaudiosink so that the platform audio sink is created and
+    // can be retrieved from the autoaudiosink bin.
+    GRefPtr<GstElement> sink = gst_element_factory_make("autoaudiosink", nullptr);
     GstChildProxy* childProxy = GST_CHILD_PROXY(sink.get());
-    m_audioSink = adoptGRef(GST_ELEMENT(gst_child_proxy_get_child_by_index(childProxy, 0)));
+    gst_element_set_state(sink.get(), GST_STATE_READY);
+    GstElementFactory* factory = gst_element_get_factory(GST_ELEMENT(gst_child_proxy_get_child_by_index(childProxy, 0)));
+
+    // Dispose now un-needed autoaudiosink.
     gst_element_set_state(sink.get(), GST_STATE_NULL);
 
+    // Create a fresh new audio sink compatible with the platform.
+    m_audioSink = adoptGRef(gst_element_factory_create(factory, nullptr));
     m_audioRenderer = adoptGRef(owr_gst_audio_renderer_new(m_audioSink.get()));
 }
 
