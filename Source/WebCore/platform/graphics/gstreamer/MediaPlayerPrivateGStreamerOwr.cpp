@@ -271,7 +271,7 @@ void MediaPlayerPrivateGStreamerOwr::createGSTAudioSinkBin()
     gst_element_set_state(sink.get(), GST_STATE_NULL);
 
     // Create a fresh new audio sink compatible with the platform.
-    m_audioSink = adoptGRef(gst_element_factory_create(factory, nullptr));
+    m_audioSink = gst_element_factory_create(factory, nullptr);
     m_audioRenderer = adoptGRef(owr_gst_audio_renderer_new(m_audioSink.get()));
 }
 
