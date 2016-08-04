@@ -1960,16 +1960,6 @@
             "maheshkk"
          ]
       },
-      "Manuel Rego Casasnovas" : {
-         "emails" : [
-            "rego@igalia.com"
-         ],
-         "expertise" : "WebKitGTK+ port, WebKit2",
-         "nicks" : [
-            "rego",
-            "mrego"
-         ]
-      },
       "Marcelo Lira" : {
          "emails" : [
             "marcelo.lira@openbossa.org",
@@ -2346,15 +2336,6 @@
          ],
          "nicks" : [
             "podivilov"
-         ]
-      },
-      "Per Arne Vollan" : {
-         "emails" : [
-            "pvollan@apple.com",
-            "peavo@outlook.com"
-         ],
-         "nicks" : [
-            "peavo"
          ]
       },
       "Peter Beverloo" : {
@@ -2847,6 +2828,7 @@
       },
       "Tibor Meszaros" : {
          "emails" : [
+            "mtiborinf@gmail.com",
             "tmeszaros.u-szeged@partner.samsung.com",
             "mtibor@inf.u-szeged.hu",
             "tmeszaros@inf.u-szeged.hu"
@@ -4620,6 +4602,16 @@
             "othermaciej"
          ]
       },
+      "Manuel Rego Casasnovas" : {
+         "emails" : [
+            "rego@igalia.com"
+         ],
+         "expertise" : "Layout, CSS, Selection, WebKitGTK+ port",
+         "nicks" : [
+            "rego",
+            "mrego"
+         ]
+      },
       "Mario Sanchez Prada" : {
          "emails" : [
             "mario@webkit.org",
@@ -4788,6 +4780,15 @@
          "expertise" : "Developer Tools, Web Inspector",
          "nicks" : [
             "pfeldman"
+         ]
+      },
+      "Per Arne Vollan" : {
+         "emails" : [
+            "pvollan@apple.com",
+            "peavo@outlook.com"
+         ],
+         "nicks" : [
+            "peavo"
          ]
       },
       "Philip Rogers" : {

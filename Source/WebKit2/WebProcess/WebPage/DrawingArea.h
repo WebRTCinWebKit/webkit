@@ -146,8 +146,8 @@ protected:
     DrawingAreaType m_type;
     WebPage& m_webPage;
 
-#if USE(TEXTURE_MAPPER) && PLATFORM(GTK)
-    uint64_t m_nativeSurfaceHandleForCompositing;
+#if PLATFORM(GTK) && USE(TEXTURE_MAPPER) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
+    uint64_t m_nativeSurfaceHandleForCompositing { 0 };
 #endif
 
 private:
@@ -172,7 +172,7 @@ private:
     virtual void addTransactionCallbackID(uint64_t callbackID) { ASSERT_NOT_REACHED(); }
 #endif
 
-#if USE(TEXTURE_MAPPER) && PLATFORM(GTK)
+#if USE(TEXTURE_MAPPER) && PLATFORM(GTK) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
     virtual void setNativeSurfaceHandleForCompositing(uint64_t) = 0;
     virtual void destroyNativeSurfaceHandleForCompositing(bool&) = 0;
 #endif

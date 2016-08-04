@@ -130,7 +130,7 @@ public:
     WEBCORE_EXPORT PlatformMedia platformMedia() const;
     PlatformLayer* platformLayer() const;
     bool isVideoLayerInline();
-    void setPreparedForInline(bool);
+    void setPreparedToReturnVideoLayerToInline(bool);
     void waitForPreparedForInlineThen(std::function<void()> completionHandler = [] { });
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     void setVideoFullscreenLayer(PlatformLayer*, std::function<void()> completionHandler = [] { });
@@ -165,6 +165,9 @@ public:
     MediaStream* srcObject() const { return m_mediaStreamSrcObject.get(); }
     void setSrcObject(ScriptExecutionContext&, MediaStream*);
 #endif
+
+    void setCrossOrigin(const AtomicString&);
+    String crossOrigin() const;
 
 // network state
     using HTMLMediaElementEnums::NetworkState;
@@ -613,7 +616,7 @@ private:
 #endif
 
     bool mediaPlayerShouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge&) override;
-    void mediaPlayerHandlePlaybackCommand(PlatformMediaSession::RemoteControlCommandType command) override { didReceiveRemoteControlCommand(command); }
+    void mediaPlayerHandlePlaybackCommand(PlatformMediaSession::RemoteControlCommandType command) override { didReceiveRemoteControlCommand(command, nullptr); }
     String mediaPlayerSourceApplicationIdentifier() const override;
     Vector<String> mediaPlayerPreferredAudioCharacteristics() const override;
 
@@ -690,8 +693,10 @@ private:
     void beginProcessingMediaPlayerCallback() { ++m_processingMediaPlayerCallback; }
     void endProcessingMediaPlayerCallback() { ASSERT(m_processingMediaPlayerCallback); --m_processingMediaPlayerCallback; }
 
+    enum class UpdateState { Asynchronously, Synchronously };
+
+    void updatePlayState(UpdateState updateState = UpdateState::Synchronously);
     void updateVolume();
-    void updatePlayState();
     void setPlaying(bool);
     bool potentiallyPlaying() const;
     bool endedPlayback() const;
@@ -752,7 +757,8 @@ private:
     double mediaSessionDuration() const override { return duration(); }
     double mediaSessionCurrentTime() const override { return currentTime(); }
     bool canReceiveRemoteControlCommands() const override { return true; }
-    void didReceiveRemoteControlCommand(PlatformMediaSession::RemoteControlCommandType) override;
+    void didReceiveRemoteControlCommand(PlatformMediaSession::RemoteControlCommandType, const PlatformMediaSession::RemoteCommandArgument*) override;
+    bool supportsSeeking() const override;
     bool shouldOverrideBackgroundPlaybackRestriction(PlatformMediaSession::InterruptionType) const override;
     bool shouldOverrideBackgroundLoadingRestriction() const override;
 
@@ -770,16 +776,17 @@ private:
     void prepareForDocumentSuspension() final;
     void resumeFromDocumentSuspension() final;
 
-    enum class UpdateMediaState { Asynchronously, Synchronously };
-    void updateMediaState(UpdateMediaState updateState = UpdateMediaState::Synchronously);
+    void updateMediaState(UpdateState updateState = UpdateState::Synchronously);
     bool hasPlaybackTargetAvailabilityListeners() const { return m_hasPlaybackTargetAvailabilityListeners; }
 #endif
 
+    bool isVideoTooSmallForInlinePlayback();
     void isVisibleInViewportChanged() final;
     void updateShouldAutoplay();
 
     void pauseAfterDetachedTask();
     void updatePlaybackControlsManager();
+    void scheduleUpdatePlaybackControlsManager();
 
     void updateRenderer();
 
@@ -796,6 +803,7 @@ private:
     GenericTaskQueue<Timer> m_shadowDOMTaskQueue;
     GenericTaskQueue<Timer> m_promiseTaskQueue;
     GenericTaskQueue<Timer> m_pauseAfterDetachedTaskQueue;
+    GenericTaskQueue<Timer> m_updatePlaybackControlsManagerQueue;
     RefPtr<TimeRanges> m_playedTimeRanges;
     GenericEventQueue m_asyncEventQueue;
 

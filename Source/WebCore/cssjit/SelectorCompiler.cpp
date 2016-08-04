@@ -1066,10 +1066,10 @@ static inline bool attributeValueTestingRequiresExtraRegister(const AttributeMat
 static const unsigned minimumRequiredRegisterCount = 5;
 // Element + ElementData + scratchRegister + attributeArrayPointer + expectedLocalName + (qualifiedNameImpl && expectedValue).
 static const unsigned minimumRequiredRegisterCountForAttributeFilter = 6;
-#if CPU(X86_64)
-// Element + SiblingCounter + SiblingCounterCopy + divisor + dividend + remainder.
+// On x86, we always need 6 registers: Element + SiblingCounter + SiblingCounterCopy + divisor + dividend + remainder.
+// On other architectures, we need 6 registers for style resolution:
+//     Element + elementCounter + previousSibling + checkingContext + lastRelation + nextSiblingElement.
 static const unsigned minimumRequiredRegisterCountForNthChildFilter = 6;
-#endif
 
 static unsigned minimumRegisterRequirements(const SelectorFragment& selectorFragment)
 {
@@ -1093,10 +1093,8 @@ static unsigned minimumRegisterRequirements(const SelectorFragment& selectorFrag
         minimum = std::max(minimum, attributeMinimum);
     }
 
-#if CPU(X86_64)
     if (!selectorFragment.nthChildFilters.isEmpty() || !selectorFragment.nthChildOfFilters.isEmpty() || !selectorFragment.nthLastChildFilters.isEmpty() || !selectorFragment.nthLastChildOfFilters.isEmpty())
         minimum = std::max(minimum, minimumRequiredRegisterCountForNthChildFilter);
-#endif
 
     // :any pseudo class filters cause some register pressure.
     for (const auto& subFragments : selectorFragment.anyFilters) {
@@ -3216,10 +3214,22 @@ void SelectorCodeGenerator::generateElementIsHovered(Assembler::JumpList& failur
 
     generateAddStyleRelationIfResolvingStyle(elementAddressRegister, Style::Relation::AffectedByHover);
 
+    Assembler::JumpList successCases;
+    if (m_selectorContext != SelectorContext::QuerySelector && fragment.relationToRightFragment != FragmentRelation::Rightmost) {
+        // :hover always matches when not in rightmost position when collecting rules for descendant style invalidation optimization.
+        // Resolving style for a matching descendant will set parent childrenAffectedByHover bit even when the element is not currently hovered.
+        // This bit has to be set for the event based :hover invalidation to work.
+        // FIXME: We should just collect style relation bits and apply them as needed when computing style invalidation optimization.
+        LocalRegister checkingContext(m_registerAllocator);
+        successCases.append(branchOnResolvingMode(Assembler::Equal, SelectorChecker::Mode::CollectingRulesIgnoringVirtualPseudoElements, checkingContext));
+    }
+
     FunctionCall functionCall(m_assembler, m_registerAllocator, m_stackAllocator, m_functionCalls);
     functionCall.setFunctionAddress(elementIsHovered);
     functionCall.setOneArgument(elementAddressRegister);
     failureCases.append(functionCall.callAndBranchOnBooleanReturnValue(Assembler::Zero));
+
+    successCases.link(&m_assembler);
 }
 
 void SelectorCodeGenerator::generateElementIsInLanguage(Assembler::JumpList& failureCases, const SelectorFragment& fragment)

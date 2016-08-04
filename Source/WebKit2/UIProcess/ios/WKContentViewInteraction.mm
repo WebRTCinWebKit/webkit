@@ -29,7 +29,6 @@
 #if PLATFORM(IOS)
 
 #import "APIUIClient.h"
-#import "DataDetectorsUISPI.h"
 #import "EditingRange.h"
 #import "ManagedConfigurationSPI.h"
 #import "NativeWebKeyboardEvent.h"
@@ -65,6 +64,7 @@
 #import <WebCore/Color.h>
 #import <WebCore/CoreGraphicsSPI.h>
 #import <WebCore/DataDetectorsCoreSPI.h>
+#import <WebCore/DataDetectorsUISPI.h>
 #import <WebCore/FloatQuad.h>
 #import <WebCore/Pasteboard.h>
 #import <WebCore/Path.h>
@@ -264,8 +264,8 @@ const CGFloat minimumTapHighlightRadius = 2.0;
     RetainPtr<WKFocusedElementInfo> _focusedElementInfo;
     RetainPtr<UIView> _customInputView;
     RetainPtr<NSArray<UITextSuggestion *>> _suggestions;
-    RetainPtr<NSString> _textContentType;
     BOOL _accessoryViewShouldNotShow;
+    BOOL _forceSecureTextEntry;
 }
 
 - (instancetype)initWithContentView:(WKContentView *)view focusedElementInfo:(WKFocusedElementInfo *)elementInfo userObject:(NSObject <NSSecureCoding> *)userObject
@@ -324,6 +324,20 @@ const CGFloat minimumTapHighlightRadius = 2.0;
     [_contentView reloadInputViews];
 }
 
+- (BOOL)forceSecureTextEntry
+{
+    return _forceSecureTextEntry;
+}
+
+- (void)setForceSecureTextEntry:(BOOL)forceSecureTextEntry
+{
+    if (_forceSecureTextEntry == forceSecureTextEntry)
+        return;
+
+    _forceSecureTextEntry = forceSecureTextEntry;
+    [_contentView reloadInputViews];
+}
+
 - (UIView *)customInputView
 {
     return _customInputView.get();
@@ -352,22 +366,12 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 #endif
 }
 
-- (NSString *)textContentType
-{
-    return _textContentType.get();
-}
-
-- (void)setTextContentType:(NSString *)textContentType
-{
-    if (textContentType == _textContentType || [textContentType isEqualToString:_textContentType.get()])
-        return;
-
-    _textContentType = adoptNS([textContentType copy]);
-    [_contentView reloadInputViews];
-}
-
 - (void)invalidate
 {
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
+    id <UITextInputSuggestionDelegate> suggestionDelegate = (id <UITextInputSuggestionDelegate>)_contentView.inputDelegate;
+    [suggestionDelegate setSuggestions:nil];
+#endif
     _contentView = nil;
 }
 
@@ -539,6 +543,7 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
 
     _twoFingerSingleTapGestureRecognizer = adoptNS([[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(_twoFingerSingleTapGestureRecognized:)]);
     [_twoFingerSingleTapGestureRecognizer setAllowableMovement:60];
+    [_twoFingerSingleTapGestureRecognizer _setAllowableSeparation:150];
     [_twoFingerSingleTapGestureRecognizer setNumberOfTapsRequired:1];
     [_twoFingerSingleTapGestureRecognizer setNumberOfTouchesRequired:2];
     [_twoFingerSingleTapGestureRecognizer setDelaysTouchesEnded:NO];
@@ -1364,21 +1369,9 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
 - (void)_twoFingerSingleTapGestureRecognized:(UITapGestureRecognizer *)gestureRecognizer
 {
-    _page->tapHighlightAtPosition(gestureRecognizer.centroid, ++_latestTapID);
     _isTapHighlightIDValid = YES;
-    RetainPtr<WKContentView> view = self;
-    WKWebView *webView = _webView;
-    _page->handleTwoFingerTapAtPoint(roundedIntPoint(gestureRecognizer.centroid), [view, webView](const String& string, CallbackBase::Error error) {
-        if (error != CallbackBase::Error::None)
-            return;
-        if (!string.isEmpty()) {
-            id <WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([webView UIDelegate]);
-            if ([uiDelegate respondsToSelector:@selector(_webView:alternateActionForURL:)])
-                [uiDelegate _webView:webView alternateActionForURL:[NSURL _web_URLWithWTFString:string]];
-            [view _finishInteraction];
-        } else
-            [view _cancelInteraction];
-    });
+    _isExpectingFastSingleTapCommit = YES;
+    _page->handleTwoFingerTapAtPoint(roundedIntPoint(gestureRecognizer.centroid), ++_latestTapID);
 }
 
 - (void)_longPressRecognized:(UILongPressGestureRecognizer *)gestureRecognizer
@@ -2981,7 +2974,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     if (!_traits)
         _traits = adoptNS([[UITextInputTraits alloc] init]);
 
-    [_traits setSecureTextEntry:_assistedNodeInformation.elementType == InputType::Password];
+    [_traits setSecureTextEntry:_assistedNodeInformation.elementType == InputType::Password || [_formInputSession forceSecureTextEntry]];
     [_traits setShortcutConversionType:_assistedNodeInformation.elementType == InputType::Password ? UITextShortcutConversionTypeNo : UITextShortcutConversionTypeDefault];
 
     if (!_assistedNodeInformation.formAction.isEmpty())
@@ -3016,10 +3009,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     }
 
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
-    if (NSString *textContentType = [_formInputSession textContentType])
-        [_traits setTextContentType:textContentType];
-    else
-        [_traits setTextContentType:contentTypeFromFieldName(_assistedNodeInformation.autofillFieldName)];
+    [_traits setTextContentType:contentTypeFromFieldName(_assistedNodeInformation.autofillFieldName)];
 #endif
 
     return _traits.get();
@@ -3868,7 +3858,9 @@ static bool isAssistableInputType(InputType type)
     BOOL canShowImagePreview = _positionInformation.isImage && supportsImagePreview;
     BOOL canShowLinkPreview = _positionInformation.isLink || canShowImagePreview;
     BOOL useImageURLForLink = NO;
-    BOOL supportsAttachmentPreview = [uiDelegate respondsToSelector:@selector(_attachmentListForWebView:)] && [uiDelegate respondsToSelector:@selector(_webView:indexIntoAttachmentListForElement:)];
+    BOOL respondsToAttachmentListForWebViewSourceIsManaged = [uiDelegate respondsToSelector:@selector(_attachmentListForWebView:sourceIsManaged:)];
+    BOOL supportsAttachmentPreview = ([uiDelegate respondsToSelector:@selector(_attachmentListForWebView:)] || respondsToAttachmentListForWebViewSourceIsManaged)
+        && [uiDelegate respondsToSelector:@selector(_webView:indexIntoAttachmentListForElement:)];
     BOOL canShowAttachmentPreview = (_positionInformation.isAttachment || _positionInformation.isImage) && supportsAttachmentPreview;
 
     if (canShowImagePreview && _positionInformation.isAnimatedImage) {
@@ -3924,15 +3916,22 @@ static bool isAssistableInputType(InputType type)
         *type = UIPreviewItemTypeImage;
         dataForPreview[UIPreviewDataLink] = [NSURL _web_URLWithWTFString:_positionInformation.imageURL];
     } else if (canShowAttachmentPreview) {
-        // FIXME: Should use UIKit constants.
-        enum { WKUIPreviewItemTypeAttachment = 5 };
-        *type = static_cast<UIPreviewItemType>(WKUIPreviewItemTypeAttachment);
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
+        *type = UIPreviewItemTypeAttachment;
         auto element = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeAttachment URL:[NSURL _web_URLWithWTFString:_positionInformation.url] location:_positionInformation.point title:_positionInformation.title ID:_positionInformation.idAttribute rect:_positionInformation.bounds image:nil]);
         NSUInteger index = [uiDelegate _webView:_webView indexIntoAttachmentListForElement:element.get()];
         if (index != NSNotFound) {
-            dataForPreview[@"UIPreviewDataAttachmentList"] = [uiDelegate _attachmentListForWebView:_webView];
-            dataForPreview[@"UIPreviewDataAttachmentIndex"] = [NSNumber numberWithUnsignedInteger:index];
+            BOOL sourceIsManaged = NO;
+            if (respondsToAttachmentListForWebViewSourceIsManaged)
+                dataForPreview[UIPreviewDataAttachmentList] = [uiDelegate _attachmentListForWebView:_webView sourceIsManaged:&sourceIsManaged];
+            else
+                dataForPreview[UIPreviewDataAttachmentList] = [uiDelegate _attachmentListForWebView:_webView];
+            dataForPreview[UIPreviewDataAttachmentIndex] = [NSNumber numberWithUnsignedInteger:index];
+
+            // FIXME: Replace the following NSString literal with a UIKit NSString constant.
+            dataForPreview[@"UIPreviewDataAttachmentListSourceIsManaged"] = [NSNumber numberWithBool:sourceIsManaged];
         }
+#endif
     }
     
     return dataForPreview;

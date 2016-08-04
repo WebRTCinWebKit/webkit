@@ -1,3 +1,1001 @@
+2016-08-03  Chris Dumez  <cdumez@apple.com>
+
+        Drop DocumentType.internalSubset attribute
+        https://bugs.webkit.org/show_bug.cgi?id=160530
+
+        Reviewed by Alex Christensen.
+
+        Drop DocumentType.internalSubset attribute.
+
+        * UserInterface/Models/DOMNode.js:
+        (WebInspector.DOMNode): Deleted.
+        * UserInterface/Models/DOMSearchMatchObject.js:
+        (WebInspector.DOMSearchMatchObject.titleForDOMNode): Deleted.
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._nodeTitleInfo): Deleted.
+
+2016-08-03  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Cmd-L shortcut for Jump to Line conflicts with selecting URL of inspected page
+        https://bugs.webkit.org/show_bug.cgi?id=158028
+        <rdar://problem/26516663>
+
+        Reviewed by Timothy Hatcher.
+
+        Remove Command-L shortcut for opening the Line Number dialog, since
+        we already support Control-G.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor): Deleted.
+
+2016-08-01  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Don't set `width:calc(100% - 0px); left:0px` on console messages
+        https://bugs.webkit.org/show_bug.cgi?id=160428
+        <rdar://problem/27646033>
+
+        Reviewed by Timothy Hatcher.
+
+        Console messages inside console.group() are indented. Console messages outside of
+        console.group() aren't and there is no reason to set inline styles that do nothing
+        on each one of them.
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype.didAppendConsoleMessageView):
+
+2016-08-01  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Grid column resizer elements positioned incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=160311
+        <rdar://problem/27595586>
+
+        Reviewed by Brian Burg.
+
+        Perform a resize layout on a newly shown tab content view if the tab
+        browser was resized before showing the tab.
+
+        * UserInterface/Views/TabBrowser.js:
+        (WebInspector.TabBrowser):
+        (WebInspector.TabBrowser.prototype.layout):
+        Mark all recent tab content views (except for the current view)
+        as needing a resize layout.
+
+        (WebInspector.TabBrowser.prototype._tabBarItemSelected):
+        If the tab browser was resized while the view was hidden, update the
+        view's layout for the new content view container size.
+
+2016-08-01  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Waterfall graph in Network tab shows too much whitespace/dead time
+        https://bugs.webkit.org/show_bug.cgi?id=160373
+
+        Reviewed by Timothy Hatcher.
+
+        Track the start and end time separate from the ruler to remove
+        leading/trailing whitespace in the graph. Also prevent network
+        record bars from being clipped.
+
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WebInspector.NetworkGridContentView):
+        (WebInspector.NetworkGridContentView.prototype.get zeroTime):
+        Set equal to the ruler start time.
+        (WebInspector.NetworkGridContentView.prototype.reset):
+        Reset start and end time.
+        (WebInspector.NetworkGridContentView.prototype.layout):
+        Set the initial values for ruler start/zero time if needed.
+        (WebInspector.NetworkGridContentView.prototype._networkTimelineRecordAdded):
+        Set the start time if needed.
+        Reduce debounce from 250ms to 150ms. This prevents the current time from
+        exceeding the end time by as wide a margin, while keeping the current
+        time "timer" from being restarted too frequently.
+
+        (WebInspector.NetworkGridContentView.prototype._stopUpdatingCurrentTime):
+        Update the ruler end time and schedule a layout.
+        Add padding equal to the time needed to draw a network bar at minimum width
+        to prevent bars from being clipped.
+
+2016-07-29  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Inactive/active network bar segments overlap when latency is zero
+        https://bugs.webkit.org/show_bug.cgi?id=160147
+        <rdar://problem/27516007>
+
+        Reviewed by Joseph Pecoraro.
+
+        TimelineRecordBar should hide the inactive segment when its duration
+        is less than the minimum displayable size. The active segment can
+        assume the whole width of the bar.
+
+        * UserInterface/Views/TimelineOverviewGraph.js:
+        (WebInspector.TimelineOverviewGraph.prototype.get secondsPerPixel):
+        Make secondsPerPixel available during TimelineRecordBars.refresh.
+
+        * UserInterface/Views/TimelineRecordBar.js:
+        (WebInspector.TimelineRecordBar.prototype.refresh):
+        Check inactive duration against the minimum display size,
+        and add/remove DOM nodes and bar styles as needed.
+
+2016-07-29  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r195456): Web Inspector: Changing tabs in Styles sidebar shouldn't change sidebar's width
+        https://bugs.webkit.org/show_bug.cgi?id=159646
+        <rdar://problem/27286338>
+
+        Reviewed by Brian Burg.
+
+        Remember sidebar width on per tab basis. For example, Node, Styles, and Layers sidebar panels in
+        Elements tab should all have the same width, but Resource sidebar panel in Debugger tab should NOT
+        share its width Element tab's sidebar.
+
+        TabContentView stores the width but TabBrowser manages saving and restoring it.
+        The same way collapsed sidebar state is handled.
+
+        * UserInterface/Views/Sidebar.js:
+        (WebInspector.Sidebar.prototype.set collapsed):
+        Don't change sidebar's width when sidebar panels change.
+
+        (WebInspector.Sidebar.prototype._recalculateWidth):
+        (WebInspector.Sidebar.prototype.set selectedSidebarPanel): Deleted.
+        Pass newWidth as an argument so it can be saved in TabBrowser.
+
+        * UserInterface/Views/SidebarPanel.js:
+        (WebInspector.SidebarPanel): Deleted.
+        (WebInspector.SidebarPanel.prototype.get savedWidth): Deleted.
+        (WebInspector.SidebarPanel.prototype.sizeDidChange): Deleted.
+        Remove the per sidebar panel width setting that was added in r195456.
+
+        * UserInterface/Views/TabBrowser.js:
+        (WebInspector.TabBrowser):
+        (WebInspector.TabBrowser.prototype._detailsSidebarWidthDidChange):
+        (WebInspector.TabBrowser.prototype._showDetailsSidebarPanelsForTabContentView):
+        * UserInterface/Views/TabContentView.js:
+        (WebInspector.TabContentView):
+        (WebInspector.TabContentView.prototype.get detailsSidebarWidthSetting):
+        Store details sidebar width on TabContentView.
+
+2016-07-29  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Assertion in NetworkGridContentView when updating data grid for the first time
+        https://bugs.webkit.org/show_bug.cgi?id=160330
+        <rdar://problem/27600905>
+
+        Reviewed by Brian Burg.
+
+        When the first grid node is added, a view layout and current time update
+        are scheduled. A view layout occurring before the current time is updated
+        should be skipped, since the ruler end time hasn't been set.
+
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WebInspector.NetworkGridContentView.prototype.layout):
+        Skip layout until current time is updated.
+        (WebInspector.NetworkGridContentView.prototype._update):
+        Remove unused variables `startTime` and `endTime`. Don't force a layout
+        if the elapsed time is zero.
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        Parameters to Event.initEvent() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160320
+
+        Reviewed by Darin Adler.
+
+        Update WebInspector accordingly.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        First parameter to canvas.getContext() / probablySupportsContext() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160312
+
+        Reviewed by Darin Adler.
+
+        Update WebInspector accordingly.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2016-07-28  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Hiding a column which contains a TimelineRuler as the headerview, doesn't hide the headerView
+        https://bugs.webkit.org/show_bug.cgi?id=160093
+        <rdar://problem/27499300>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype._positionHeaderViews):
+        Remove early return so that a header view in a hidden column will have
+        its width resized to zero, matching the column.
+
+2016-07-28  Johan K. Jensen  <johan_jensen@apple.com>
+
+        Web Inspector: Waterfall view should be visible in Network tab and Network Timeline
+        https://bugs.webkit.org/show_bug.cgi?id=160061
+
+        Reviewed by Joseph Pecoraro.
+
+        Adds a Timeline-column (waterfall) to the Network tab and Network Timeline.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        Add "Timeline" localized string.
+
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WebInspector.NetworkGridContentView):
+        Add the Timeline-column with a TimelineRuler as the headerview,
+        and properties for updating current time.
+
+        (WebInspector.NetworkGridContentView.prototype.get secondsPerPixel):
+        (WebInspector.NetworkGridContentView.prototype.get startTime):
+        (WebInspector.NetworkGridContentView.prototype.get currentTime):
+        (WebInspector.NetworkGridContentView.prototype.get endTime):
+        Acting as a graphDataSource used by TimelineDataGridNode.
+
+        (WebInspector.NetworkGridContentView.prototype.shown):
+        (WebInspector.NetworkGridContentView.prototype.reset):
+        (WebInspector.NetworkGridContentView.prototype.layout):
+        Refresh graphs and update the TimelineRuler on layout changes.
+
+        (WebInspector.NetworkGridContentView.prototype._networkTimelineRecordAdded):
+        Add listeners for when resources are finished to stop the timer.
+
+        (WebInspector.NetworkGridContentView.prototype._update):
+        (WebInspector.NetworkGridContentView.prototype._startUpdatingCurrentTime):
+        (WebInspector.NetworkGridContentView.prototype._stopUpdatingCurrentTime):
+        Adding a timer which updates the TimelineRuler and the layout
+        if any non-finished requests are running.
+
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView):
+        Add the Timeline-column with a TimelineRuler as the headerview.
+
+        (WebInspector.NetworkTimelineView.prototype.get secondsPerPixel):
+        (WebInspector.NetworkTimelineView.prototype.layout):
+        Refresh graphs on layout changes.
+
+        * UserInterface/Views/TimelineDataGrid.css:
+        (.tree-outline.timeline-data-grid .item:hover .subtitle):
+        (.data-grid.timeline th):
+        (.data-grid.timeline th.graph-column > .timeline-ruler):
+        (.data-grid.timeline td.graph-column):
+        (.data-grid.timeline td.graph-column > .cell-content):
+        (.data-grid.timeline td.graph-column .timeline-record-bar):
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        Parameter to table.deleteRow() / body.deleteRow() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160307
+
+        Reviewed by Ryosuke Niwa.
+
+        Update WebInspector accordingly.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        2 first parameters to input.setSelectionRange() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160310
+
+        Reviewed by Alex Christensen.
+
+        Update WebInspector accordingly.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        Parameter to tr.deleteCell() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160308
+
+        Reviewed by Ryosuke Niwa.
+
+        Report tr.deleteCell() parameter as mandatory.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2016-07-27  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Visual Styles Sidebar should have only one column when it's narrow
+        https://bugs.webkit.org/show_bug.cgi?id=159905
+        <rdar://problem/27413248>
+
+        Reviewed by Joseph Pecoraro.
+
+        Many CSS values often get clipped in the two colunm layout. Change the layout to one colunm
+        when visual style rows get too narrow.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section > .content .group > .row):
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section > .content .group > .metric-section-row):
+        Wrap all rows except for position/padding/margin controls.
+
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section > .content .group > .row > .visual-style-property-container:not(.layout-reversed):last-child): Deleted.
+        Margin between the first and the second column doesn't make sense one column layout.
+        Set the margin in .visual-style-property-container instead.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel.prototype._generateMetricSectionRows):
+        * UserInterface/Views/VisualStylePropertyEditor.css:
+        (.visual-style-property-container):
+
+2016-07-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [Mac] Web Inspector: CodeMirror-based editor bindings for Home and End don't match system behavior
+        https://bugs.webkit.org/show_bug.cgi?id=160267
+        <rdar://problem/27575553>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/CodeMirrorEditor.js:
+        (WebInspector.CodeMirrorEditor.create):
+        (WebInspector.CodeMirrorEditor):
+        Add some key map overrides for Home and End to better match system Mac
+        behavior. This scrolls to the start or end of a document and does not
+        change the cursor position.
+
+2016-07-27  Brian Burg  <bburg@apple.com>
+
+        Regression(r203535): Uncaught Exception: TypeError: Not enough arguments at LayerTreeDataGridNode.js:47
+        https://bugs.webkit.org/show_bug.cgi?id=160187
+        <rdar://problem/27540435>
+
+        Reviewed by Eric Carlson.
+
+        After r203535, document.createTextNode() requires an argument.
+
+        * UserInterface/Views/LayerTreeDataGridNode.js:
+        (WebInspector.LayerTreeDataGridNode.prototype.createCellContent):
+        Since this use-site is for creating a cell in an unknown column,
+        initialize it to '–'. Previously it would have been the string
+        "undefined" or empty.
+
+2016-07-24  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Filtering is broken in the Overview timeline view
+        https://bugs.webkit.org/show_bug.cgi?id=160152
+        <rdar://problem/27517481>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/SourceCodeTimelineTimelineDataGridNode.js:
+        (WebInspector.SourceCodeTimelineTimelineDataGridNode.prototype.filterableDataForColumn):
+        Non-resource nodes should be filtered based on their display name.
+
+2016-07-23  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r202876): Web Inspector: Switching away from Console tab with a lot of messages is slow
+        https://bugs.webkit.org/show_bug.cgi?id=160112
+
+        Reviewed by Joseph Pecoraro.
+
+        Showing NavigationSidebar before removing previous TabContentView can be very slow when
+        TabContentView is ConsoleTabContentView with a lot of messages. The order of operations
+        (show sidebar, change content view, show sidebar) caused more forced layouts. This patch
+        reduces the number of forced layouts by changes the order to: show content view, show sidebar,
+        show sidebar.
+
+        * UserInterface/Views/TabBrowser.js:
+        (WebInspector.TabBrowser.prototype._tabBarItemSelected):
+
+2016-07-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Pausing when Debugger tab is closed opens tab in wrong state
+        https://bugs.webkit.org/show_bug.cgi?id=159946
+        <rdar://problem/27429886>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel):
+        At the end of construction, update the UI to match the current state
+        of the world. Such as updating the UI if we are paused, or if the
+        Timeline is capturing and we are temporarily disabling breakpoints.
+
+2016-07-15  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Make Open Quickly and Goto Line dialogs match Xcode 8
+        https://bugs.webkit.org/show_bug.cgi?id=159823
+        rdar://problem/27376501
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/GoToLineDialog.css:
+        (.go-to-line-dialog):
+        (.go-to-line-dialog > div > input):
+        (.go-to-line-dialog > div > input::placeholder):
+        (.go-to-line-dialog > div > img):
+        (.go-to-line-dialog > div): Deleted.
+        * UserInterface/Views/OpenResourceDialog.css:
+        (.open-resource-dialog):
+        (.open-resource-dialog > .field):
+        (.open-resource-dialog > .field > input):
+        (.open-resource-dialog > .field > input::placeholder):
+        (.open-resource-dialog > .field > img):
+        (.open-resource-dialog > .tree-outline .item): Deleted.
+        (.open-resource-dialog > .tree-outline .item:first-child): Deleted.
+
+2016-07-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Rename CCTNode to CallingContextTreeNode
+        https://bugs.webkit.org/show_bug.cgi?id=159782
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CallingContextTree.js:
+        * UserInterface/Models/CallingContextTreeNode.js:
+        Extra to its own file and rename.
+
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+        * UserInterface/TestStub.html:
+        Include the new file.
+
+        * UserInterface/Views/ProfileDataGridNode.js:
+        (WebInspector.ProfileDataGridNode):
+        * UserInterface/Views/ProfileDataGridTree.js:
+        (WebInspector.ProfileDataGridTree.prototype._updateCurrentFocusDetails):
+        Rename shorthand "cctnode".
+
+2016-07-14  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: SidebarPanel classes should use View.layout instead of "refresh"
+        https://bugs.webkit.org/show_bug.cgi?id=159745
+        <rdar://problem/27335252>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ApplicationCacheDetailsSidebarPanel.js:
+        (WebInspector.ApplicationCacheDetailsSidebarPanel.prototype.set applicationCacheFrame):
+        Use needsLayout.
+
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype.layout):
+        Move refresh logic to layout.
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype.initialLayout):
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype._styleSheetAddedOrRemoved):
+        Defer layout to coalesce updates.
+        (WebInspector.CSSStyleDetailsSidebarPanel):
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype.refresh): Deleted.
+
+        * UserInterface/Views/DOMDetailsSidebarPanel.js:
+        (WebInspector.DOMDetailsSidebarPanel.prototype.set domNode):
+        Use needsLayout.
+
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        Move refresh logic to layout.
+
+        * UserInterface/Views/DetailsSidebarPanel.js:
+        (WebInspector.DetailsSidebarPanel.prototype.shown): Deleted.
+        Base class already forces a layout when shown.
+        (WebInspector.DetailsSidebarPanel.prototype.needsRefresh): Deleted.
+        No longer needed.
+        (WebInspector.DetailsSidebarPanel.prototype.refresh): Deleted.
+        Renamed layout.
+        (WebInspector.DetailsSidebarPanel): Deleted.
+
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.js:
+        (WebInspector.LayerTreeDetailsSidebarPanel.prototype.supportsDOMNode):
+        (WebInspector.LayerTreeDetailsSidebarPanel.prototype._layerTreeDidChange):
+        Use needsLayout.
+        (WebInspector.LayerTreeDetailsSidebarPanel.prototype.shown):
+        Base class already forces a layout when shown.
+
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel.prototype.set resource):
+        Use needsLayout.
+
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        (WebInspector.ScopeChainDetailsSidebarPanel):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype.set callFrame):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._addWatchExpression):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._removeWatchExpression):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._clearAllWatchExpressions):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._refreshAllWatchExpressionsButtonClicked):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._didEvaluateExpression):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._mainResourceDidChange):
+        Use needsLayout.
+
+2016-07-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Maintain selected function when switching between different profile representations
+        https://bugs.webkit.org/show_bug.cgi?id=159778
+        <rdar://problem/27355913>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CallingContextTree.js:
+        (WebInspector.CCTNode):
+        (WebInspector.CCTNode.prototype.get hash):
+        (WebInspector.CCTNode.prototype.findOrMakeChild):
+        (WebInspector.CCTNode.prototype.equals):
+        Expose the hash so two nodes can be compared cheaply.
+
+        * UserInterface/Views/ProfileView.js:
+        (WebInspector.ProfileView.prototype._repopulateDataGridFromTree):
+        (WebInspector.ProfileView.prototype._restoreSharedState):
+        (WebInspector.ProfileView.prototype._dataGridNodeSelected):
+        Share data between multiple ProfileViews. Currently just remembering
+        and restoring the selected function.
+
+        * UserInterface/Views/ScriptProfileTimelineView.js:
+        (WebInspector.ScriptProfileTimelineView):
+        (WebInspector.ScriptProfileTimelineView.prototype._showProfileViewForOrientation):
+        Include the shared data when constructing new ProfileViews.
+
+2016-07-13  Matt Baker  <mattbaker@apple.com>
+
+        Uncaught Exception: TypeError: null is not an object (evaluating 'this._contentViewContainer.currentContentView.showsFilterBar')
+        https://bugs.webkit.org/show_bug.cgi?id=159696
+        <rdar://problem/27312356>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype._contentViewSelectionPathComponentDidChange):
+        Early return if content view not visible, since the event is sent during
+        tab teardown and the current TimelineView may be invalid.
+
+2016-07-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION(r192789): Web Inspector: Log Value context menu appears twice
+        https://bugs.webkit.org/show_bug.cgi?id=159681
+        <rdar://problem/27304804>
+
+        Reviewed by Brian Burg.
+
+        In r192789 contextmenu events may bubble up so that multiple handlers
+        may append ContextMenuItems. In nested ObjectTrees / ObjectPreviews
+        this could result in duplicate items. Add a flag on the bubbling event
+        so that we only include Object Tree context menu items for the deepest
+        part of the Object Tree, but still allow bubbling up to the root.
+
+        * UserInterface/Views/ObjectPreviewView.js:
+        (WebInspector.ObjectPreviewView.prototype._contextMenuHandler):
+        (WebInspector.ObjectPreviewView):
+        * UserInterface/Views/ObjectTreeBaseTreeElement.js:
+        (WebInspector.ObjectTreeBaseTreeElement.prototype._contextMenuHandler):
+
+2016-07-12  Johan K. Jensen  <johan_jensen@apple.com>
+
+        Web Inspector: ER: Copy as cURL
+        https://bugs.webkit.org/show_bug.cgi?id=159380
+
+        Reviewed by Joseph Pecoraro.
+
+        Inspired by https://chromium.googlesource.com/chromium/src/+/b7c1115dbae65030ad96e773d9a270465a05f5c4/third_party/WebKit/Source/devtools/front_end/network/NetworkLogView.js
+
+        This "Copy as cURL" feature only approximates the original request as only some parts of
+        that request is known to the frontend.
+
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource.prototype.generateCURLCommand.escapeStringPosix.escapeCharacter):
+        (WebInspector.Resource.prototype.generateCURLCommand.escapeStringPosix):
+        (WebInspector.Resource.prototype.generateCURLCommand):
+        (WebInspector.Resource):
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode.prototype.appendContextMenuItems):
+
+2016-07-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Use separate files for TreeOutline/TreeElement and DataGrid/DataGridNode
+        https://bugs.webkit.org/show_bug.cgi?id=159659
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Main.html:
+        * UserInterface/Views/DataGrid.js:
+        * UserInterface/Views/DataGridNode.js: Added.
+        * UserInterface/Views/TreeElement.js: Added.
+        * UserInterface/Views/TreeOutline.js:
+        Extra the component classes to their own file.
+
+2016-07-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ProfileView sometimes shows Top Functions data despite Top Functions being disabled
+        https://bugs.webkit.org/show_bug.cgi?id=159660
+        <rdar://problem/27291647>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ScriptProfileTimelineView.js:
+        (WebInspector.ScriptProfileTimelineView.prototype._profileOrientationButtonClicked):
+        Pass the value of the setting, not the setting itself.
+
+2016-07-11  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Transition and Animation sections in Visual Styles sidebar should have more spacing to their left
+        https://bugs.webkit.org/show_bug.cgi?id=159633
+        <rdar://problem/27281805>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.css:
+        (.visual-style-property-container.animation):
+
+2016-07-08  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Command-Shift-S in the Styles sidebar should always show the save dialog
+        https://bugs.webkit.org/show_bug.cgi?id=156858
+        <rdar://problem/25859098>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection):
+
+2016-07-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector, regression: JS/JSON pretty-printing sporadically broken in STP8
+        https://bugs.webkit.org/show_bug.cgi?id=159511
+        <rdar://problem/27218435>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Workers/Formatter/FormatterWorker.js:
+        (FormatterWorker.prototype.formatJavaScript):
+        Attempt to format invalid JSON that can be evaluated to an object.
+
+2016-07-07  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: scrolled Snapshot list is reset to top and drawn blank after switching back from Snapshot Comparison view
+        https://bugs.webkit.org/show_bug.cgi?id=158218
+        rdar://problem/26545000
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/ClusterContentView.js:
+        (WebInspector.ClusterContentView.prototype.get scrollableElements): Added.
+        A default implementation for all cluster views.
+
+        * UserInterface/Views/DOMStorageContentView.js:
+        (WebInspector.DOMStorageContentView.prototype.get scrollableElements): Deleted.
+        This was duplicated in the class, removed one.
+
+        * UserInterface/Views/HeapAllocationsTimelineView.js:
+        (WebInspector.HeapAllocationsTimelineView): Initialize _snapshotListScrollTop.
+        (WebInspector.HeapAllocationsTimelineView.prototype.get scrollableElements): Added. Return elements
+        based on what is showing.
+
+        (WebInspector.HeapAllocationsTimelineView.prototype.showHeapSnapshotList): Restore the scroll position
+        of the DataGrid after it is added to the view.
+
+        (WebInspector.HeapAllocationsTimelineView.prototype.showHeapSnapshotTimelineRecord): Save the scroll position
+        of the DataGrid before it is removed from the view.
+
+        * UserInterface/Views/ScriptClusterTimelineView.js:
+        (WebInspector.ScriptClusterTimelineView.prototype.get scrollableElements): Deleted. Handled by the base class now.
+
+2016-07-06  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: REGRESSION: Hitting ⌘T in Web Inspector no longer opens in new tab in Safari
+        https://bugs.webkit.org/show_bug.cgi?id=159487
+        rdar://problem/27188047
+
+        Change Command-T to Command-Option-T to open a new tab.
+
+        I also changed Command-1, etc. to Command-Option-1, etc. to switch tabs. The number commands
+        conflicted similarly with Safari and didn't work for me as a Web Inspector shortcut at all.
+        We can't use Command-Shift because of Command-Shift-3 and Command-Shift-4 for screenshots.
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+
+2016-07-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: sometimes reloading a page with main resource selected will show an empty content view
+        https://bugs.webkit.org/show_bug.cgi?id=158069
+        <rdar://problem/26516710>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype.showDefaultContentView):
+        Continue until we get one that works.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype.showDefaultContentViewForTreeElement):
+        Avoid showing a content view for a background tab if it could steal
+        the content view from a foreground tab. This is a targeted fix for
+        reload + tab content view loading behavior. A more general fix would
+        be reducing the work done by non-foreground tabs.
+
+        * UserInterface/Views/TabBrowser.js:
+        (WebInspector.TabBrowser.prototype._tabBarItemSelected):
+        Update navigation sidebar first so it is set when showing the TabContentView.
+
+2016-07-06  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Uncaught Exception reporter should include the currently dispatching protocol event or request/response if applicable
+        https://bugs.webkit.org/show_bug.cgi?id=159320
+        <rdar://problem/27117754>
+
+        Reviewed by Timothy Hatcher and Joseph Pecoraro.
+
+        Keep track of the currently dispatched protocol response or protocol event and make
+        them available to the uncaught exception reporter. If an internal exception is reported
+        while dispatching an event or response, dump the protocol message(s) into the pre-filled
+        bug report.
+
+        * UserInterface/Debug/UncaughtExceptionReporter.js:
+        (stringifyAndTruncateObject): Added.
+        Rearrange the code that generates the pre-filled report so it's easier to add optional sections.
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass):
+        (InspectorBackendClass.prototype.get currentDispatchState): Expose the dispatching state.
+        (InspectorBackendClass.prototype._sendCommandToBackendWithCallback):
+        (InspectorBackendClass.prototype._sendCommandToBackendExpectingPromise):
+        Store the originating command request with the pendingResponse data so that we can examine
+        the originating request if the response causes an error. This will cause request message objects
+        to be garbage-collected after their responses are dispatched rather than when the request is sent.
+        But, I don't forsee this being a performance problem since we should always get a command response
+        and pending command responses do not typically accumulate except when the inspector first loads.
+
+        (InspectorBackendClass.prototype._dispatchResponse): Save the response being dispatched.
+        (InspectorBackendClass.prototype._dispatchResponseToCallback): Simplify exception reporting.
+        (InspectorBackendClass.prototype._dispatchEvent): Save the event being dispatched.
+
+2016-07-05  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Switch last uses of -webkit-linear-gradient() to linear-gradient()
+        https://bugs.webkit.org/show_bug.cgi?id=159438
+        rdar://problem/27183417
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/RenderingFrameTimelineOverviewGraph.css:
+        (.timeline-overview-graph.rendering-frame > .frame-marker):
+        (body.window-inactive .timeline-overview-graph.rendering-frame > .frame-marker):
+        * UserInterface/Views/TimelineRecordFrame.css:
+        (.timeline-record-frame.tall):
+        (.timeline-record-frame.selected):
+        (body.window-inactive .timeline-record-frame.selected):
+
+2016-07-05  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Drop -webkit-calc() in completions and a single use
+        https://bugs.webkit.org/show_bug.cgi?id=159435
+        rdar://problem/27179340
+
+        Reviewed by Dean Jackson.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+        * UserInterface/Views/VisualStylePropertyEditorLink.css:
+        (.visual-style-property-editor-link > .visual-style-property-editor-link-border):
+
+2016-07-05  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Drop the prefix from -webkit-image-set()
+        https://bugs.webkit.org/show_bug.cgi?id=159433
+        rdar://problem/27178887
+
+        Reviewed by Dean Jackson.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+        * UserInterface/Views/ApplicationCacheIcons.css:
+        (.application-cache-manifest .icon):
+        (.application-cache-frame .icon):
+        * UserInterface/Views/CookieIcon.css:
+        (.cookie-icon .icon):
+        * UserInterface/Views/DOMStorageIcons.css:
+        (.local-storage-icon .icon):
+        (.session-storage-icon .icon):
+        * UserInterface/Views/DatabaseIcon.css:
+        (.database-icon .icon):
+        * UserInterface/Views/DatabaseTableIcon.css:
+        (.database-table-icon .icon):
+        * UserInterface/Views/FolderIcon.css:
+        (.folder-icon .icon):
+        * UserInterface/Views/GradientSlider.css:
+        (.gradient-slider-knob):
+        (.gradient-slider-knob.selected):
+        * UserInterface/Views/HoverMenu.css:
+        (.hover-menu > img):
+        * UserInterface/Views/ResourceIcons.css:
+        (.resource-icon .icon):
+        (.resource-icon.resource-type-document .icon):
+        (.resource-icon.resource-type-image .icon):
+        (.resource-icon.resource-type-font .icon):
+        (.resource-icon.resource-type-stylesheet .icon):
+        (.resource-icon.resource-type-script .icon):
+        (.anonymous-script-icon .icon):
+        (.source-map-resource.resource-icon .icon):
+        (.source-map-resource.resource-icon.resource-type-stylesheet .icon):
+        (.source-map-resource.resource-icon.resource-type-script .icon):
+        (.large .resource-icon .icon):
+        (.large .resource-icon.resource-type-document .icon):
+        (.large .resource-icon.resource-type-image .icon):
+        (.large .resource-icon.resource-type-font .icon):
+        (.large .resource-icon.resource-type-stylesheet .icon):
+        (.large .resource-icon.resource-type-script .icon):
+        (.large .anonymous-script-icon .icon):
+        (.large .source-map-resource.resource-icon .icon):
+        (.large .source-map-resource.resource-icon.resource-type-stylesheet .icon):
+        (.large .source-map-resource.resource-icon.resource-type-script .icon):
+        * UserInterface/Views/Slider.css:
+        (.slider > img):
+        (.slider > img.dragging):
+        * UserInterface/Views/SourceCodeTextEditor.css:
+        (.hover-menu.color > img):
+        * UserInterface/Views/TextEditor.css:
+        (.text-editor > .CodeMirror .has-breakpoint .CodeMirror-linenumber::before):
+        (.text-editor > .CodeMirror .breakpoint-resolved .CodeMirror-linenumber::before):
+        (.text-editor > .CodeMirror .execution-line .CodeMirror-linenumber::after):
+        * UserInterface/Views/TimelineIcons.css:
+        (body:not(.mac-platform, .windows-platform) .network-icon .icon):
+        (body:not(.mac-platform, .windows-platform) .network-icon.large .icon):
+        (body:not(.mac-platform, .windows-platform) .layout-icon .icon):
+        (body:not(.mac-platform, .windows-platform) .layout-icon.large .icon):
+        (body:not(.mac-platform, .windows-platform) .script-icon .icon):
+        (body:not(.mac-platform, .windows-platform) .script-icon.large .icon):
+        (body:not(.mac-platform, .windows-platform) .rendering-frame-icon .icon):
+        (body:not(.mac-platform, .windows-platform) .memory-icon .icon):
+        (body:not(.mac-platform, .windows-platform) .heap-allocations-icon .icon):
+        (body:not(.mac-platform, .windows-platform) .stopwatch-icon .icon):
+
+2016-07-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CallFrame console.assert seen in tests (sourceCodeLocation instanceof SourceCodeLocation)
+        https://bugs.webkit.org/show_bug.cgi?id=159368
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Test.html:
+        SourceCodeLocation was already included earlier. This redefines it and
+        thereby breaks some things.
+
+2016-07-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        inspector/debugger/command-line-api-exception.html flakily times out on mac
+        https://bugs.webkit.org/show_bug.cgi?id=152029
+        <rdar://problem/23813812>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Object.js:
+        (WebInspector.Object.addEventListener):
+        Return the listener, this makes it cleaner to write tests.
+
+2016-07-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Make enabling protocol logging in inspector tests easy to remember
+        https://bugs.webkit.org/show_bug.cgi?id=159323
+
+        Reviewed by Brian Burg.
+
+        Now you just need to type InspectorTest.debug() or
+        ProtocolTest.debug() and it will include stderr logging.
+
+        * UserInterface/Test/FrontendTestHarness.js:
+        (FrontendTestHarness.prototype.debug):
+        * UserInterface/Test/ProtocolTestHarness.js:
+        (ProtocolTestHarness.prototype.debug):
+        (ProtocolTestHarness):
+        * UserInterface/Test/TestHarness.js:
+        (TestHarness.prototype.debug):
+
+2016-06-30  Matt Baker  <mattbaker@apple.com>
+
+        Unreviewed build fix.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        Add "Area" localized string.
+
+2016-06-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Wrong function name next to scope
+        https://bugs.webkit.org/show_bug.cgi?id=158210
+        <rdar://problem/26543093>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype._scopeChainNodeFromPayload):
+        Include new payload data in the construction call.
+        All the new data is optional, so we gracefully handle
+        legacy backends.
+
+        * UserInterface/Models/ScopeChainNode.js:
+        (WebInspector.ScopeChainNode):
+        (WebInspector.ScopeChainNode.prototype.get type):
+        (WebInspector.ScopeChainNode.prototype.get objects):
+        (WebInspector.ScopeChainNode.prototype.get name):
+        (WebInspector.ScopeChainNode.prototype.get location):
+        (WebInspector.ScopeChainNode.prototype.get hash):
+        Hash is a rough (name:sourceId:line:column) string for quick comparisons.
+
+        (WebInspector.ScopeChainNode.prototype.makeLocalScope):
+        Make this an action you take on a scope, to avoid having to
+        do it at construction time, or making it a generic setting.
+
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._generateCallFramesSection):
+        This was wrong before. Move the work to CallFrame
+        and change it to be correct.
+
+        * UserInterface/CallFrame.js:
+        (WebInspector.CallFrame.prototype.mergedScopeChain):
+
+        This transforms the scope chain for a call frame from:
+        
+             scope1  scope2  scope3  scope4  scope5  scope6  scope7
+              foo     foo     foo     bar     bar      -       -
+             Block  Closure Closure Closure Closure   GLE     GBL
+
+        To:
+             scope1  scope2&3   scope4&5  scope6  scope7
+              foo      foo*       bar*      -       -
+             Block    Local     Closure    GLE     GBL
+
+        Doing a few things:
+
+            - Merge the first two Closure scopes sharing a location.
+              These are the "var" and "let" Closure scopes in a function,
+              and it is better to present these together in the UI.
+
+            - Mark the first Closure scope within a function (*). When
+              this is displayed in the UI, we can provide the name of
+              the function: "Closure Scope (name)", and we even have
+              location information that we can use to display a goto
+              arrow if needed.
+
+            - Make the first Closure scope the Local scope if it
+              matches the Call Frame's function name. This lets us
+              display the section as "Local Variables".
+
+2016-06-30  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: add pixel area column to layout timeline view
+        https://bugs.webkit.org/show_bug.cgi?id=148677
+        <rdar://problem/22518762>
+
+        Reviewed by Timothy Hatcher.
+
+        The view can simply add the column. LayoutTimelineDataGridNode
+        already includes area data and cell formatting.
+
+        * UserInterface/Views/LayoutTimelineView.js:
+        (WebInspector.LayoutTimelineView):
+
+2016-06-30  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: the last normal tab cannot be closed with "Close Tab" context menu item
+        https://bugs.webkit.org/show_bug.cgi?id=159317
+        <rdar://problem/27042491>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TabBarItem.js:
+        (WebInspector.TabBarItem.prototype._handleContextMenuEvent):
+        (WebInspector.TabBarItem): fix the expression that controls whether the item is disabled.
+
+2016-06-30  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Add "spring" to transition-timing-function value autocompletion
+        https://bugs.webkit.org/show_bug.cgi?id=159313
+        <rdar://problem/27114269>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+
+2016-06-30  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202659.
+        https://bugs.webkit.org/show_bug.cgi?id=159305
+
+        The test for this change times out on mac-wk2 debug and caused
+        an existing test to crash. (Requested by ryanhaddad on
+        #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: Wrong function name next to scope"
+        https://bugs.webkit.org/show_bug.cgi?id=158210
+        http://trac.webkit.org/changeset/202659
+
 2016-06-29  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Wrong function name next to scope

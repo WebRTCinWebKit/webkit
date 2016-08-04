@@ -704,6 +704,7 @@ private:
         case TailCallInlinedCaller:
         case Construct:
         case CallVarargs:
+        case CallEval:
         case TailCallVarargsInlinedCaller:
         case ConstructVarargs:
         case CallForwardVarargs:
@@ -712,7 +713,8 @@ private:
         case GetGlobalVar:
         case GetGlobalLexicalVariable:
         case GetClosureVar:
-        case GetFromArguments: {
+        case GetFromArguments:
+        case ToNumber: {
             setPrediction(m_currentNode->getHeapPrediction());
             break;
         }
@@ -780,6 +782,7 @@ private:
         case CompareGreaterEq:
         case CompareEq:
         case CompareStrictEq:
+        case CompareEqPtr:
         case OverridesHasInstance:
         case InstanceOf:
         case InstanceOfCustom:
@@ -1042,10 +1045,9 @@ private:
         case CheckStructure:
         case CheckCell:
         case CheckNotEmpty:
-        case CheckIdent:
+        case CheckStringIdent:
         case CheckBadCell:
         case PutStructure:
-        case VarInjectionWatchpoint:
         case Phantom:
         case Check:
         case PutGlobalVariable:

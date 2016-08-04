@@ -977,7 +977,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
         return;
     // FIXME: These are fake modifier keys here, but they should be real ones instead.
     PlatformMouseEvent event(IntPoint(windowLoc), IntPoint(globalPoint(windowLoc, [view->platformWidget() window])),
-        LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, currentTime(), WebCore::ForceAtClick);
+                             LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, currentTime(), WebCore::ForceAtClick, WebCore::NoTap);
     _private->coreFrame->eventHandler().dragSourceEndedAt(event, (DragOperation)operation);
 }
 #endif
@@ -2524,11 +2524,6 @@ static NSURL *createUniqueWebDataURL()
 #endif
 
     ResourceRequest request(baseURL);
-
-#if PLATFORM(MAC)
-    // hack because Mail checks for this property to detect data / archive loads
-    [NSURLProtocol setProperty:@"" forKey:@"WebDataRequest" inRequest:(NSMutableURLRequest *)request.nsURLRequest(UpdateHTTPBody)];
-#endif
 
     ResourceResponse response(responseURL, MIMEType, [data length], encodingName);
     SubstituteData substituteData(WebCore::SharedBuffer::wrapNSData(data), [unreachableURL absoluteURL], response, SubstituteData::SessionHistoryVisibility::Hidden);

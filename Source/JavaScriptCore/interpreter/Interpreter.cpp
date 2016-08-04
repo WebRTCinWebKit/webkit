@@ -48,7 +48,6 @@
 #include "JSCInlines.h"
 #include "JSLexicalEnvironment.h"
 #include "JSModuleEnvironment.h"
-#include "JSStackInlines.h"
 #include "JSString.h"
 #include "JSWithScope.h"
 #include "LLIntCLoop.h"
@@ -216,10 +215,12 @@ unsigned sizeOfVarargs(CallFrame* callFrame, JSValue arguments, uint32_t firstVa
         length = jsCast<ScopedArguments*>(cell)->length(callFrame);
         break;
     case StringType:
+    case SymbolType:
         callFrame->vm().throwException(callFrame, createInvalidFunctionApplyParameterError(callFrame,  arguments));
         return 0;
+        
     default:
-        ASSERT(arguments.isObject());
+        RELEASE_ASSERT(arguments.isObject());
         length = getLength(callFrame, jsCast<JSObject*>(cell));
         if (UNLIKELY(callFrame->hadException()))
             return 0;
@@ -235,22 +236,22 @@ unsigned sizeOfVarargs(CallFrame* callFrame, JSValue arguments, uint32_t firstVa
     return length;
 }
 
-unsigned sizeFrameForForwardArguments(CallFrame* callFrame, JSStack* stack, unsigned numUsedStackSlots)
+unsigned sizeFrameForForwardArguments(CallFrame* callFrame, VM& vm, unsigned numUsedStackSlots)
 {
     unsigned length = callFrame->argumentCount();
     CallFrame* calleeFrame = calleeFrameForVarargs(callFrame, numUsedStackSlots, length + 1);
-    if (!stack->ensureCapacityFor(calleeFrame->registers()))
+    if (UNLIKELY(!vm.ensureStackCapacityFor(calleeFrame->registers())))
         throwStackOverflowError(callFrame);
 
     return length;
 }
 
-unsigned sizeFrameForVarargs(CallFrame* callFrame, JSStack* stack, JSValue arguments, unsigned numUsedStackSlots, uint32_t firstVarArgOffset)
+unsigned sizeFrameForVarargs(CallFrame* callFrame, VM& vm, JSValue arguments, unsigned numUsedStackSlots, uint32_t firstVarArgOffset)
 {
     unsigned length = sizeOfVarargs(callFrame, arguments, firstVarArgOffset);
     
     CallFrame* calleeFrame = calleeFrameForVarargs(callFrame, numUsedStackSlots, length + 1);
-    if (length > maxArguments || !stack->ensureCapacityFor(calleeFrame->registers())) {
+    if (UNLIKELY(length > maxArguments || !vm.ensureStackCapacityFor(calleeFrame->registers()))) {
         throwStackOverflowError(callFrame);
         return 0;
     }
@@ -323,7 +324,9 @@ void setupForwardArgumentsFrameAndSetThis(CallFrame* execCaller, CallFrame* exec
 
 Interpreter::Interpreter(VM& vm)
     : m_vm(vm)
-    , m_stack(vm)
+#if !ENABLE(JIT)
+    , m_cloopStack(vm)
+#endif
     , m_errorHandlingModeReentry(0)
 #if !ASSERT_DISABLED
     , m_initialized(false)
@@ -401,8 +404,8 @@ void Interpreter::dumpRegisters(CallFrame* callFrame)
     const Register* it;
     const Register* end;
 
-    it = callFrame->registers() + JSStack::ThisArgument + callFrame->argumentCount();
-    end = callFrame->registers() + JSStack::ThisArgument - 1;
+    it = callFrame->registers() + CallFrameSlot::thisArgument + callFrame->argumentCount();
+    end = callFrame->registers() + CallFrameSlot::thisArgument - 1;
     while (it > end) {
         JSValue v = it->jsValue();
         int registerNumber = it - callFrame->registers();
@@ -827,7 +830,7 @@ JSValue Interpreter::execute(ProgramExecutable* program, CallFrame* callFrame, J
     if (vm.isCollectorBusy())
         return jsNull();
 
-    if (!vm.isSafeToRecurse())
+    if (UNLIKELY(!vm.isSafeToRecurseSoft()))
         return checkedReturn(throwStackOverflowError(callFrame));
 
     // First check if the "program" is actually just a JSON object. If so,
@@ -987,7 +990,7 @@ JSValue Interpreter::executeCall(CallFrame* callFrame, JSObject* function, CallT
     }
 
     VMEntryScope entryScope(vm, globalObject);
-    if (!vm.isSafeToRecurse())
+    if (UNLIKELY(!vm.isSafeToRecurseSoft()))
         return checkedReturn(throwStackOverflowError(callFrame));
 
     if (isJSCall) {
@@ -1049,7 +1052,7 @@ JSObject* Interpreter::executeConstruct(CallFrame* callFrame, JSObject* construc
     }
 
     VMEntryScope entryScope(vm, globalObject);
-    if (!vm.isSafeToRecurse())
+    if (UNLIKELY(!vm.isSafeToRecurseSoft()))
         return checkedReturn(throwStackOverflowError(callFrame));
 
     if (isJSConstruct) {
@@ -1146,7 +1149,7 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
         return jsNull();
 
     VMEntryScope entryScope(vm, scope->globalObject());
-    if (!vm.isSafeToRecurse())
+    if (UNLIKELY(!vm.isSafeToRecurseSoft()))
         return checkedReturn(throwStackOverflowError(callFrame));        
 
     unsigned numVariables = eval->numVariables();
@@ -1185,8 +1188,7 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
             const Identifier& ident = codeBlock->variable(i);
             PropertySlot slot(globalLexicalEnvironment, PropertySlot::InternalMethodType::VMInquiry);
             if (JSGlobalLexicalEnvironment::getOwnPropertySlot(globalLexicalEnvironment, callFrame, ident, slot)) {
-                return checkedReturn(callFrame->vm().throwException(callFrame,
-                    createTypeError(callFrame, makeString("Can't create duplicate global variable in eval: '", String(ident.impl()), "'"))));
+                return checkedReturn(throwTypeError(callFrame, makeString("Can't create duplicate global variable in eval: '", String(ident.impl()), "'")));
             }
         }
 
@@ -1194,8 +1196,7 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
             FunctionExecutable* function = codeBlock->functionDecl(i);
             PropertySlot slot(globalLexicalEnvironment, PropertySlot::InternalMethodType::VMInquiry);
             if (JSGlobalLexicalEnvironment::getOwnPropertySlot(globalLexicalEnvironment, callFrame, function->name(), slot)) {
-                return checkedReturn(callFrame->vm().throwException(callFrame,
-                    createTypeError(callFrame, makeString("Can't create duplicate global variable in eval: '", String(function->name().impl()), "'"))));
+                return checkedReturn(throwTypeError(callFrame, makeString("Can't create duplicate global variable in eval: '", String(function->name().impl()), "'")));
             }
         }
     }
@@ -1249,7 +1250,7 @@ JSValue Interpreter::execute(ModuleProgramExecutable* executable, CallFrame* cal
         return jsNull();
 
     VMEntryScope entryScope(vm, scope->globalObject());
-    if (!vm.isSafeToRecurse())
+    if (UNLIKELY(!vm.isSafeToRecurseSoft()))
         return checkedReturn(throwStackOverflowError(callFrame));
 
     JSObject* compileError = executable->prepareForExecution(callFrame, nullptr, scope, CodeForCall);

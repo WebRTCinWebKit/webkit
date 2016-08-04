@@ -590,6 +590,14 @@ private:
                 fixEdge<ObjectUse>(node->child2());
                 break;
             }
+            if (node->child1()->shouldSpeculateSymbol()) {
+                fixEdge<SymbolUse>(node->child1());
+                break;
+            }
+            if (node->child2()->shouldSpeculateSymbol()) {
+                fixEdge<SymbolUse>(node->child2());
+                break;
+            }
             if (node->child1()->shouldSpeculateMisc()) {
                 fixEdge<MiscUse>(node->child1());
                 break;
@@ -620,7 +628,7 @@ private:
             }
             break;
         }
-
+            
         case StringFromCharCode:
             if (node->child1()->shouldSpeculateInt32())
                 fixEdge<Int32Use>(node->child1());
@@ -989,6 +997,11 @@ private:
             fixupToPrimitive(node);
             break;
         }
+
+        case ToNumber: {
+            fixupToNumber(node);
+            break;
+        }
             
         case ToString:
         case CallStringConstructor: {
@@ -1201,12 +1214,8 @@ private:
             break;
         }
 
-        case CheckIdent: {
-            UniquedStringImpl* uid = node->uidOperand();
-            if (uid->isSymbol())
-                fixEdge<SymbolUse>(node->child1());
-            else
-                fixEdge<StringIdentUse>(node->child1());
+        case CheckStringIdent: {
+            fixEdge<StringIdentUse>(node->child1());
             break;
         }
             
@@ -1530,12 +1539,12 @@ private:
         case GetGlobalVar:
         case GetGlobalLexicalVariable:
         case NotifyWrite:
-        case VarInjectionWatchpoint:
         case Call:
         case CheckTypeInfoFlags:
         case TailCallInlinedCaller:
         case Construct:
         case CallVarargs:
+        case CallEval:
         case TailCallVarargsInlinedCaller:
         case ConstructVarargs:
         case CallForwardVarargs:
@@ -1584,6 +1593,7 @@ private:
         case PutByIdWithThis:
         case PutByValWithThis:
         case GetByValWithThis:
+        case CompareEqPtr:
             break;
             
             break;
@@ -1797,6 +1807,39 @@ private:
             node->convertToToString();
             return;
         }
+    }
+
+    void fixupToNumber(Node* node)
+    {
+        // If the prediction of the child is Number, we attempt to convert ToNumber to Identity.
+        if (node->child1()->shouldSpeculateNumber()) {
+            if (isInt32Speculation(node->getHeapPrediction())) {
+                // If the both predictions of this node and the child is Int32, we just convert ToNumber to Identity, that's simple.
+                if (node->child1()->shouldSpeculateInt32()) {
+                    fixEdge<Int32Use>(node->child1());
+                    node->convertToIdentity();
+                    return;
+                }
+
+                // The another case is that the predicted type of the child is Int32, but the heap prediction tell the users that this will produce non Int32 values.
+                // In that case, let's receive the child value as a Double value and convert it to Int32. This case happens in misc-bugs-847389-jpeg2000.
+                fixEdge<DoubleRepUse>(node->child1());
+                node->setOp(DoubleAsInt32);
+                if (bytecodeCanIgnoreNegativeZero(node->arithNodeFlags()))
+                    node->setArithMode(Arith::CheckOverflow);
+                else
+                    node->setArithMode(Arith::CheckOverflowAndNegativeZero);
+                return;
+            }
+
+            fixEdge<DoubleRepUse>(node->child1());
+            node->convertToIdentity();
+            node->setResult(NodeResultDouble);
+            return;
+        }
+
+        fixEdge<UntypedUse>(node->child1());
+        node->setResult(NodeResultJS);
     }
     
     void fixupToStringOrCallStringConstructor(Node* node)

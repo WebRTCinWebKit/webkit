@@ -292,7 +292,7 @@ bool Element::dispatchMouseEvent(const PlatformMouseEvent& platformEvent, const 
             mouseEvent->bubbles(), mouseEvent->cancelable(), mouseEvent->view(), mouseEvent->detail(),
             mouseEvent->screenX(), mouseEvent->screenY(), mouseEvent->clientX(), mouseEvent->clientY(),
             mouseEvent->ctrlKey(), mouseEvent->altKey(), mouseEvent->shiftKey(), mouseEvent->metaKey(),
-            mouseEvent->button(), relatedTarget);
+            mouseEvent->button(), mouseEvent->syntheticClickType(), relatedTarget);
 
         if (mouseEvent->defaultHandled())
             doubleClickEvent->setDefaultHandled();
@@ -496,6 +496,19 @@ const AtomicString& Element::getAttribute(const QualifiedName& name) const
     if (const Attribute* attribute = findAttributeByName(name))
         return attribute->value();
     return nullAtom;
+}
+
+Vector<String> Element::getAttributeNames() const
+{
+    Vector<String> attributesVector;
+    if (!hasAttributes())
+        return attributesVector;
+
+    auto attributes = attributesIterator();
+    attributesVector.reserveInitialCapacity(attributes.attributeCount());
+    for (auto& attribute : attributes)
+        attributesVector.uncheckedAppend(attribute.name().toString());
+    return attributesVector;
 }
 
 bool Element::isFocusable() const
@@ -1454,6 +1467,19 @@ void Element::parserDidSetAttributes()
 {
 }
 
+void Element::didMoveToNewDocument(Document* oldDocument)
+{
+    Node::didMoveToNewDocument(oldDocument);
+
+    if (oldDocument->inQuirksMode() != document().inQuirksMode()) {
+        // ElementData::m_classNames or ElementData::m_idForStyleResolution need to be updated with the right case.
+        if (hasID())
+            attributeChanged(idAttr, nullAtom, getIdAttribute());
+        if (hasClass())
+            attributeChanged(classAttr, nullAtom, getAttribute(classAttr));
+    }
+}
+
 bool Element::hasAttributes() const
 {
     synchronizeAllAttributes();
@@ -1490,12 +1516,12 @@ void Element::setPrefix(const AtomicString& prefix, ExceptionCode& ec)
     if (ec)
         return;
 
-    m_tagName.setPrefix(prefix.isEmpty() ? AtomicString() : prefix);
+    m_tagName.setPrefix(prefix.isEmpty() ? nullAtom : prefix);
 }
 
 const AtomicString& Element::imageSourceURL() const
 {
-    return fastGetAttribute(srcAttr);
+    return attributeWithoutSynchronization(srcAttr);
 }
 
 bool Element::rendererIsNeeded(const RenderStyle& style)
@@ -1555,7 +1581,7 @@ Node::InsertionNotificationRequest Element::insertedInto(ContainerNode& insertio
 
     if (newScope && hasTagName(labelTag)) {
         if (newScope->shouldCacheLabelsByForAttribute())
-            updateLabel(*newScope, nullAtom, fastGetAttribute(forAttr));
+            updateLabel(*newScope, nullAtom, attributeWithoutSynchronization(forAttr));
     }
 
     return InsertionDone;
@@ -1601,7 +1627,7 @@ void Element::removedFrom(ContainerNode& insertionPoint)
 
         if (oldScope && hasTagName(labelTag)) {
             if (oldScope->shouldCacheLabelsByForAttribute())
-                updateLabel(*oldScope, fastGetAttribute(forAttr), nullAtom);
+                updateLabel(*oldScope, attributeWithoutSynchronization(forAttr), nullAtom);
         }
     }
 
@@ -2359,7 +2385,7 @@ bool Element::dispatchMouseForceWillBegin()
     if (!frame)
         return false;
 
-    PlatformMouseEvent platformMouseEvent(frame->eventHandler().lastKnownMousePosition(), frame->eventHandler().lastKnownMouseGlobalPosition(), NoButton, PlatformEvent::NoType, 1, false, false, false, false, WTF::currentTime(), ForceAtClick);
+    PlatformMouseEvent platformMouseEvent(frame->eventHandler().lastKnownMousePosition(), frame->eventHandler().lastKnownMouseGlobalPosition(), NoButton, PlatformEvent::NoType, 1, false, false, false, false, WTF::currentTime(), ForceAtClick, NoTap);
     Ref<MouseEvent> mouseForceWillBeginEvent =  MouseEvent::create(eventNames().webkitmouseforcewillbeginEvent, document().defaultView(), platformMouseEvent, 0, nullptr);
     mouseForceWillBeginEvent->setTarget(this);
     dispatchEvent(mouseForceWillBeginEvent);
@@ -2461,7 +2487,7 @@ String Element::title() const
 
 const AtomicString& Element::pseudo() const
 {
-    return fastGetAttribute(pseudoAttr);
+    return attributeWithoutSynchronization(pseudoAttr);
 }
 
 void Element::setPseudo(const AtomicString& value)
@@ -2957,7 +2983,7 @@ void Element::requestPointerLock()
 
 SpellcheckAttributeState Element::spellcheckAttributeState() const
 {
-    const AtomicString& value = fastGetAttribute(HTMLNames::spellcheckAttr);
+    const AtomicString& value = attributeWithoutSynchronization(HTMLNames::spellcheckAttr);
     if (value.isNull())
         return SpellcheckAttributeDefault;
     if (value.isEmpty() || equalLettersIgnoringASCIICase(value, "true"))
@@ -3447,7 +3473,7 @@ void Element::clearHasPendingResources()
 
 bool Element::canContainRangeEndPoint() const
 {
-    return !equalLettersIgnoringASCIICase(fastGetAttribute(roleAttr), "img");
+    return !equalLettersIgnoringASCIICase(attributeWithoutSynchronization(roleAttr), "img");
 }
 
 String Element::completeURLsInAttributeValue(const URL& base, const Attribute& attribute) const

@@ -152,7 +152,11 @@ macro doVMEntry(makeCall)
     # Ensure that we have enough additional stack capacity for the incoming args,
     # and the frame for the JS code we're executing. We need to do this check
     # before we start copying the args from the protoCallFrame below.
-    bpaeq t3, VM::m_jsStackLimit[vm], .stackHeightOK
+    if C_LOOP
+        bpaeq t3, VM::m_cloopStackLimit[vm], .stackHeightOK
+    else
+        bpaeq t3, VM::m_softStackLimit[vm], .stackHeightOK
+    end
 
     if C_LOOP
         move entry, t4
@@ -955,11 +959,12 @@ _llint_op_to_number:
 .opToNumberIsInt:
     storei t2, TagOffset[cfr, t1, 8]
     storei t3, PayloadOffset[cfr, t1, 8]
-    dispatch(3)
+    valueProfile(t2, t3, 12, t1)
+    dispatch(4)
 
 .opToNumberSlow:
     callOpcodeSlowPath(_slow_path_to_number)
-    dispatch(3)
+    dispatch(4)
 
 
 _llint_op_to_string:
@@ -1009,6 +1014,9 @@ macro binaryOpCustomStore(integerOperationAndStore, doubleOperation, slowPath)
     loadConstantOrVariable2Reg(t0, t2, t0)
     bineq t2, Int32Tag, .op1NotInt
     bineq t3, Int32Tag, .op2NotInt
+    loadisFromInstruction(4, t5)
+    ori ArithProfileIntInt, t5
+    storeisToInstruction(t5, 4)
     loadi 4[PC], t2
     integerOperationAndStore(t3, t1, t0, .slow, t2)
     dispatch(5)
@@ -1018,10 +1026,16 @@ macro binaryOpCustomStore(integerOperationAndStore, doubleOperation, slowPath)
     bia t2, LowestTag, .slow
     bib t3, LowestTag, .op1NotIntOp2Double
     bineq t3, Int32Tag, .slow
+    loadisFromInstruction(4, t5)
+    ori ArithProfileNumberInt, t5
+    storeisToInstruction(t5, 4)
     ci2d t1, ft1
     jmp .op1NotIntReady
 .op1NotIntOp2Double:
     fii2d t1, t3, ft1
+    loadisFromInstruction(4, t5)
+    ori ArithProfileNumberNumber, t5
+    storeisToInstruction(t5, 4)
 .op1NotIntReady:
     loadi 4[PC], t1
     fii2d t0, t2, ft0
@@ -1033,6 +1047,9 @@ macro binaryOpCustomStore(integerOperationAndStore, doubleOperation, slowPath)
     # First operand is definitely an int, the second operand is definitely not.
     loadi 4[PC], t2
     bia t3, LowestTag, .slow
+    loadisFromInstruction(4, t5)
+    ori ArithProfileIntNumber, t5
+    storeisToInstruction(t5, 4)
     ci2d t0, ft0
     fii2d t1, t3, ft1
     doubleOperation(ft1, ft0)
@@ -1803,9 +1820,10 @@ _llint_op_jneq_ptr:
     loadp JSGlobalObject::m_specialPointers[t2, t1, 4], t1
     bpeq PayloadOffset[cfr, t0, 8], t1, .opJneqPtrFallThrough
 .opJneqPtrBranch:
+    storei 1, 16[PC]
     dispatchBranch(12[PC])
 .opJneqPtrFallThrough:
-    dispatch(4)
+    dispatch(5)
 
 
 macro compare(integerCompare, doubleCompare, slowPath)

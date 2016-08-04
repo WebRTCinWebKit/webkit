@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,19 +29,17 @@
 #if ENABLE(DFG_JIT)
 
 #include "AssemblyHelpers.h"
+#include "B3SparseCollection.h"
 #include "BytecodeLivenessAnalysisInlines.h"
 #include "CodeBlock.h"
 #include "DFGArgumentPosition.h"
 #include "DFGBasicBlock.h"
 #include "DFGFrozenValue.h"
-#include "DFGLongLivedState.h"
 #include "DFGNode.h"
-#include "DFGNodeAllocator.h"
 #include "DFGPlan.h"
 #include "DFGPropertyTypeKey.h"
 #include "DFGScannable.h"
 #include "FullBytecodeLiveness.h"
-#include "JSStack.h"
 #include "MethodOfGettingAValueProfile.h"
 #include <unordered_map>
 #include <wtf/BitVector.h>
@@ -125,7 +123,7 @@ enum AddSpeculationMode {
 // Nodes that are 'dead' remain in the vector with refCount 0.
 class Graph : public virtual Scannable {
 public:
-    Graph(VM&, Plan&, LongLivedState&);
+    Graph(VM&, Plan&);
     ~Graph();
     
     void changeChild(Edge& edge, Node* newNode)
@@ -183,12 +181,25 @@ public:
     }
     
     template<typename... Params>
+    Node* addNode(Params... params)
+    {
+        Node* node = new Node(params...);
+        m_nodes.add(std::unique_ptr<Node>(node));
+        return node;
+    }
+    template<typename... Params>
     Node* addNode(SpeculatedType type, Params... params)
     {
-        Node* node = new (m_allocator) Node(params...);
+        Node* node = addNode(params...);
         node->predict(type);
         return node;
     }
+    void deleteNode(Node*);
+    unsigned maxNodeCount() const { return m_nodes.size(); }
+    Node* nodeAt(unsigned index) const { return m_nodes[index]; }
+    void packNodeIndices();
+
+    Vector<AbstractValue>& abstractValuesCache() { return m_abstractValuesCache; }
 
     void dethread();
     
@@ -534,6 +545,7 @@ public:
     void substituteGetLocal(BasicBlock& block, unsigned startIndexInBlock, VariableAccessData* variableAccessData, Node* newGetLocal);
     
     void invalidateCFG();
+    void invalidateNodeLiveness();
     
     void clearFlagsOnAllNodes(NodeFlags);
     
@@ -709,9 +721,9 @@ public:
             
             if (inlineCallFrame) {
                 if (inlineCallFrame->isClosureCall)
-                    functor(stackOffset + JSStack::Callee);
+                    functor(stackOffset + CallFrameSlot::callee);
                 if (inlineCallFrame->isVarargs())
-                    functor(stackOffset + JSStack::ArgumentCount);
+                    functor(stackOffset + CallFrameSlot::argumentCount);
             }
             
             CodeBlock* codeBlock = baselineCodeBlockFor(inlineCallFrame);
@@ -814,13 +826,14 @@ public:
     // because it queries the m_hasExceptionHandlers boolean whose value
     // is only fully determined after bytcode parsing.
     bool willCatchExceptionInMachineFrame(CodeOrigin, CodeOrigin& opCatchOriginOut, HandlerInfo*& catchHandlerOut);
+    
+    bool needsScopeRegister() const { return m_hasDebuggerEnabled || m_codeBlock->usesEval(); }
+    bool needsFlushedThis() const { return m_codeBlock->usesEval(); }
 
     VM& m_vm;
     Plan& m_plan;
     CodeBlock* m_codeBlock;
     CodeBlock* m_profiledBlock;
-    
-    NodeAllocator& m_allocator;
 
     Vector< RefPtr<BasicBlock> , 8> m_blocks;
     Vector<Edge, 16> m_varArgChildren;
@@ -909,6 +922,7 @@ public:
     bool m_hasDebuggerEnabled;
     bool m_hasExceptionHandlers { false };
 private:
+    void adoptNodeOutOfLine(Node&);
 
     bool isStringPrototypeMethodSane(JSGlobalObject*, UniquedStringImpl*);
 
@@ -941,6 +955,9 @@ private:
         
         return bytecodeCanTruncateInteger(add->arithNodeFlags()) ? SpeculateInt32AndTruncateConstants : DontSpeculateInt32;
     }
+
+    B3::SparseCollection<Node> m_nodes;
+    Vector<AbstractValue> m_abstractValuesCache;
 };
 
 } } // namespace JSC::DFG

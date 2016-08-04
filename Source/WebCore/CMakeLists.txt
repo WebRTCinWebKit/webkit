@@ -262,8 +262,8 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/streams/ByteLengthQueuingStrategy.idl
     Modules/streams/CountQueuingStrategy.idl
     Modules/streams/ReadableStream.idl
-    Modules/streams/ReadableStreamController.idl
-    Modules/streams/ReadableStreamReader.idl
+    Modules/streams/ReadableStreamDefaultController.idl
+    Modules/streams/ReadableStreamDefaultReader.idl
     Modules/streams/ReadableStreamSource.idl
     Modules/streams/WritableStream.idl
 
@@ -315,7 +315,7 @@ set(WebCore_NON_SVG_IDL_FILES
 
     crypto/CryptoKey.idl
     crypto/CryptoKeyPair.idl
-    crypto/SubtleCrypto.idl
+    crypto/WebKitSubtleCrypto.idl
 
     css/CSSCharsetRule.idl
     css/CSSFontFaceLoadEvent.idl
@@ -411,6 +411,7 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/RequestAnimationFrameCallback.idl
     dom/SecurityPolicyViolationEvent.idl
     dom/ShadowRoot.idl
+    dom/Slotable.idl
     dom/StringCallback.idl
     dom/Text.idl
     dom/TextEvent.idl
@@ -505,9 +506,7 @@ set(WebCore_NON_SVG_IDL_FILES
     html/HTMLTableCaptionElement.idl
     html/HTMLTableCellElement.idl
     html/HTMLTableColElement.idl
-    html/HTMLTableDataCellElement.idl
     html/HTMLTableElement.idl
-    html/HTMLTableHeaderCellElement.idl
     html/HTMLTableRowElement.idl
     html/HTMLTableSectionElement.idl
     html/HTMLTemplateElement.idl
@@ -819,6 +818,7 @@ set(WebCore_SOURCES
 
     Modules/fetch/DOMWindowFetch.cpp
     Modules/fetch/FetchBody.cpp
+    Modules/fetch/FetchBodyConsumer.cpp
     Modules/fetch/FetchBodyOwner.cpp
     Modules/fetch/FetchHeaders.cpp
     Modules/fetch/FetchLoader.cpp
@@ -884,6 +884,7 @@ set(WebCore_SOURCES
     Modules/indexeddb/shared/IDBCursorInfo.cpp
     Modules/indexeddb/shared/IDBDatabaseInfo.cpp
     Modules/indexeddb/shared/IDBError.cpp
+    Modules/indexeddb/shared/IDBGetRecordData.cpp
     Modules/indexeddb/shared/IDBIndexInfo.cpp
     Modules/indexeddb/shared/IDBObjectStoreInfo.cpp
     Modules/indexeddb/shared/IDBRequestData.cpp
@@ -1055,6 +1056,7 @@ set(WebCore_SOURCES
     accessibility/AccessibilityList.cpp
     accessibility/AccessibilityListBox.cpp
     accessibility/AccessibilityListBoxOption.cpp
+    accessibility/AccessibilityMathMLElement.cpp
     accessibility/AccessibilityMediaControls.cpp
     accessibility/AccessibilityMenuList.cpp
     accessibility/AccessibilityMenuListOption.cpp
@@ -1097,6 +1099,7 @@ set(WebCore_SOURCES
     bindings/js/JSCSSRuleCustom.cpp
     bindings/js/JSCSSRuleListCustom.cpp
     bindings/js/JSCSSStyleDeclarationCustom.cpp
+    bindings/js/JSDOMIterator.cpp
     bindings/js/JSFontFaceCustom.cpp
     bindings/js/JSFontFaceSetCustom.cpp
     bindings/js/JSCSSValueCustom.cpp
@@ -1104,6 +1107,7 @@ set(WebCore_SOURCES
     bindings/js/JSCanvasRenderingContext2DCustom.cpp
     bindings/js/JSCanvasRenderingContextCustom.cpp
     bindings/js/JSCharacterDataCustom.cpp
+    bindings/js/JSClientRectCustom.cpp
     bindings/js/JSCommandLineAPIHostCustom.cpp
     bindings/js/JSCryptoAlgorithmBuilder.cpp
     bindings/js/JSCryptoAlgorithmDictionary.cpp
@@ -1129,6 +1133,7 @@ set(WebCore_SOURCES
     bindings/js/JSDOMStringMapCustom.cpp
     bindings/js/JSDOMWindowBase.cpp
     bindings/js/JSDOMWindowCustom.cpp
+    bindings/js/JSDOMWindowProperties.cpp
     bindings/js/JSDOMWindowShell.cpp
     bindings/js/JSDOMWrapper.cpp
     bindings/js/JSDataCueCustom.cpp
@@ -1147,7 +1152,6 @@ set(WebCore_SOURCES
     bindings/js/JSEventListener.cpp
     bindings/js/JSEventTargetCustom.cpp
     bindings/js/JSExceptionBase.cpp
-    bindings/js/JSFetchResponseCustom.cpp
     bindings/js/JSFileCustom.cpp
     bindings/js/JSFileReaderCustom.cpp
     bindings/js/JSGeolocationCustom.cpp
@@ -1210,7 +1214,6 @@ set(WebCore_SOURCES
     bindings/js/JSStorageCustom.cpp
     bindings/js/JSStyleSheetCustom.cpp
     bindings/js/JSStyleSheetListCustom.cpp
-    bindings/js/JSSubtleCryptoCustom.cpp
     bindings/js/JSTextCustom.cpp
     bindings/js/JSTextTrackCueCustom.cpp
     bindings/js/JSTextTrackCustom.cpp
@@ -1224,6 +1227,7 @@ set(WebCore_SOURCES
     bindings/js/JSWebGLRenderingContextBaseCustom.cpp
     bindings/js/JSWebGLRenderingContextCustom.cpp
     bindings/js/JSWebKitPointCustom.cpp
+    bindings/js/JSWebKitSubtleCryptoCustom.cpp
     bindings/js/JSWorkerCustom.cpp
     bindings/js/JSWorkerGlobalScopeBase.cpp
     bindings/js/JSWorkerGlobalScopeCustom.cpp
@@ -1232,15 +1236,13 @@ set(WebCore_SOURCES
     bindings/js/JSXPathNSResolverCustom.cpp
     bindings/js/JSXPathResultCustom.cpp
     bindings/js/JSXSLTProcessorCustom.cpp
-    bindings/js/ReadableStreamController.cpp
+    bindings/js/ReadableStreamDefaultController.cpp
     bindings/js/ScheduledAction.cpp
     bindings/js/ScriptCachedFrameData.cpp
     bindings/js/ScriptController.cpp
     bindings/js/ScriptGlobalObject.cpp
     bindings/js/ScriptState.cpp
     bindings/js/SerializedScriptValue.cpp
-    bindings/js/WebCoreJSBuiltinInternals.cpp
-    bindings/js/WebCoreJSBuiltins.cpp
     bindings/js/WebCoreTypedArrayController.cpp
     bindings/js/WorkerScriptController.cpp
 
@@ -1719,7 +1721,6 @@ set(WebCore_SOURCES
     html/HTMLTableCellElement.cpp
     html/HTMLTableColElement.cpp
     html/HTMLTableElement.cpp
-    html/HTMLTableHeaderCellElement.cpp
     html/HTMLTablePartElement.cpp
     html/HTMLTableRowElement.cpp
     html/HTMLTableRowsCollection.cpp
@@ -1987,11 +1988,18 @@ set(WebCore_SOURCES
     loader/icon/PageURLRecord.cpp
 
     mathml/MathMLElement.cpp
+    mathml/MathMLFractionElement.cpp
     mathml/MathMLInlineContainerElement.cpp
     mathml/MathMLMathElement.cpp
     mathml/MathMLMencloseElement.cpp
+    mathml/MathMLOperatorDictionary.cpp
+    mathml/MathMLOperatorElement.cpp
+    mathml/MathMLPaddedElement.cpp
+    mathml/MathMLScriptsElement.cpp
     mathml/MathMLSelectElement.cpp
+    mathml/MathMLSpaceElement.cpp
     mathml/MathMLTextElement.cpp
+    mathml/MathMLUnderOverElement.cpp
 
     page/AutoscrollController.cpp
     page/BarProp.cpp
@@ -2053,6 +2061,7 @@ set(WebCore_SOURCES
     page/SecurityOriginData.cpp
     page/SecurityPolicy.cpp
     page/Settings.cpp
+    page/SocketProvider.cpp
     page/SpatialNavigation.cpp
     page/SuspendableTimer.cpp
     page/TextIndicator.cpp
@@ -2373,7 +2382,6 @@ set(WebCore_SOURCES
     platform/text/QuotedPrintable.cpp
     platform/text/SegmentedString.cpp
     platform/text/TextBoundaries.cpp
-    platform/text/TextBreakIterator.cpp
     platform/text/TextCodec.cpp
     platform/text/TextCodecICU.cpp
     platform/text/TextCodecLatin1.cpp
@@ -2385,10 +2393,6 @@ set(WebCore_SOURCES
     platform/text/TextEncodingDetectorICU.cpp
     platform/text/TextEncodingRegistry.cpp
     platform/text/TextStream.cpp
-
-    platform/text/icu/UTextProvider.cpp
-    platform/text/icu/UTextProviderLatin1.cpp
-    platform/text/icu/UTextProviderUTF16.cpp
 
     plugins/DOMMimeType.cpp
     plugins/DOMMimeTypeArray.cpp
@@ -2524,14 +2528,16 @@ set(WebCore_SOURCES
     rendering/line/LineWidth.cpp
     rendering/line/TrailingObjects.cpp
 
-    rendering/mathml/MathMLOperatorDictionary.cpp
+    rendering/mathml/MathMLStyle.cpp
     rendering/mathml/MathOperator.cpp
     rendering/mathml/RenderMathMLBlock.cpp
     rendering/mathml/RenderMathMLFenced.cpp
+    rendering/mathml/RenderMathMLFencedOperator.cpp
     rendering/mathml/RenderMathMLFraction.cpp
     rendering/mathml/RenderMathMLMath.cpp
     rendering/mathml/RenderMathMLMenclose.cpp
     rendering/mathml/RenderMathMLOperator.cpp
+    rendering/mathml/RenderMathMLPadded.cpp
     rendering/mathml/RenderMathMLRoot.cpp
     rendering/mathml/RenderMathMLRow.cpp
     rendering/mathml/RenderMathMLScripts.cpp
@@ -3709,8 +3715,12 @@ GENERATE_BINDINGS(WebCoreTestSupport_SOURCES
 # WebCore JS Builtins
 
 set(WebCore_BUILTINS_SOURCES
+    ${WEBCORE_DIR}/Modules/fetch/DOMWindowFetch.js
     ${WEBCORE_DIR}/Modules/fetch/FetchHeaders.js
+    ${WEBCORE_DIR}/Modules/fetch/FetchInternals.js
+    ${WEBCORE_DIR}/Modules/fetch/FetchRequest.js
     ${WEBCORE_DIR}/Modules/fetch/FetchResponse.js
+    ${WEBCORE_DIR}/Modules/fetch/WorkerGlobalScopeFetch.js
     ${WEBCORE_DIR}/Modules/mediastream/MediaDevices.js
     ${WEBCORE_DIR}/Modules/mediastream/NavigatorUserMedia.js
     ${WEBCORE_DIR}/Modules/mediastream/RTCPeerConnection.js
@@ -3718,12 +3728,13 @@ set(WebCore_BUILTINS_SOURCES
     ${WEBCORE_DIR}/Modules/streams/ByteLengthQueuingStrategy.js
     ${WEBCORE_DIR}/Modules/streams/CountQueuingStrategy.js
     ${WEBCORE_DIR}/Modules/streams/ReadableStream.js
-    ${WEBCORE_DIR}/Modules/streams/ReadableStreamController.js
+    ${WEBCORE_DIR}/Modules/streams/ReadableStreamDefaultController.js
     ${WEBCORE_DIR}/Modules/streams/ReadableStreamInternals.js
-    ${WEBCORE_DIR}/Modules/streams/ReadableStreamReader.js
+    ${WEBCORE_DIR}/Modules/streams/ReadableStreamDefaultReader.js
     ${WEBCORE_DIR}/Modules/streams/StreamInternals.js
     ${WEBCORE_DIR}/Modules/streams/WritableStream.js
     ${WEBCORE_DIR}/Modules/streams/WritableStreamInternals.js
+    ${WEBCORE_DIR}/xml/XMLHttpRequest.js
 )
 
 set(BUILTINS_GENERATOR_SCRIPTS
@@ -3735,6 +3746,10 @@ set(BUILTINS_GENERATOR_SCRIPTS
     ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_combined_implementation.py
     ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_separate_header.py
     ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_separate_implementation.py
+    ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_wrapper_header.py
+    ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_wrapper_implementation.py
+    ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_internals_wrapper_header.py
+    ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_internals_wrapper_implementation.py
     ${JavaScriptCore_SCRIPTS_DIR}/generate-js-builtins.py
     ${JavaScriptCore_SCRIPTS_DIR}/lazywriter.py
 )
@@ -3748,12 +3763,22 @@ foreach (_builtinSource ${WebCore_BUILTINS_SOURCES})
         DEPENDS ${BUILTINS_GENERATOR_SCRIPTS}
         COMMAND ${PYTHON_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/generate-js-builtins.py --framework WebCore --output-directory ${DERIVED_SOURCES_WEBCORE_DIR} ${_builtinSource}
         VERBATIM)
-    list(APPEND WebCore_DERIVED_SOURCES
-        ${DERIVED_SOURCES_WEBCORE_DIR}/${_objectName}Builtins.h
-    )
-    ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/bindings/js/WebCoreJSBuiltins.cpp ${_objectName}Builtins.cpp)
+    list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/${_objectName}Builtins.cpp)
+    list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/${_objectName}Builtins.h)
 endforeach ()
 
+add_custom_command(
+    OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/WebCoreJSBuiltins.cpp
+           ${DERIVED_SOURCES_WEBCORE_DIR}/WebCoreJSBuiltinInternals.cpp
+           ${DERIVED_SOURCES_WEBCORE_DIR}/WebCoreJSBuiltins.h
+           ${DERIVED_SOURCES_WEBCORE_DIR}/WebCoreJSBuiltinInternals.h
+    MAIN_DEPENDENCY ${WebCore_BUILTINS_SOURCES}
+    DEPENDS ${BUILTINS_GENERATOR_SCRIPTS}
+    COMMAND ${PYTHON_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/generate-js-builtins.py --wrappers-only --framework WebCore --output-directory ${DERIVED_SOURCES_WEBCORE_DIR} ${WebCore_BUILTINS_SOURCES}
+    VERBATIM)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/WebCoreJSBuiltinInternals.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/WebCoreJSBuiltins.h)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/WebCoreJSBuiltinInternals.h)
 
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/html/HTMLTreeBuilder.cpp MathMLNames.cpp)
 

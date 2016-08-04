@@ -222,11 +222,10 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case GetGlobalVar:
     case GetGlobalLexicalVariable:
     case PutGlobalVariable:
-    case VarInjectionWatchpoint:
     case CheckCell:
     case CheckBadCell:
     case CheckNotEmpty:
-    case CheckIdent:
+    case CheckStringIdent:
     case RegExpExec:
     case RegExpTest:
     case CompareLess:
@@ -235,10 +234,12 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case CompareGreaterEq:
     case CompareEq:
     case CompareStrictEq:
+    case CompareEqPtr:
     case Call:
     case TailCallInlinedCaller:
     case Construct:
     case CallVarargs:
+    case CallEval:
     case TailCallVarargsInlinedCaller:
     case TailCallForwardVarargsInlinedCaller:
     case ConstructVarargs:
@@ -272,6 +273,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case CallObjectConstructor:
     case ToPrimitive:
     case ToString:
+    case ToNumber:
     case SetFunctionName:
     case StrCat:
     case CallStringConstructor:

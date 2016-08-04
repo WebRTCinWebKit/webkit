@@ -68,10 +68,7 @@ MemoryPressureHandler::MemoryPressureHandler()
     , m_releaseMemoryBlock(0)
     , m_observer(0)
 #elif OS(LINUX)
-    , m_eventFD(0)
-    , m_pressureLevelFD(0)
-    , m_threadID(0)
-    , m_holdOffTimer(*this, &MemoryPressureHandler::holdOffTimerFired)
+    , m_holdOffTimer(RunLoop::main(), this, &MemoryPressureHandler::holdOffTimerFired)
 #endif
 {
     platformInitialize();
@@ -178,6 +175,17 @@ void MemoryPressureHandler::jettisonExpensiveObjectsOnTopLevelNavigation()
     // The immediate memory savings outweigh the cost of recompilation in case we go back again.
     GCController::singleton().deleteAllLinkedCode();
 #endif
+}
+
+void MemoryPressureHandler::beginSimulatedMemoryPressure()
+{
+    m_isSimulatingMemoryPressure = true;
+    MemoryPressureHandler::singleton().respondToMemoryPressure(Critical::Yes, Synchronous::Yes);
+}
+
+void MemoryPressureHandler::endSimulatedMemoryPressure()
+{
+    m_isSimulatingMemoryPressure = false;
 }
 
 void MemoryPressureHandler::releaseMemory(Critical critical, Synchronous synchronous)

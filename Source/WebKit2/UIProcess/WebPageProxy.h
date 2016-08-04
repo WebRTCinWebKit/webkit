@@ -205,6 +205,7 @@ struct AttributedString;
 struct ColorSpaceData;
 struct EditingRange;
 struct EditorState;
+struct LoadParameters;
 struct PlatformPopupMenuData;
 struct PrintInfo;
 struct WebPopupItem;
@@ -367,6 +368,7 @@ public:
 
     void closePage(bool stopResponsivenessTimer);
 
+    void addPlatformLoadParameters(LoadParameters&);
     RefPtr<API::Navigation> loadRequest(const WebCore::ResourceRequest&, WebCore::ShouldOpenExternalURLsPolicy = WebCore::ShouldOpenExternalURLsPolicy::ShouldAllowExternalSchemes, API::Object* userData = nullptr);
     RefPtr<API::Navigation> loadFile(const String& fileURL, const String& resourceDirectoryURL, API::Object* userData = nullptr);
     RefPtr<API::Navigation> loadData(API::Data*, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData = nullptr);
@@ -518,8 +520,8 @@ public:
     void disableDoubleTapGesturesDuringTapIfNecessary(uint64_t requestID);
     void contentSizeCategoryDidChange(const String& contentSizeCategory);
     void getSelectionContext(std::function<void(const String&, const String&, const String&, CallbackBase::Error)>);
-    void handleTwoFingerTapAtPoint(const WebCore::IntPoint&, std::function<void(const String&, CallbackBase::Error)>);
-    void updateForceAlwaysUserScalable();
+    void handleTwoFingerTapAtPoint(const WebCore::IntPoint&, uint64_t requestID);
+    void setForceAlwaysUserScalable(bool);
 #endif
 #if ENABLE(DATA_DETECTION)
     void setDataDetectionResult(const DataDetectionResult&);
@@ -822,7 +824,6 @@ public:
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&);
     virtual void exitAcceleratedCompositingMode();
     virtual void updateAcceleratedCompositingMode(const LayerTreeContext&);
-    void willEnterAcceleratedCompositingMode();
 
     enum UndoOrRedo { Undo, Redo };
     void addEditCommand(WebEditCommandProxy*);
@@ -1417,6 +1418,8 @@ private:
     void removeDictationAlternatives(uint64_t dictationContext);
     void dictationAlternatives(uint64_t dictationContext, Vector<String>& result);
 #endif
+
+    void setEditableElementIsFocused(bool);
 #endif // PLATFORM(MAC)
 
 #if PLATFORM(IOS)
@@ -1853,6 +1856,7 @@ private:
 #if PLATFORM(IOS)
     bool m_hasDeferredStartAssistingNode { false };
     std::unique_ptr<NodeAssistanceArguments> m_deferredNodeAssistanceArguments;
+    bool m_forceAlwaysUserScalable { false };
 #endif
 
 #if ENABLE(DOWNLOAD_ATTRIBUTE)

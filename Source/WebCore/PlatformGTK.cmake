@@ -1,7 +1,10 @@
 include(platform/GStreamer.cmake)
 include(platform/ImageDecoders.cmake)
 include(platform/Linux.cmake)
-include(platform/TextureMapper.cmake)
+
+if (USE_TEXTURE_MAPPER)
+    include(platform/TextureMapper.cmake)
+endif ()
 
 set(WebCore_OUTPUT_NAME WebCoreGTK)
 
@@ -179,8 +182,6 @@ list(APPEND WebCore_SOURCES
     platform/text/LocaleICU.cpp
 
     platform/text/enchant/TextCheckerEnchant.cpp
-
-    platform/text/gtk/TextBreakIteratorInternalICUGtk.cpp
 
     platform/text/hyphen/HyphenationLibHyphen.cpp
 
@@ -797,7 +798,7 @@ if (ENABLE_SUBTLE_CRYPTO)
         crypto/CryptoAlgorithmRegistry.cpp
         crypto/CryptoKey.cpp
         crypto/CryptoKeyPair.cpp
-        crypto/SubtleCrypto.cpp
+        crypto/WebKitSubtleCrypto.cpp
 
         crypto/algorithms/CryptoAlgorithmAES_CBC.cpp
         crypto/algorithms/CryptoAlgorithmAES_KW.cpp

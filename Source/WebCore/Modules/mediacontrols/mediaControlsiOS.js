@@ -27,7 +27,7 @@ ControllerIOS.StartPlaybackControls = 2;
 
 ControllerIOS.prototype = {
     /* Constants */
-    MinimumTimelineWidth: 200,
+    MinimumTimelineWidth: 150,
     ButtonWidth: 42,
 
     get idiom()
@@ -534,6 +534,11 @@ ControllerIOS.prototype = {
             return;
 
         Controller.prototype.setShouldListenForPlaybackTargetAvailabilityEvent.call(this, shouldListen);
+    },
+
+    shouldReturnVideoLayerToInline: function()
+    {
+        return this.presentationMode() === 'inline';
     },
 
     handlePresentationModeChange: function(event)

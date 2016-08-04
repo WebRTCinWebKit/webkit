@@ -29,9 +29,9 @@
 
 #include "IntSize.h"
 #include "NotImplemented.h"
-#include "TextBreakIterator.h"
 #include <wtf/MathExtras.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/text/TextBreakIterator.h>
 #include <wtf/unicode/CharacterNames.h>
 
 #if USE(CF)
@@ -1175,5 +1175,37 @@ String webCryptoMasterKeyKeychainComment()
     return WEB_UI_STRING("Used to encrypt WebCrypto keys in persistent storage, such as IndexedDB", "Description of WebCrypto master keys in Keychain");
 }
 #endif
+
+#if PLATFORM(MAC)
+String insertListTypeNone()
+{
+    return WEB_UI_STRING("None", "Option in segmented control for choosing list type in text editing");
+}
+
+String insertListTypeNoneAccessibilityTitle()
+{
+    return WEB_UI_STRING("No list", "Accessibility label for not inserting a list in text editing");
+}
+
+String insertListTypeBulleted()
+{
+    return WEB_UI_STRING("•", "Option in segmented control for choosing list type in text editing");
+}
+
+String insertListTypeBulletedAccessibilityTitle()
+{
+    return WEB_UI_STRING("Insert a bulleted list", "Option in segmented control for inserting a bulleted list in text editing");
+}
+
+String insertListTypeNumbered()
+{
+    return WEB_UI_STRING("1. 2. 3.…", "Option in segmented control for choosing list type in text editing");
+}
+
+String insertListTypeNumberedAccessibilityTitle()
+{
+    return WEB_UI_STRING("Insert a numbered list", "Option in segmented control for inserting a numbered list in text editing");
+}
+#endif // PLATFORM(MAC)
 
 } // namespace WebCore

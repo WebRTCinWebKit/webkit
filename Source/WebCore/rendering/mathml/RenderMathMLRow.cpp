@@ -44,23 +44,6 @@ RenderMathMLRow::RenderMathMLRow(Element& element, RenderStyle&& style)
 {
 }
 
-RenderMathMLRow::RenderMathMLRow(Document& document, RenderStyle&& style)
-    : RenderMathMLBlock(document, WTFMove(style))
-{
-}
-
-void RenderMathMLRow::updateOperatorProperties()
-{
-    for (auto* child = firstChildBox(); child; child = child->nextSiblingBox()) {
-        if (is<RenderMathMLBlock>(*child)) {
-            if (auto* renderOperator = downcast<RenderMathMLBlock>(*child).unembellishedOperator())
-                renderOperator->updateOperatorProperties();
-        }
-    }
-    setNeedsLayoutAndPrefWidthsRecalc();
-}
-
-
 Optional<int> RenderMathMLRow::firstLineBaseline() const
 {
     auto* baselineChild = firstChildBox();
@@ -161,8 +144,7 @@ void RenderMathMLRow::layoutRowItems(LayoutUnit& ascent, LayoutUnit& descent)
     }
 
     LayoutUnit centerBlockOffset = 0;
-    // FIXME: Remove the FLEX when it is not required by the css.
-    if (style().display() == BLOCK || style().display() == FLEX)
+    if (style().display() == BLOCK)
         centerBlockOffset = std::max<LayoutUnit>(0, (logicalWidth() - (horizontalOffset + borderEnd() + paddingEnd())) / 2);
 
     if (shouldFlipHorizontal && centerBlockOffset > 0)
@@ -198,14 +180,6 @@ void RenderMathMLRow::layoutBlock(bool relayoutChildren, LayoutUnit)
     updateLogicalHeight();
 
     clearNeedsLayout();
-}
-
-void RenderMathMLRow::paintChildren(PaintInfo& paintInfo, const LayoutPoint& paintOffset, PaintInfo& paintInfoForChild, bool usePrintRect)
-{
-    for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
-        if (!paintChild(*child, paintInfo, paintOffset, paintInfoForChild, usePrintRect, PaintAsInlineBlock))
-            return;
-    }
 }
 
 }

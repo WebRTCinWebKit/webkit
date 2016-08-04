@@ -302,7 +302,6 @@
 /* Only one of these will be defined. */
 #if !defined(WTF_CPU_ARM_TRADITIONAL) && !defined(WTF_CPU_ARM_THUMB2)
 #  if defined(thumb2) || defined(__thumb2__) \
-    || (defined(__ARM_ARCH_ISA_THUMB) && __ARM_ARCH_ISA_THUMB == 2) \
     || ((defined(__thumb) || defined(__thumb__)) && WTF_THUMB_ARCH_VERSION == 4)
 #    define WTF_CPU_ARM_TRADITIONAL 0
 #    define WTF_CPU_ARM_THUMB2 1
@@ -744,7 +743,11 @@
 #define USE_ARMV7_DISASSEMBLER 1
 #endif
 
-#if !defined(ENABLE_DISASSEMBLER) && (USE(UDIS86) || USE(ARMV7_DISASSEMBLER) || USE(ARM64_DISASSEMBLER))
+#if !defined(USE_ARM_LLVM_DISASSEMBLER) && ENABLE(JIT) && CPU(ARM_TRADITIONAL) && HAVE(LLVM)
+#define USE_ARM_LLVM_DISASSEMBLER 1
+#endif
+
+#if !defined(ENABLE_DISASSEMBLER) && (USE(UDIS86) || USE(ARMV7_DISASSEMBLER) || USE(ARM64_DISASSEMBLER) || USE(ARM_LLVM_DISASSEMBLER))
 #define ENABLE_DISASSEMBLER 1
 #endif
 

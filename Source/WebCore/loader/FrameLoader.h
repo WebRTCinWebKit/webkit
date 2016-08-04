@@ -39,6 +39,7 @@
 #include "PageThrottler.h"
 #include "ResourceHandleTypes.h"
 #include "ResourceLoadNotifier.h"
+#include "ResourceLoaderOptions.h"
 #include "ResourceRequestBase.h"
 #include "SecurityContext.h"
 #include "Timer.h"
@@ -171,6 +172,9 @@ public:
     WEBCORE_EXPORT ResourceError cancelledError(const ResourceRequest&) const;
     WEBCORE_EXPORT ResourceError blockedByContentBlockerError(const ResourceRequest&) const;
     ResourceError blockedError(const ResourceRequest&) const;
+#if ENABLE(CONTENT_FILTERING)
+    ResourceError blockedByContentFilterError(const ResourceRequest&) const;
+#endif
 
     bool isHostedByObjectElement() const;
 

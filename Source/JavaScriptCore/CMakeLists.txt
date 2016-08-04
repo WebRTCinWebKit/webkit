@@ -89,6 +89,7 @@ set(JavaScriptCore_SOURCES
     b3/air/AirIteratedRegisterCoalescing.cpp
     b3/air/AirLogRegisterPressure.cpp
     b3/air/AirLowerAfterRegAlloc.cpp
+    b3/air/AirLowerEntrySwitch.cpp
     b3/air/AirLowerMacros.cpp
     b3/air/AirOptimizeBlockOrder.cpp
     b3/air/AirPhaseScope.cpp
@@ -108,6 +109,7 @@ set(JavaScriptCore_SOURCES
     b3/B3BlockInsertionSet.cpp
     b3/B3BreakCriticalEdges.cpp
     b3/B3CCallValue.cpp
+    b3/B3CaseCollection.cpp
     b3/B3CheckSpecial.cpp
     b3/B3CheckValue.cpp
     b3/B3Common.cpp
@@ -118,7 +120,6 @@ set(JavaScriptCore_SOURCES
     b3/B3ConstDoubleValue.cpp
     b3/B3ConstFloatValue.cpp
     b3/B3ConstrainedValue.cpp
-    b3/B3ControlValue.cpp
     b3/B3DataSection.cpp
     b3/B3DuplicateTails.cpp
     b3/B3Effects.cpp
@@ -128,6 +129,7 @@ set(JavaScriptCore_SOURCES
     b3/B3FrequencyClass.cpp
     b3/B3Generate.cpp
     b3/B3HeapRange.cpp
+    b3/B3InferSwitches.cpp
     b3/B3InsertionSet.cpp
     b3/B3LegalizeMemoryOffsets.cpp
     b3/B3LowerMacros.cpp
@@ -175,6 +177,7 @@ set(JavaScriptCore_SOURCES
     builtins/BuiltinExecutableCreator.cpp
 
     bytecode/AdaptiveInferredPropertyValueWatchpointBase.cpp
+    bytecode/ArithProfile.cpp
     bytecode/ArrayAllocationProfile.cpp
     bytecode/ArrayProfile.cpp
     bytecode/BytecodeBasicBlock.cpp
@@ -309,7 +312,6 @@ set(JavaScriptCore_SOURCES
     dfg/DFGLazyJSValue.cpp
     dfg/DFGLazyNode.cpp
     dfg/DFGLivenessAnalysisPhase.cpp
-    dfg/DFGLongLivedState.cpp
     dfg/DFGLoopPreHeaderCreationPhase.cpp
     dfg/DFGMaximalFlushInsertionPhase.cpp
     dfg/DFGMayExit.cpp
@@ -381,6 +383,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGWorklist.cpp
 
     disassembler/ARM64Disassembler.cpp
+    disassembler/ARMLLVMDisassembler.cpp
     disassembler/ARMv7Disassembler.cpp
     disassembler/Disassembler.cpp
     disassembler/UDis86Disassembler.cpp
@@ -432,12 +435,14 @@ set(JavaScriptCore_SOURCES
     ftl/FTLThunks.cpp
     ftl/FTLValueRange.cpp
 
+    heap/AllocatorAttributes.cpp
     heap/CodeBlockSet.cpp
     heap/ConservativeRoots.cpp
     heap/CopiedBlock.cpp
     heap/CopiedSpace.cpp
     heap/CopyVisitor.cpp
     heap/DeferGC.cpp
+    heap/DestructionMode.cpp
     heap/EdenGCActivityCallback.cpp
     heap/FullGCActivityCallback.cpp
     heap/GCActivityCallback.cpp
@@ -445,6 +450,7 @@ set(JavaScriptCore_SOURCES
     heap/HandleSet.cpp
     heap/HandleStack.cpp
     heap/Heap.cpp
+    heap/HeapCell.cpp
     heap/HeapHelperPool.cpp
     heap/HeapProfiler.cpp
     heap/HeapSnapshot.cpp
@@ -507,9 +513,9 @@ set(JavaScriptCore_SOURCES
     inspector/agents/JSGlobalObjectRuntimeAgent.cpp
 
     interpreter/AbstractPC.cpp
+    interpreter/CLoopStack.cpp
     interpreter/CallFrame.cpp
     interpreter/Interpreter.cpp
-    interpreter/JSStack.cpp
     interpreter/ProtoCallFrame.cpp
     interpreter/ShadowChicken.cpp
     interpreter/StackVisitor.cpp
@@ -888,6 +894,7 @@ set(JavaScriptCore_OBJECT_LUT_SOURCES
 set(JavaScriptCore_LIBRARIES
     WTF${DEBUG_SUFFIX}
     ${ICU_I18N_LIBRARIES}
+    ${LLVM_LIBRARIES}
 )
 
 set(JavaScriptCore_SCRIPTS_SOURCES_DIR "${JAVASCRIPTCORE_DIR}/Scripts")
@@ -1206,6 +1213,10 @@ set(BUILTINS_GENERATOR_SCRIPTS
     ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_combined_implementation.py
     ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_separate_header.py
     ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_separate_implementation.py
+    ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_wrapper_header.py
+    ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_wrapper_implementation.py
+    ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_internals_wrapper_header.py
+    ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_internals_wrapper_implementation.py
     ${JavaScriptCore_SCRIPTS_DIR}/generate-js-builtins.py
     ${JavaScriptCore_SCRIPTS_DIR}/lazywriter.py
 )
@@ -1218,11 +1229,13 @@ set(JavaScriptCore_BUILTINS_SOURCES
     ${JAVASCRIPTCORE_DIR}/builtins/FunctionPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/GeneratorPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/GlobalObject.js
+    ${JAVASCRIPTCORE_DIR}/builtins/GlobalOperations.js
     ${JAVASCRIPTCORE_DIR}/builtins/InspectorInstrumentationObject.js
     ${JAVASCRIPTCORE_DIR}/builtins/InternalPromiseConstructor.js
     ${JAVASCRIPTCORE_DIR}/builtins/IteratorPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/MapPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/ModuleLoaderObject.js
+    ${JAVASCRIPTCORE_DIR}/builtins/NumberConstructor.js
     ${JAVASCRIPTCORE_DIR}/builtins/NumberPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/ObjectConstructor.js
     ${JAVASCRIPTCORE_DIR}/builtins/PromiseConstructor.js
@@ -1348,3 +1361,17 @@ endif ()
 
 add_custom_target(stageSharedScripts DEPENDS ${JavaScriptCore_SCRIPTS})
 add_dependencies(JavaScriptCore stageSharedScripts)
+
+if (MSVC)
+    add_custom_command(
+        TARGET JavaScriptCore
+        PRE_BUILD
+        COMMAND ${PERL_EXECUTABLE} ${WEBKIT_LIBRARIES_DIR}/tools/scripts/auto-version.pl ${DERIVED_SOURCES_DIR}
+        VERBATIM)
+
+    add_custom_command(
+        TARGET JavaScriptCore
+        POST_BUILD
+        COMMAND ${PERL_EXECUTABLE} ${WEBKIT_LIBRARIES_DIR}/tools/scripts/version-stamp.pl ${DERIVED_SOURCES_DIR} $<TARGET_FILE:JavaScriptCore>
+        VERBATIM)
+endif ()

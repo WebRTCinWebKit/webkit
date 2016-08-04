@@ -563,6 +563,15 @@ webkit.org/b/141959 http/tests/media/clearkey/clear-key-hls-aes128.html [ Crash 
 # Need a new baseline for EFL port. It was added by r72173.
 Bug(EFL) fast/css/line-height-determined-by-primary-font.html [ Failure ]
 
+security/contentSecurityPolicy/object-src-none-blocks-quicktime-plugin-replacement.html [ Skip ]
+security/contentSecurityPolicy/object-src-none-blocks-youtube-plugin-replacement.html [ Skip ]
+security/contentSecurityPolicy/plugins-types-allows-quicktime-plugin-replacement.html [ Skip ]
+security/contentSecurityPolicy/plugins-types-allows-youtube-plugin-replacement.html [ Skip ]
+security/contentSecurityPolicy/plugins-types-blocks-quicktime-plugin-replacement-without-mime-type.html [ Skip ]
+security/contentSecurityPolicy/plugins-types-blocks-quicktime-plugin-replacement.html [ Skip ]
+security/contentSecurityPolicy/plugins-types-blocks-youtube-plugin-replacement-without-mime-type.html [ Skip ]
+security/contentSecurityPolicy/plugins-types-blocks-youtube-plugin-replacement.html [ Skip ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # CRASHES
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -627,7 +636,6 @@ http/tests/canvas/webgl/origin-clean-conformance.html [ Skip ]
 http/tests/security/webgl-remote-read-remote-image-allowed-with-credentials.html [ Skip ]
 http/tests/security/webgl-remote-read-remote-image-allowed.html [ Skip ]
 http/tests/security/webgl-remote-read-remote-image-blocked-no-crossorigin.html [ Skip ]
-mathml/presentation/fractions-box.html [ Skip ]
 
 webkit.org/b/155875 svg/W3C-SVG-1.1/animate-elem-22-b.svg [ Crash ]
 webkit.org/b/155875 svg/W3C-SVG-1.1/animate-elem-28-t.svg [ Crash ]
@@ -641,7 +649,6 @@ webkit.org/b/155875 svg/W3C-SVG-1.1/pservers-grad-01-b.svg [ Crash ]
 Bug(EFL) fast/dom/Window/property-access-on-cached-window-after-frame-removed.html [ Crash ]
 Bug(EFL) fast/selectors/querySelector-in-range-crash.html [ Crash ]
 Bug(EFL) http/tests/security/mixedContent/insecure-audio-video-in-main-frame.html [ Crash ]
-Bug(EFL) imported/blink/svg/custom/svg-image-layers-crash.html [ Crash ]
 Bug(EFL) webaudio/decode-audio-data-basic.html [ Crash ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -960,8 +967,6 @@ webkit.org/b/106405 http/tests/misc/401-alternative-content.php [ Crash Pass ]
 webkit.org/b/84589 http/tests/security/cross-frame-access-get.html [ Crash Pass ]
 
 webkit.org/b/127723 accessibility/menu-list-sends-change-notification.html [ Crash Pass ]
-
-webkit.org/b/135561 mathml/opentype/opentype-stretchy-horizontal.html [ Failure Pass ]
 
 # Fails on the bots.
 webkit.org/b/97968 media/unsupported-rtsp.html [ Failure Pass Timeout ]
@@ -1757,9 +1762,6 @@ webkit.org/b/83869 media/video-no-audio.html [ Failure ]
 
 webkit.org/b/109950 fast/dom/Window/webkitConvertPoint.html [ Failure ]
 
-# CUSTOM_ELEMENTS is not enabled.
-webkit.org/b/110958 fast/dom/custom [ Skip ]
-
 # New test
 webkit.org/b/110654 css3/flexbox/button.html [ Failure ]
 
@@ -1818,6 +1820,7 @@ webkit.org/b/119782 fast/forms/search-styled.html [ Failure ]
 # crypto.subtle is not yet enabled, but digest algorithms are already implemented
 # and their tests are whitelisted
 webkit.org/b/133122 crypto/subtle [ Skip ]
+webkit.org/b/133122 crypto/webkitSubtle [ Skip ]
 webkit.org/b/133319 crypto/subtle/sha-1.html [ Pass ]
 webkit.org/b/133319 crypto/subtle/sha-224.html [ Pass ]
 webkit.org/b/133319 crypto/subtle/sha-256.html [ Pass ]
@@ -2067,9 +2070,6 @@ webkit.org/b/133220 fast/events/shadow-event-path-2.html [ Failure ]
 
 webkit.org/b/133308 fast/selectors/hover-quirks.html [ Failure ]
 
-# Failures EFL since the inception
-webkit.org/b/133972 mathml/presentation/foreign-element-in-token.html [ Failure ]
-
 # Tests failing or flaky with closer reasons unknwown at this time
 #webkit.org/b/133857 inspector/layers/layers-blending-compositing-reasons.html [ Failure ]
 webkit.org/b/133860 fast/regions/auto-size/autosize-region-window-resize.html [ ImageOnlyFailure Pass ]
@@ -2291,6 +2291,7 @@ mathml/presentation/fractions-color.html [ ImageOnlyFailure ]
 mathml/presentation/mfrac-linethickness1.html [ ImageOnlyFailure ]
 mathml/presentation/mfrac-linethickness3.html [ ImageOnlyFailure ]
 mathml/presentation/mo-stretchy-vertical-bar.html [ ImageOnlyFailure ]
+mathml/presentation/radical-bar-visibility.html [ ImageOnlyFailure ]
 mathml/presentation/scripts-font-size.html [ ImageOnlyFailure ]
 mathml/presentation/style-color-sqrt.html [ ImageOnlyFailure ]
 animations/trigger-container-scroll-empty.html [ Failure ]
@@ -2321,9 +2322,6 @@ fast/text/fallback-language-han-2.html [ Skip ]
 
 # This test uses an MPEG-4 video
 media/video-seek-to-current-time.html [ Skip ]
-
-# This operating system does not have language-sensitive font fallback.
-css3/line-break-language-sensitive [ Pass ImageOnlyFailure ]
 
 # [EFL] REGRESSION: fullscreen tests fail with timeout
 webkit.org/b/148518 fullscreen [ Skip ]
@@ -2616,3 +2614,5 @@ webkit.org/b/158412 imported/w3c/web-platform-tests/html/semantics/embedded-cont
 # These tests hardcode platform-specific font aliases.
 webkit.org/b/158649 fast/text/chinese-font-name-aliases.html [ ImageOnlyFailure ]
 webkit.org/b/158649 fast/text/chinese-font-name-aliases-2.html [ ImageOnlyFailure ]
+
+webkit.org/b/159754 workers/bomb.html [ Slow ]

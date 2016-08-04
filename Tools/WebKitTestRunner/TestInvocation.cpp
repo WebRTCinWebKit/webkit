@@ -599,7 +599,14 @@ void TestInvocation::didReceiveMessageFromInjectedBundle(WKStringRef messageName
         return;
     }
 
-    if (WKStringIsEqualToUTF8CString(messageName, "SetHandlesAuthenticationChallenge")) {
+    if (WKStringIsEqualToUTF8CString(messageName, "SetRejectsProtectionSpaceAndContinueForAuthenticationChallenges")) {
+        ASSERT(WKGetTypeID(messageBody) == WKBooleanGetTypeID());
+        WKBooleanRef value = static_cast<WKBooleanRef>(messageBody);
+        TestController::singleton().setRejectsProtectionSpaceAndContinueForAuthenticationChallenges(WKBooleanGetValue(value));
+        return;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "SetHandlesAuthenticationChallenges")) {
         ASSERT(WKGetTypeID(messageBody) == WKBooleanGetTypeID());
         WKBooleanRef value = static_cast<WKBooleanRef>(messageBody);
         TestController::singleton().setHandlesAuthenticationChallenges(WKBooleanGetValue(value));
@@ -645,6 +652,13 @@ void TestInvocation::didReceiveMessageFromInjectedBundle(WKStringRef messageName
         ASSERT(WKGetTypeID(messageBody) == WKBooleanGetTypeID());
         WKBooleanRef value = static_cast<WKBooleanRef>(messageBody);
         TestController::singleton().setNavigationGesturesEnabled(WKBooleanGetValue(value));
+        return;
+    }
+    
+    if (WKStringIsEqualToUTF8CString(messageName, "SetIgnoresViewportScaleLimits")) {
+        ASSERT(WKGetTypeID(messageBody) == WKBooleanGetTypeID());
+        WKBooleanRef value = static_cast<WKBooleanRef>(messageBody);
+        TestController::singleton().setIgnoresViewportScaleLimits(WKBooleanGetValue(value));
         return;
     }
 

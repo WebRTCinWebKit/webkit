@@ -51,6 +51,7 @@
 #if PLATFORM(IOS)
 #include "AudioSession.h"
 #include "RuntimeApplicationChecks.h"
+#include <wtf/spi/darwin/dyldSPI.h>
 #endif
 
 namespace WebCore {
@@ -213,6 +214,11 @@ bool MediaElementSession::pageAllowsPlaybackAfterResuming(const HTMLMediaElement
 
 bool MediaElementSession::canControlControlsManager() const
 {
+    if (m_element.isFullscreen()) {
+        LOG(Media, "MediaElementSession::canControlControlsManager - returning TRUE: Is fullscreen");
+        return true;
+    }
+
     if (!m_element.hasAudio()) {
         LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: No audio");
         return false;
@@ -238,6 +244,11 @@ bool MediaElementSession::canControlControlsManager() const
         return true;
     }
 
+    if (hasBehaviorRestriction(RequirePlaybackToControlControlsManager) && !m_element.isPlaying()) {
+        LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: Needs to be playing");
+        return false;
+    }
+
     if (m_element.muted()) {
         LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: Muted");
         return false;
@@ -247,6 +258,11 @@ bool MediaElementSession::canControlControlsManager() const
         if (!m_element.renderer()) {
             LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: No renderer");
             return false;
+        }
+
+        if (m_element.document().isMediaDocument()) {
+            LOG(Media, "MediaElementSession::canControlControlsManager - returning TRUE: Is media document");
+            return true;
         }
 
         if (!m_element.hasVideo()) {
@@ -309,13 +325,13 @@ bool MediaElementSession::wirelessVideoPlaybackDisabled(const HTMLMediaElement& 
         return true;
     }
 
-    if (element.fastHasAttribute(HTMLNames::webkitwirelessvideoplaybackdisabledAttr)) {
+    if (element.hasAttributeWithoutSynchronization(HTMLNames::webkitwirelessvideoplaybackdisabledAttr)) {
         LOG(Media, "MediaElementSession::wirelessVideoPlaybackDisabled - returning TRUE because of attribute");
         return true;
     }
 
 #if PLATFORM(IOS)
-    String legacyAirplayAttributeValue = element.fastGetAttribute(HTMLNames::webkitairplayAttr);
+    String legacyAirplayAttributeValue = element.attributeWithoutSynchronization(HTMLNames::webkitairplayAttr);
     if (equalLettersIgnoringASCIICase(legacyAirplayAttributeValue, "deny")) {
         LOG(Media, "MediaElementSession::wirelessVideoPlaybackDisabled - returning TRUE because of legacy attribute");
         return true;
@@ -450,7 +466,14 @@ bool MediaElementSession::requiresFullscreenForVideoPlayback(const HTMLMediaElem
     if (!settings || !settings->allowsInlineMediaPlayback())
         return true;
 
-    return settings->inlineMediaPlaybackRequiresPlaysInlineAttribute() && !(element.fastHasAttribute(HTMLNames::webkit_playsinlineAttr) || element.fastHasAttribute(HTMLNames::playsinlineAttr));
+    if (!settings->inlineMediaPlaybackRequiresPlaysInlineAttribute())
+        return false;
+
+#if PLATFORM(IOS)
+    if (dyld_get_program_sdk_version() < DYLD_IOS_VERSION_10_0)
+        return !element.hasAttributeWithoutSynchronization(HTMLNames::webkit_playsinlineAttr);
+#endif
+    return !element.hasAttributeWithoutSynchronization(HTMLNames::playsinlineAttr);
 }
 
 bool MediaElementSession::allowsAutomaticMediaDataLoading(const HTMLMediaElement& element) const
@@ -576,11 +599,32 @@ static bool isMainContent(const HTMLMediaElement& element)
     return true;
 }
 
+static bool isElementLargeRelativeToMainFrame(const HTMLMediaElement& element)
+{
+    static const double minimumPercentageOfMainFrameAreaForMainContent = 0.9;
+    auto* renderer = element.renderer();
+    if (!renderer)
+        return false;
+
+    auto* documentFrame = element.document().frame();
+    if (!documentFrame)
+        return false;
+
+    if (!documentFrame->mainFrame().view())
+        return false;
+
+    auto& mainFrameView = *documentFrame->mainFrame().view();
+    auto maxVisibleClientWidth = std::min(renderer->clientWidth().toInt(), mainFrameView.visibleWidth());
+    auto maxVisibleClientHeight = std::min(renderer->clientHeight().toInt(), mainFrameView.visibleHeight());
+
+    return maxVisibleClientWidth * maxVisibleClientHeight > minimumPercentageOfMainFrameAreaForMainContent * mainFrameView.visibleWidth() * mainFrameView.visibleHeight();
+}
+
 static bool isElementLargeEnoughForMainContent(const HTMLMediaElement& element)
 {
     static const double elementMainContentAreaMinimum = 400 * 300;
     static const double maximumAspectRatio = 1.8; // Slightly larger than 16:9.
-    static const double minimumAspectRatio = .5; // Slightly smaller than 16:9.
+    static const double minimumAspectRatio = .5; // Slightly smaller than 9:16.
 
     // Elements which have not yet been laid out, or which are not yet in the DOM, cannot be main content.
     auto* renderer = element.renderer();
@@ -591,7 +635,14 @@ static bool isElementLargeEnoughForMainContent(const HTMLMediaElement& element)
     double height = renderer->clientHeight();
     double area = width * height;
     double aspectRatio = width / height;
-    return area >= elementMainContentAreaMinimum && aspectRatio >= minimumAspectRatio && aspectRatio <= maximumAspectRatio;
+
+    if (area < elementMainContentAreaMinimum)
+        return false;
+
+    if (aspectRatio >= minimumAspectRatio && aspectRatio <= maximumAspectRatio)
+        return true;
+
+    return isElementLargeRelativeToMainFrame(element);
 }
 
 void MediaElementSession::mainContentCheckTimerFired()
@@ -599,16 +650,18 @@ void MediaElementSession::mainContentCheckTimerFired()
     if (!hasBehaviorRestriction(OverrideUserGestureRequirementForMainContent))
         return;
 
+    updateIsMainContent();
+}
+
+bool MediaElementSession::updateIsMainContent() const
+{
     bool wasMainContent = m_isMainContent;
     m_isMainContent = isMainContent(m_element);
 
     if (m_isMainContent != wasMainContent)
         m_element.updateShouldPlay();
-}
 
-bool MediaElementSession::updateIsMainContent() const
-{
-    return m_isMainContent = isMainContent(m_element);
+    return m_isMainContent;
 }
 
 }

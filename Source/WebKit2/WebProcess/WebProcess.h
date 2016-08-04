@@ -66,6 +66,7 @@ class CertificateInfo;
 class PageGroup;
 class ResourceRequest;
 class SessionID;
+class UserGestureToken;
 struct PluginInfo;
 struct SecurityOriginData;
 }
@@ -140,6 +141,9 @@ public:
     WebPageGroupProxy* webPageGroup(uint64_t pageGroupID);
     WebPageGroupProxy* webPageGroup(const WebPageGroupData&);
 
+    uint64_t userGestureTokenIdentifier(RefPtr<WebCore::UserGestureToken>);
+    void userGestureTokenDestroyed(WebCore::UserGestureToken&);
+
 #if PLATFORM(COCOA)
     pid_t presenterApplicationPid() const { return m_presenterApplicationPid; }
 #endif
@@ -154,7 +158,7 @@ public:
 
     EventDispatcher& eventDispatcher() { return *m_eventDispatcher; }
 
-    NetworkProcessConnection* networkConnection();
+    NetworkProcessConnection& networkConnection();
     void networkProcessConnectionClosed(NetworkProcessConnection*);
     WebLoaderStrategy& webLoaderStrategy();
 
@@ -257,7 +261,6 @@ private:
     void resetPlugInAutoStartOriginHashes(const HashMap<WebCore::SessionID, HashMap<unsigned, double>>& hashes);
 
     void platformSetCacheModel(CacheModel);
-    void platformClearResourceCaches(ResourceCachesToClear);
 
     void setEnhancedAccessibility(bool);
     
@@ -393,6 +396,8 @@ private:
 
     unsigned m_pagesMarkingLayersAsVolatile { 0 };
     bool m_suppressMemoryPressureHandler { false };
+
+    HashMap<WebCore::UserGestureToken *, uint64_t> m_userGestureTokens;
 };
 
 } // namespace WebKit

@@ -27,7 +27,7 @@
     [Reflect] attribute DOMString code;
     [Reflect] attribute DOMString align;
     [Reflect] attribute DOMString archive;
-    [Reflect] attribute DOMString border;
+    [Reflect, TreatNullAs=EmptyString] attribute DOMString border;
     [Reflect] attribute DOMString codeBase;
     [Reflect] attribute DOMString codeType;
     [Reflect, URL] attribute DOMString data;
@@ -49,9 +49,7 @@
     // Introduced in DOM Level 2:
     [CheckSecurityForNode] readonly attribute Document contentDocument;
 
-#if !defined(LANGUAGE_OBJECTIVE_C) || !LANGUAGE_OBJECTIVE_C
     [CheckSecurityForNode, RaisesException] SVGDocument getSVGDocument();
-#endif
 
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
     // Objective-C extension:

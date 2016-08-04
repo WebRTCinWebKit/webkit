@@ -140,7 +140,11 @@ macro doVMEntry(makeCall)
     # Ensure that we have enough additional stack capacity for the incoming args,
     # and the frame for the JS code we're executing. We need to do this check
     # before we start copying the args from the protoCallFrame below.
-    bpaeq t3, VM::m_jsStackLimit[vm], .stackHeightOK
+    if C_LOOP
+        bpaeq t3, VM::m_cloopStackLimit[vm], .stackHeightOK
+    else
+        bpaeq t3, VM::m_softStackLimit[vm], .stackHeightOK
+    end
 
     if C_LOOP
         move entry, t4
@@ -834,11 +838,12 @@ _llint_op_to_number:
     btqz t2, tagTypeNumber, .opToNumberSlow
 .opToNumberIsImmediate:
     storeq t2, [cfr, t1, 8]
-    dispatch(3)
+    valueProfile(t2, 3, t0)
+    dispatch(4)
 
 .opToNumberSlow:
     callOpcodeSlowPath(_slow_path_to_number)
-    dispatch(3)
+    dispatch(4)
 
 
 _llint_op_to_string:
@@ -888,6 +893,9 @@ macro binaryOpCustomStore(integerOperationAndStore, doubleOperation, slowPath)
     bqb t1, tagTypeNumber, .op2NotInt
     loadisFromInstruction(1, t2)
     integerOperationAndStore(t1, t0, .slow, t2)
+    loadisFromInstruction(4, t1)
+    ori ArithProfileIntInt, t1
+    storeisToInstruction(t1, 4)
     dispatch(5)
 
 .op1NotInt:
@@ -897,8 +905,14 @@ macro binaryOpCustomStore(integerOperationAndStore, doubleOperation, slowPath)
     btqz t1, tagTypeNumber, .slow
     addq tagTypeNumber, t1
     fq2d t1, ft1
+    loadisFromInstruction(4, t2)
+    ori ArithProfileNumberNumber, t2
+    storeisToInstruction(t2, 4)
     jmp .op1NotIntReady
 .op1NotIntOp2Int:
+    loadisFromInstruction(4, t2)
+    ori ArithProfileNumberInt, t2
+    storeisToInstruction(t2, 4)
     ci2d t1, ft1
 .op1NotIntReady:
     loadisFromInstruction(1, t2)
@@ -914,6 +928,9 @@ macro binaryOpCustomStore(integerOperationAndStore, doubleOperation, slowPath)
     # First operand is definitely an int, the second is definitely not.
     loadisFromInstruction(1, t2)
     btqz t1, tagTypeNumber, .slow
+    loadisFromInstruction(4, t3)
+    ori ArithProfileIntNumber, t3
+    storeisToInstruction(t3, 4)
     ci2d t0, ft0
     addq tagTypeNumber, t1
     fq2d t1, ft1
@@ -1762,9 +1779,10 @@ _llint_op_jneq_ptr:
     loadp CodeBlock::m_globalObject[t2], t2
     loadp JSGlobalObject::m_specialPointers[t2, t1, 8], t1
     bpneq t1, [cfr, t0, 8], .opJneqPtrTarget
-    dispatch(4)
+    dispatch(5)
 
 .opJneqPtrTarget:
+    storei 1, 32[PB, PC, 8]
     dispatchIntIndirect(3)
 
 

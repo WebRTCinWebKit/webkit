@@ -24,7 +24,7 @@
 ] interface TestNode : Node {
     attribute DOMString name;
 
-    iterable<TestNode>;
+    [EnabledAtRuntime=DOMIterator] iterable<TestNode>;
 
     serializer;
 };

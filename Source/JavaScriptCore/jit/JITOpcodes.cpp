@@ -91,7 +91,9 @@ void JIT::emit_op_new_object(Instruction* currentInstruction)
     RegisterID scratchReg = regT2;
 
     move(TrustedImmPtr(allocator), allocatorReg);
-    emitAllocateJSObject(allocatorReg, TrustedImmPtr(structure), resultReg, scratchReg);
+    JumpList slowCases;
+    emitAllocateJSObject(resultReg, allocatorReg, TrustedImmPtr(structure), TrustedImmPtr(0), scratchReg, slowCases);
+    addSlowCase(slowCases);
     emitPutVirtualRegister(currentInstruction[1].u.operand);
 }
 
@@ -421,7 +423,10 @@ void JIT::emit_op_jneq_ptr(Instruction* currentInstruction)
     unsigned target = currentInstruction[3].u.operand;
     
     emitGetVirtualRegister(src, regT0);
-    addJump(branchPtr(NotEqual, regT0, TrustedImmPtr(actualPointerFor(m_codeBlock, ptr))), target);
+    CCallHelpers::Jump equal = branchPtr(Equal, regT0, TrustedImmPtr(actualPointerFor(m_codeBlock, ptr)));
+    store32(TrustedImm32(1), &currentInstruction[4].u.operand);
+    addJump(jump(), target);
+    equal.link(this);
 }
 
 void JIT::emit_op_eq(Instruction* currentInstruction)
@@ -516,12 +521,15 @@ void JIT::emit_op_nstricteq(Instruction* currentInstruction)
 
 void JIT::emit_op_to_number(Instruction* currentInstruction)
 {
+    int dstVReg = currentInstruction[1].u.operand;
     int srcVReg = currentInstruction[2].u.operand;
     emitGetVirtualRegister(srcVReg, regT0);
     
     addSlowCase(emitJumpIfNotNumber(regT0));
 
-    emitPutVirtualRegister(currentInstruction[1].u.operand);
+    emitValueProfilingSite();
+    if (srcVReg != dstVReg)
+        emitPutVirtualRegister(dstVReg);
 }
 
 void JIT::emit_op_to_string(Instruction* currentInstruction)
@@ -720,7 +728,7 @@ void JIT::emit_op_enter(Instruction*)
 void JIT::emit_op_get_scope(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;
-    emitGetFromCallFrameHeaderPtr(JSStack::Callee, regT0);
+    emitGetFromCallFrameHeaderPtr(CallFrameSlot::callee, regT0);
     loadPtr(Address(regT0, JSFunction::offsetOfScopeChain()), regT0);
     emitStoreCell(dst, regT0);
 }
@@ -764,7 +772,9 @@ void JIT::emit_op_create_this(Instruction* currentInstruction)
     addSlowCase(branchPtr(NotEqual, calleeReg, cachedFunctionReg));
     hasSeenMultipleCallees.link(this);
 
-    emitAllocateJSObject(allocatorReg, structureReg, resultReg, scratchReg);
+    JumpList slowCases;
+    emitAllocateJSObject(resultReg, allocatorReg, structureReg, TrustedImmPtr(0), scratchReg, slowCases);
+    addSlowCase(slowCases);
     emitPutVirtualRegister(currentInstruction[1].u.operand);
 }
 
@@ -1441,7 +1451,7 @@ void JIT::emit_op_create_cloned_arguments(Instruction* currentInstruction)
 void JIT::emit_op_argument_count(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;
-    load32(payloadFor(JSStack::ArgumentCount), regT0);
+    load32(payloadFor(CallFrameSlot::argumentCount), regT0);
     sub32(TrustedImm32(1), regT0);
     JSValueRegs result = JSValueRegs::withTwoAvailableRegs(regT0, regT1);
     boxInt32(regT0, result);
@@ -1458,7 +1468,7 @@ void JIT::emit_op_get_rest_length(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;
     unsigned numParamsToSkip = currentInstruction[2].u.unsignedValue;
-    load32(payloadFor(JSStack::ArgumentCount), regT0);
+    load32(payloadFor(CallFrameSlot::argumentCount), regT0);
     sub32(TrustedImm32(1), regT0);
     Jump zeroLength = branch32(LessThanOrEqual, regT0, Imm32(numParamsToSkip));
     sub32(Imm32(numParamsToSkip), regT0);

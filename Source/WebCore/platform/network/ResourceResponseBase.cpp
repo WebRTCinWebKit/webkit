@@ -73,6 +73,7 @@ ResourceResponseBase::CrossThreadData ResourceResponseBase::crossThreadData() co
     data.httpHeaderFields = httpHeaderFields().isolatedCopy();
     data.resourceLoadTiming = m_resourceLoadTiming.isolatedCopy();
     data.type = m_type;
+    data.isRedirected = m_isRedirected;
 
     return data;
 }
@@ -93,8 +94,43 @@ ResourceResponse ResourceResponseBase::fromCrossThreadData(CrossThreadData&& dat
     response.m_httpHeaderFields = WTFMove(data.httpHeaderFields);
     response.m_resourceLoadTiming = data.resourceLoadTiming;
     response.m_type = data.type;
+    response.m_isRedirected = data.isRedirected;
 
     return response;
+}
+
+ResourceResponse ResourceResponseBase::filterResponse(const ResourceResponse& response, ResourceResponse::Tainting tainting)
+{
+    if (tainting == ResourceResponse::Tainting::Opaque) {
+        ResourceResponse opaqueResponse;
+        opaqueResponse.setType(ResourceResponse::Type::Opaque);
+        return opaqueResponse;
+    }
+
+    ResourceResponse filteredResponse = response;
+    // Let's initialize filteredResponse to remove some header fields.
+    filteredResponse.lazyInit(AllFields);
+
+    if (tainting == ResourceResponse::Tainting::Basic) {
+        filteredResponse.setType(ResourceResponse::Type::Basic);
+        filteredResponse.m_httpHeaderFields.remove(HTTPHeaderName::SetCookie);
+        filteredResponse.m_httpHeaderFields.remove(HTTPHeaderName::SetCookie2);
+        return filteredResponse;
+    }
+
+    ASSERT(tainting == ResourceResponse::Tainting::Cors);
+    filteredResponse.setType(ResourceResponse::Type::Cors);
+
+    HTTPHeaderSet accessControlExposeHeaderSet;
+    parseAccessControlExposeHeadersAllowList(response.httpHeaderField(HTTPHeaderName::AccessControlExposeHeaders), accessControlExposeHeaderSet);
+    filteredResponse.m_httpHeaderFields.uncommonHeaders().removeIf([&](auto& entry) {
+        return !isCrossOriginSafeHeader(entry.key, accessControlExposeHeaderSet);
+    });
+    filteredResponse.m_httpHeaderFields.commonHeaders().removeIf([&](auto& entry) {
+        return !isCrossOriginSafeHeader(entry.key, accessControlExposeHeaderSet);
+    });
+
+    return filteredResponse;
 }
 
 // FIXME: Name does not make it clear this is true for HTTPS!
@@ -109,7 +145,7 @@ const URL& ResourceResponseBase::url() const
 {
     lazyInit(CommonFieldsOnly);
 
-    return m_url; 
+    return m_url;
 }
 
 void ResourceResponseBase::setURL(const URL& url)

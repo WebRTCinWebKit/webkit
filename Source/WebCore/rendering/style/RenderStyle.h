@@ -468,7 +468,7 @@ protected:
 // don't inherit
     NonInheritedFlags noninherited_flags;
 
-#if !ASSERT_DISABLED
+#if !ASSERT_DISABLED || ENABLE(SECURITY_ASSERTIONS)
     bool m_deletionHasBegun { false };
 #endif
 
@@ -497,6 +497,10 @@ public:
 
     static RenderStyle createAnonymousStyleWithDisplay(const RenderStyle& parentStyle, EDisplay);
     static RenderStyle createStyleInheritingFromPseudoStyle(const RenderStyle& pseudoStyle);
+
+#if !ASSERT_DISABLED || ENABLE(SECURITY_ASSERTIONS)
+    bool deletionHasBegun() const { return m_deletionHasBegun; }
+#endif
 
     ContentPosition resolvedJustifyContentPosition(const StyleContentAlignmentData& normalValueBehavior) const;
     ContentDistributionType resolvedJustifyContentDistribution(const StyleContentAlignmentData& normalValueBehavior) const;
@@ -975,8 +979,8 @@ public:
     bool isGridAutoFlowDirectionColumn() const { return (rareNonInheritedData->m_grid->m_gridAutoFlow & InternalAutoFlowDirectionColumn); }
     bool isGridAutoFlowAlgorithmSparse() const { return (rareNonInheritedData->m_grid->m_gridAutoFlow & InternalAutoFlowAlgorithmSparse); }
     bool isGridAutoFlowAlgorithmDense() const { return (rareNonInheritedData->m_grid->m_gridAutoFlow & InternalAutoFlowAlgorithmDense); }
-    const GridTrackSize& gridAutoColumns() const { return rareNonInheritedData->m_grid->m_gridAutoColumns; }
-    const GridTrackSize& gridAutoRows() const { return rareNonInheritedData->m_grid->m_gridAutoRows; }
+    const Vector<GridTrackSize>& gridAutoColumns() const { return rareNonInheritedData->m_grid->m_gridAutoColumns; }
+    const Vector<GridTrackSize>& gridAutoRows() const { return rareNonInheritedData->m_grid->m_gridAutoRows; }
     const Length& gridColumnGap() const { return rareNonInheritedData->m_grid->m_gridColumnGap; }
     const Length& gridRowGap() const { return rareNonInheritedData->m_grid->m_gridRowGap; }
 
@@ -1556,8 +1560,8 @@ public:
     void setJustifySelfPosition(ItemPosition position) { rareNonInheritedData.access()->m_justifySelf.setPosition(position); }
     void setJustifySelfOverflow(OverflowAlignment overflow) { rareNonInheritedData.access()->m_justifySelf.setOverflow(overflow); }
 #if ENABLE(CSS_GRID_LAYOUT)
-    void setGridAutoColumns(const GridTrackSize& length) { SET_NESTED_VAR(rareNonInheritedData, m_grid, m_gridAutoColumns, length); }
-    void setGridAutoRows(const GridTrackSize& length) { SET_NESTED_VAR(rareNonInheritedData, m_grid, m_gridAutoRows, length); }
+    void setGridAutoColumns(const Vector<GridTrackSize>& trackSizeList) { SET_NESTED_VAR(rareNonInheritedData, m_grid, m_gridAutoColumns, trackSizeList); }
+    void setGridAutoRows(const Vector<GridTrackSize>& trackSizeList) { SET_NESTED_VAR(rareNonInheritedData, m_grid, m_gridAutoRows, trackSizeList); }
     void setGridColumns(const Vector<GridTrackSize>& lengths) { SET_NESTED_VAR(rareNonInheritedData, m_grid, m_gridColumns, lengths); }
     void setGridRows(const Vector<GridTrackSize>& lengths) { SET_NESTED_VAR(rareNonInheritedData, m_grid, m_gridRows, lengths); }
     void setGridAutoRepeatColumns(const Vector<GridTrackSize>& lengths) { SET_NESTED_VAR(rareNonInheritedData, m_grid, m_gridAutoRepeatColumns, lengths); }
@@ -2092,8 +2096,8 @@ public:
 
     static GridAutoFlow initialGridAutoFlow() { return AutoFlowRow; }
 
-    static GridTrackSize initialGridAutoColumns() { return GridTrackSize(Length(Auto)); }
-    static GridTrackSize initialGridAutoRows() { return GridTrackSize(Length(Auto)); }
+    static Vector<GridTrackSize> initialGridAutoColumns() { return { GridTrackSize(Length(Auto)) }; }
+    static Vector<GridTrackSize> initialGridAutoRows() { return { GridTrackSize(Length(Auto)) }; }
 
     static NamedGridAreaMap initialNamedGridArea() { return NamedGridAreaMap(); }
     static size_t initialNamedGridAreaCount() { return 0; }

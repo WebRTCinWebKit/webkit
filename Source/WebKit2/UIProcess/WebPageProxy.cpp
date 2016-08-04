@@ -55,6 +55,7 @@
 #include "DrawingAreaProxy.h"
 #include "DrawingAreaProxyMessages.h"
 #include "EventDispatcherMessages.h"
+#include "LoadParameters.h"
 #include "Logging.h"
 #include "NativeWebGestureEvent.h"
 #include "NativeWebKeyboardEvent.h"
@@ -906,6 +907,12 @@ bool WebPageProxy::maybeInitializeSandboxExtensionHandle(const URL& url, Sandbox
     return true;
 }
 
+#if !PLATFORM(COCOA)
+void WebPageProxy::addPlatformLoadParameters(LoadParameters&)
+{
+}
+#endif
+
 RefPtr<API::Navigation> WebPageProxy::loadRequest(const ResourceRequest& request, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy, API::Object* userData)
 {
     if (m_isClosed)
@@ -920,11 +927,17 @@ RefPtr<API::Navigation> WebPageProxy::loadRequest(const ResourceRequest& request
     if (!isValid())
         reattachToWebProcess();
 
-    SandboxExtension::Handle sandboxExtensionHandle;
-    bool createdExtension = maybeInitializeSandboxExtensionHandle(request.url(), sandboxExtensionHandle);
+    LoadParameters loadParameters;
+    loadParameters.navigationID = navigation->navigationID();
+    loadParameters.request = request;
+    loadParameters.shouldOpenExternalURLsPolicy = (uint64_t)shouldOpenExternalURLsPolicy;
+    loadParameters.userData = UserData(process().transformObjectsToHandles(userData).get());
+    bool createdExtension = maybeInitializeSandboxExtensionHandle(request.url(), loadParameters.sandboxExtensionHandle);
     if (createdExtension)
         m_process->willAcquireUniversalFileReadSandboxExtension();
-    m_process->send(Messages::WebPage::LoadRequest(navigation->navigationID(), request, sandboxExtensionHandle, (uint64_t)shouldOpenExternalURLsPolicy, UserData(process().transformObjectsToHandles(userData).get())), m_pageID);
+    addPlatformLoadParameters(loadParameters);
+
+    m_process->send(Messages::WebPage::LoadRequest(loadParameters), m_pageID);
     m_process->responsivenessTimer().start();
 
     return WTFMove(navigation);
@@ -959,10 +972,16 @@ RefPtr<API::Navigation> WebPageProxy::loadFile(const String& fileURLString, cons
 
     String resourceDirectoryPath = resourceDirectoryURL.fileSystemPath();
 
-    SandboxExtension::Handle sandboxExtensionHandle;
-    SandboxExtension::createHandle(resourceDirectoryPath, SandboxExtension::ReadOnly, sandboxExtensionHandle);
+    LoadParameters loadParameters;
+    loadParameters.navigationID = navigation->navigationID();
+    loadParameters.request = fileURL;
+    loadParameters.shouldOpenExternalURLsPolicy = (uint64_t)ShouldOpenExternalURLsPolicy::ShouldNotAllow;
+    loadParameters.userData = UserData(process().transformObjectsToHandles(userData).get());
+    SandboxExtension::createHandle(resourceDirectoryPath, SandboxExtension::ReadOnly, loadParameters.sandboxExtensionHandle);
+    addPlatformLoadParameters(loadParameters);
+
     m_process->assumeReadAccessToBaseURL(resourceDirectoryURL);
-    m_process->send(Messages::WebPage::LoadRequest(navigation->navigationID(), fileURL, sandboxExtensionHandle, (uint64_t)ShouldOpenExternalURLsPolicy::ShouldNotAllow, UserData(process().transformObjectsToHandles(userData).get())), m_pageID);
+    m_process->send(Messages::WebPage::LoadRequest(loadParameters), m_pageID);
     m_process->responsivenessTimer().start();
 
     return WTFMove(navigation);
@@ -982,8 +1001,17 @@ RefPtr<API::Navigation> WebPageProxy::loadData(API::Data* data, const String& MI
     if (!isValid())
         reattachToWebProcess();
 
+    LoadParameters loadParameters;
+    loadParameters.navigationID = navigation->navigationID();
+    loadParameters.data = data->dataReference();
+    loadParameters.MIMEType = MIMEType;
+    loadParameters.encodingName = encoding;
+    loadParameters.baseURLString = baseURL;
+    loadParameters.userData = UserData(process().transformObjectsToHandles(userData).get());
+    addPlatformLoadParameters(loadParameters);
+
     m_process->assumeReadAccessToBaseURL(baseURL);
-    m_process->send(Messages::WebPage::LoadData(navigation->navigationID(), data->dataReference(), MIMEType, encoding, baseURL, UserData(process().transformObjectsToHandles(userData).get())), m_pageID);
+    m_process->send(Messages::WebPage::LoadData(loadParameters), m_pageID);
     m_process->responsivenessTimer().start();
 
     return WTFMove(navigation);
@@ -1004,8 +1032,16 @@ RefPtr<API::Navigation> WebPageProxy::loadHTMLString(const String& htmlString, c
     if (!isValid())
         reattachToWebProcess();
 
+    LoadParameters loadParameters;
+    loadParameters.navigationID = navigation->navigationID();
+    loadParameters.string = htmlString;
+    loadParameters.MIMEType = ASCIILiteral("text/html");
+    loadParameters.baseURLString = baseURL;
+    loadParameters.userData = UserData(process().transformObjectsToHandles(userData).get());
+    addPlatformLoadParameters(loadParameters);
+
     m_process->assumeReadAccessToBaseURL(baseURL);
-    m_process->send(Messages::WebPage::LoadHTMLString(navigation->navigationID(), htmlString, baseURL, UserData(process().transformObjectsToHandles(userData).get())), m_pageID);
+    m_process->send(Messages::WebPage::LoadString(loadParameters), m_pageID);
     m_process->responsivenessTimer().start();
 
     return WTFMove(navigation);
@@ -1033,9 +1069,18 @@ void WebPageProxy::loadAlternateHTMLString(const String& htmlString, const Strin
     if (m_mainFrame)
         m_mainFrame->setUnreachableURL(unreachableURL);
 
+    LoadParameters loadParameters;
+    loadParameters.navigationID = 0;
+    loadParameters.string = htmlString;
+    loadParameters.baseURLString = baseURL;
+    loadParameters.unreachableURLString = unreachableURL;
+    loadParameters.provisionalLoadErrorURLString = m_failingProvisionalLoadURL;
+    loadParameters.userData = UserData(process().transformObjectsToHandles(userData).get());
+    addPlatformLoadParameters(loadParameters);
+
     m_process->assumeReadAccessToBaseURL(baseURL);
     m_process->assumeReadAccessToBaseURL(unreachableURL);
-    m_process->send(Messages::WebPage::LoadAlternateHTMLString(htmlString, baseURL, unreachableURL, m_failingProvisionalLoadURL, UserData(process().transformObjectsToHandles(userData).get())), m_pageID);
+    m_process->send(Messages::WebPage::LoadAlternateHTMLString(loadParameters), m_pageID);
     m_process->responsivenessTimer().start();
 }
 
@@ -1050,7 +1095,14 @@ void WebPageProxy::loadPlainTextString(const String& string, API::Object* userDa
     auto transaction = m_pageLoadState.transaction();
     m_pageLoadState.setPendingAPIRequestURL(transaction, blankURL().string());
 
-    m_process->send(Messages::WebPage::LoadPlainTextString(string, UserData(process().transformObjectsToHandles(userData).get())), m_pageID);
+    LoadParameters loadParameters;
+    loadParameters.navigationID = 0;
+    loadParameters.string = string;
+    loadParameters.MIMEType = ASCIILiteral("text/plain");
+    loadParameters.userData = UserData(process().transformObjectsToHandles(userData).get());
+    addPlatformLoadParameters(loadParameters);
+
+    m_process->send(Messages::WebPage::LoadString(loadParameters), m_pageID);
     m_process->responsivenessTimer().start();
 }
 
@@ -1065,7 +1117,15 @@ void WebPageProxy::loadWebArchiveData(API::Data* webArchiveData, API::Object* us
     auto transaction = m_pageLoadState.transaction();
     m_pageLoadState.setPendingAPIRequestURL(transaction, blankURL().string());
 
-    m_process->send(Messages::WebPage::LoadWebArchiveData(webArchiveData->dataReference(), UserData(process().transformObjectsToHandles(userData).get())), m_pageID);
+    LoadParameters loadParameters;
+    loadParameters.navigationID = 0;
+    loadParameters.data = webArchiveData->dataReference();
+    loadParameters.MIMEType = ASCIILiteral("application/x-webarchive");
+    loadParameters.encodingName = ASCIILiteral("utf-16");
+    loadParameters.userData = UserData(process().transformObjectsToHandles(userData).get());
+    addPlatformLoadParameters(loadParameters);
+
+    m_process->send(Messages::WebPage::LoadData(loadParameters), m_pageID);
     m_process->responsivenessTimer().start();
 }
 
@@ -1315,8 +1375,16 @@ void WebPageProxy::setTopContentInset(float contentInset)
 
     m_topContentInset = contentInset;
 
-    if (isValid())
-        m_process->send(Messages::WebPage::SetTopContentInset(contentInset), m_pageID);
+    if (!isValid())
+        return;
+#if PLATFORM(COCOA)
+    MachSendRight fence = m_drawingArea->createFence();
+
+    auto fenceAttachment = IPC::Attachment(fence.leakSendRight(), MACH_MSG_TYPE_MOVE_SEND);
+    m_process->send(Messages::WebPage::SetTopContentInsetFenced(contentInset, fenceAttachment), m_pageID);
+#else
+    m_process->send(Messages::WebPage::SetTopContentInset(contentInset), m_pageID);
+#endif
 }
 
 void WebPageProxy::setUnderlayColor(const Color& color)
@@ -3520,9 +3588,10 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const Secur
         else if (originatingFrame)
             sourceFrameInfo = API::FrameInfo::create(*originatingFrame, originatingFrameSecurityOrigin.securityOrigin());
 
+        auto userInitiatedActivity = m_process->userInitiatedActivity(navigationActionData.userGestureTokenIdentifier);
         bool shouldOpenAppLinks = !m_shouldSuppressAppLinksInNextNavigationPolicyDecision && (!destinationFrameInfo || destinationFrameInfo->isMainFrame()) && !hostsAreEqual(URL(ParsedURLString, m_mainFrame->url()), request.url());
 
-        auto navigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.get(), destinationFrameInfo.get(), request, originalRequest.url(), shouldOpenAppLinks);
+        auto navigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.get(), destinationFrameInfo.get(), request, originalRequest.url(), shouldOpenAppLinks, WTFMove(userInitiatedActivity));
 
         m_navigationClient->decidePolicyForNavigationAction(*this, navigationAction.get(), WTFMove(listener), m_process->transformHandlesToObjects(userData.object()).get());
     } else
@@ -3554,8 +3623,9 @@ void WebPageProxy::decidePolicyForNewWindowAction(uint64_t frameID, const Securi
         if (frame)
             sourceFrameInfo = API::FrameInfo::create(*frame, frameSecurityOrigin.securityOrigin());
 
+        auto userInitiatedActivity = m_process->userInitiatedActivity(navigationActionData.userGestureTokenIdentifier);
         bool shouldOpenAppLinks = !hostsAreEqual(URL(ParsedURLString, m_mainFrame->url()), request.url());
-        auto navigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.get(), nullptr, request, request.url(), shouldOpenAppLinks);
+        auto navigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.get(), nullptr, request, request.url(), shouldOpenAppLinks, WTFMove(userInitiatedActivity));
 
         m_navigationClient->decidePolicyForNavigationAction(*this, navigationAction.get(), WTFMove(listener), m_process->transformHandlesToObjects(userData.object()).get());
 
@@ -4787,6 +4857,10 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
 
         if (!m_keyEventQueue.isEmpty())
             m_process->send(Messages::WebPage::KeyEvent(m_keyEventQueue.first()), m_pageID);
+        else {
+            if (auto* automationSession = process().processPool().automationSession())
+                automationSession->keyboardEventsFlushedForPage(*this);
+        }
 
         // The call to doneWithKeyEvent may close this WebPage.
         // Protect against this being destroyed.
@@ -5362,6 +5436,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.availableScreenSize = availableScreenSize();
     parameters.textAutosizingWidth = textAutosizingWidth();
     parameters.mimeTypesWithCustomContentProviders = m_pageClient.mimeTypesWithCustomContentProviders();
+    parameters.ignoresViewportScaleLimits = m_forceAlwaysUserScalable;
 #endif
 
 #if PLATFORM(MAC)
@@ -5388,11 +5463,6 @@ void WebPageProxy::exitAcceleratedCompositingMode()
 void WebPageProxy::updateAcceleratedCompositingMode(const LayerTreeContext& layerTreeContext)
 {
     m_pageClient.updateAcceleratedCompositingMode(layerTreeContext);
-}
-
-void WebPageProxy::willEnterAcceleratedCompositingMode()
-{
-    m_pageClient.willEnterAcceleratedCompositingMode();
 }
 
 void WebPageProxy::backForwardClear()
@@ -5885,6 +5955,11 @@ void WebPageProxy::dictationAlternatives(uint64_t dictationContext, Vector<Strin
     result = m_pageClient.dictationAlternatives(dictationContext);
 }
 #endif
+
+void WebPageProxy::setEditableElementIsFocused(bool editableElementIsFocused)
+{
+    m_pageClient.setEditableElementIsFocused(editableElementIsFocused);
+}
 
 #endif // PLATFORM(MAC)
 

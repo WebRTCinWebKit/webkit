@@ -205,8 +205,11 @@ static Ref<Inspector::Protocol::Network::Request> buildObjectForResourceRequest(
         .setMethod(request.httpMethod())
         .setHeaders(buildObjectForHeaders(request.httpHeaderFields()))
         .release();
-    if (request.httpBody() && !request.httpBody()->isEmpty())
-        requestObject->setPostData(request.httpBody()->flattenToString());
+    if (request.httpBody() && !request.httpBody()->isEmpty()) {
+        Vector<char> bytes;
+        request.httpBody()->flatten(bytes);
+        requestObject->setPostData(String::fromUTF8WithLatin1Fallback(bytes.data(), bytes.size()));
+    }
     return requestObject;
 }
 
@@ -667,16 +670,16 @@ void InspectorNetworkAgent::loadResource(ErrorString& errorString, const String&
     request.setHiddenFromInspector(true);
 
     ThreadableLoaderOptions options;
-    options.setSendLoadCallbacks(SendCallbacks); // So we remove this from m_hiddenRequestIdentifiers on completion.
-    options.setAllowCredentials(AllowStoredCredentials);
-    options.setDefersLoadingPolicy(DefersLoadingPolicy::DisallowDefersLoading); // So the request is never deferred.
-    options.crossOriginRequestPolicy = AllowCrossOriginRequests;
+    options.sendLoadCallbacks = SendCallbacks; // So we remove this from m_hiddenRequestIdentifiers on completion.
+    options.defersLoadingPolicy = DefersLoadingPolicy::DisallowDefersLoading; // So the request is never deferred.
+    options.mode = FetchOptions::Mode::NoCors;
+    options.credentials = FetchOptions::Credentials::SameOrigin;
     options.contentSecurityPolicyEnforcement = ContentSecurityPolicyEnforcement::DoNotEnforce;
 
     // InspectorThreadableLoaderClient deletes itself when the load completes.
     InspectorThreadableLoaderClient* inspectorThreadableLoaderClient = new InspectorThreadableLoaderClient(callback.copyRef());
 
-    auto loader = DocumentThreadableLoader::create(*document, *inspectorThreadableLoaderClient, request, options);
+    auto loader = DocumentThreadableLoader::create(*document, *inspectorThreadableLoaderClient, WTFMove(request), options);
     if (!loader) {
         inspectorThreadableLoaderClient->didFailLoaderCreation();
         return;

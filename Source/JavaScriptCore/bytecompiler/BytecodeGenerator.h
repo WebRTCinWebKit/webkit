@@ -73,7 +73,7 @@ namespace JSC {
 
         RegisterID* thisRegister() { return m_argv[0].get(); }
         RegisterID* argumentRegister(unsigned i) { return m_argv[i + 1].get(); }
-        unsigned stackOffset() { return -m_argv[0]->index() + JSStack::CallFrameHeaderSize; }
+        unsigned stackOffset() { return -m_argv[0]->index() + CallFrame::headerSizeInRegisters; }
         unsigned argumentCountIncludingThis() { return m_argv.size() - m_padding; }
         ArgumentsNode* argumentsNode() { return m_argumentsNode; }
 
@@ -238,6 +238,8 @@ namespace JSC {
         bool isConst() const { return isReadOnly() && m_isLexicallyScoped; }
         void setIsReadOnly() { m_attributes |= ReadOnly; }
 
+        void dump(PrintStream&) const;
+
     private:
         Identifier m_ident;
         VarOffset m_offset;
@@ -382,7 +384,7 @@ namespace JSC {
         {
             // Node::emitCode assumes that dst, if provided, is either a local or a referenced temporary.
             ASSERT(!dst || dst == ignoredResult() || !dst->isTemporary() || dst->refCount());
-            if (!m_vm->isSafeToRecurse()) {
+            if (UNLIKELY(!m_vm->isSafeToRecurse())) {
                 emitThrowExpressionTooDeepException();
                 return;
             }
@@ -409,7 +411,7 @@ namespace JSC {
         {
             // Node::emitCode assumes that dst, if provided, is either a local or a referenced temporary.
             ASSERT(!dst || dst == ignoredResult() || !dst->isTemporary() || dst->refCount());
-            if (!m_vm->isSafeToRecurse())
+            if (UNLIKELY(!m_vm->isSafeToRecurse()))
                 return emitThrowExpressionTooDeepException();
             return n->emitBytecode(*this, dst);
         }
@@ -426,7 +428,7 @@ namespace JSC {
 
         void emitNodeInConditionContext(ExpressionNode* n, Label* trueTarget, Label* falseTarget, FallThroughMode fallThroughMode)
         {
-            if (!m_vm->isSafeToRecurse()) {
+            if (UNLIKELY(!m_vm->isSafeToRecurse())) {
                 emitThrowExpressionTooDeepException();
                 return;
             }
@@ -511,6 +513,7 @@ namespace JSC {
         RegisterID* emitLoadGlobalObject(RegisterID* dst);
 
         RegisterID* emitUnaryOp(OpcodeID, RegisterID* dst, RegisterID* src);
+        RegisterID* emitUnaryOpProfiled(OpcodeID, RegisterID* dst, RegisterID* src);
         RegisterID* emitBinaryOp(OpcodeID, RegisterID* dst, RegisterID* src1, RegisterID* src2, OperandTypes);
         RegisterID* emitEqualityOp(OpcodeID, RegisterID* dst, RegisterID* src1, RegisterID* src2);
         RegisterID* emitUnaryNoDstOp(OpcodeID, RegisterID* src);
@@ -537,7 +540,7 @@ namespace JSC {
         RegisterID* emitMoveEmptyValue(RegisterID* dst);
         RegisterID* emitMove(RegisterID* dst, RegisterID* src);
 
-        RegisterID* emitToNumber(RegisterID* dst, RegisterID* src) { return emitUnaryOp(op_to_number, dst, src); }
+        RegisterID* emitToNumber(RegisterID* dst, RegisterID* src) { return emitUnaryOpProfiled(op_to_number, dst, src); }
         RegisterID* emitToString(RegisterID* dst, RegisterID* src) { return emitUnaryOp(op_to_string, dst, src); }
         RegisterID* emitInc(RegisterID* srcDst);
         RegisterID* emitDec(RegisterID* srcDst);
@@ -727,7 +730,7 @@ namespace JSC {
         enum class ScopeRegisterType { Var, Block };
         void pushLexicalScopeInternal(VariableEnvironment&, TDZCheckOptimization, NestedScopeType, RegisterID** constantSymbolTableResult, TDZRequirement, ScopeType, ScopeRegisterType);
         void initializeBlockScopedFunctions(VariableEnvironment&, FunctionStack&, RegisterID* constantSymbolTable);
-        void popLexicalScopeInternal(VariableEnvironment&, TDZRequirement);
+        void popLexicalScopeInternal(VariableEnvironment&);
         template<typename LookUpVarKindFunctor>
         bool instantiateLexicalVariables(const VariableEnvironment&, SymbolTable*, ScopeRegisterType, LookUpVarKindFunctor);
         void emitPrefillStackTDZVariables(const VariableEnvironment&, SymbolTable*);
@@ -806,7 +809,7 @@ namespace JSC {
             if (reg.isLocal())
                 return m_calleeLocals[reg.toLocal()];
 
-            if (reg.offset() == JSStack::Callee)
+            if (reg.offset() == CallFrameSlot::callee)
                 return m_calleeRegister;
 
             ASSERT(m_parameters.size());
@@ -826,7 +829,7 @@ namespace JSC {
             DerivedContextType newDerivedContextType = DerivedContextType::None;
 
             if (metadata->parseMode() == SourceParseMode::ArrowFunctionMode) {
-                if (constructorKind() == ConstructorKind::Derived || isDerivedConstructorContext())
+                if (constructorKind() == ConstructorKind::Extends || isDerivedConstructorContext())
                     newDerivedContextType = DerivedContextType::DerivedConstructorContext;
                 else if (m_codeBlock->isClassContext() || isDerivedClassContext())
                     newDerivedContextType = DerivedContextType::DerivedMethodContext;
@@ -880,9 +883,15 @@ namespace JSC {
             int m_symbolTableConstantIndex;
         };
         Vector<SymbolTableStackEntry> m_symbolTableStack;
-        Vector<std::pair<VariableEnvironment, TDZCheckOptimization>> m_TDZStack;
+        enum class TDZNecessityLevel {
+            NotNeeded,
+            Optimize,
+            DoNotOptimize
+        };
+        typedef HashMap<RefPtr<UniquedStringImpl>, TDZNecessityLevel, IdentifierRepHash> TDZMap;
+        Vector<TDZMap> m_TDZStack;
         Optional<size_t> m_varScopeSymbolTableIndex;
-        void pushTDZVariables(VariableEnvironment, TDZCheckOptimization);
+        void pushTDZVariables(const VariableEnvironment&, TDZCheckOptimization, TDZRequirement);
 
         ScopeNode* const m_scopeNode;
         Strong<UnlinkedCodeBlock> m_codeBlock;
@@ -901,6 +910,7 @@ namespace JSC {
         RegisterID* m_emptyValueRegister { nullptr };
         RegisterID* m_globalObjectRegister { nullptr };
         RegisterID* m_newTargetRegister { nullptr };
+        RegisterID* m_isDerivedConstuctor { nullptr };
         RegisterID* m_linkTimeConstantRegisters[LinkTimeConstantCount];
         RegisterID* m_arrowFunctionContextLexicalEnvironmentRegister { nullptr };
 
@@ -963,5 +973,11 @@ namespace JSC {
     };
 
 }
+
+namespace WTF {
+
+void printInternal(PrintStream&, JSC::Variable::VariableKind);
+
+} // namespace WTF
 
 #endif // BytecodeGenerator_h

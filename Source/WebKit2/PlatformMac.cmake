@@ -30,6 +30,7 @@ list(APPEND WebKit2_SOURCES
 
     NetworkProcess/Downloads/mac/DownloadMac.mm
 
+    NetworkProcess/cache/NetworkCacheCodersCocoa.cpp
     NetworkProcess/cache/NetworkCacheDataCocoa.mm
     NetworkProcess/cache/NetworkCacheIOChannelCocoa.mm
 
@@ -99,6 +100,7 @@ list(APPEND WebKit2_SOURCES
     Shared/Cocoa/APIObject.mm
     Shared/Cocoa/CompletionHandlerCallChecker.mm
     Shared/Cocoa/DataDetectionResult.mm
+    Shared/Cocoa/LoadParametersCocoa.mm
     Shared/Cocoa/WKNSArray.mm
     Shared/Cocoa/WKNSData.mm
     Shared/Cocoa/WKNSDictionary.mm
@@ -211,6 +213,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/Cocoa/_WKUserContentExtensionStore.mm
     UIProcess/API/Cocoa/_WKUserContentFilter.mm
     UIProcess/API/Cocoa/_WKUserContentWorld.mm
+    UIProcess/API/Cocoa/_WKUserInitiatedAction.mm
     UIProcess/API/Cocoa/_WKUserStyleSheet.mm
     UIProcess/API/Cocoa/_WKVisitedLinkProvider.mm
     UIProcess/API/Cocoa/_WKVisitedLinkStore.mm
@@ -333,6 +336,7 @@ list(APPEND WebKit2_SOURCES
     WebProcess/WebPage/ViewGestureGeometryCollector.cpp
 
     WebProcess/WebPage/Cocoa/RemoteLayerTreeDisplayRefreshMonitor.mm
+    WebProcess/WebPage/Cocoa/WebPageCocoa.mm
 
     WebProcess/WebPage/mac/GraphicsLayerCARemote.cpp
     WebProcess/WebPage/mac/PageBannerMac.mm

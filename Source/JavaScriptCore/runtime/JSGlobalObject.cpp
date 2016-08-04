@@ -211,8 +211,8 @@ const GlobalObjectMethodTable JSGlobalObject::s_globalObjectMethodTable = { &all
 /* Source for JSGlobalObject.lut.h
 @begin globalObjectTable
   parseFloat            globalFuncParseFloat                         DontEnum|Function 1
-  isNaN                 globalFuncIsNaN                              DontEnum|Function 1
-  isFinite              globalFuncIsFinite                           DontEnum|Function 1
+  isNaN                 JSBuiltin                                    DontEnum|Function 1
+  isFinite              JSBuiltin                                    DontEnum|Function 1
   escape                globalFuncEscape                             DontEnum|Function 1
   unescape              globalFuncUnescape                           DontEnum|Function 1
   decodeURI             globalFuncDecodeURI                          DontEnum|Function 1
@@ -320,8 +320,6 @@ void JSGlobalObject::init(VM& vm)
 
     Base::setStructure(vm, Structure::toCacheableDictionaryTransition(vm, structure()));
 
-    JSGlobalObject::globalExec()->init(0, 0, CallFrame::noCaller(), 0, 0);
-
     m_debugger = 0;
 
 #if ENABLE(REMOTE_INSPECTOR)
@@ -331,15 +329,16 @@ void JSGlobalObject::init(VM& vm)
     m_consoleClient = m_inspectorController->consoleClient();
 #endif
 
-    ExecState* exec = JSGlobalObject::globalExec();
-
     m_functionPrototype.set(vm, this, FunctionPrototype::create(vm, FunctionPrototype::createStructure(vm, this, jsNull()))); // The real prototype will be set once ObjectPrototype is created.
     m_calleeStructure.set(vm, this, JSCallee::createStructure(vm, this, jsNull()));
 
     m_globalLexicalEnvironment.set(vm, this, JSGlobalLexicalEnvironment::create(vm, JSGlobalLexicalEnvironment::createStructure(vm, this), this));
     // Need to create the callee structure (above) before creating the callee.
-    m_globalCallee.set(vm, this, JSCallee::create(vm, this, globalScope()));
-    exec->setCallee(m_globalCallee.get());
+    JSCallee* globalCallee = JSCallee::create(vm, this, globalScope());
+    m_globalCallee.set(vm, this, globalCallee);
+
+    ExecState::initGlobalExec(JSGlobalObject::globalExec(), globalCallee);
+    ExecState* exec = JSGlobalObject::globalExec();
 
     m_functionStructure.set(vm, this, JSFunction::createStructure(vm, this, m_functionPrototype.get()));
     m_customGetterSetterFunctionStructure.initLater(
@@ -406,7 +405,7 @@ void JSGlobalObject::init(VM& vm)
     m_objectStructureForObjectConstructor.set(vm, this, vm.prototypeMap.emptyObjectStructureForPrototype(m_objectPrototype.get(), JSFinalObject::defaultInlineCapacity()));
 
     m_speciesGetterSetter.set(vm, this, GetterSetter::create(vm, this));
-    m_speciesGetterSetter->setGetter(vm, this, JSFunction::createBuiltinFunction(vm, globalObjectSpeciesGetterCodeGenerator(vm), this, "get [Symbol.species]"));
+    m_speciesGetterSetter->setGetter(vm, this, JSFunction::createBuiltinFunction(vm, globalOperationsSpeciesGetterCodeGenerator(vm), this, "get [Symbol.species]"));
 
     m_typedArrayProto.initLater(
         [] (const Initializer<JSTypedArrayViewPrototype>& init) {
@@ -651,8 +650,6 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
 
     JSFunction* privateFuncAbs = JSFunction::create(vm, this, 0, String(), mathProtoFuncAbs, AbsIntrinsic);
     JSFunction* privateFuncFloor = JSFunction::create(vm, this, 0, String(), mathProtoFuncFloor, FloorIntrinsic);
-    JSFunction* privateFuncIsFinite = JSFunction::create(vm, this, 0, String(), globalFuncIsFinite);
-    JSFunction* privateFuncIsNaN = JSFunction::create(vm, this, 0, String(), globalFuncIsNaN);
     JSFunction* privateFuncTrunc = JSFunction::create(vm, this, 0, String(), mathProtoFuncTrunc, TruncIntrinsic);
 
     JSFunction* privateFuncGetTemplateObject = JSFunction::create(vm, this, 0, String(), getTemplateObject);
@@ -660,6 +657,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
     JSFunction* privateFuncTypedArrayGetOriginalConstructor = JSFunction::create(vm, this, 0, String(), typedArrayViewPrivateFuncGetOriginalConstructor);
     JSFunction* privateFuncTypedArraySort = JSFunction::create(vm, this, 0, String(), typedArrayViewPrivateFuncSort);
     JSFunction* privateFuncIsTypedArrayView = JSFunction::create(vm, this, 0, String(), typedArrayViewPrivateFuncIsTypedArrayView, IsTypedArrayViewIntrinsic);
+    JSFunction* privateFuncTypedArraySubarrayCreate = JSFunction::create(vm, this, 0, String(), typedArrayViewPrivateFuncSubarrayCreate);
     JSFunction* privateFuncIsBoundFunction = JSFunction::create(vm, this, 0, String(), isBoundFunction);
     JSFunction* privateFuncHasInstanceBoundFunction = JSFunction::create(vm, this, 0, String(), hasInstanceBoundFunction);
     JSFunction* privateFuncInstanceOf = JSFunction::create(vm, this, 0, String(), objectPrivateFuncInstanceOf);
@@ -709,6 +707,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         GlobalPropertyInfo(vm.propertyNames->builtinNames().typedArrayGetOriginalConstructorPrivateName(), privateFuncTypedArrayGetOriginalConstructor, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().typedArraySortPrivateName(), privateFuncTypedArraySort, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().isTypedArrayViewPrivateName(), privateFuncIsTypedArrayView, DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().typedArraySubarrayCreatePrivateName(), privateFuncTypedArraySubarrayCreate, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().isBoundFunctionPrivateName(), privateFuncIsBoundFunction, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().hasInstanceBoundFunctionPrivateName(), privateFuncHasInstanceBoundFunction, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().instanceOfPrivateName(), privateFuncInstanceOf, DontEnum | DontDelete | ReadOnly),
@@ -719,8 +718,6 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         GlobalPropertyInfo(vm.propertyNames->builtinNames().absPrivateName(), privateFuncAbs, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().floorPrivateName(), privateFuncFloor, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().truncPrivateName(), privateFuncTrunc, DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().isFinitePrivateName(), privateFuncIsFinite, DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().isNaNPrivateName(), privateFuncIsNaN, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().PromisePrivateName(), promiseConstructor, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().ReflectPrivateName(), reflectObject, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().InternalPromisePrivateName(), internalPromiseConstructor, DontEnum | DontDelete | ReadOnly),
@@ -872,7 +869,7 @@ namespace {
 class ObjectsWithBrokenIndexingFinder : public MarkedBlock::VoidFunctor {
 public:
     ObjectsWithBrokenIndexingFinder(MarkedArgumentBuffer&, JSGlobalObject*);
-    IterationStatus operator()(JSCell*);
+    IterationStatus operator()(HeapCell*, HeapCell::Kind) const;
 
 private:
     void visit(JSCell*);
@@ -929,9 +926,13 @@ inline void ObjectsWithBrokenIndexingFinder::visit(JSCell* cell)
     m_foundObjects.append(object);
 }
 
-IterationStatus ObjectsWithBrokenIndexingFinder::operator()(JSCell* cell)
+IterationStatus ObjectsWithBrokenIndexingFinder::operator()(HeapCell* cell, HeapCell::Kind kind) const
 {
-    visit(cell);
+    if (kind == HeapCell::JSCell) {
+        // FIXME: This const_cast exists because this isn't a C++ lambda.
+        // https://bugs.webkit.org/show_bug.cgi?id=159644
+        const_cast<ObjectsWithBrokenIndexingFinder*>(this)->visit(static_cast<JSCell*>(cell));
+    }
     return IterationStatus::Continue;
 }
 

@@ -529,7 +529,7 @@ public:
     JSValue ordinaryToPrimitive(ExecState*, PreferredPrimitiveType) const;
 
     JS_EXPORT_PRIVATE bool hasInstance(ExecState*, JSValue value, JSValue hasInstanceValue);
-    bool hasInstance(ExecState*, JSValue);
+    JS_EXPORT_PRIVATE bool hasInstance(ExecState*, JSValue);
     static bool defaultHasInstance(ExecState*, JSValue, JSValue prototypeProperty);
 
     JS_EXPORT_PRIVATE static void getOwnPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
@@ -1565,6 +1565,8 @@ inline void JSObject::putDirectWithoutTransition(VM& vm, PropertyName propertyNa
         newButterfly = growOutOfLineStorage(vm, structure()->outOfLineCapacity(), structure()->suggestedNewOutOfLineStorageCapacity());
     Structure* structure = this->structure();
     PropertyOffset offset = structure->addPropertyWithoutTransition(vm, propertyName, attributes);
+    if (attributes & ReadOnly)
+        structure->setContainsReadOnlyProperties();
     bool shouldOptimize = false;
     structure->willStoreValueForNewTransition(vm, propertyName, value, shouldOptimize);
     setStructureAndButterfly(vm, structure, newButterfly);

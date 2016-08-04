@@ -47,6 +47,7 @@
 #include <WebKit/WKNotificationManager.h>
 #include <WebKit/WKNotificationPermissionRequest.h>
 #include <WebKit/WKNumber.h>
+#include <WebKit/WKOpenPanelResultListener.h>
 #include <WebKit/WKPageGroup.h>
 #include <WebKit/WKPageInjectedBundleClient.h>
 #include <WebKit/WKPagePrivate.h>
@@ -153,6 +154,12 @@ static bool runBeforeUnloadConfirmPanel(WKPageRef page, WKStringRef message, WKF
     return TestController::singleton().beforeUnloadReturnValue();
 }
 
+static void runOpenPanel(WKPageRef page, WKFrameRef frame, WKOpenPanelParametersRef parameters, WKOpenPanelResultListenerRef resultListenerRef, const void*)
+{
+    printf("OPEN FILE PANEL\n");
+    WKOpenPanelResultListenerCancel(resultListenerRef);
+}
+
 void TestController::runModal(WKPageRef page, const void* clientInfo)
 {
     PlatformWebView* view = static_cast<PlatformWebView*>(const_cast<void*>(clientInfo));
@@ -235,7 +242,7 @@ WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKPageConfiguration
         0, // didDraw
         0, // pageDidScroll
         0, // exceededDatabaseQuota
-        0, // runOpenPanel
+        runOpenPanel,
         decidePolicyForGeolocationPermissionRequest,
         0, // headerHeight
         0, // footerHeight
@@ -500,7 +507,7 @@ void TestController::createWebViewWithOptions(const TestOptions& options)
         0, // didDraw
         0, // pageDidScroll
         0, // exceededDatabaseQuota,
-        0, // runOpenPanel
+        runOpenPanel,
         decidePolicyForGeolocationPermissionRequest,
         0, // headerHeight
         0, // footerHeight
@@ -765,6 +772,7 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
 
     m_workQueueManager.clearWorkQueue();
 
+    m_rejectsProtectionSpaceAndContinueForAuthenticationChallenges = false;
     m_handlesAuthenticationChallenges = false;
     m_authenticationUsername = String();
     m_authenticationPassword = String();
@@ -784,6 +792,8 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
     m_shouldDecideNavigationPolicyAfterDelay = false;
 
     setNavigationGesturesEnabled(false);
+    
+    setIgnoresViewportScaleLimits(options.ignoresViewportScaleLimits);
 
     WKPageLoadURL(m_mainWebView->page(), blankURL());
     runUntil(m_doneResetting, shortTimeout);
@@ -937,6 +947,8 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.useMockScrollbars = parseBooleanTestHeaderValue(value);
         if (key == "needsSiteSpecificQuirks")
             testOptions.needsSiteSpecificQuirks = parseBooleanTestHeaderValue(value);
+        if (key == "ignoresViewportScaleLimits")
+            testOptions.ignoresViewportScaleLimits = parseBooleanTestHeaderValue(value);
         pairStart = pairEnd + 1;
     }
 }
@@ -1467,23 +1479,15 @@ WKRetainPtr<WKTypeRef> TestController::getInjectedBundleInitializationUserData()
 
 void TestController::networkProcessDidCrash()
 {
-#if PLATFORM(COCOA)
     pid_t pid = WKContextGetNetworkProcessIdentifier(m_context.get());
     fprintf(stderr, "#CRASHED - %s (pid %ld)\n", networkProcessName(), static_cast<long>(pid));
-#else
-    fprintf(stderr, "#CRASHED - %s\n", networkProcessName());
-#endif
     exit(1);
 }
 
 void TestController::databaseProcessDidCrash()
 {
-#if PLATFORM(COCOA)
     pid_t pid = WKContextGetDatabaseProcessIdentifier(m_context.get());
     fprintf(stderr, "#CRASHED - %s (pid %ld)\n", databaseProcessName(), static_cast<long>(pid));
-#else
-    fprintf(stderr, "#CRASHED - %s\n", databaseProcessName());
-#endif
     exit(1);
 }
 
@@ -1607,6 +1611,12 @@ void TestController::didReceiveAuthenticationChallenge(WKPageRef page, WKAuthent
         return;
     }
 
+    if (m_rejectsProtectionSpaceAndContinueForAuthenticationChallenges) {
+        m_currentInvocation->outputText("Simulating reject protection space and continue for authentication challenge\n");
+        WKAuthenticationDecisionListenerRejectProtectionSpaceAndContinue(decisionListener);
+        return;
+    }
+
     std::string host = toSTD(adoptWK(WKProtectionSpaceCopyHost(protectionSpace)).get());
     int port = WKProtectionSpaceGetPort(protectionSpace);
     String message = String::format("%s:%d - didReceiveAuthenticationChallenge - ", host.c_str(), port);
@@ -1710,12 +1720,8 @@ void TestController::processDidCrash()
     // This function can be called multiple times when crash logs are being saved on Windows, so
     // ensure we only print the crashed message once.
     if (!m_didPrintWebProcessCrashedMessage) {
-#if PLATFORM(COCOA)
         pid_t pid = WKPageGetProcessIdentifier(m_mainWebView->page());
         fprintf(stderr, "#CRASHED - %s (pid %ld)\n", webProcessName(), static_cast<long>(pid));
-#else
-        fprintf(stderr, "#CRASHED - %s\n", webProcessName());
-#endif
         fflush(stderr);
         m_didPrintWebProcessCrashedMessage = true;
     }
@@ -1746,7 +1752,7 @@ void TestController::didRemoveNavigationGestureSnapshot(WKPageRef)
 
 void TestController::simulateWebNotificationClick(uint64_t notificationID)
 {
-    m_webNotificationProvider.simulateWebNotificationClick(notificationID);
+    m_webNotificationProvider.simulateWebNotificationClick(mainWebView()->page(), notificationID);
 }
 
 void TestController::setGeolocationPermission(bool enabled)
@@ -2122,6 +2128,11 @@ void TestController::didUpdateHistoryTitle(WKStringRef title, WKURLRef URL, WKFr
 void TestController::setNavigationGesturesEnabled(bool value)
 {
     m_mainWebView->setNavigationGesturesEnabled(value);
+}
+
+void TestController::setIgnoresViewportScaleLimits(bool ignoresViewportScaleLimits)
+{
+    WKPageSetIgnoresViewportScaleLimits(m_mainWebView->page(), ignoresViewportScaleLimits);
 }
 
 #if !PLATFORM(COCOA)

@@ -47,7 +47,11 @@ class NetworkLoad : public WebCore::ResourceHandleClient
 {
     WTF_MAKE_FAST_ALLOCATED;
 public:
+#if USE(NETWORK_SESSION)
+    NetworkLoad(NetworkLoadClient&, NetworkLoadParameters&&, NetworkSession&);
+#else
     NetworkLoad(NetworkLoadClient&, NetworkLoadParameters&&);
+#endif
     ~NetworkLoad();
 
     void setDefersLoading(bool);
@@ -60,7 +64,7 @@ public:
     void continueDidReceiveResponse();
 
 #if USE(NETWORK_SESSION)
-    void convertTaskToDownload(DownloadID, const WebCore::ResourceRequest&);
+    void convertTaskToDownload(DownloadID, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&);
     void setPendingDownloadID(DownloadID);
     void setPendingDownload(PendingDownload&);
     DownloadID pendingDownloadID() { return m_task->pendingDownloadID(); }
@@ -128,6 +132,7 @@ private:
     ResponseCompletionHandler m_responseCompletionHandler;
     RedirectCompletionHandler m_redirectCompletionHandler;
 #else
+    bool m_waitingForContinueCanAuthenticateAgainstProtectionSpace { false };
     RefPtr<RemoteNetworkingContext> m_networkingContext;
 #endif
     RefPtr<WebCore::ResourceHandle> m_handle;

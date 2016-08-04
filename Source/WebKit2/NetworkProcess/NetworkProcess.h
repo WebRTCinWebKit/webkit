@@ -107,7 +107,7 @@ public:
 #endif
 
 #if USE(NETWORK_SESSION)
-    void findPendingDownloadLocation(NetworkDataTask&, ResponseCompletionHandler&&, const WebCore::ResourceRequest&);
+    void findPendingDownloadLocation(NetworkDataTask&, ResponseCompletionHandler&&, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&);
 #endif
 
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
@@ -159,7 +159,7 @@ private:
     // Message Handlers
     void didReceiveNetworkProcessMessage(IPC::Connection&, IPC::MessageDecoder&);
     void didReceiveSyncNetworkProcessMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&);
-    void initializeNetworkProcess(const NetworkProcessCreationParameters&);
+    void initializeNetworkProcess(NetworkProcessCreationParameters&&);
     void createNetworkConnectionToWebProcess();
     void destroyPrivateBrowsingSession(WebCore::SessionID);
 
@@ -197,7 +197,7 @@ private:
 #endif
 
     // Platform Helpers
-    void platformSetCacheModel(CacheModel);
+    void platformSetURLCacheSize(unsigned urlCacheMemoryCapacity, uint64_t urlCacheDiskCapacity);
 
     // Connections to WebProcesses.
     Vector<RefPtr<NetworkConnectionToWebProcess>> m_webProcessConnections;

@@ -726,7 +726,8 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const Navigati
     navigationActionData.navigationType = action->navigationType();
     navigationActionData.modifiers = action->modifiers();
     navigationActionData.mouseButton = action->mouseButton();
-    navigationActionData.isProcessingUserGesture = navigationAction.processingUserGesture();
+    navigationActionData.syntheticClickType = action->syntheticClickType();
+    navigationActionData.userGestureTokenIdentifier = WebProcess::singleton().userGestureTokenIdentifier(navigationAction.userGestureToken());
     navigationActionData.canHandleRequest = webPage->canHandleRequest(request);
     navigationActionData.shouldOpenExternalURLsPolicy = navigationAction.shouldOpenExternalURLsPolicy();
     navigationActionData.downloadAttribute = navigationAction.downloadAttribute();
@@ -792,7 +793,8 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
     navigationActionData.navigationType = action->navigationType();
     navigationActionData.modifiers = action->modifiers();
     navigationActionData.mouseButton = action->mouseButton();
-    navigationActionData.isProcessingUserGesture = navigationAction.processingUserGesture();
+    navigationActionData.syntheticClickType = action->syntheticClickType();
+    navigationActionData.userGestureTokenIdentifier = WebProcess::singleton().userGestureTokenIdentifier(navigationAction.userGestureToken());
     navigationActionData.canHandleRequest = webPage->canHandleRequest(request);
     navigationActionData.shouldOpenExternalURLsPolicy = navigationAction.shouldOpenExternalURLsPolicy();
     navigationActionData.downloadAttribute = navigationAction.downloadAttribute();
@@ -1111,6 +1113,13 @@ ResourceError WebFrameLoaderClient::interruptedForPolicyChangeError(const Resour
 {
     return WebKit::interruptedForPolicyChangeError(request);
 }
+
+#if ENABLE(CONTENT_FILTERING)
+ResourceError WebFrameLoaderClient::blockedByContentFilterError(const ResourceRequest& request)
+{
+    return WebKit::blockedByContentFilterError(request);
+}
+#endif
 
 ResourceError WebFrameLoaderClient::cannotShowMIMETypeError(const ResourceResponse& response)
 {
@@ -1629,13 +1638,22 @@ RemoteAXObjectRef WebFrameLoaderClient::accessibilityRemoteObject()
     return webPage->accessibilityRemoteObject();
 }
     
-NSCachedURLResponse* WebFrameLoaderClient::willCacheResponse(DocumentLoader*, unsigned long identifier, NSCachedURLResponse* response) const
+NSCachedURLResponse *WebFrameLoaderClient::willCacheResponse(DocumentLoader*, unsigned long identifier, NSCachedURLResponse* response) const
 {
     WebPage* webPage = m_frame->page();
     if (!webPage)
         return response;
 
     return webPage->injectedBundleResourceLoadClient().shouldCacheResponse(webPage, m_frame, identifier) ? response : nil;
+}
+
+NSDictionary *WebFrameLoaderClient::dataDetectionContext()
+{
+    WebPage* webPage = m_frame->page();
+    if (!webPage)
+        return nil;
+
+    return webPage->dataDetectionContext();
 }
 
 #endif // PLATFORM(COCOA)

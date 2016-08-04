@@ -25,7 +25,6 @@
 
 #include "ArrayPrototype.h"
 #include "ButterflyInlines.h"
-#include "CachedCall.h"
 #include "CodeBlock.h"
 #include "CopiedSpace.h"
 #include "Error.h"
@@ -442,7 +441,7 @@ bool JSArray::setLength(ExecState* exec, unsigned newLength, bool throwException
         if (newLength >= MIN_SPARSE_ARRAY_INDEX) {
             return setLengthWithArrayStorage(
                 exec, newLength, throwException,
-                convertContiguousToArrayStorage(exec->vm()));
+                ensureArrayStorage(exec->vm()));
         }
         createInitialUndecided(exec->vm(), newLength);
         return true;

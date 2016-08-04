@@ -94,6 +94,7 @@ struct( domIterable => {
     keyType => '$',   # Key type for map iterables
     valueType => '$', # Value type for map or set iterables
     functions => '@', # Iterable functions (entries, keys, values, [Symbol.Iterator], forEach)
+    extendedAttributes => '$', # Extended attributes
 });
 
 # Used to represent serializable interface
@@ -1411,6 +1412,7 @@ sub parseOptionalIterableInterface
     push(@{$forEachFunction->parameters}, ($forEachArgument));
 
     my $newDataNode = domIterable->new();
+    $newDataNode->extendedAttributes($extendedAttributeList);
     push(@{$newDataNode->functions}, $symbolIteratorFunction);
     push(@{$newDataNode->functions}, $entriesFunction);
     push(@{$newDataNode->functions}, $keysFunction);
@@ -2320,7 +2322,6 @@ sub applyExtendedAttributeList
             $constructor->signature->name("Constructor");
             $constructor->signature->extendedAttributes($extendedAttributeList);
             $constructor->parameters($param);
-            $constructor->{overloadedIndex} = $index++;
             push(@{$interface->constructors}, $constructor);
         }
         delete $extendedAttributeList->{"Constructors"};
@@ -2346,7 +2347,6 @@ sub applyExtendedAttributeList
             $customConstructor->signature->name("CustomConstructor");
             $customConstructor->signature->extendedAttributes($extendedAttributeList);
             $customConstructor->parameters($param);
-            $customConstructor->{overloadedIndex} = $index++;
             push(@{$interface->customConstructors}, $customConstructor);
         }
         delete $extendedAttributeList->{"CustomConstructors"};

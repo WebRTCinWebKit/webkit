@@ -41,6 +41,7 @@ static const bool verbose = false;
 
 InPlaceAbstractState::InPlaceAbstractState(Graph& graph)
     : m_graph(graph)
+    , m_abstractValues(graph.abstractValuesCache())
     , m_variables(m_graph.m_codeBlock->numParameters(), graph.m_localVars)
     , m_block(0)
 {
@@ -55,6 +56,11 @@ void InPlaceAbstractState::beginBasicBlock(BasicBlock* basicBlock)
     ASSERT(basicBlock->variablesAtHead.numberOfLocals() == basicBlock->valuesAtHead.numberOfLocals());
     ASSERT(basicBlock->variablesAtTail.numberOfLocals() == basicBlock->valuesAtTail.numberOfLocals());
     ASSERT(basicBlock->variablesAtHead.numberOfLocals() == basicBlock->variablesAtTail.numberOfLocals());
+
+    // Certain phases insert nodes in a block after running through it.
+    // We cannot reserve the space for AbstractValues when initializing AbstractState because the number of values
+    // can increase as we execute. Instead, we increase the size as needed before processing each block.
+    m_abstractValues.resize(m_graph.maxNodeCount());
     
     for (size_t i = 0; i < basicBlock->size(); i++)
         forNode(basicBlock->at(i)).clear();
@@ -74,17 +80,14 @@ void InPlaceAbstractState::beginBasicBlock(BasicBlock* basicBlock)
     m_structureClobberState = basicBlock->cfaStructureClobberStateAtHead;
 }
 
-static void setLiveValues(HashMap<Node*, AbstractValue>& values, HashSet<Node*>& live)
+static void setLiveValues(HashMap<Node*, AbstractValue>& values, const Vector<Node*>& liveNodes)
 {
     values.clear();
-    
-    HashSet<Node*>::iterator iter = live.begin();
-    HashSet<Node*>::iterator end = live.end();
-    for (; iter != end; ++iter)
-        values.add(*iter, AbstractValue());
+    for (Node* node : liveNodes)
+        values.add(node, AbstractValue());
 }
 
-static void setLiveValues(Vector<BasicBlock::SSAData::NodeAbstractValuePair>& values, HashSet<Node*>& live)
+static void setLiveValues(Vector<BasicBlock::SSAData::NodeAbstractValuePair>& values, const Vector<Node*>& live)
 {
     values.resize(0);
     values.reserveCapacity(live.size());
@@ -203,10 +206,7 @@ bool InPlaceAbstractState::endBasicBlock()
         for (size_t i = 0; i < block->valuesAtTail.size(); ++i)
             changed |= block->valuesAtTail[i].merge(m_variables[i]);
 
-        HashSet<Node*>::iterator iter = block->ssa->liveAtTail.begin();
-        HashSet<Node*>::iterator end = block->ssa->liveAtTail.end();
-        for (; iter != end; ++iter) {
-            Node* node = *iter;
+        for (Node* node : block->ssa->liveAtTail) {
             changed |= block->ssa->valuesAtTail.find(node)->value.merge(forNode(node));
         }
         break;

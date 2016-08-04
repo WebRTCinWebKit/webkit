@@ -253,7 +253,7 @@ void Connection::addWorkQueueMessageReceiver(StringReference messageReceiverName
 {
     ASSERT(RunLoop::isMain());
 
-    m_connectionQueue->dispatch([protectedThis = Ref<Connection>(*this), messageReceiverName = WTFMove(messageReceiverName), workQueue, workQueueMessageReceiver]() mutable {
+    m_connectionQueue->dispatch([protectedThis = makeRef(*this), messageReceiverName = WTFMove(messageReceiverName), workQueue, workQueueMessageReceiver]() mutable {
         ASSERT(!protectedThis->m_workQueueMessageReceivers.contains(messageReceiverName));
 
         protectedThis->m_workQueueMessageReceivers.add(messageReceiverName, std::make_pair(workQueue, workQueueMessageReceiver));
@@ -264,7 +264,7 @@ void Connection::removeWorkQueueMessageReceiver(StringReference messageReceiverN
 {
     ASSERT(RunLoop::isMain());
 
-    m_connectionQueue->dispatch([protectedThis = Ref<Connection>(*this), messageReceiverName = WTFMove(messageReceiverName)]() mutable {
+    m_connectionQueue->dispatch([protectedThis = makeRef(*this), messageReceiverName = WTFMove(messageReceiverName)]() mutable {
         ASSERT(protectedThis->m_workQueueMessageReceivers.contains(messageReceiverName));
         protectedThis->m_workQueueMessageReceivers.remove(messageReceiverName);
     });
@@ -317,7 +317,7 @@ void Connection::invalidate()
     
     m_client = nullptr;
 
-    m_connectionQueue->dispatch([protectedThis = Ref<Connection>(*this)]() mutable {
+    m_connectionQueue->dispatch([protectedThis = makeRef(*this)]() mutable {
         protectedThis->platformInvalidate();
     });
 }
@@ -374,7 +374,7 @@ bool Connection::sendMessage(std::unique_ptr<MessageEncoder> encoder, unsigned m
     }
     
     // FIXME: We should add a boolean flag so we don't call this when work has already been scheduled.
-    m_connectionQueue->dispatch([protectedThis = Ref<Connection>(*this)]() mutable {
+    m_connectionQueue->dispatch([protectedThis = makeRef(*this)]() mutable {
         protectedThis->sendOutgoingMessages();
     });
     return true;
@@ -385,9 +385,16 @@ bool Connection::sendSyncReply(std::unique_ptr<MessageEncoder> encoder)
     return sendMessage(WTFMove(encoder));
 }
 
+std::chrono::milliseconds Connection::timeoutRespectingIgnoreTimeoutsForTesting(std::chrono::milliseconds timeout) const
+{
+    return m_ignoreTimeoutsForTesting ? std::chrono::milliseconds::max() : timeout;
+}
+
 std::unique_ptr<MessageDecoder> Connection::waitForMessage(StringReference messageReceiverName, StringReference messageName, uint64_t destinationID, std::chrono::milliseconds timeout, unsigned waitForMessageFlags)
 {
     ASSERT(RunLoop::isMain());
+
+    timeout = timeoutRespectingIgnoreTimeoutsForTesting(timeout);
 
     bool hasIncomingSynchronousMessage = false;
 
@@ -532,6 +539,7 @@ std::unique_ptr<MessageDecoder> Connection::sendSyncMessageFromSecondaryThread(u
 
     sendMessage(WTFMove(encoder), 0, true);
 
+    timeout = timeoutRespectingIgnoreTimeoutsForTesting(timeout);
     pendingReply.semaphore.wait(currentTime() + (timeout.count() / 1000.0));
 
     // Finally, pop the pending sync reply information.
@@ -546,6 +554,7 @@ std::unique_ptr<MessageDecoder> Connection::sendSyncMessageFromSecondaryThread(u
 
 std::unique_ptr<MessageDecoder> Connection::waitForSyncReply(uint64_t syncRequestID, std::chrono::milliseconds timeout, unsigned syncSendFlags)
 {
+    timeout = timeoutRespectingIgnoreTimeoutsForTesting(timeout);
     double absoluteTime = currentTime() + (timeout.count() / 1000.0);
 
     willSendSyncMessage(syncSendFlags);
@@ -647,7 +656,7 @@ void Connection::processIncomingMessage(std::unique_ptr<MessageDecoder> message)
         StringReference messageNameReference = message->messageName();
         String messageName(messageNameReference.isEmpty() ? "<unknown message>" : String(messageNameReference.data(), messageNameReference.size()));
 
-        RunLoop::main().dispatch([protectedThis = Ref<Connection>(*this), messageReceiverName = WTFMove(messageReceiverName), messageName = WTFMove(messageName)]() mutable {
+        RunLoop::main().dispatch([protectedThis = makeRef(*this), messageReceiverName = WTFMove(messageReceiverName), messageName = WTFMove(messageName)]() mutable {
             protectedThis->dispatchDidReceiveInvalidMessage(messageReceiverName.utf8(), messageName.utf8());
         });
         return;
@@ -655,7 +664,7 @@ void Connection::processIncomingMessage(std::unique_ptr<MessageDecoder> message)
 
     auto it = m_workQueueMessageReceivers.find(message->messageReceiverName());
     if (it != m_workQueueMessageReceivers.end()) {
-        it->value.first->dispatch([protectedThis = Ref<Connection>(*this), workQueueMessageReceiver = it->value.second, decoder = WTFMove(message)]() mutable {
+        it->value.first->dispatch([protectedThis = makeRef(*this), workQueueMessageReceiver = it->value.second, decoder = WTFMove(message)]() mutable {
             protectedThis->dispatchWorkQueueMessageReceiverMessage(*workQueueMessageReceiver, *decoder);
         });
         return;
@@ -739,7 +748,7 @@ bool Connection::hasIncomingSyncMessage()
 
 void Connection::postConnectionDidCloseOnConnectionWorkQueue()
 {
-    m_connectionQueue->dispatch([protectedThis = Ref<Connection>(*this)]() mutable {
+    m_connectionQueue->dispatch([protectedThis = makeRef(*this)]() mutable {
         protectedThis->connectionDidClose();
     });
 }
@@ -772,7 +781,7 @@ void Connection::connectionDidClose()
     if (m_didCloseOnConnectionWorkQueueCallback)
         m_didCloseOnConnectionWorkQueueCallback(this);
 
-    RunLoop::main().dispatch([protectedThis = Ref<Connection>(*this)]() mutable {
+    RunLoop::main().dispatch([protectedThis = makeRef(*this)]() mutable {
         // If the connection has been explicitly invalidated before dispatchConnectionDidClose was called,
         // then the client will be null here.
         if (!protectedThis->m_client)
@@ -877,7 +886,7 @@ void Connection::enqueueIncomingMessage(std::unique_ptr<MessageDecoder> incoming
         m_incomingMessages.append(WTFMove(incomingMessage));
     }
 
-    RunLoop::main().dispatch([protectedThis = Ref<Connection>(*this)]() mutable {
+    RunLoop::main().dispatch([protectedThis = makeRef(*this)]() mutable {
         protectedThis->dispatchOneMessage();
     });
 }

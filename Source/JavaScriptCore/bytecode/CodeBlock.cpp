@@ -30,6 +30,7 @@
 #include "config.h"
 #include "CodeBlock.h"
 
+#include "ArithProfile.h"
 #include "BasicBlockLocation.h"
 #include "BytecodeGenerator.h"
 #include "BytecodeUseDef.h"
@@ -45,6 +46,7 @@
 #include "InlineCallFrame.h"
 #include "Interpreter.h"
 #include "JIT.h"
+#include "JITMathIC.h"
 #include "JSCJSValue.h"
 #include "JSFunction.h"
 #include "JSLexicalEnvironment.h"
@@ -529,7 +531,8 @@ void CodeBlock::printCallOp(PrintStream& out, ExecState* exec, int location, con
     int argCount = (++it)->u.operand;
     int registerOffset = (++it)->u.operand;
     printLocationAndOp(out, exec, location, it, op);
-    out.printf("%s, %s, %d, %d", registerName(dst).data(), registerName(func).data(), argCount, registerOffset);
+    out.print(registerName(dst), ", ", registerName(func), ", ", argCount, ", ", registerOffset);
+    out.print(" (this at ", virtualRegisterForArgument(0, -registerOffset), ")");
     if (cacheDumpMode == DumpCaches) {
         LLIntCallLinkInfo* callLinkInfo = it[1].u.callLinkInfo;
         if (callLinkInfo->lastSeenCallee) {
@@ -609,6 +612,7 @@ void CodeBlock::dumpBytecode(PrintStream& out)
         static_cast<unsigned long>(instructions().size()),
         static_cast<unsigned long>(instructions().size() * sizeof(Instruction)),
         m_numParameters, m_numCalleeLocals, m_numVars);
+    out.print("; scope at ", scopeRegister());
     out.printf("\n");
     
     StubInfoMap stubInfos;
@@ -767,7 +771,7 @@ void CodeBlock::dumpRareCaseProfile(PrintStream& out, const char* name, RareCase
     out.print(name, profile->m_counter);
 }
 
-void CodeBlock::dumpResultProfile(PrintStream& out, ResultProfile* profile, bool& hasPrintedProfiling)
+void CodeBlock::dumpArithProfile(PrintStream& out, ArithProfile* profile, bool& hasPrintedProfiling)
 {
     if (!profile)
         return;
@@ -992,6 +996,7 @@ void CodeBlock::dumpBytecode(
         }
         case op_to_number: {
             printUnaryOp(out, exec, location, it, "to_number");
+            dumpValueProfiling(out, it, hasPrintedProfiling);
             break;
         }
         case op_to_string: {
@@ -1019,6 +1024,10 @@ void CodeBlock::dumpBytecode(
         }
         case op_mod: {
             printBinaryOp(out, exec, location, it, "mod");
+            break;
+        }
+        case op_pow: {
+            printBinaryOp(out, exec, location, it, "pow");
             break;
         }
         case op_sub: {
@@ -1310,6 +1319,7 @@ void CodeBlock::dumpBytecode(
             int offset = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "jneq_ptr");
             out.printf("%s, %d (%p), %d(->%d)", registerName(r0).data(), pointer, m_globalObject->actualPointerFor(pointer), offset, location + offset);
+            ++it;
             break;
         }
         case op_jless: {
@@ -1665,7 +1675,9 @@ void CodeBlock::dumpBytecode(
             int generator = (++it)->u.operand;
             unsigned liveCalleeLocalsIndex = (++it)->u.unsignedValue;
             int offset = (++it)->u.operand;
-            const FastBitVector& liveness = m_rareData->m_liveCalleeLocalsAtYield[liveCalleeLocalsIndex];
+            FastBitVector liveness;
+            if (liveCalleeLocalsIndex < m_rareData->m_liveCalleeLocalsAtYield.size())
+                liveness = m_rareData->m_liveCalleeLocalsAtYield[liveCalleeLocalsIndex];
             printLocationAndOp(out, exec, location, it, "save");
             out.printf("%s, ", registerName(generator).data());
             liveness.dump(out);
@@ -1675,7 +1687,9 @@ void CodeBlock::dumpBytecode(
         case op_resume: {
             int generator = (++it)->u.operand;
             unsigned liveCalleeLocalsIndex = (++it)->u.unsignedValue;
-            const FastBitVector& liveness = m_rareData->m_liveCalleeLocalsAtYield[liveCalleeLocalsIndex];
+            FastBitVector liveness;
+            if (liveCalleeLocalsIndex < m_rareData->m_liveCalleeLocalsAtYield.size())
+                liveness = m_rareData->m_liveCalleeLocalsAtYield[liveCalleeLocalsIndex];
             printLocationAndOp(out, exec, location, it, "resume");
             out.printf("%s, ", registerName(generator).data());
             liveness.dump(out);
@@ -1761,8 +1775,7 @@ void CodeBlock::dumpBytecode(
 
     dumpRareCaseProfile(out, "rare case: ", rareCaseProfileForBytecodeOffset(location), hasPrintedProfiling);
     {
-        ConcurrentJITLocker locker(m_lock);
-        dumpResultProfile(out, resultProfileForBytecodeOffset(locker, location), hasPrintedProfiling);
+        dumpArithProfile(out, arithProfileForBytecodeOffset(location), hasPrintedProfiling);
     }
     
 #if ENABLE(DFG_JIT)
@@ -2093,7 +2106,8 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
         }
         case op_get_direct_pname:
         case op_get_by_id:
-        case op_get_from_arguments: {
+        case op_get_from_arguments:
+        case op_to_number: {
             ValueProfile* profile = &m_valueProfiles[pc[opLength - 1].u.operand];
             ASSERT(profile->m_bytecodeOffset == -1);
             profile->m_bytecodeOffset = i;
@@ -2994,6 +3008,21 @@ StructureStubInfo* CodeBlock::addStubInfo(AccessType accessType)
     return m_stubInfos.add(accessType);
 }
 
+JITAddIC* CodeBlock::addJITAddIC()
+{
+    return m_addICs.add();
+}
+
+JITMulIC* CodeBlock::addJITMulIC()
+{
+    return m_mulICs.add();
+}
+
+JITSubIC* CodeBlock::addJITSubIC()
+{
+    return m_subICs.add();
+}
+
 StructureStubInfo* CodeBlock::findStubInfo(CodeOrigin codeOrigin)
 {
     for (StructureStubInfo* stubInfo : m_stubInfos) {
@@ -3040,11 +3069,6 @@ void CodeBlock::resetJITData()
     // We can clear this because the DFG's queries to these data structures are guarded by whether
     // there is JIT code.
     m_rareCaseProfiles.clear();
-    
-    // We can clear these because the DFG only accesses members of this data structure when
-    // holding the lock or after querying whether we have JIT code.
-    m_resultProfiles.clear();
-    m_bytecodeOffsetToResultProfileIndexMap = nullptr;
 }
 #endif
 
@@ -3082,6 +3106,11 @@ void CodeBlock::stronglyVisitStrongReferences(SlotVisitor& visitor)
         visitor.append(&m_functionDecls[i]);
     for (unsigned i = 0; i < m_objectAllocationProfiles.size(); ++i)
         m_objectAllocationProfiles[i].visitAggregate(visitor);
+
+#if ENABLE(JIT)
+    for (ByValInfo* byValInfo : m_byValInfos)
+        visitor.append(&byValInfo->cachedSymbol);
+#endif
 
 #if ENABLE(DFG_JIT)
     if (JITCode::isOptimizingJIT(jitType()))
@@ -3274,7 +3303,6 @@ void CodeBlock::shrinkToFit(ShrinkMode shrinkMode)
     ConcurrentJITLocker locker(m_lock);
 
     m_rareCaseProfiles.shrinkToFit();
-    m_resultProfiles.shrinkToFit();
     
     if (shrinkMode == EarlyShrink) {
         m_constantRegisters.shrinkToFit();
@@ -3441,7 +3469,7 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
         // This accomplishes (1), and does its own book-keeping about whether it has already happened.
         if (!jitCode()->dfgCommon()->invalidate()) {
             // We've already been invalidated.
-            RELEASE_ASSERT(this != replacement());
+            RELEASE_ASSERT(this != replacement() || (m_vm->heap.isCollecting() && !Heap::isMarked(ownerScriptExecutable())));
             return;
         }
     }
@@ -3470,6 +3498,11 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
     if (reason != Profiler::JettisonDueToOldAge)
         tallyFrequentExitSites();
 #endif // ENABLE(DFG_JIT)
+
+    // Jettison can happen during GC. We don't want to install code to a dead executable
+    // because that would add a dead object to the remembered set.
+    if (m_vm->heap.isCollecting() && !Heap::isMarked(ownerScriptExecutable()))
+        return;
 
     // This accomplishes (2).
     ownerScriptExecutable()->installCode(
@@ -4145,11 +4178,6 @@ void CodeBlock::dumpValueProfiles()
         RareCaseProfile* profile = rareCaseProfile(i);
         dataLogF("   bc = %d: %u\n", profile->m_bytecodeOffset, profile->m_counter);
     }
-    dataLog("ResultProfile for ", *this, ":\n");
-    for (unsigned i = 0; i < numberOfResultProfiles(); ++i) {
-        const ResultProfile& profile = *resultProfile(i);
-        dataLog("   bc = ", profile.bytecodeOffset(), ": ", profile, "\n");
-    }
 }
 #endif // ENABLE(VERBOSE_VALUE_PROFILE)
 
@@ -4352,56 +4380,55 @@ unsigned CodeBlock::rareCaseProfileCountForBytecodeOffset(int bytecodeOffset)
     return 0;
 }
 
-ResultProfile* CodeBlock::resultProfileForBytecodeOffset(const ConcurrentJITLocker&, int bytecodeOffset)
+ArithProfile* CodeBlock::arithProfileForBytecodeOffset(int bytecodeOffset)
 {
-    if (!m_bytecodeOffsetToResultProfileIndexMap)
+    auto opcodeID = vm()->interpreter->getOpcodeID(instructions()[bytecodeOffset].u.opcode);
+    switch (opcodeID) {
+    case op_bitor:
+    case op_bitand:
+    case op_bitxor:
+    case op_add:
+    case op_mul:
+    case op_sub:
+    case op_div:
+        break;
+    default:
         return nullptr;
-    auto iterator = m_bytecodeOffsetToResultProfileIndexMap->find(bytecodeOffset);
-    if (iterator == m_bytecodeOffsetToResultProfileIndexMap->end())
-        return nullptr;
-    return &m_resultProfiles[iterator->value];
+    }
+
+    return &arithProfileForPC(instructions().begin() + bytecodeOffset);
 }
 
-unsigned CodeBlock::specialFastCaseProfileCountForBytecodeOffset(int bytecodeOffset)
+ArithProfile& CodeBlock::arithProfileForPC(Instruction* pc)
 {
-    ConcurrentJITLocker locker(m_lock);
-    return specialFastCaseProfileCountForBytecodeOffset(locker, bytecodeOffset);
-}
+    if (!ASSERT_DISABLED) {
+        ASSERT(pc >= instructions().begin() && pc < instructions().end());
+        auto opcodeID = vm()->interpreter->getOpcodeID(pc[0].u.opcode);
+        switch (opcodeID) {
+        case op_bitor:
+        case op_bitand:
+        case op_bitxor:
+        case op_add:
+        case op_mul:
+        case op_sub:
+        case op_div:
+            break;
+        default:
+            ASSERT_NOT_REACHED();
+        }
+    }
 
-unsigned CodeBlock::specialFastCaseProfileCountForBytecodeOffset(const ConcurrentJITLocker& locker, int bytecodeOffset)
-{
-    ResultProfile* profile = resultProfileForBytecodeOffset(locker, bytecodeOffset);
-    if (!profile)
-        return 0;
-    return profile->specialFastPathCount();
+    return *bitwise_cast<ArithProfile*>(&pc[4].u.operand);
 }
 
 bool CodeBlock::couldTakeSpecialFastCase(int bytecodeOffset)
 {
     if (!hasBaselineJITProfiling())
         return false;
-    unsigned specialFastCaseCount = specialFastCaseProfileCountForBytecodeOffset(bytecodeOffset);
-    return specialFastCaseCount >= Options::couldTakeSlowCaseMinimumCount();
-}
-
-ResultProfile* CodeBlock::ensureResultProfile(int bytecodeOffset)
-{
-    ConcurrentJITLocker locker(m_lock);
-    return ensureResultProfile(locker, bytecodeOffset);
-}
-
-ResultProfile* CodeBlock::ensureResultProfile(const ConcurrentJITLocker& locker, int bytecodeOffset)
-{
-    ResultProfile* profile = resultProfileForBytecodeOffset(locker, bytecodeOffset);
-    if (!profile) {
-        m_resultProfiles.append(ResultProfile(bytecodeOffset));
-        profile = &m_resultProfiles.last();
-        ASSERT(&m_resultProfiles.last() == &m_resultProfiles[m_resultProfiles.size() - 1]);
-        if (!m_bytecodeOffsetToResultProfileIndexMap)
-            m_bytecodeOffsetToResultProfileIndexMap = std::make_unique<BytecodeOffsetToResultProfileIndexMap>();
-        m_bytecodeOffsetToResultProfileIndexMap->add(bytecodeOffset, m_resultProfiles.size() - 1);
-    }
-    return profile;
+    ArithProfile* profile = arithProfileForBytecodeOffset(bytecodeOffset);
+    if (!profile)
+        return false;
+    return profile->tookSpecialFastPath();
 }
 
 #if ENABLE(JIT)
@@ -4554,6 +4581,52 @@ void CodeBlock::jitAfterWarmUp()
 void CodeBlock::jitSoon()
 {
     m_llintExecuteCounter.setNewThreshold(thresholdForJIT(Options::thresholdForJITSoon()), this);
+}
+
+void CodeBlock::dumpMathICStats()
+{
+#if ENABLE(MATH_IC_STATS)
+    double numAdds = 0.0;
+    double totalAddSize = 0.0;
+    double numMuls = 0.0;
+    double totalMulSize = 0.0;
+    double numSubs = 0.0;
+    double totalSubSize = 0.0;
+
+    auto countICs = [&] (CodeBlock* codeBlock) {
+        for (JITAddIC* addIC : codeBlock->m_addICs) {
+            numAdds++;
+            totalAddSize += addIC->codeSize();
+        }
+
+        for (JITMulIC* mulIC : codeBlock->m_mulICs) {
+            numMuls++;
+            totalMulSize += mulIC->codeSize();
+        }
+
+        for (JITSubIC* subIC : codeBlock->m_subICs) {
+            numSubs++;
+            totalSubSize += subIC->codeSize();
+        }
+
+        return false;
+    };
+    heap()->forEachCodeBlock(countICs);
+
+    dataLog("Num Adds: ", numAdds, "\n");
+    dataLog("Total Add size in bytes: ", totalAddSize, "\n");
+    dataLog("Average Add size: ", totalAddSize / numAdds, "\n");
+    dataLog("\n");
+    dataLog("Num Muls: ", numMuls, "\n");
+    dataLog("Total Mul size in bytes: ", totalMulSize, "\n");
+    dataLog("Average Mul size: ", totalMulSize / numMuls, "\n");
+    dataLog("\n");
+    dataLog("Num Subs: ", numSubs, "\n");
+    dataLog("Total Sub size in bytes: ", totalSubSize, "\n");
+    dataLog("Average Sub size: ", totalSubSize / numSubs, "\n");
+
+    dataLog("-----------------------\n");
+#endif
 }
 
 } // namespace JSC

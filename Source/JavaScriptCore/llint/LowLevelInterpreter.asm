@@ -252,6 +252,12 @@ const IsInvalidated = 2
 # ShadowChicken data
 const ShadowChickenTailMarker = 0x7a11
 
+# ArithProfile data
+const ArithProfileIntInt = 0x120000
+const ArithProfileNumberInt = 0x220000
+const ArithProfileNumberNumber = 0x240000
+const ArithProfileIntNumber = 0x140000
+
 # Some register conventions.
 if JSVALUE64
     # - Use a pair of registers to represent the PC: one register for the
@@ -286,6 +292,10 @@ if JSVALUE64
         loadp offset * 8[PB, PC, 8], dest
     end
     
+    macro storeisToInstruction(value, offset)
+        storei value, offset * 8[PB, PC, 8]
+    end
+
     macro storepToInstruction(value, offset)
         storep value, offset * 8[PB, PC, 8]
     end
@@ -298,6 +308,10 @@ else
     
     macro loadpFromInstruction(offset, dest)
         loadp offset * 4[PC], dest
+    end
+
+    macro storeisToInstruction(value, offset)
+        storei value, offset * 4[PC]
     end
 end
 
@@ -951,7 +965,11 @@ macro prologue(codeBlockGetter, codeBlockSetter, osrSlowPath, traceSlowPath)
     getFrameRegisterSizeForCodeBlock(t1, t0)
     subp cfr, t0, t0
     loadp CodeBlock::m_vm[t1], t2
-    bpbeq VM::m_jsStackLimit[t2], t0, .stackHeightOK
+    if C_LOOP
+        bpbeq VM::m_cloopStackLimit[t2], t0, .stackHeightOK
+    else
+        bpbeq VM::m_softStackLimit[t2], t0, .stackHeightOK
+    end
 
     # Stack height check failed - need to call a slow_path.
     # Set up temporary stack pointer for call including callee saves
@@ -1313,6 +1331,12 @@ _llint_op_greatereq:
 _llint_op_mod:
     traceExecution()
     callOpcodeSlowPath(_slow_path_mod)
+    dispatch(4)
+
+
+_llint_op_pow:
+    traceExecution()
+    callOpcodeSlowPath(_slow_path_pow)
     dispatch(4)
 
 

@@ -38,6 +38,7 @@
 #include "WebToDatabaseProcessConnection.h"
 #include <WebCore/IDBConnectionToServer.h>
 #include <WebCore/IDBCursorInfo.h>
+#include <WebCore/IDBDatabaseException.h>
 #include <WebCore/IDBError.h>
 #include <WebCore/IDBIndexInfo.h>
 #include <WebCore/IDBKeyRangeData.h>
@@ -74,7 +75,7 @@ WebIDBConnectionToServer::~WebIDBConnectionToServer()
 
 IPC::Connection* WebIDBConnectionToServer::messageSenderConnection()
 {
-    return WebProcess::singleton().webToDatabaseProcessConnection()->connection();
+    return &WebProcess::singleton().webToDatabaseProcessConnection()->connection();
 }
 
 IDBClient::IDBConnectionToServer& WebIDBConnectionToServer::coreConnectionToServer()
@@ -137,9 +138,9 @@ void WebIDBConnectionToServer::putOrAdd(const IDBRequestData& requestData, const
     send(Messages::WebIDBConnectionToClient::PutOrAdd(requestData, keyData, value, static_cast<unsigned>(mode)));
 }
 
-void WebIDBConnectionToServer::getRecord(const IDBRequestData& requestData, const IDBKeyRangeData& range)
+void WebIDBConnectionToServer::getRecord(const IDBRequestData& requestData, const IDBGetRecordData& getRecordData)
 {
-    send(Messages::WebIDBConnectionToClient::GetRecord(requestData, range));
+    send(Messages::WebIDBConnectionToClient::GetRecord(requestData, getRecordData));
 }
 
 void WebIDBConnectionToServer::getCount(const IDBRequestData& requestData, const IDBKeyRangeData& range)
@@ -257,10 +258,12 @@ static void preregisterSandboxExtensionsIfNecessary(const WebIDBResult& result)
 
     const auto& filePaths = result.resultData().getResult().value().blobFilePaths();
 
+#if ENABLE(SANDBOX_EXTENSIONS)
     ASSERT(filePaths.size() == result.handles().size());
+#endif
 
     if (!filePaths.isEmpty())
-        WebProcess::singleton().networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::PreregisterSandboxExtensionsForOptionallyFileBackedBlob(filePaths, result.handles()), 0);
+        WebProcess::singleton().networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::PreregisterSandboxExtensionsForOptionallyFileBackedBlob(filePaths, result.handles()), 0);
 }
 
 void WebIDBConnectionToServer::didGetRecord(const WebIDBResult& result)
@@ -314,6 +317,11 @@ void WebIDBConnectionToServer::notifyOpenDBRequestBlocked(const IDBResourceIdent
 void WebIDBConnectionToServer::didGetAllDatabaseNames(uint64_t callbackID, const Vector<String>& databaseNames)
 {
     m_connectionToServer->didGetAllDatabaseNames(callbackID, databaseNames);
+}
+
+void WebIDBConnectionToServer::connectionToServerLost()
+{
+    m_connectionToServer->connectionToServerLost({ WebCore::IDBDatabaseException::UnknownError, ASCIILiteral("An internal error was encountered in the Indexed Database server") });
 }
 
 } // namespace WebKit

@@ -100,7 +100,6 @@
 #import "WebScriptDebugDelegate.h"
 #import "WebScriptWorldInternal.h"
 #import "WebSelectionServiceController.h"
-#import "WebSocketProvider.h"
 #import "WebStorageManagerInternal.h"
 #import "WebStorageNamespaceProvider.h"
 #import "WebSystemInterface.h"
@@ -152,7 +151,7 @@
 #import <WebCore/JSElement.h>
 #import <WebCore/JSNodeList.h>
 #import <WebCore/JSNotification.h>
-#import <WebCore/Logging.h>
+#import <WebCore/LogInitialization.h>
 #import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/MainFrame.h>
 #import <WebCore/MemoryCache.h>
@@ -179,6 +178,7 @@
 #import <WebCore/SecurityOrigin.h>
 #import <WebCore/SecurityPolicy.h>
 #import <WebCore/Settings.h>
+#import <WebCore/SocketProvider.h>
 #import <WebCore/StyleProperties.h>
 #import <WebCore/TextResourceDecoder.h>
 #import <WebCore/ThreadCheck.h>
@@ -869,7 +869,7 @@ static bool shouldAllowPictureInPictureMediaPlayback()
 static bool shouldAllowContentSecurityPolicySourceStarToMatchAnyProtocol()
 {
 #if PLATFORM(IOS)
-    static bool shouldAllowContentSecurityPolicySourceStarToMatchAnyProtocol = (IOSApplication::isEcobee() || IOSApplication::isQuora() || IOSApplication::isXtraMath()) && !WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_CONTENT_SECURITY_POLICY_SOURCE_STAR_PROTOCOL_RESTRICTION);
+    static bool shouldAllowContentSecurityPolicySourceStarToMatchAnyProtocol = !WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_CONTENT_SECURITY_POLICY_SOURCE_STAR_PROTOCOL_RESTRICTION);
     return shouldAllowContentSecurityPolicySourceStarToMatchAnyProtocol;
 #else
     return false;
@@ -891,7 +891,7 @@ static bool shouldConvertInvalidURLsToBlank()
 #if PLATFORM(IOS)
     static bool shouldConvertInvalidURLsToBlank = dyld_get_program_sdk_version() >= DYLD_IOS_VERSION_10_0;
 #elif PLATFORM(MAC)
-    static bool shouldConvertInvalidURLsToBlank = dyld_get_program_sdk_version() >= 0x000A0C00;
+    static bool shouldConvertInvalidURLsToBlank = dyld_get_program_sdk_version() >= DYLD_MACOSX_VERSION_10_12;
 #else
     static bool shouldConvertInvalidURLsToBlank = true;
 #endif
@@ -958,8 +958,8 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 #endif
     if (!didOneTimeInitialization) {
 #if !LOG_DISABLED
-        WebKitInitializeLoggingChannelsIfNecessary();
-        WebCore::initializeLoggingChannelsIfNecessary();
+        WebKitInitializeLogChannelsIfNecessary();
+        WebCore::initializeLogChannelsIfNecessary();
 #endif // !LOG_DISABLED
 
         // Initialize our platform strategies first before invoking the rest
@@ -996,7 +996,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     _private->group = WebViewGroup::getOrCreate(groupName, _private->preferences._localStorageDatabasePath);
     _private->group->addWebView(self);
 
-    PageConfiguration pageConfiguration(makeUniqueRef<WebEditorClient>(self), makeUniqueRef<WebSocketProvider>());
+    PageConfiguration pageConfiguration(makeUniqueRef<WebEditorClient>(self), SocketProvider::create());
 #if !PLATFORM(IOS)
     pageConfiguration.chromeClient = new WebChromeClient(self);
     pageConfiguration.contextMenuClient = new WebContextMenuClient(self);
@@ -1011,10 +1011,6 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 
 #if ENABLE(APPLE_PAY)
     pageConfiguration.paymentCoordinatorClient = new WebPaymentCoordinatorClient();
-#endif
-
-#if USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WebViewInitialization.mm>
 #endif
 
     pageConfiguration.alternativeTextClient = new WebAlternativeTextClient(self);
@@ -1250,14 +1246,14 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     _private->group = WebViewGroup::getOrCreate(groupName, _private->preferences._localStorageDatabasePath);
     _private->group->addWebView(self);
 
-    PageConfiguration pageConfiguration(makeUniqueRef<WebEditorClient>(self), makeUniqueRef<WebSocketProvider>());
+    PageConfiguration pageConfiguration(makeUniqueRef<WebEditorClient>(self), SocketProvider::create());
     pageConfiguration.chromeClient = new WebChromeClientIOS(self);
 #if ENABLE(DRAG_SUPPORT)
     pageConfiguration.dragClient = new WebDragClient(self);
 #endif
 
-#if USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WebViewInitialization.mm>
+#if ENABLE(APPLE_PAY)
+    pageConfiguration.paymentCoordinatorClient = new WebPaymentCoordinatorClient();
 #endif
 
     pageConfiguration.inspectorClient = new WebInspectorClient(self);
@@ -2501,6 +2497,8 @@ static bool needsSelfRetainWhileLoadingQuirk()
 #endif
 
     RuntimeEnabledFeatures::sharedFeatures().setShadowDOMEnabled([preferences shadowDOMEnabled]);
+
+    RuntimeEnabledFeatures::sharedFeatures().setDOMIteratorEnabled([preferences DOMIteratorEnabled]);
 
 #if ENABLE(CUSTOM_ELEMENTS)
     RuntimeEnabledFeatures::sharedFeatures().setCustomElementsEnabled([preferences customElementsEnabled]);
@@ -6722,6 +6720,10 @@ static WebFrame *incrementFrame(WebFrame *frame, WebFindOptions options = 0)
 }
 
 - (void)showCandidates:(NSArray *)candidates forString:(NSString *)string inRect:(NSRect)rectOfTypedString forSelectedRange:(NSRange)range view:(NSView *)view completionHandler:(void (^)(NSTextCheckingResult *acceptedCandidate))completionBlock
+{
+}
+
+- (void)forceRequestCandidatesForTesting
 {
 }
 

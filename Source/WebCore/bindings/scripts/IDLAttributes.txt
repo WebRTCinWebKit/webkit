@@ -24,7 +24,7 @@ AtomicString
 CachedAttribute
 CallbackNeedsOperatorEqual
 Callback=FunctionOnly
-CallWith=Document|ScriptExecutionContext|ScriptState|ScriptArguments|CallStack|ActiveWindow|FirstWindow
+CallWith=Document|ScriptExecutionContext|ScriptState|ScriptArguments|CallStack|ActiveWindow|FirstWindow|CallerDocument|CallerWindow
 CheckSecurity
 CheckSecurityForNode
 Clamp
@@ -120,9 +120,8 @@ SetterRaisesException
 SetterRaisesExceptionWithMessage
 SetterCallWith=ScriptExecutionContext|ScriptState|ScriptArguments|CallStack|ActiveWindow|FirstWindow
 SkipVTableValidation
-StrictTypeChecking
 SuppressToJSObject
-TreatNullAs=EmptyString|LegacyNullString
+TreatNullAs=EmptyString
 TreatReturnedNaNDateAs=Null|NaN
 TypedArray=*
 URL

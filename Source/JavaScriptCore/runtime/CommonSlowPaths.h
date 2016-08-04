@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2013, 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,11 +29,10 @@
 #include "CodeBlock.h"
 #include "CodeSpecializationKind.h"
 #include "ExceptionHelpers.h"
-#include "JSStackInlines.h"
 #include "SlowPathReturnType.h"
 #include "StackAlignment.h"
 #include "Symbol.h"
-#include "VM.h"
+#include "VMInlines.h"
 #include <wtf/StdLibExtras.h>
 
 namespace JSC {
@@ -52,7 +51,7 @@ struct ArityCheckData {
     void* thunkToCall;
 };
 
-ALWAYS_INLINE int arityCheckFor(ExecState* exec, JSStack* stack, CodeSpecializationKind kind)
+ALWAYS_INLINE int arityCheckFor(ExecState* exec, VM& vm, CodeSpecializationKind kind)
 {
     JSFunction* callee = jsCast<JSFunction*>(exec->callee());
     ASSERT(!callee->isHostFunction());
@@ -60,12 +59,14 @@ ALWAYS_INLINE int arityCheckFor(ExecState* exec, JSStack* stack, CodeSpecializat
     int argumentCountIncludingThis = exec->argumentCountIncludingThis();
     
     ASSERT(argumentCountIncludingThis < newCodeBlock->numParameters());
-    int frameSize = argumentCountIncludingThis + JSStack::CallFrameHeaderSize;
+    int frameSize = argumentCountIncludingThis + CallFrame::headerSizeInRegisters;
     int alignedFrameSizeForParameters = WTF::roundUpToMultipleOf(stackAlignmentRegisters(),
-        newCodeBlock->numParameters() + JSStack::CallFrameHeaderSize);
+        newCodeBlock->numParameters() + CallFrame::headerSizeInRegisters);
     int paddedStackSpace = alignedFrameSizeForParameters - frameSize;
+    
+    Register* newStack = exec->registers() - WTF::roundUpToMultipleOf(stackAlignmentRegisters(), paddedStackSpace);
 
-    if (!stack->ensureCapacityFor(exec->registers() - paddedStackSpace % stackAlignmentRegisters()))
+    if (UNLIKELY(!vm.ensureStackCapacityFor(newStack)))
         return -1;
     return paddedStackSpace;
 }
@@ -220,6 +221,7 @@ SLOW_PATH_HIDDEN_DECL(slow_path_mul);
 SLOW_PATH_HIDDEN_DECL(slow_path_sub);
 SLOW_PATH_HIDDEN_DECL(slow_path_div);
 SLOW_PATH_HIDDEN_DECL(slow_path_mod);
+SLOW_PATH_HIDDEN_DECL(slow_path_pow);
 SLOW_PATH_HIDDEN_DECL(slow_path_lshift);
 SLOW_PATH_HIDDEN_DECL(slow_path_rshift);
 SLOW_PATH_HIDDEN_DECL(slow_path_urshift);

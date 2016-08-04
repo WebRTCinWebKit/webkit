@@ -417,7 +417,7 @@ public:
 
     String readyState() const;
 
-    String defaultCharset() const;
+    String defaultCharsetForBindings() const;
 
     String charset() const { return Document::encoding(); }
     String characterSetWithUTF8Fallback() const;
@@ -665,6 +665,9 @@ public:
 #if ENABLE(INDEXED_DATABASE)
     IDBClient::IDBConnectionProxy* idbConnectionProxy() final;
 #endif
+#if ENABLE(WEB_SOCKETS)
+    SocketProvider* socketProvider() final;
+#endif
 
     bool canNavigate(Frame* targetFrame);
     Frame* findUnsafeParentScrollPropagationBoundary();
@@ -860,7 +863,10 @@ public:
 
     // Used by DOM bindings; no direction known.
     String title() const { return m_title.string(); }
-    void setTitle(const String&);
+    void setTitle(const String&, ExceptionCode&);
+
+    const AtomicString& dir() const;
+    void setDir(const AtomicString&);
 
     void titleElementAdded(Element& titleElement);
     void titleElementRemoved(Element& titleElement);
@@ -1415,7 +1421,7 @@ private:
     void setCachedDOMCookies(const String&);
     bool isDOMCookieCacheValid() const { return m_cookieCacheExpiryTimer.isActive(); }
     void invalidateDOMCookieCache();
-    void didLoadResourceSynchronously(const ResourceRequest&) final;
+    void didLoadResourceSynchronously() final;
 
     void checkViewportDependentPictures();
 
@@ -1765,8 +1771,8 @@ private:
     unsigned m_disabledFieldsetElementsCount;
 
     bool m_hasInjectedPlugInsScript;
-    bool m_renderTreeBeingDestroyed;
-    bool m_hasPreparedForDestruction;
+    bool m_renderTreeBeingDestroyed { false };
+    bool m_hasPreparedForDestruction { false };
 
     bool m_hasStyleWithViewportUnits;
     bool m_isTimerThrottlingEnabled { false };
@@ -1793,6 +1799,9 @@ private:
 
 #if ENABLE(INDEXED_DATABASE)
     RefPtr<IDBClient::IDBConnectionProxy> m_idbConnectionProxy;
+#endif
+#if ENABLE(WEB_SOCKETS)
+    RefPtr<SocketProvider> m_socketProvider;
 #endif
 };
 

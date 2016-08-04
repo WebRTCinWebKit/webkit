@@ -163,7 +163,7 @@ namespace WebCore {
         Element* frameElement() const;
 
         WEBCORE_EXPORT void focus(bool allowFocus = false);
-        void focus(Document&);
+        void focus(DOMWindow& callerWindow);
         void blur();
         WEBCORE_EXPORT void close();
         void close(Document&);
@@ -175,7 +175,7 @@ namespace WebCore {
 
         void showModalDialog(const String& urlString, const String& dialogFeaturesString, DOMWindow& activeWindow, DOMWindow& firstWindow, std::function<void (DOMWindow&)> prepareDialogFunction);
 
-        void alert(const String& message);
+        void alert(const String& message = emptyString());
         bool confirm(const String& message);
         String prompt(const String& message, const String& defaultValue);
 
@@ -228,7 +228,7 @@ namespace WebCore {
 
         // DOM Level 2 Style Interface
 
-        RefPtr<CSSStyleDeclaration> getComputedStyle(Element*, const String& pseudoElt) const;
+        RefPtr<CSSStyleDeclaration> getComputedStyle(Element&, const String& pseudoElt) const;
 
         // WebKit extensions
 

@@ -133,6 +133,7 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/svg"
     "${WEBCORE_DIR}/svg/graphics"
     "${WEBCORE_DIR}/svg/properties"
+    "${WEBCORE_DIR}/workers"
     "${JAVASCRIPTCORE_DIR}"
     "${JAVASCRIPTCORE_DIR}/ForwardingHeaders"
     "${JAVASCRIPTCORE_DIR}/API"
@@ -175,7 +176,6 @@ endif ()
 set(NetworkProcess_COMMON_SOURCES
     NetworkProcess/NetworkConnectionToWebProcess.cpp
     NetworkProcess/NetworkLoad.cpp
-    NetworkProcess/NetworkLoadParameters.cpp
     NetworkProcess/NetworkProcess.cpp
     NetworkProcess/NetworkProcessPlatformStrategies.cpp
     NetworkProcess/NetworkResourceLoader.cpp
@@ -208,7 +208,6 @@ set(WebKit2_SOURCES
     NetworkProcess/NetworkResourceLoadParameters.cpp
 
     NetworkProcess/Downloads/Download.cpp
-    NetworkProcess/Downloads/DownloadAuthenticationClient.cpp
     NetworkProcess/Downloads/DownloadManager.cpp
 
     Platform/Logging.cpp
@@ -240,6 +239,7 @@ set(WebKit2_SOURCES
     Shared/EditorState.cpp
     Shared/FontInfo.cpp
     Shared/LayerTreeContext.cpp
+    Shared/LoadParameters.cpp
     Shared/NavigationActionData.cpp
     Shared/PlatformPopupMenuData.cpp
     Shared/PrintInfo.cpp
@@ -573,6 +573,7 @@ set(WebKit2_SOURCES
     WebProcess/Network/NetworkProcessConnection.cpp
     WebProcess/Network/WebLoaderStrategy.cpp
     WebProcess/Network/WebResourceLoader.cpp
+    WebProcess/Network/WebSocketProvider.cpp
 
     WebProcess/Notifications/NotificationPermissionRequestManager.cpp
     WebProcess/Notifications/WebNotificationManager.cpp

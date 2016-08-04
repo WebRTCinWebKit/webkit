@@ -43,6 +43,7 @@
 #include "CachedResourceLoader.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
+#include "ContentFilter.h"
 #include "ContentSecurityPolicy.h"
 #include "DOMImplementation.h"
 #include "DOMWindow.h"
@@ -910,9 +911,6 @@ void FrameLoader::loadArchive(PassRefPtr<Archive> archive)
     SubstituteData substituteData(&mainResource->data(), URL(), response, SubstituteData::SessionHistoryVisibility::Hidden);
     
     ResourceRequest request(mainResource->url());
-#if PLATFORM(MAC)
-    request.applyWebArchiveHackForMail();
-#endif
 
     RefPtr<DocumentLoader> documentLoader = m_client.createDocumentLoader(request, substituteData);
     documentLoader->setArchive(archive.get());
@@ -1269,7 +1267,7 @@ SubstituteData FrameLoader::defaultSubstituteDataForURL(const URL& url)
 {
     if (!shouldTreatURLAsSrcdocDocument(url))
         return SubstituteData();
-    String srcdoc = m_frame.ownerElement()->fastGetAttribute(srcdocAttr);
+    String srcdoc = m_frame.ownerElement()->attributeWithoutSynchronization(srcdocAttr);
     ASSERT(!srcdoc.isNull());
     CString encodedSrcdoc = srcdoc.utf8();
 
@@ -1339,6 +1337,8 @@ void FrameLoader::load(DocumentLoader* newDocumentLoader)
         type = FrameLoadType::Same;
     } else if (shouldTreatURLAsSameAsCurrent(newDocumentLoader->unreachableURL()) && m_loadType == FrameLoadType::Reload)
         type = FrameLoadType::Reload;
+    else if (m_loadType == FrameLoadType::RedirectWithLockedBackForwardList && !newDocumentLoader->unreachableURL().isEmpty() && newDocumentLoader->substituteData().isValid())
+        type = FrameLoadType::RedirectWithLockedBackForwardList;
     else
         type = FrameLoadType::Standard;
 
@@ -2241,6 +2241,10 @@ void FrameLoader::checkLoadCompleteForThisFrame()
             if (!pdl->isLoadingInAPISense() || pdl->isStopping()) {
                 m_provisionalLoadErrorBeingHandledURL = m_provisionalDocumentLoader->url();
                 m_client.dispatchDidFailProvisionalLoad(error);
+#if ENABLE(CONTENT_FILTERING)
+                if (auto contentFilter = pdl->contentFilter())
+                    contentFilter->handleProvisionalLoadFailure(error);
+#endif
                 m_provisionalLoadErrorBeingHandledURL = { };
 
                 ASSERT(!pdl->isLoading());
@@ -2310,7 +2314,7 @@ void FrameLoader::checkLoadCompleteForThisFrame()
                 if (m_frame.settings().dataDetectorTypes() != DataDetectorTypeNone && document) {
                     if (auto* documentElement = document->documentElement()) {
                         RefPtr<Range> documentRange = makeRange(firstPositionInNode(documentElement), lastPositionInNode(documentElement));
-                        m_frame.setDataDetectionResults(DataDetection::detectContentInRange(documentRange, m_frame.settings().dataDetectorTypes()));
+                        m_frame.setDataDetectionResults(DataDetection::detectContentInRange(documentRange, m_frame.settings().dataDetectorTypes(), m_client.dataDetectionContext()));
                         if (m_frame.isMainFrame())
                             m_client.dispatchDidFinishDataDetection(m_frame.dataDetectionResults());
                     }
@@ -3255,7 +3259,7 @@ bool FrameLoader::shouldTreatURLAsSrcdocDocument(const URL& url) const
         return false;
     if (!ownerElement->hasTagName(iframeTag))
         return false;
-    return ownerElement->fastHasAttribute(srcdocAttr);
+    return ownerElement->hasAttributeWithoutSynchronization(srcdocAttr);
 }
 
 Frame* FrameLoader::findFrameForNavigation(const AtomicString& name, Document* activeDocument)
@@ -3441,6 +3445,15 @@ ResourceError FrameLoader::blockedError(const ResourceRequest& request) const
     return error;
 }
 
+#if ENABLE(CONTENT_FILTERING)
+ResourceError FrameLoader::blockedByContentFilterError(const ResourceRequest& request) const
+{
+    ResourceError error = m_client.blockedByContentFilterError(request);
+    error.setType(ResourceError::Type::General);
+    return error;
+}
+#endif
+
 #if PLATFORM(IOS)
 RetainPtr<CFDictionaryRef> FrameLoader::connectionProperties(ResourceLoader* loader)
 {
@@ -3450,7 +3463,7 @@ RetainPtr<CFDictionaryRef> FrameLoader::connectionProperties(ResourceLoader* loa
 
 String FrameLoader::referrer() const
 {
-    return m_documentLoader ? m_documentLoader->request().httpReferrer() : "";
+    return m_documentLoader ? m_documentLoader->request().httpReferrer() : emptyString();
 }
 
 void FrameLoader::dispatchDidClearWindowObjectsInAllWorlds()
