@@ -35,7 +35,6 @@
 
 #include "MediaEndpoint.h"
 #include "MediaEndpointSessionDescription.h"
-#include "MediaStreamEvent.h"
 #include "PeerConnectionBackend.h"
 #include <wtf/Function.h>
 #include <wtf/RefPtr.h>
@@ -138,8 +137,6 @@ private:
     RefPtr<RTCConfiguration> m_configuration;
 
     HashMap<String, RefPtr<MediaStream>> m_remoteStreamMap;
-
-    Vector<RefPtr<MediaStreamEvent>> m_legacyMediaStreamEvents;
 
     bool m_negotiationNeeded { false };
 };
