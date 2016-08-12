@@ -87,6 +87,7 @@ class WebPage;
 class WebPageGroupProxy;
 class WebProcessSupplement;
 enum class WebsiteDataType;
+struct GamepadData;
 struct WebPageCreationParameters;
 struct WebPageGroupData;
 struct WebPreferencesStore;
@@ -274,6 +275,11 @@ private:
     void setJavaScriptGarbageCollectorTimerEnabled(bool flag);
 
     void mainThreadPing();
+
+#if ENABLE(GAMEPAD)
+    void gamepadConnected(const GamepadData&);
+    void gamepadDisconnected(unsigned index);
+#endif
 
     void releasePageCache();
 

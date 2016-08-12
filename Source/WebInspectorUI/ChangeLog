@@ -1,3 +1,250 @@
+2016-08-11  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r204264): Web Inspector: Uncaught Exception in Network tab when reloading a web page
+        https://bugs.webkit.org/show_bug.cgi?id=160781
+        <rdar://problem/27810452>
+
+        Reviewed by Matt Baker.
+
+        WebInspector.TimelineDataGrid.prototype.closed was removed in r204264.
+        Define a stub method on DataGrid so it's available to all its subclasses.
+
+        * UserInterface/Views/DataGrid.js:
+        this._dataGrid.closed()
+
+2016-08-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Should be able to Edit Node Attributes and Styles for non-UserAgent Shadow DOM nodes
+        https://bugs.webkit.org/show_bug.cgi?id=160762
+        <rdar://problem/27798271>
+
+        Reviewed by Ryosuke Niwa.
+
+        * UserInterface/Models/DOMNode.js:
+        (WebInspector.DOMNode.prototype.isInUserAgentShadowTree):
+        (WebInspector.DOMNode.prototype.isShadowRoot):
+        (WebInspector.DOMNode.prototype.isUserAgentShadowRoot):
+        (WebInspector.DOMNode.prototype.ancestorShadowRoot):
+        (WebInspector.DOMNode.prototype.ancestorShadowHost):
+        Add methods for determining the shadow root, host, and easily
+        checking the type of shadow tree a node is in.
+
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        (WebInspector.CSSStyleDeclaration.prototype.get editable):
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype.get editable):
+        (WebInspector.DOMTreeElement.prototype._startEditingTarget):
+        (WebInspector.DOMTreeElement.prototype._populateTagContextMenu):
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype.newRuleButtonClicked):
+        * UserInterface/Views/VisualStyleSelectorSection.js:
+        (WebInspector.VisualStyleSelectorSection.prototype._addNewRule):
+        Allow editing shadow DOM nodes as long as they are not in a UserAgent shadow tree.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline.prototype._populateContextMenu):
+        Disallow "Log Element" on UserAgent shadow tree nodes.
+
+2016-08-10  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Can't click on the lower half of "S" icon in JavaScript Allocations timeline
+        https://bugs.webkit.org/show_bug.cgi?id=160743
+        <rdar://problem/27790098>
+
+        Reviewed by Timothy Hatcher.
+
+        "S" icons are covered by .scroll-container, which has `z-index: calc(var(--z-index-resizer) + 1)`.
+        Set larger z-index on the "S" icons.
+
+        * UserInterface/Views/HeapAllocationsTimelineOverviewGraph.css:
+        (.timeline-overview-graph.heap-allocations > img.snapshot):
+
+2016-08-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Popover for Color Picker should update position when window resizes
+        https://bugs.webkit.org/show_bug.cgi?id=160321
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/Popover.js:
+        (WebInspector.Popover):
+        (WebInspector.Popover.prototype.set windowResizeHandler):
+        (WebInspector.Popover.prototype.dismiss):
+        (WebInspector.Popover.prototype.handleEvent):
+        (WebInspector.Popover.prototype._addListenersIfNeeded):
+        The popover already has a set of window listeners, add "resize" to
+        the list. If there is a resize, invoke a resize handler. The resize
+        handler will only be called while the popover is visible.
+
+        * UserInterface/Views/HeapSnapshotDataGridTree.js:
+        (WebInspector.HeapSnapshotDataGridTree):
+        (WebInspector.HeapSnapshotDataGridTree.prototype.get visible):
+        (WebInspector.HeapSnapshotDataGridTree.prototype.get popoverNode):
+        (WebInspector.HeapSnapshotDataGridTree.prototype.set popoverNode):
+        (WebInspector.HeapSnapshotDataGridTree.prototype.get popoverTargetElement):
+        (WebInspector.HeapSnapshotDataGridTree.prototype.set popoverTargetElement):
+        (WebInspector.HeapSnapshotDataGridTree.prototype.get popover):
+        (WebInspector.HeapSnapshotDataGridTree.prototype.willDismissPopover):
+        * UserInterface/Views/HeapSnapshotInstanceDataGridNode.js:
+        Update heap snapshot popovers to reposition on window resize.
+        Set a target to reposition around, since the popover is shared.
+
+        * UserInterface/Views/ProbeSetDetailsSection.js:
+        (WebInspector.ProbeSetDetailsSection.prototype._addProbeButtonClicked):
+        Update probe expression popover to respect window resizes.
+
+        * UserInterface/Views/VisualStylePropertyEditor.js:
+        (WebInspector.VisualStylePropertyEditor.prototype._showPropertyInfoPopover):
+        Though not yet visible, update this to respect window resizes.
+
+        * UserInterface/Views/InlineSwatch.js:
+        (WebInspector.InlineSwatch.prototype._swatchElementClicked):
+        Add a window resize handler to reposition over the swatch element.
+
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.js:
+        (WebInspector.LayerTreeDetailsSidebarPanel.prototype._updatePopoverForSelectedNode):
+        (WebInspector.LayerTreeDetailsSidebarPanel): Deleted.
+        (WebInspector.LayerTreeDetailsSidebarPanel.prototype._windowResized): Deleted.
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WebInspector.TimelineDataGrid.prototype._showPopoverForSelectedNodeSoon):
+        (WebInspector.TimelineDataGrid): Deleted.
+        (WebInspector.TimelineDataGrid.prototype.closed): Deleted.
+        (WebInspector.TimelineDataGrid.prototype.handleEvent): Deleted.
+        (WebInspector.TimelineDataGrid.prototype._windowResized): Deleted.
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._addWatchExpressionButtonClicked):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype.willDismissPopover): Deleted.
+        Replace custom popover repositioning with standard Popover handling.
+
+2016-08-07  Matt Baker  <mattbaker@apple.com>
+
+        REGRESSION (r201245): switching between Computed and Visual Styles panels causes internal error
+        https://bugs.webkit.org/show_bug.cgi?id=160604
+        <rdar://problem/27723416>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/StyleDetailsPanel.js:
+        (WebInspector.StyleDetailsPanel.prototype.shown):
+        Only perform a layout if needed. Subclasses access node style
+        data during layout, which may not exist yet.
+
+2016-08-06  Matt Baker  <mattbaker@apple.com>
+
+        REGRESSION (r203253): Node details sidebar flickers while resizing
+        https://bugs.webkit.org/show_bug.cgi?id=160631
+        <rdar://problem/27733024>
+
+        Reviewed by Timothy Hatcher.
+
+        Sidebar panel layouts can be expensive, and should be performed only
+        when necessary (i.e., when the panel is shown for the first time, or
+        model data changed while the panel was hidden).
+
+        * UserInterface/Views/Sidebar.js:
+        (WebInspector.Sidebar.prototype._recalculateWidth):
+
+        * UserInterface/Views/SidebarPanel.js:
+        (WebInspector.SidebarPanel.prototype.shown):
+
+        * UserInterface/Views/View.js:
+        (WebInspector.View.prototype.updateLayoutIfNeeded):
+        Update the layout if an initial layout was never performed.
+
+2016-08-04  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: UI polish for Edit Breakpoint dialog
+        https://bugs.webkit.org/show_bug.cgi?id=160566
+        <rdar://problem/27706378>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Images/BreakpointActionAdd.svg: Removed.
+        * UserInterface/Images/BreakpointActionRemove.svg: Removed.
+        Use Plus13.svg and Minus.svg instead.
+
+        * UserInterface/Views/BreakpointActionView.css:
+        (.breakpoint-action-button-container):
+        (.breakpoint-action-append-button,):
+        (.breakpoint-action-append-button):
+        (.breakpoint-action-remove-button):
+        Button styles should match Xcode.
+        (.breakpoint-action-append-button:active,): Deleted.
+        Brightness on activation no longer needed.
+
+        * UserInterface/Views/BreakpointActionView.js:
+        (WebInspector.BreakpointActionView):
+        Add a button container so buttons can float together.
+
+        * UserInterface/Views/BreakpointPopoverController.css:
+        (.wide .edit-breakpoint-popover-condition > .CodeMirror):
+        Increase condition field width by the same amount as the popover.
+
+2016-08-04  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Popover's arrow is misplaced
+        https://bugs.webkit.org/show_bug.cgi?id=151236
+        <rdar://problem/23527296>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/Popover.js:
+        (WebInspector.Popover.prototype._setAnchorPoint):
+        Drive-by style fix.
+        (WebInspector.Popover.prototype._drawFrame):
+        Position the arrow so that the arrow head doesn't overlap the
+        rounded corners of its edge.
+
+2016-08-04  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Add placeholder graphs to TimelineOverview while editing
+        https://bugs.webkit.org/show_bug.cgi?id=160485
+        <rdar://problem/27670755>
+
+        Reviewed by Brian Burg.
+
+        Insert placeholder elements in TimelineOverview's graph container
+        when editing instruments. This allows alternating overview graph styles
+        to be shown for disabled instruments, and ensures that every tree element
+        has a corresponding element in the overview during dragging/reordering
+        of instruments (see https://webkit.org/b/157957).
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WebInspector.TimelineOverview.prototype._startEditingInstruments):
+        (WebInspector.TimelineOverview.prototype._stopEditingInstruments):
+
+2016-08-04  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: UI polish for Open Quickly and Goto Line dialogs
+        https://bugs.webkit.org/show_bug.cgi?id=159849
+        <rdar://problem/27383068>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Images/Search.svg: Added.
+        Magnifying glass icon.
+
+        * UserInterface/Views/GoToLineDialog.css:
+        (.go-to-line-dialog):
+        (.go-to-line-dialog > div):
+        (.go-to-line-dialog > div::before):
+        * UserInterface/Views/OpenResourceDialog.css:
+        (.open-resource-dialog > .field):
+        (.open-resource-dialog > .field::before):
+        (.open-resource-dialog.has-results > .tree-outline):
+        (.open-resource-dialog > .tree-outline .item):
+        Add search icon to left of the input field in both dialogs,
+        and adjust styles to better match Xcode 8.
+
+        * UserInterface/Views/OpenResourceDialog.js:
+        (WebInspector.OpenResourceDialog):
+        Remove "input" event listener, as styles are now toggled in _updateFilter.
+        (WebInspector.OpenResourceDialog.prototype._updateFilter):
+        Toggle "has-results" and "non-empty" class names.
+        (WebInspector.OpenResourceDialog.prototype._handleInputEvent): Deleted.
+        (WebInspector.OpenResourceDialog.prototype._clear): Deleted.
+        Moved class toggle to _updateFilter.
+
 2016-08-03  Chris Dumez  <cdumez@apple.com>
 
         Drop DocumentType.internalSubset attribute

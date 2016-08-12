@@ -338,6 +338,7 @@ imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-to-non-cors.htm [ S
 # Failing assertion with dynamic message
 imported/w3c/web-platform-tests/XMLHttpRequest/responsexml-document-properties.htm [ Failure ]
 
+webkit.org/b/160510 http/tests/fetch/fetch-in-worker-crash.html [ Failure Crash Pass ]
 imported/w3c/web-platform-tests/fetch/api/request/request-cache.html [ Skip ]
 [ Release ] imported/w3c/web-platform-tests/fetch/api/cors/cors-cookies-worker.html [ Failure Pass ]
 [ Debug ] imported/w3c/web-platform-tests/fetch/api/cors/cors-basic-worker.html [ Skip ]
@@ -696,6 +697,7 @@ webkit.org/b/141695 [ Debug ] fast/selectors/nth-last-child-of-register-requirem
 
 # Content extensions are Mac-WK2-only for now
 http/tests/contentextensions [ Skip ]
+http/tests/websocket/tests/hybi/contentextensions [ Skip ]
 
 webkit.org/b/149072 svg/animations/svgboolean-animation-1.html [ Pass Failure ]
 
@@ -1009,6 +1011,9 @@ media/video-contained-in-fullscreen-element-going-into-pip.html [ WontFix ]
 webkit.org/b/159370 [ Debug ] fast/history/page-cache-destroy-document.html [ Skip ]
 
 [ Debug ] js/regress/misc-bugs-847389-jpeg2000.html [ Skip ]
+
+# This runs slowly in debug.
+[ Debug ] js/regress/bound-function-construction-performance.html [ Skip ]
 
 webkit.org/b/159678 http/tests/preload/single_download_preload_runner.html [ Timeout ]
 

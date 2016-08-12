@@ -1,3 +1,182 @@
+2016-08-11  Mark Lam  <mark.lam@apple.com>
+
+        OverridesHasInstance should not branch across register allocations.
+        https://bugs.webkit.org/show_bug.cgi?id=160792
+        <rdar://problem/27361778>
+
+        Reviewed by Benjamin Poulain.
+
+        * stress/OverrideHasInstance-should-not-branch-across-register-allocations.js: Added.
+
+2016-08-11  Mark Lam  <mark.lam@apple.com>
+
+        The jsc shell's Element host constructor should throw if it fails to construct an object.
+        https://bugs.webkit.org/show_bug.cgi?id=160773
+        <rdar://problem/27328608>
+
+        Reviewed by Saam Barati.
+
+        * stress/generational-opaque-roots.js:
+
+2016-08-11  Mark Lam  <mark.lam@apple.com>
+
+        Disallow synchronous sweeping for eden GCs.
+        https://bugs.webkit.org/show_bug.cgi?id=160716
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/eden-gc-with-retired-blocks.js: Added.
+        - This test is just in case we add back support for eden GCs with synchronous
+          sweeping in the future.
+
+2016-08-10  Michael Saboff  <msaboff@apple.com>
+
+        Baseline GetByVal and PutByVal for cache ID stubs need to handle exceptions
+        https://bugs.webkit.org/show_bug.cgi?id=160749
+
+        Reviewed by Filip Pizlo.
+
+        New test that causes baseline GetByValWithCachedId and PutByValWithCachedId
+        stubs to be generated and then throws exceptions for those stub to handle
+        to verify that they are properly handled.
+
+        * stress/regress-160749.js: Added.
+        (testCachedGetByVal.):
+        (testCachedGetByVal.get for):
+        (testCachedGetByVal):
+        (testCachedPutByVal.):
+        (testCachedPutByVal.set for):
+        (testCachedPutByVal):
+
+2016-08-10  Mark Lam  <mark.lam@apple.com>
+
+        DFG's flushForTerminal() needs to add PhantomLocals for bytecode live locals.
+        https://bugs.webkit.org/show_bug.cgi?id=160755
+        <rdar://problem/27488507>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/need-bytecode-liveness-for-unreachable-blocks-at-dfg-time.js: Added.
+
+2016-08-09  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [ES2016] Implement Object.values
+        https://bugs.webkit.org/show_bug.cgi?id=160410
+
+        Reviewed by Saam Barati, Yusuke Suzuki.
+
+        * stress/object-values.js: Added.
+        (compare):
+        (string_appeared_here.forEach):
+        (const.getInvokedFunctions.):
+        (const.getInvokedFunctions):
+        (Array.prototype.push):
+
+2016-08-09  Saam Barati  <sbarati@apple.com>
+
+        JSBoundFunction should lazily generate its name string
+        https://bugs.webkit.org/show_bug.cgi?id=160678
+        <rdar://problem/27043194>
+
+        Reviewed by Mark Lam.
+
+        * stress/bound-function-lazy-name-generation.js: Added.
+        (assert):
+        (test.let.f):
+        (test.f):
+        (test):
+
+2016-08-08  Mark Lam  <mark.lam@apple.com>
+
+        ASSERTION FAILED: hasInlineStorage() in JSFinalObject::visitChildren().
+        https://bugs.webkit.org/show_bug.cgi?id=160666
+
+        Reviewed by Keith Miller.
+
+        * stress/object-constructor-should-be-new-target-aware.js:
+
+2016-08-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Module namespace object should not allow unset IC
+        https://bugs.webkit.org/show_bug.cgi?id=160553
+
+        Reviewed by Saam Barati.
+
+        * modules/namespace-object-get-property.js: Added.
+        (import.as.ns.from.string_appeared_here.shouldThrow):
+        * modules/namespace-object-has-property.js: Added.
+        * modules/namespace-object-inline-caching.js: Added.
+        (import.as.A.from.string_appeared_here.import.as.B.from.string_appeared_here.lookup):
+        (shouldBe.lookup.lookup):
+        (shouldBe.lookup):
+        * modules/namespace-object-inline-caching/a.js: Added.
+        * modules/namespace-object-inline-caching/b.js: Added.
+        * modules/namespace-object-try-get.js: Added.
+        (import.as.ns.from.string_appeared_here.tryGetByIdText):
+        (tryGetByIdTextStrict):
+        * modules/namespace-object-typed-array-fast-path.js: Added.
+        * test262.yaml:
+
+2016-08-05  Saam Barati  <sbarati@apple.com>
+
+        various math operations don't properly check for an exception after calling toNumber() on the lhs
+        https://bugs.webkit.org/show_bug.cgi?id=160154
+
+        Reviewed by Mark Lam.
+
+        * stress/to-number-throws-correct-exception.js: Added.
+        (test.let.test.runTest.):
+        (test.let.test.runTest.get f):
+        (test.let.test.runTest):
+        (test.let.test):
+        (test):
+        (test2.runTest.):
+        (test2.runTest.get f):
+        (test2.runTest):
+        (test2):
+
+2016-08-05  Saam Barati  <sbarati@apple.com>
+
+        Assertion failure when accessing TDZ variable in catch through eval
+        https://bugs.webkit.org/show_bug.cgi?id=160554
+
+        Reviewed by Mark Lam and Keith Miller.
+
+        * stress/catch-variables-under-tdz.js: Added.
+        (test):
+
+2016-08-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] JSModuleNamespaceObject's Symbol.iterator function should have name
+        https://bugs.webkit.org/show_bug.cgi?id=160549
+
+        Reviewed by Saam Barati.
+
+        * modules/namespace-object-symbol-iterator-name.js: Added.
+        * test262.yaml:
+
+2016-08-04  Keith Miller  <keith_miller@apple.com>
+
+        ASSERTION FAILED: !hasInstanceValueNode->isCellConstant() || defaultHasInstanceFunction == hasInstanceValueNode->asCell()
+        https://bugs.webkit.org/show_bug.cgi?id=160562
+
+        Reviewed by Mark Lam.
+
+        * stress/instanceof-late-constant-folding.js: Added.
+        (Constructor):
+        (value):
+        (body):
+
+2016-08-04  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] fix generator-syntax.js JSTest again after yield grammar fix
+        https://bugs.webkit.org/show_bug.cgi?id=160550
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/generator-syntax.js:
+        (testYieldBindingIdentifier):
+
 2016-08-03  Caitlin Potter  <caitp@igalia.com>
 
         Clarify SyntaxErrors around yield and unskip tests

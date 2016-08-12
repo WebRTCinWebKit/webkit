@@ -2745,11 +2745,15 @@ unsigned long FrameLoader::loadResourceSynchronously(const ResourceRequest& requ
 #if ENABLE(CONTENT_EXTENSIONS)
     if (error.isNull()) {
         if (auto* page = m_frame.page()) {
-            if (m_documentLoader && page->userContentProvider().processContentExtensionRulesForLoad(newRequest, ResourceType::Raw, *m_documentLoader) == ContentExtensions::BlockedStatus::Blocked) {
-                newRequest = { };
-                error = ResourceError(errorDomainWebKitInternal, 0, initialRequest.url(), emptyString());
-                response = { };
-                data = nullptr;
+            if (m_documentLoader) {
+                auto blockedStatus = page->userContentProvider().processContentExtensionRulesForLoad(newRequest.url(), ResourceType::Raw, *m_documentLoader);
+                applyBlockedStatusToRequest(blockedStatus, newRequest);
+                if (blockedStatus.blockedLoad) {
+                    newRequest = { };
+                    error = ResourceError(errorDomainWebKitInternal, 0, initialRequest.url(), emptyString());
+                    response = { };
+                    data = nullptr;
+                }
             }
         }
     }
@@ -3113,6 +3117,8 @@ void FrameLoader::continueLoadAfterNewWindowPolicy(const ResourceRequest& reques
     RefPtr<Frame> mainFrame = m_client.dispatchCreatePage(action);
     if (!mainFrame)
         return;
+
+    mainFrame->loader().forceSandboxFlags(frame->loader().effectiveSandboxFlags());
 
     if (frameName != "_blank")
         mainFrame->tree().setName(frameName);

@@ -276,14 +276,6 @@
     WebCore::raiseOnDOMError(ec);
 }
 
-- (void)setAttribute:(NSString *)name :(NSString *)value
-{
-    WebCore::JSMainThreadNullState state;
-    WebCore::ExceptionCode ec = 0;
-    IMPL->setAttribute(name, value, ec);
-    WebCore::raiseOnDOMError(ec);
-}
-
 - (void)removeAttribute:(NSString *)name
 {
     WebCore::JSMainThreadNullState state;
@@ -320,17 +312,14 @@
 
 - (DOMNodeList *)getElementsByTagName:(NSString *)name
 {
+    if (!name)
+        return nullptr;
+
     WebCore::JSMainThreadNullState state;
-    return kit(WTF::getPtr(IMPL->getElementsByTagNameForObjC(name)));
+    return kit(static_cast<WebCore::NodeList*>(WTF::getPtr(IMPL->getElementsByTagName(name))));
 }
 
 - (NSString *)getAttributeNS:(NSString *)namespaceURI localName:(NSString *)localName
-{
-    WebCore::JSMainThreadNullState state;
-    return IMPL->getAttributeNS(namespaceURI, localName);
-}
-
-- (NSString *)getAttributeNS:(NSString *)namespaceURI :(NSString *)localName
 {
     WebCore::JSMainThreadNullState state;
     return IMPL->getAttributeNS(namespaceURI, localName);
@@ -344,21 +333,7 @@
     WebCore::raiseOnDOMError(ec);
 }
 
-- (void)setAttributeNS:(NSString *)namespaceURI :(NSString *)qualifiedName :(NSString *)value
-{
-    WebCore::JSMainThreadNullState state;
-    WebCore::ExceptionCode ec = 0;
-    IMPL->setAttributeNS(namespaceURI, qualifiedName, value, ec);
-    WebCore::raiseOnDOMError(ec);
-}
-
 - (void)removeAttributeNS:(NSString *)namespaceURI localName:(NSString *)localName
-{
-    WebCore::JSMainThreadNullState state;
-    IMPL->removeAttributeNS(namespaceURI, localName);
-}
-
-- (void)removeAttributeNS:(NSString *)namespaceURI :(NSString *)localName
 {
     WebCore::JSMainThreadNullState state;
     IMPL->removeAttributeNS(namespaceURI, localName);
@@ -366,23 +341,14 @@
 
 - (DOMNodeList *)getElementsByTagNameNS:(NSString *)namespaceURI localName:(NSString *)localName
 {
-    WebCore::JSMainThreadNullState state;
-    return kit(WTF::getPtr(IMPL->getElementsByTagNameNSForObjC(namespaceURI, localName)));
-}
+    if (!localName)
+        return nullptr;
 
-- (DOMNodeList *)getElementsByTagNameNS:(NSString *)namespaceURI :(NSString *)localName
-{
     WebCore::JSMainThreadNullState state;
-    return kit(WTF::getPtr(IMPL->getElementsByTagNameNSForObjC(namespaceURI, localName)));
+    return kit(static_cast<WebCore::NodeList*>(WTF::getPtr(IMPL->getElementsByTagNameNS(namespaceURI, localName))));
 }
 
 - (DOMAttr *)getAttributeNodeNS:(NSString *)namespaceURI localName:(NSString *)localName
-{
-    WebCore::JSMainThreadNullState state;
-    return kit(WTF::getPtr(IMPL->getAttributeNodeNS(namespaceURI, localName)));
-}
-
-- (DOMAttr *)getAttributeNodeNS:(NSString *)namespaceURI :(NSString *)localName
 {
     WebCore::JSMainThreadNullState state;
     return kit(WTF::getPtr(IMPL->getAttributeNodeNS(namespaceURI, localName)));
@@ -406,12 +372,6 @@
 }
 
 - (BOOL)hasAttributeNS:(NSString *)namespaceURI localName:(NSString *)localName
-{
-    WebCore::JSMainThreadNullState state;
-    return IMPL->hasAttributeNS(namespaceURI, localName);
-}
-
-- (BOOL)hasAttributeNS:(NSString *)namespaceURI :(NSString *)localName
 {
     WebCore::JSMainThreadNullState state;
     return IMPL->hasAttributeNS(namespaceURI, localName);
@@ -456,7 +416,7 @@
 - (DOMNodeList *)getElementsByClassName:(NSString *)name
 {
     WebCore::JSMainThreadNullState state;
-    return kit(WTF::getPtr(IMPL->getElementsByClassNameForObjC(name)));
+    return kit(static_cast<WebCore::NodeList*>(WTF::getPtr(IMPL->getElementsByClassName(name))));
 }
 
 - (BOOL)matches:(NSString *)selectors
@@ -533,6 +493,45 @@
     DOMNodeList *result = kit(WTF::getPtr(IMPL->querySelectorAll(selectors, ec)));
     WebCore::raiseOnDOMError(ec);
     return result;
+}
+
+@end
+
+@implementation DOMElement (DOMElementDeprecated)
+
+- (void)setAttribute:(NSString *)name :(NSString *)value
+{
+    [self setAttribute:name value:value];
+}
+
+- (NSString *)getAttributeNS:(NSString *)namespaceURI :(NSString *)localName
+{
+    return [self getAttributeNS:namespaceURI localName:localName];
+}
+
+- (void)setAttributeNS:(NSString *)namespaceURI :(NSString *)qualifiedName :(NSString *)value
+{
+    [self setAttributeNS:namespaceURI qualifiedName:qualifiedName value:value];
+}
+
+- (void)removeAttributeNS:(NSString *)namespaceURI :(NSString *)localName
+{
+    [self removeAttributeNS:namespaceURI localName:localName];
+}
+
+- (DOMNodeList *)getElementsByTagNameNS:(NSString *)namespaceURI :(NSString *)localName
+{
+    return [self getElementsByTagNameNS:namespaceURI localName:localName];
+}
+
+- (DOMAttr *)getAttributeNodeNS:(NSString *)namespaceURI :(NSString *)localName
+{
+    return [self getAttributeNodeNS:namespaceURI localName:localName];
+}
+
+- (BOOL)hasAttributeNS:(NSString *)namespaceURI :(NSString *)localName
+{
+    return [self hasAttributeNS:namespaceURI localName:localName];
 }
 
 @end

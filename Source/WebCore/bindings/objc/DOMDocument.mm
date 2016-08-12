@@ -42,7 +42,6 @@
 #import "DOMDocumentFragmentInternal.h"
 #import "DOMDocumentTypeInternal.h"
 #import "DOMElementInternal.h"
-#import "DOMEntityReferenceInternal.h"
 #import "DOMEventInternal.h"
 #import "DOMHTMLCollectionInternal.h"
 #import "DOMHTMLElementInternal.h"
@@ -65,7 +64,6 @@
 #import "DocumentFragment.h"
 #import "DocumentType.h"
 #import "Element.h"
-#import "EntityReference.h"
 #import "Event.h"
 #import "ExceptionHandlers.h"
 #import "HTMLCollection.h"
@@ -503,15 +501,6 @@
     return result;
 }
 
-- (DOMProcessingInstruction *)createProcessingInstruction:(NSString *)target :(NSString *)data
-{
-    WebCore::JSMainThreadNullState state;
-    WebCore::ExceptionCode ec = 0;
-    DOMProcessingInstruction *result = kit(WTF::getPtr(IMPL->createProcessingInstruction(target, data, ec)));
-    WebCore::raiseOnDOMError(ec);
-    return result;
-}
-
 - (DOMAttr *)createAttribute:(NSString *)name
 {
     WebCore::JSMainThreadNullState state;
@@ -523,31 +512,22 @@
 
 - (DOMEntityReference *)createEntityReference:(NSString *)name
 {
-    WebCore::JSMainThreadNullState state;
-    WebCore::ExceptionCode ec = 0;
-    DOMEntityReference *result = kit(WTF::getPtr(IMPL->createEntityReference(name, ec)));
-    WebCore::raiseOnDOMError(ec);
-    return result;
+    UNUSED_PARAM(name);
+
+    WebCore::raiseOnDOMError(WebCore::NOT_SUPPORTED_ERR);
+    return nil;
 }
 
 - (DOMNodeList *)getElementsByTagName:(NSString *)tagname
 {
+    if (!tagname)
+        return nullptr;
+
     WebCore::JSMainThreadNullState state;
-    return kit(WTF::getPtr(IMPL->getElementsByTagNameForObjC(tagname)));
+    return kit(static_cast<WebCore::NodeList*>(WTF::getPtr(IMPL->getElementsByTagName(tagname))));
 }
 
 - (DOMNode *)importNode:(DOMNode *)importedNode deep:(BOOL)deep
-{
-    WebCore::JSMainThreadNullState state;
-    if (!importedNode)
-        WebCore::raiseTypeErrorException();
-    WebCore::ExceptionCode ec = 0;
-    DOMNode *result = kit(WTF::getPtr(IMPL->importNode(*core(importedNode), deep, ec)));
-    WebCore::raiseOnDOMError(ec);
-    return result;
-}
-
-- (DOMNode *)importNode:(DOMNode *)importedNode :(BOOL)deep
 {
     WebCore::JSMainThreadNullState state;
     if (!importedNode)
@@ -567,25 +547,7 @@
     return result;
 }
 
-- (DOMElement *)createElementNS:(NSString *)namespaceURI :(NSString *)qualifiedName
-{
-    WebCore::JSMainThreadNullState state;
-    WebCore::ExceptionCode ec = 0;
-    DOMElement *result = kit(WTF::getPtr(IMPL->createElementNS(namespaceURI, qualifiedName, ec)));
-    WebCore::raiseOnDOMError(ec);
-    return result;
-}
-
 - (DOMAttr *)createAttributeNS:(NSString *)namespaceURI qualifiedName:(NSString *)qualifiedName
-{
-    WebCore::JSMainThreadNullState state;
-    WebCore::ExceptionCode ec = 0;
-    DOMAttr *result = kit(WTF::getPtr(IMPL->createAttributeNS(namespaceURI, qualifiedName, ec)));
-    WebCore::raiseOnDOMError(ec);
-    return result;
-}
-
-- (DOMAttr *)createAttributeNS:(NSString *)namespaceURI :(NSString *)qualifiedName
 {
     WebCore::JSMainThreadNullState state;
     WebCore::ExceptionCode ec = 0;
@@ -596,14 +558,11 @@
 
 - (DOMNodeList *)getElementsByTagNameNS:(NSString *)namespaceURI localName:(NSString *)localName
 {
-    WebCore::JSMainThreadNullState state;
-    return kit(WTF::getPtr(IMPL->getElementsByTagNameNSForObjC(namespaceURI, localName)));
-}
+    if (!localName)
+        return nullptr;
 
-- (DOMNodeList *)getElementsByTagNameNS:(NSString *)namespaceURI :(NSString *)localName
-{
     WebCore::JSMainThreadNullState state;
-    return kit(WTF::getPtr(IMPL->getElementsByTagNameNSForObjC(namespaceURI, localName)));
+    return kit(static_cast<WebCore::NodeList*>(WTF::getPtr(IMPL->getElementsByTagNameNS(namespaceURI, localName))));
 }
 
 - (DOMNode *)adoptNode:(DOMNode *)source
@@ -643,29 +602,7 @@
     return kit(WTF::getPtr(IMPL->createNodeIterator(*core(root), whatToShow, WTF::getPtr(nativeNodeFilter), expandEntityReferences)));
 }
 
-- (DOMNodeIterator *)createNodeIterator:(DOMNode *)root :(unsigned)whatToShow :(id <DOMNodeFilter>)filter :(BOOL)expandEntityReferences
-{
-    WebCore::JSMainThreadNullState state;
-    if (!root)
-        WebCore::raiseTypeErrorException();
-    RefPtr<WebCore::NodeFilter> nativeNodeFilter;
-    if (filter)
-        nativeNodeFilter = WebCore::NativeNodeFilter::create(WebCore::ObjCNodeFilterCondition::create(filter));
-    return kit(WTF::getPtr(IMPL->createNodeIterator(*core(root), whatToShow, WTF::getPtr(nativeNodeFilter), expandEntityReferences)));
-}
-
 - (DOMTreeWalker *)createTreeWalker:(DOMNode *)root whatToShow:(unsigned)whatToShow filter:(id <DOMNodeFilter>)filter expandEntityReferences:(BOOL)expandEntityReferences
-{
-    WebCore::JSMainThreadNullState state;
-    if (!root)
-        WebCore::raiseTypeErrorException();
-    RefPtr<WebCore::NodeFilter> nativeNodeFilter;
-    if (filter)
-        nativeNodeFilter = WebCore::NativeNodeFilter::create(WebCore::ObjCNodeFilterCondition::create(filter));
-    return kit(WTF::getPtr(IMPL->createTreeWalker(*core(root), whatToShow, WTF::getPtr(nativeNodeFilter), expandEntityReferences)));
-}
-
-- (DOMTreeWalker *)createTreeWalker:(DOMNode *)root :(unsigned)whatToShow :(id <DOMNodeFilter>)filter :(BOOL)expandEntityReferences
 {
     WebCore::JSMainThreadNullState state;
     if (!root)
@@ -682,32 +619,7 @@
     return kit(WTF::getPtr(IMPL->getOverrideStyle(core(element), pseudoElement)));
 }
 
-- (DOMCSSStyleDeclaration *)getOverrideStyle:(DOMElement *)element :(NSString *)pseudoElement
-{
-    WebCore::JSMainThreadNullState state;
-    return kit(WTF::getPtr(IMPL->getOverrideStyle(core(element), pseudoElement)));
-}
-
 - (DOMXPathExpression *)createExpression:(NSString *)expression resolver:(id <DOMXPathNSResolver>)resolver
-{
-    WebCore::JSMainThreadNullState state;
-    WebCore::XPathNSResolver* nativeResolver = 0;
-    RefPtr<WebCore::XPathNSResolver> customResolver;
-    if (resolver) {
-        if ([resolver isMemberOfClass:[DOMNativeXPathNSResolver class]])
-            nativeResolver = core(static_cast<DOMNativeXPathNSResolver *>(resolver));
-        else {
-            customResolver = WebCore::DOMCustomXPathNSResolver::create(resolver);
-            nativeResolver = WTF::getPtr(customResolver);
-        }
-    }
-    WebCore::ExceptionCode ec = 0;
-    DOMXPathExpression *result = kit(WTF::getPtr(IMPL->createExpression(expression, WTF::getPtr(nativeResolver), ec)));
-    WebCore::raiseOnDOMError(ec);
-    return result;
-}
-
-- (DOMXPathExpression *)createExpression:(NSString *)expression :(id <DOMXPathNSResolver>)resolver
 {
     WebCore::JSMainThreadNullState state;
     WebCore::XPathNSResolver* nativeResolver = 0;
@@ -751,25 +663,6 @@
     return result;
 }
 
-- (DOMXPathResult *)evaluate:(NSString *)expression :(DOMNode *)contextNode :(id <DOMXPathNSResolver>)resolver :(unsigned short)type :(DOMXPathResult *)inResult
-{
-    WebCore::JSMainThreadNullState state;
-    WebCore::XPathNSResolver* nativeResolver = 0;
-    RefPtr<WebCore::XPathNSResolver> customResolver;
-    if (resolver) {
-        if ([resolver isMemberOfClass:[DOMNativeXPathNSResolver class]])
-            nativeResolver = core(static_cast<DOMNativeXPathNSResolver *>(resolver));
-        else {
-            customResolver = WebCore::DOMCustomXPathNSResolver::create(resolver);
-            nativeResolver = WTF::getPtr(customResolver);
-        }
-    }
-    WebCore::ExceptionCode ec = 0;
-    DOMXPathResult *result = kit(WTF::getPtr(IMPL->evaluate(expression, core(contextNode), WTF::getPtr(nativeResolver), type, core(inResult), ec)));
-    WebCore::raiseOnDOMError(ec);
-    return result;
-}
-
 - (BOOL)execCommand:(NSString *)command userInterface:(BOOL)userInterface value:(NSString *)value
 {
     WebCore::JSMainThreadNullState state;
@@ -778,14 +671,12 @@
 
 - (BOOL)execCommand:(NSString *)command userInterface:(BOOL)userInterface
 {
-    WebCore::JSMainThreadNullState state;
-    return IMPL->execCommand(command, userInterface);
+    return [self execCommand:command userInterface:userInterface value:nullptr];
 }
 
 - (BOOL)execCommand:(NSString *)command
 {
-    WebCore::JSMainThreadNullState state;
-    return IMPL->execCommand(command);
+    return [self execCommand:command userInterface:NO value:nullptr];
 }
 
 - (BOOL)queryCommandEnabled:(NSString *)command
@@ -853,24 +744,9 @@
     return kit(WTF::getPtr(dv->getComputedStyle(*core(element), pseudoElement)));
 }
 
-- (DOMCSSStyleDeclaration *)getComputedStyle:(DOMElement *)element :(NSString *)pseudoElement
-{
-    WebCore::JSMainThreadNullState state;
-    if (!element)
-        WebCore::raiseTypeErrorException();
-    WebCore::DOMWindow* dv = IMPL->defaultView();
-    if (!dv)
-        return nil;
-    return kit(WTF::getPtr(dv->getComputedStyle(*core(element), pseudoElement)));
-}
-
 - (DOMCSSRuleList *)getMatchedCSSRules:(DOMElement *)element pseudoElement:(NSString *)pseudoElement
 {
-    WebCore::JSMainThreadNullState state;
-    WebCore::DOMWindow* dv = IMPL->defaultView();
-    if (!dv)
-        return nil;
-    return kit(WTF::getPtr(dv->getMatchedCSSRules(core(element), pseudoElement)));
+    return [self getMatchedCSSRules:element pseudoElement:pseudoElement authorOnly:YES];
 }
 
 - (DOMCSSRuleList *)getMatchedCSSRules:(DOMElement *)element pseudoElement:(NSString *)pseudoElement authorOnly:(BOOL)authorOnly
@@ -885,7 +761,7 @@
 - (DOMNodeList *)getElementsByClassName:(NSString *)classNames
 {
     WebCore::JSMainThreadNullState state;
-    return kit(WTF::getPtr(IMPL->getElementsByClassNameForObjC(classNames)));
+    return kit(static_cast<WebCore::NodeList*>(WTF::getPtr(IMPL->getElementsByClassName(classNames))));
 }
 
 - (BOOL)hasFocus
@@ -939,6 +815,65 @@
     DOMNodeList *result = kit(WTF::getPtr(IMPL->querySelectorAll(selectors, ec)));
     WebCore::raiseOnDOMError(ec);
     return result;
+}
+
+@end
+
+@implementation DOMDocument (DOMDocumentDeprecated)
+
+- (DOMProcessingInstruction *)createProcessingInstruction:(NSString *)target :(NSString *)data
+{
+    return [self createProcessingInstruction:target data:data];
+}
+
+- (DOMNode *)importNode:(DOMNode *)importedNode :(BOOL)deep
+{
+    return [self importNode:importedNode deep:deep];
+}
+
+- (DOMElement *)createElementNS:(NSString *)namespaceURI :(NSString *)qualifiedName
+{
+    return [self createElementNS:namespaceURI qualifiedName:qualifiedName];
+}
+
+- (DOMAttr *)createAttributeNS:(NSString *)namespaceURI :(NSString *)qualifiedName
+{
+    return [self createAttributeNS:namespaceURI qualifiedName:qualifiedName];
+}
+
+- (DOMNodeList *)getElementsByTagNameNS:(NSString *)namespaceURI :(NSString *)localName
+{
+    return [self getElementsByTagNameNS:namespaceURI localName:localName];
+}
+
+- (DOMNodeIterator *)createNodeIterator:(DOMNode *)root :(unsigned)whatToShow :(id <DOMNodeFilter>)filter :(BOOL)expandEntityReferences
+{
+    return [self createNodeIterator:root whatToShow:whatToShow filter:filter expandEntityReferences:expandEntityReferences];
+}
+
+- (DOMTreeWalker *)createTreeWalker:(DOMNode *)root :(unsigned)whatToShow :(id <DOMNodeFilter>)filter :(BOOL)expandEntityReferences
+{
+    return [self createTreeWalker:root whatToShow:whatToShow filter:filter expandEntityReferences:expandEntityReferences];
+}
+
+- (DOMCSSStyleDeclaration *)getOverrideStyle:(DOMElement *)element :(NSString *)pseudoElement
+{
+    return [self getOverrideStyle:element pseudoElement:pseudoElement];
+}
+
+- (DOMXPathExpression *)createExpression:(NSString *)expression :(id <DOMXPathNSResolver>)resolver
+{
+    return [self createExpression:expression resolver:resolver];
+}
+
+- (DOMXPathResult *)evaluate:(NSString *)expression :(DOMNode *)contextNode :(id <DOMXPathNSResolver>)resolver :(unsigned short)type :(DOMXPathResult *)inResult
+{
+    return [self evaluate:expression contextNode:contextNode resolver:resolver type:type inResult:inResult];
+}
+
+- (DOMCSSStyleDeclaration *)getComputedStyle:(DOMElement *)element :(NSString *)pseudoElement
+{
+    return [self getComputedStyle:element pseudoElement:pseudoElement];
 }
 
 @end

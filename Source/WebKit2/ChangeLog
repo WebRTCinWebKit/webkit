@@ -1,3 +1,790 @@
+2016-08-11  Brady Eidson  <beidson@apple.com>
+
+        [WK2] Don't monitor gamepads at all unless an interested WebPageProxy is in the active window.
+        https://bugs.webkit.org/show_bug.cgi?id=160760
+
+        Reviewed by Tim Horton.
+        
+        This patch makes it such that the UIProcess will only listen to the platform gamepad mechanism
+        if a WebPageProxy that is interested in gamepads is in the active window.
+
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::windowDidBecomeKey):
+        (WebKit::WebViewImpl::windowDidResignKey):
+
+        * UIProcess/Gamepad/UIGamepadProvider.cpp:
+        (WebKit::UIGamepadProvider::UIGamepadProvider):
+        (WebKit::UIGamepadProvider::gamepadSyncTimerFired):
+        (WebKit::UIGamepadProvider::scheduleGamepadStateSync):
+        (WebKit::UIGamepadProvider::platformGamepadConnected):
+        (WebKit::UIGamepadProvider::platformGamepadDisconnected):
+        (WebKit::UIGamepadProvider::platformGamepadInputActivity):
+        (WebKit::UIGamepadProvider::processPoolStartedUsingGamepads):
+        (WebKit::UIGamepadProvider::processPoolStoppedUsingGamepads):
+        (WebKit::UIGamepadProvider::viewBecameActive):
+        (WebKit::UIGamepadProvider::viewBecameInactive):
+        (WebKit::UIGamepadProvider::scheduleDisableGamepadMonitoring):
+        (WebKit::UIGamepadProvider::disableMonitoringTimerFired):
+        (WebKit::UIGamepadProvider::startMonitoringGamepads):
+        (WebKit::UIGamepadProvider::stopMonitoringGamepads):
+        (WebKit::UIGamepadProvider::updateTimerFired): Deleted.
+        (WebKit::UIGamepadProvider::startOrStopSynchingGamepadState): Deleted.
+        * UIProcess/Gamepad/UIGamepadProvider.h:
+
+2016-08-11  Brady Eidson  <beidson@apple.com>
+
+        Make Gamepads be a WK2 ExperimentalFeature.
+        https://bugs.webkit.org/show_bug.cgi?id=160788
+
+        Reviewed by Alex Christensen.
+
+        * Shared/WebPreferencesDefinitions.h:
+
+2016-08-11  Alex Christensen  <achristensen@webkit.org>
+
+        Don't use a NetworkingContext when creating SocketStreamHandles
+        https://bugs.webkit.org/show_bug.cgi?id=160732
+
+        Reviewed by Brady Eidson.
+
+        * WebProcess/Network/WebSocketProvider.cpp:
+        (WebKit::WebSocketProvider::createSocketStreamHandle):
+        * WebProcess/Network/WebSocketProvider.h:
+
+2016-08-11  Alex Christensen  <achristensen@webkit.org>
+
+        Use StringBuilder::appendLiteral when possible don't append result of makeString
+        https://bugs.webkit.org/show_bug.cgi?id=160772
+
+        Reviewed by Sam Weinig.
+
+        * Shared/Gamepad/GamepadData.cpp:
+        (WebKit::GamepadData::isNull):
+        (WebKit::GamepadData::loggingString):
+        * Shared/Gamepad/GamepadData.h:
+        * UIProcess/WebProcessPool.h:
+
+2016-08-10  Alex Christensen  <achristensen@webkit.org>
+
+        Fix crash when changing cookie accept policy after r204327
+        https://bugs.webkit.org/show_bug.cgi?id=160758
+
+        Reviewed by Simon Fraser.
+
+        * WebProcess/WebCoreSupport/mac/WebFrameNetworkingContext.mm:
+        (WebKit::WebFrameNetworkingContext::setCookieAcceptPolicyForAllContexts):
+
+2016-08-10  Simon Fraser  <simon.fraser@apple.com>
+
+        Sort the feature flags in the FEATURE_DEFINES lines
+        https://bugs.webkit.org/show_bug.cgi?id=160742
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-08-09  Alex Christensen  <achristensen@webkit.org>
+
+        Move NetworkStorageSession management to WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=160173
+
+        Reviewed by Brady Eidson.
+
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::storageSession):
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::fetchWebsiteData):
+        (WebKit::NetworkProcess::deleteWebsiteData):
+        (WebKit::NetworkProcess::deleteWebsiteDataForOrigins):
+        * NetworkProcess/NetworkSession.h:
+        (WebKit::NetworkSession::sessionID):
+        NetworkSessions no longer own NetworkStorageSessions, but they should still have the same lifetime.
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (-[WKNetworkSessionDelegate URLSession:task:didReceiveChallenge:completionHandler:]):
+        (WebKit::NetworkSession::setSourceApplicationAuditTokenData):
+        (WebKit::NetworkSession::create):
+        (WebKit::NetworkSession::defaultSession):
+        (WebKit::NetworkSession::NetworkSession):
+        (WebKit::NetworkSession::networkStorageSession):
+        (WebKit::NetworkSession::clearCredentials):
+        * NetworkProcess/mac/RemoteNetworkingContext.mm:
+        (WebKit::RemoteNetworkingContext::storageSession):
+        (WebKit::RemoteNetworkingContext::ensurePrivateBrowsingSession):
+        * Shared/SessionTracker.cpp:
+        (WebKit::SessionTracker::networkSession):
+        (WebKit::SessionTracker::setSession):
+        (WebKit::SessionTracker::destroySession):
+        (WebKit::SessionTracker::storageSession): Deleted.
+        (WebKit::staticStorageSessionMap): Deleted.
+        (WebKit::SessionTracker::sessionID): Deleted.
+        (WebKit::SessionTracker::forEachNetworkStorageSession): Deleted.
+        * Shared/SessionTracker.h:
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::cookiesForDOM):
+        (WebKit::WebPlatformStrategies::setCookiesFromDOM):
+        (WebKit::WebPlatformStrategies::cookiesEnabled):
+        (WebKit::WebPlatformStrategies::cookieRequestHeaderFieldValue):
+        (WebKit::WebPlatformStrategies::getRawCookies):
+        (WebKit::WebPlatformStrategies::deleteCookie):
+        (WebKit::WebPlatformStrategies::addCookie):
+        * WebProcess/WebCoreSupport/mac/WebFrameNetworkingContext.mm:
+        (WebKit::WebFrameNetworkingContext::ensurePrivateBrowsingSession):
+        (WebKit::WebFrameNetworkingContext::setCookieAcceptPolicyForAllContexts):
+        (WebKit::WebFrameNetworkingContext::storageSession):
+        * WebProcess/WebCoreSupport/soup/WebFrameNetworkingContext.cpp:
+        (WebKit::WebFrameNetworkingContext::ensurePrivateBrowsingSession):
+        (WebKit::WebFrameNetworkingContext::setCookieAcceptPolicyForAllContexts):
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        * WebProcess/WebProcess.cpp:
+
+2016-08-09  Anders Carlsson  <andersca@apple.com>
+
+        Fix iOS build.
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::setPluginLoadClientPolicy): Deleted.
+        (WebKit::WebProcessPool::clearPluginClientPolicies): Deleted.
+
+2016-08-09  Anders Carlsson  <andersca@apple.com>
+
+        Instantiate WebKit plug-ins at layout time, instead of at style resolution time
+        https://bugs.webkit.org/show_bug.cgi?id=160715
+
+        Reviewed by Tim Horton.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::objectContentType):
+
+2016-08-09  Brady Eidson  <beidson@apple.com>
+
+        [WK2] Only send gamepad input events to the currently focused page.
+        https://bugs.webkit.org/show_bug.cgi?id=160699
+
+        Reviewed by Tim Horton.
+        
+        * UIProcess/Gamepad/UIGamepadProvider.cpp:
+        (WebKit::UIGamepadProvider::updateTimerFired):
+        (WebKit::UIGamepadProvider::platformWebProcessProxyForGamepadInput):
+        * UIProcess/Gamepad/UIGamepadProvider.h:
+        * UIProcess/Gamepad/mac/UIGamepadProviderMac.mm: Copied from Source/WebKit2/UIProcess/API/mac/WKViewInternal.h.
+        (WebKit::UIGamepadProvider::platformWebPageProxyForGamepadInput):
+        
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::gamepadActivity):
+        * UIProcess/WebPageProxy.h:
+        
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::gamepadActivity): Deleted.
+        * UIProcess/WebProcessPool.h:
+        
+        * WebKit2.xcodeproj/project.pbxproj:
+        
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::gamepadActivity):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+        
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::gamepadActivity): Deleted.
+        * WebProcess/WebProcess.h:
+        * WebProcess/WebProcess.messages.in:
+
+2016-08-09  Anders Carlsson  <andersca@apple.com>
+
+        Remove code that would tell clients whenever the list of installed plug-ins changes
+        https://bugs.webkit.org/show_bug.cgi?id=160719
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/Plugins/PluginInfoStore.cpp:
+        (WebKit::PluginInfoStore::PluginInfoStore): Deleted.
+        (WebKit::PluginInfoStore::loadPluginsIfNecessary): Deleted.
+        * UIProcess/Plugins/PluginInfoStore.h:
+        (WebKit::PluginInfoStoreClient::~PluginInfoStoreClient): Deleted.
+        (WebKit::PluginInfoStoreClient::PluginInfoStoreClient): Deleted.
+        (WebKit::PluginInfoStore::setClient): Deleted.
+        (WebKit::PluginInfoStore::client): Deleted.
+        * UIProcess/WebContextClient.cpp:
+        (WebKit::WebContextClient::plugInInformationBecameAvailable): Deleted.
+        * UIProcess/WebContextClient.h:
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::m_hiddenPageThrottlingTimer): Deleted.
+        (WebKit::WebProcessPool::pluginInfoStoreDidLoadPlugins): Deleted.
+        * UIProcess/WebProcessPool.h:
+
+2016-08-09  George Ruan  <gruan@apple.com>
+
+        Implement functionality of media capture on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=158945
+        <rdar://problem/26893343>
+
+        Reviewed by Tim Horton.
+
+        For a input type file element on iOS, the media capture attribute can
+        now be used to specify which camera to pull up immediately, as opposed
+        to having to select the camera from a file picker menu. If the
+        specified capture type camera device is unavailable, the other
+        built-in camera will be pulled up instead. If no camera is available,
+        then the file picker menu will be presented to the user.
+
+        * Configurations/FeatureDefines.xcconfig: Enable Media Capture feature
+        on iOS.
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<FileChooserSettings>::encode): Encode enum
+        MediaCaptureType.
+        (IPC::ArgumentCoder<FileChooserSettings>::decode): Decode enum
+        MediaCaptureType.
+        * UIProcess/API/APIOpenPanelParameters.cpp:
+        (API::OpenPanelParameters::mediaCaptureType):
+        (API::OpenPanelParameters::capture): Deleted.
+        * UIProcess/API/APIOpenPanelParameters.h: Capture attribute is now
+        represented with MediaCaptureType instead of boolean.
+        * UIProcess/API/C/WKOpenPanelParametersRef.cpp:
+        (WKOpenPanelParametersGetMediaCaptureType): Change function name to
+        better represent function.
+        (WKOpenPanelParametersGetCaptureEnabled): Deleted.
+        * UIProcess/API/C/WKOpenPanelParametersRef.h:
+        * UIProcess/ios/forms/WKFileUploadPanel.mm:
+        (cameraDeviceForMediaCaptureType): Translate MediaCaptureType to media
+        device.
+        (-[WKFileUploadPanel presentWithParameters:resultListener:]):
+        Immediately pull up media capture device if devices are available and
+        capture attribute is present.
+        (-[WKFileUploadPanel _showDocumentPickerMenu]): Only show option to
+        use media capture device if it is available for the source type.
+        (-[WKFileUploadPanel _adjustMediaCaptureType]): Determines correct
+        fallback option for the media capture device.
+        (-[WKFileUploadPanel _shouldMediaCaptureOpenMediaDevice]): Checks if
+        the media capture device should be immediately pulled up.
+        (-[WKFileUploadPanel _showPhotoPickerWithSourceType:]): Specified the
+        media capture device to use.
+
+2016-08-09  Brady Eidson  <beidson@apple.com>
+
+        Implement "dumb" WK2 support for gamepads.
+        https://bugs.webkit.org/show_bug.cgi?id=160700
+
+        Reviewed by Alex Christensen.
+        
+        With this patch, gamepads work in WK2.
+
+        Things known to be missing to make this mechanism more "smart":
+          - Refresh values along with display sync instead of on a 60hz timer (bug 160673)
+          - Only send updated values to the current focused web page (bug 160699)
+
+        * CMakeLists.txt:
+        * WebKit2.xcodeproj/project.pbxproj:
+        
+        * Shared/Gamepad/GamepadData.cpp: Copied from Source/WebKit2/UIProcess/Gamepad/mac/UIGamepadProviderHID.cpp.
+        (WebKit::GamepadData::encode):
+        (WebKit::GamepadData::decode):
+        (WebKit::GamepadData::isNull):
+        (WebKit::GamepadData::loggingString):
+        * Shared/Gamepad/GamepadData.h: Copied from Source/WebKit2/WebProcess/Gamepad/WebGamepad.h.
+        
+        * UIProcess/Gamepad/UIGamepad.cpp: Copied from Source/WebKit2/UIProcess/Gamepad/mac/UIGamepadProviderHID.cpp.
+        (WebKit::UIGamepad::UIGamepad):
+        (WebKit::UIGamepad::updateFromPlatformGamepad):
+        (WebKit::UIGamepad::gamepadData):
+        * UIProcess/Gamepad/UIGamepad.h: Copied from Source/WebKit2/WebProcess/Gamepad/WebGamepad.h.
+        (WebKit::UIGamepad::index):
+        
+        * UIProcess/Gamepad/UIGamepadProvider.cpp:
+        (WebKit::UIGamepadProvider::UIGamepadProvider):
+        (WebKit::UIGamepadProvider::updateTimerFired):
+        (WebKit::UIGamepadProvider::startOrStopSynchingGamepadState):
+        (WebKit::UIGamepadProvider::platformGamepadConnected):
+        (WebKit::UIGamepadProvider::platformGamepadDisconnected):
+        (WebKit::UIGamepadProvider::platformGamepadInputActivity):
+        (WebKit::UIGamepadProvider::processPoolStartedUsingGamepads):
+        (WebKit::UIGamepadProvider::processPoolStoppedUsingGamepads):
+        (WebKit::UIGamepadProvider::platformGamepads):
+        * UIProcess/Gamepad/UIGamepadProvider.h:
+        * UIProcess/Gamepad/mac/UIGamepadProviderHID.cpp:
+        (WebKit::UIGamepadProvider::platformGamepads):
+        
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::gamepadConnected):
+        (WebKit::WebProcessPool::gamepadDisconnected):
+        (WebKit::WebProcessPool::gamepadActivity):
+        * UIProcess/WebProcessPool.h:
+        
+        * WebProcess/Gamepad/WebGamepad.cpp:
+        (WebKit::WebGamepad::WebGamepad):
+        (WebKit::WebGamepad::axisValues):
+        (WebKit::WebGamepad::buttonValues):
+        (WebKit::WebGamepad::updateValues):
+        * WebProcess/Gamepad/WebGamepad.h:
+        
+        * WebProcess/Gamepad/WebGamepadProvider.cpp:
+        (WebKit::WebGamepadProvider::gamepadConnected):
+        (WebKit::WebGamepadProvider::gamepadDisconnected):
+        (WebKit::WebGamepadProvider::gamepadActivity):
+        (WebKit::WebGamepadProvider::platformGamepads):
+        * WebProcess/Gamepad/WebGamepadProvider.h:
+        
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::gamepadConnected):
+        (WebKit::WebProcess::gamepadDisconnected):
+        (WebKit::WebProcess::gamepadActivity):
+        * WebProcess/WebProcess.h:
+        * WebProcess/WebProcess.messages.in:
+
+2016-08-09  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of PluginStrategy
+        https://bugs.webkit.org/show_bug.cgi?id=160696
+
+        Reviewed by Dan Bernstein.
+
+        * NetworkProcess/NetworkProcessPlatformStrategies.cpp:
+        (WebKit::NetworkProcessPlatformStrategies::createPluginStrategy): Deleted.
+        * NetworkProcess/NetworkProcessPlatformStrategies.h:
+        * WebProcess/Plugins/WebPluginInfoProvider.h:
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::createPluginStrategy): Deleted.
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.h:
+
+2016-08-09  Dan Bernstein  <mitz@apple.com>
+
+        Add WKPage SPI for looking up a WKFrame given a WKFrameHandle
+        https://bugs.webkit.org/show_bug.cgi?id=160695
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageLookUpFrameFromHandle): Added. Gets the frame from the map in the page’s process and
+          returns it if it belongs to the page.
+        * UIProcess/API/C/WKPagePrivate.h:
+
+2016-08-08  Anders Carlsson  <andersca@apple.com>
+
+        Move plug-in code from WebPlatformStrategies to WebPluginInfoProvider
+        https://bugs.webkit.org/show_bug.cgi?id=160679
+
+        Reviewed by Alex Christensen.
+
+        * WebProcess/Plugins/WebPluginInfoProvider.cpp:
+        (WebKit::WebPluginInfoProvider::setPluginLoadClientPolicy):
+        (WebKit::WebPluginInfoProvider::clearPluginClientPolicies):
+        (WebKit::WebPluginInfoProvider::refreshPlugins):
+        (WebKit::WebPluginInfoProvider::getPluginInfo):
+        (WebKit::WebPluginInfoProvider::getWebVisiblePluginInfo):
+        (WebKit::WebPluginInfoProvider::populatePluginCache):
+        (WebKit::WebPluginInfoProvider::pluginLoadClientPolicyForHost):
+        (WebKit::WebPluginInfoProvider::longestMatchedWildcardHostForHost):
+        (WebKit::WebPluginInfoProvider::replaceHostWithMatchedWildcardHost):
+        * WebProcess/Plugins/WebPluginInfoProvider.h:
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::createPluginStrategy):
+        (WebKit::WebPlatformStrategies::WebPlatformStrategies): Deleted.
+        (WebKit::WebPlatformStrategies::refreshPlugins): Deleted.
+        (WebKit::WebPlatformStrategies::getPluginInfo): Deleted.
+        (WebKit::WebPlatformStrategies::getWebVisiblePluginInfo): Deleted.
+        (WebKit::WebPlatformStrategies::setPluginLoadClientPolicy): Deleted.
+        (WebKit::WebPlatformStrategies::clearPluginClientPolicies): Deleted.
+        (WebKit::WebPlatformStrategies::longestMatchedWildcardHostForHost): Deleted.
+        (WebKit::WebPlatformStrategies::replaceHostWithMatchedWildcardHost): Deleted.
+        (WebKit::WebPlatformStrategies::pluginLoadClientPolicyForHost): Deleted.
+        (WebKit::WebPlatformStrategies::populatePluginCache): Deleted.
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.h:
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeWebProcess):
+        (WebKit::WebProcess::setPluginLoadClientPolicy):
+        (WebKit::WebProcess::clearPluginClientPolicies):
+
+2016-08-08  Anders Carlsson  <andersca@apple.com>
+
+        Add a new PluginInfoProvider class, to replace PluginStrategy
+        https://bugs.webkit.org/show_bug.cgi?id=160670
+
+        Reviewed by Sam Weinig.
+
+        Add a new WebPluginInfoProvider - it just calls through to the plug-in strategy for now.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/Plugins/WebPluginInfoProvider.cpp: Added.
+        (WebKit::WebPluginInfoProvider::singleton):
+        (WebKit::WebPluginInfoProvider::WebPluginInfoProvider):
+        (WebKit::WebPluginInfoProvider::~WebPluginInfoProvider):
+        (WebKit::WebPluginInfoProvider::refreshPlugins):
+        (WebKit::WebPluginInfoProvider::getPluginInfo):
+        (WebKit::WebPluginInfoProvider::getWebVisiblePluginInfo):
+        (WebKit::WebPluginInfoProvider::setPluginLoadClientPolicy):
+        (WebKit::WebPluginInfoProvider::clearPluginClientPolicies):
+        * WebProcess/Plugins/WebPluginInfoProvider.h: Added.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::m_userInterfaceLayoutDirection):
+
+2016-08-08  Brady Eidson  <beidson@apple.com>
+
+        Addressing late review feedback in bug 160605
+        https://bugs.webkit.org/show_bug.cgi?id=160605
+
+        Reviewed by Darin's suggestions.
+
+        * UIProcess/Gamepad/UIGamepadProvider.cpp:
+        (WebKit::UIGamepadProvider::processPoolStartedUsingGamepads):
+        (WebKit::UIGamepadProvider::processPoolStoppedUsingGamepads):
+        * UIProcess/Gamepad/UIGamepadProvider.h:
+        
+        * UIProcess/Gamepad/mac/UIGamepadProviderHID.cpp:
+        (WebKit::UIGamepadProvider::platformStartMonitoringGamepads):
+        (WebKit::UIGamepadProvider::platformStopMonitoringGamepads):
+        
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::disconnectProcess):
+        (WebKit::WebProcessPool::startedUsingGamepads):
+        (WebKit::WebProcessPool::stoppedUsingGamepads):
+        (WebKit::WebProcessPool::processStoppedUsingGamepads):
+        * UIProcess/WebProcessPool.h:
+        
+        * WebProcess/Gamepad/WebGamepadProvider.cpp:
+        (WebKit::WebGamepadProvider::startMonitoringGamepads):
+        (WebKit::WebGamepadProvider::stopMonitoringGamepads):
+        * WebProcess/Gamepad/WebGamepadProvider.h:
+
+2016-08-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Bad performance in accelerated compositing mode with the modesetting intel driver and DRI3 enabled
+        https://bugs.webkit.org/show_bug.cgi?id=160491
+
+        Reviewed by Michael Catanzaro.
+
+        This is becoming the default in several linux distributions and it makes WebKitGTK+ unusable in accelerated
+        compositing mode, which is now always enabled because since we switched to use the threaded compositor. The
+        problem seems to be an optimization of the intel driver for windows that are offscreen, and our redirected
+        window is always positioned at ScreenWidth + 1, 0. Using negative coordinates to position the redirected window
+        offscreen fixes the problem.
+        See also https://bugs.freedesktop.org/show_bug.cgi?id=85064.
+
+        * WebProcess/WebPage/gtk/RedirectedXCompositeWindow.cpp:
+        (WebKit::RedirectedXCompositeWindow::RedirectedXCompositeWindow): Position the parent window at -1, -1.
+
+2016-08-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Duplicated code in DrawingAreaProxyImpl and CoordinatedDrawingAreaProxy
+        https://bugs.webkit.org/show_bug.cgi?id=160506
+
+        Reviewed by Michael Catanzaro.
+
+        Same logic as in r202855 but in the UI process. CoordinatedDrawingAreaProxy is just a copy paste of
+        DrawingAreaProxyImpl with non-accelerated code path removed. There's actually nothing (or very little) specific
+        to coordinated graphics in the CoordinatedDrawingAreaProxy implementation. This patch renames
+        CoordinatedDrawingAreaProxy as AcceleratedDrawingAreaProxy and makes DrawingAreaProxyImpl inherit from it, so
+        that in case of accelerated compositing the parent class is used, and DrawingAreaProxyImpl only adds the non
+        accelerated code path.
+        To simplify the common API of AcceleratedDrawingAreaProxy, I have changed CoordinatedLayerTreeHostProxy to
+        receive a WebPageProxy in the constructor instead of a drawing area, since the drawing area was used just to get
+        the page proxy.
+
+        * PlatformEfl.cmake:
+        * PlatformGTK.cmake:
+        * UIProcess/AcceleratedDrawingAreaProxy.cpp: Renamed from Source/WebKit2/UIProcess/CoordinatedGraphics/CoordinatedDrawingAreaProxy.cpp.
+        (WebKit::AcceleratedDrawingAreaProxy::AcceleratedDrawingAreaProxy):
+        (WebKit::AcceleratedDrawingAreaProxy::~AcceleratedDrawingAreaProxy):
+        (WebKit::AcceleratedDrawingAreaProxy::alwaysUseCompositing):
+        (WebKit::AcceleratedDrawingAreaProxy::dispatchAfterEnsuringDrawing):
+        (WebKit::AcceleratedDrawingAreaProxy::sizeDidChange):
+        (WebKit::AcceleratedDrawingAreaProxy::deviceScaleFactorDidChange):
+        (WebKit::AcceleratedDrawingAreaProxy::visibilityDidChange):
+        (WebKit::AcceleratedDrawingAreaProxy::waitForBackingStoreUpdateOnNextPaint):
+        (WebKit::AcceleratedDrawingAreaProxy::didUpdateBackingStoreState):
+        (WebKit::AcceleratedDrawingAreaProxy::enterAcceleratedCompositingMode):
+        (WebKit::AcceleratedDrawingAreaProxy::exitAcceleratedCompositingMode):
+        (WebKit::AcceleratedDrawingAreaProxy::updateAcceleratedCompositingMode):
+        (WebKit::AcceleratedDrawingAreaProxy::backingStoreStateDidChange):
+        (WebKit::AcceleratedDrawingAreaProxy::sendUpdateBackingStoreState):
+        (WebKit::AcceleratedDrawingAreaProxy::waitForAndDispatchDidUpdateBackingStoreState):
+        (WebKit::AcceleratedDrawingAreaProxy::setNativeSurfaceHandleForCompositing):
+        (WebKit::AcceleratedDrawingAreaProxy::destroyNativeSurfaceHandleForCompositing):
+        * UIProcess/AcceleratedDrawingAreaProxy.h: Renamed from Source/WebKit2/UIProcess/CoordinatedGraphics/CoordinatedDrawingAreaProxy.h.
+        (WebKit::AcceleratedDrawingAreaProxy::isInAcceleratedCompositingMode):
+        (WebKit::AcceleratedDrawingAreaProxy::coordinatedLayerTreeHostProxy):
+        * UIProcess/CoordinatedGraphics/CoordinatedLayerTreeHostProxy.cpp:
+        (WebKit::CoordinatedLayerTreeHostProxy::CoordinatedLayerTreeHostProxy):
+        (WebKit::CoordinatedLayerTreeHostProxy::~CoordinatedLayerTreeHostProxy):
+        (WebKit::CoordinatedLayerTreeHostProxy::updateViewport):
+        (WebKit::CoordinatedLayerTreeHostProxy::commitCoordinatedGraphicsState):
+        (WebKit::CoordinatedLayerTreeHostProxy::setVisibleContentsRect):
+        (WebKit::CoordinatedLayerTreeHostProxy::renderNextFrame):
+        (WebKit::CoordinatedLayerTreeHostProxy::commitScrollOffset):
+        * UIProcess/CoordinatedGraphics/CoordinatedLayerTreeHostProxy.h:
+        * UIProcess/CoordinatedGraphics/PageViewportController.cpp:
+        (WebKit::PageViewportController::syncVisibleContents):
+        * UIProcess/DrawingAreaProxyImpl.cpp:
+        (WebKit::DrawingAreaProxyImpl::DrawingAreaProxyImpl):
+        (WebKit::DrawingAreaProxyImpl::paint):
+        (WebKit::DrawingAreaProxyImpl::didUpdateBackingStoreState):
+        (WebKit::DrawingAreaProxyImpl::exitAcceleratedCompositingMode):
+        (WebKit::DrawingAreaProxyImpl::enterAcceleratedCompositingMode):
+        (WebKit::DrawingAreaProxyImpl::~DrawingAreaProxyImpl): Deleted.
+        (WebKit::DrawingAreaProxyImpl::update): Deleted.
+        (WebKit::DrawingAreaProxyImpl::incorporateUpdate): Deleted.
+        (WebKit::DrawingAreaProxyImpl::discardBackingStoreSoon): Deleted.
+        (WebKit::DrawingAreaProxyImpl::discardBackingStore): Deleted.
+        * UIProcess/DrawingAreaProxyImpl.h:
+        * UIProcess/efl/WebView.cpp:
+        (WebKit::WebView::setVisible):
+        (WebKit::WebView::coordinatedGraphicsScene):
+        (WebKit::WebView::updateViewportSize):
+        (WebKit::WebView::createDrawingAreaProxy):
+
+2016-08-07  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Reply block leaks if the remote object doesn’t call it
+        https://bugs.webkit.org/show_bug.cgi?id=160642
+
+        Reviewed by Sam Weinig.
+
+        * Shared/API/Cocoa/RemoteObjectRegistry.h: Declared new member functions.
+        * Shared/API/Cocoa/RemoteObjectRegistry.messages.in: Added ReleaseUnusedReplyBlock message.
+        * Shared/API/Cocoa/RemoteObjectRegistry.mm:
+        (WebKit::RemoteObjectRegistry::sendUnusedReply): Send the ReleaseUnusedReplyBlock message.
+        (WebKit::RemoteObjectRegistry::releaseUnusedReplyBlock): Message receiver that call through
+          to -_releaseReplyWithID:.
+
+        * Shared/API/Cocoa/_WKRemoteObjectRegistry.mm:
+        (-[_WKRemoteObjectRegistry _invokeMethod:]): Define a ReplyBlockCallChecker object and
+          capture an instance of it in the reply block we pass to the exported object. Have that
+          block set a flag on the checker when it’s called. If the checker gets destroyed without
+          the block having been called, which means that the block got destroyed without being
+          called, call sendUnusedReply to let the other side know that the block will not be invoked.
+        (-[_WKRemoteObjectRegistry _releaseReplyWithID:]): Added. Removed the pending reply from the
+          map, which release the block.
+        * Shared/API/Cocoa/_WKRemoteObjectRegistryInternal.h:
+
+2016-08-07  Chris Dumez  <cdumez@apple.com>
+
+        Write API test to cover crash fix in r204135
+        https://bugs.webkit.org/show_bug.cgi?id=160587
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::terminateProcess):
+        Stop calling resetStateAfterProcessExited() after calling
+        requestTermination() because requestTermination() now calls
+        didClose() which calls processDidCrash() which already calls
+        resetStateAfterProcessExited(). Because the processDidCrash()
+        delegates may start new loads, we really do not want to
+        reset the state again after calling the delegates.
+
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::requestTermination):
+        - Call didClose() in WebProcessProxy::requestTermination() so that
+          the processDidCrash() delegates get called in API tests whenever
+          a WebContent process is terminated to simulate a crash.
+        - Stop calling shutDown() and webConnection()->didClose() because
+          didClose() already does this for us.
+
+2016-08-06  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r204226.
+
+        Broke some API tests
+
+        Reverted changeset:
+
+        "Write API test to cover crash fix in r204135"
+        https://bugs.webkit.org/show_bug.cgi?id=160587
+        http://trac.webkit.org/changeset/204226
+
+2016-08-06  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] -[_WKRemoteObjectRegistry() _invokeMethod:] leaks a block
+        https://bugs.webkit.org/show_bug.cgi?id=160636
+
+        Reviewed by Darin Adler.
+
+        * Shared/API/Cocoa/_WKRemoteObjectRegistry.mm:
+        (-[_WKRemoteObjectRegistry _invokeMethod:]): Release the block returned from
+          __NSMakeSpecialForwardingCaptureBlock.
+
+2016-08-06  Chris Dumez  <cdumez@apple.com>
+
+        Write API test to cover crash fix in r204135
+        https://bugs.webkit.org/show_bug.cgi?id=160587
+
+        Reviewed by Darin Adler.
+
+        Call didClose() in WebProcessProxy::requestTermination() so that
+        the processDidCrash() delegates get called in API tests whenever
+        a WebContent process is terminated to simulate a crash.
+
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::requestTermination):
+
+2016-08-06  Brady Eidson  <beidson@apple.com>
+
+        Lay WebProcess/UIProcess groundwork for an IPC GamepadProvider.
+        https://bugs.webkit.org/show_bug.cgi?id=160605
+
+        Reviewed by Alex Christensen.
+
+        This patch:
+          - Introduces the GamepadProvider that the WebProcess will use (WebGamepadProvider)
+          - Has that provider message to the UIProcess notifying interest in gamepad state
+          - Introduces a GamepadProviderClient in the UIProcess (UIGamepadProvider) that will use
+            one of the existing GamepadProviders to pass gamepad state along to WebProcesses.
+          - Adds an empty skeleton for the soon-to-be-used WebGamepad, which will be the 
+            "PlatformGamepad" for WebProcesses.
+
+        * CMakeLists.txt:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+        * UIProcess/Gamepads/UIGamepadProvider.cpp: Added.
+        (WebKit::UIGamepadProvider::singleton):
+        (WebKit::UIGamepadProvider::UIGamepadProvider):
+        (WebKit::UIGamepadProvider::~UIGamepadProvider):
+        (WebKit::UIGamepadProvider::platformGamepadConnected):
+        (WebKit::UIGamepadProvider::platformGamepadDisconnected):
+        (WebKit::UIGamepadProvider::platformGamepadInputActivity):
+        (WebKit::UIGamepadProvider::processPoolStartedUsingGamepads):
+        (WebKit::UIGamepadProvider::processPoolStoppedUsingGamepads):
+        (WebKit::UIGamepadProvider::platformStartMonitoringGamepads):
+        (WebKit::UIGamepadProvider::platformStopMonitoringGamepads):
+        * UIProcess/Gamepads/UIGamepadProvider.h: Added.
+
+        * UIProcess/Gamepads/mac/UIGamepadProviderHID.cpp: Added.
+        (WebKit::UIGamepadProvider::platformStartMonitoringGamepads):
+        (WebKit::UIGamepadProvider::platformStopMonitoringGamepads):
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::~WebProcessPool):
+        (WebKit::WebProcessPool::disconnectProcess):
+        (WebKit::WebProcessPool::startedUsingGamepads):
+        (WebKit::WebProcessPool::stoppedUsingGamepads):
+        (WebKit::WebProcessPool::processStoppedUsingGamepads):
+        * UIProcess/WebProcessPool.h:
+        * UIProcess/WebProcessPool.messages.in:
+                
+        * WebProcess/Gamepad/WebGamepad.cpp: Added.
+        * WebProcess/Gamepad/WebGamepad.h: Added.
+        
+        * WebProcess/Gamepad/WebGamepadProvider.cpp: Added.
+        (WebKit::WebGamepadProvider::singleton):
+        (WebKit::WebGamepadProvider::WebGamepadProvider):
+        (WebKit::WebGamepadProvider::~WebGamepadProvider):
+        (WebKit::WebGamepadProvider::startMonitoringGamepads):
+        (WebKit::WebGamepadProvider::stopMonitoringGamepads):
+        (WebKit::WebGamepadProvider::platformGamepads):
+        * WebProcess/Gamepad/WebGamepadProvider.h: Added.
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeWebProcess):
+
+2016-08-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r204195.
+        https://bugs.webkit.org/show_bug.cgi?id=160623
+
+        This change causes assertion failures in LayoutTests and API
+        tests. (Requested by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "Lay WebProcess/UIProcess groundwork for an IPC
+        GamepadProvider."
+        https://bugs.webkit.org/show_bug.cgi?id=160605
+        http://trac.webkit.org/changeset/204195
+
+2016-08-05  Brady Eidson  <beidson@apple.com>
+
+        Lay WebProcess/UIProcess groundwork for an IPC GamepadProvider.
+        https://bugs.webkit.org/show_bug.cgi?id=160605
+
+        Reviewed by Alex Christensen.
+
+        This patch:
+          - Introduces the GamepadProvider that the WebProcess will use (WebGamepadProvider)
+          - Has that provider message to the UIProcess notifying interest in gamepad state
+          - Introduces a GamepadProviderClient in the UIProcess (UIGamepadProvider) that will use
+            one of the existing GamepadProviders to pass gamepad state along to WebProcesses.
+          - Adds an empty skeleton for the soon-to-be-used WebGamepad, which will be the 
+            "PlatformGamepad" for WebProcesses.
+
+        * CMakeLists.txt:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+        * UIProcess/Gamepads/UIGamepadProvider.cpp: Added.
+        (WebKit::UIGamepadProvider::singleton):
+        (WebKit::UIGamepadProvider::UIGamepadProvider):
+        (WebKit::UIGamepadProvider::~UIGamepadProvider):
+        (WebKit::UIGamepadProvider::platformGamepadConnected):
+        (WebKit::UIGamepadProvider::platformGamepadDisconnected):
+        (WebKit::UIGamepadProvider::platformGamepadInputActivity):
+        (WebKit::UIGamepadProvider::processPoolStartedUsingGamepads):
+        (WebKit::UIGamepadProvider::processPoolStoppedUsingGamepads):
+        (WebKit::UIGamepadProvider::platformStartMonitoringGamepads):
+        (WebKit::UIGamepadProvider::platformStopMonitoringGamepads):
+        * UIProcess/Gamepads/UIGamepadProvider.h: Added.
+
+        * UIProcess/Gamepads/mac/UIGamepadProviderHID.cpp: Added.
+        (WebKit::UIGamepadProvider::platformStartMonitoringGamepads):
+        (WebKit::UIGamepadProvider::platformStopMonitoringGamepads):
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::~WebProcessPool):
+        (WebKit::WebProcessPool::disconnectProcess):
+        (WebKit::WebProcessPool::startedUsingGamepads):
+        (WebKit::WebProcessPool::stoppedUsingGamepads):
+        (WebKit::WebProcessPool::processStoppedUsingGamepads):
+        * UIProcess/WebProcessPool.h:
+        * UIProcess/WebProcessPool.messages.in:
+                
+        * WebProcess/Gamepad/WebGamepad.cpp: Added.
+        * WebProcess/Gamepad/WebGamepad.h: Added.
+        
+        * WebProcess/Gamepad/WebGamepadProvider.cpp: Added.
+        (WebKit::WebGamepadProvider::singleton):
+        (WebKit::WebGamepadProvider::WebGamepadProvider):
+        (WebKit::WebGamepadProvider::~WebGamepadProvider):
+        (WebKit::WebGamepadProvider::startMonitoringGamepads):
+        (WebKit::WebGamepadProvider::stopMonitoringGamepads):
+        (WebKit::WebGamepadProvider::platformGamepads):
+        * WebProcess/Gamepad/WebGamepadProvider.h: Added.
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeWebProcess):
+
+2016-08-05  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] WKRemoteObjectCoder doesn’t handle NSRange
+        https://bugs.webkit.org/show_bug.cgi?id=160589
+
+        Reviewed by Tim Horton.
+
+        * Shared/API/Cocoa/WKRemoteObjectCoder.mm:
+        (encodeInvocationArguments): Encode NSRange by wrapping in an NSValue.
+        (decodeInvocationArguments): Decode wrapped NSRange.
+
+2016-08-04  Chris Dumez  <cdumez@apple.com>
+
+        Crash under NavigationState::NavigationClient::processDidCrash()
+        https://bugs.webkit.org/show_bug.cgi?id=160563
+        <rdar://problem/19814215>
+
+        Reviewed by Sam Weinig.
+
+        When WebPageProxy::close() gets called, make sure we destroy the page's
+        navigationClient. If we don't then the navigationClient can outlive the
+        navigationState, causing crashes when navigationClient tries to use its
+        stale navigationState member reference later on. This happens when the
+        WebPageProxy outlives its WKWebView because:
+        1. WebPageProxy owns the navigationClient
+        2. WKWebView owns the navigationState
+        3. navigationClient has a reference to the navigationState as member.
+
+        WebPageProxy can outlive the WKWebView because it is refCounted. It
+        can happen for example when the client application uses the
+        RelatedPage API as this extend the lifetime of the related WebPage's
+        proxy but the application may not keep the related WKWebView alive.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::close):
+        Note that it is safe to null out m_navigationClient here instead of
+        creating a fresh one because there is a null check before every use
+        of m_navigationClient in WebPageProxy.
+
 2016-08-03  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         [SOUP] Deduplicate WebProcessPool::setIgnoreTLSErrors

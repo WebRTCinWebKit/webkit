@@ -37,7 +37,7 @@
 #include "ClientRectList.h"
 #include "ComposedTreeAncestorIterator.h"
 #include "ContainerNodeAlgorithms.h"
-#include "CustomElementDefinitions.h"
+#include "CustomElementsRegistry.h"
 #include "DOMTokenList.h"
 #include "Dictionary.h"
 #include "DocumentSharedObjectPool.h"
@@ -1292,10 +1292,13 @@ void Element::attributeChanged(const QualifiedName& name, const AtomicString& ol
 
 #if ENABLE(CUSTOM_ELEMENTS)
     if (UNLIKELY(isCustomElement())) {
-        auto* definitions = document().customElementDefinitions();
-        auto* elementInterface = definitions->findInterface(tagQName());
-        RELEASE_ASSERT(elementInterface);
-        LifecycleCallbackQueue::enqueueAttributeChangedCallback(*this, *elementInterface, name, oldValue, newValue);
+        if (auto* window = document().domWindow()) {
+            if (auto* registry = window->customElementsRegistry()) {
+                auto* elementInterface = registry->findInterface(tagQName());
+                RELEASE_ASSERT(elementInterface);
+                LifecycleCallbackQueue::enqueueAttributeChangedCallback(*this, *elementInterface, name, oldValue, newValue);
+            }
+        }
     }
 #endif
 
@@ -3479,6 +3482,114 @@ bool Element::canContainRangeEndPoint() const
 String Element::completeURLsInAttributeValue(const URL& base, const Attribute& attribute) const
 {
     return URL(base, attribute.value()).string();
+}
+
+bool Element::ieForbidsInsertHTML() const
+{
+    // FIXME: Supposedly IE disallows setting innerHTML, outerHTML
+    // and createContextualFragment on these tags. We have no tests to
+    // verify this however, so this list could be totally wrong.
+    // This list was moved from the previous endTagRequirement() implementation.
+    // This is also called from editing and assumed to be the list of tags
+    // for which no end tag should be serialized. It's unclear if the list for
+    // IE compat and the list for serialization sanity are the same.
+    if (hasTagName(areaTag)
+        || hasTagName(baseTag)
+        || hasTagName(basefontTag)
+        || hasTagName(brTag)
+        || hasTagName(colTag)
+        || hasTagName(embedTag)
+        || hasTagName(frameTag)
+        || hasTagName(hrTag)
+        || hasTagName(imageTag)
+        || hasTagName(imgTag)
+        || hasTagName(inputTag)
+        || hasTagName(isindexTag)
+        || hasTagName(linkTag)
+        || hasTagName(metaTag)
+        || hasTagName(paramTag)
+        || hasTagName(sourceTag)
+        || hasTagName(wbrTag))
+        return true;
+    // FIXME: I'm not sure why dashboard mode would want to change the
+    // serialization of <canvas>, that seems like a bad idea.
+#if ENABLE(DASHBOARD_SUPPORT)
+    if (hasTagName(canvasTag)) {
+        Settings* settings = document().settings();
+        if (settings && settings->usesDashboardBackwardCompatibilityMode())
+            return true;
+    }
+#endif
+    return false;
+}
+
+Node* Element::insertAdjacent(const String& where, Ref<Node>&& newChild, ExceptionCode& ec)
+{
+    // In Internet Explorer if the element has no parent and where is "beforeBegin" or "afterEnd",
+    // a document fragment is created and the elements appended in the correct order. This document
+    // fragment isn't returned anywhere.
+    //
+    // This is impossible for us to implement as the DOM tree does not allow for such structures,
+    // Opera also appears to disallow such usage.
+
+    if (equalLettersIgnoringASCIICase(where, "beforebegin")) {
+        ContainerNode* parent = this->parentNode();
+        return (parent && parent->insertBefore(newChild, this, ec)) ? newChild.ptr() : nullptr;
+    }
+
+    if (equalLettersIgnoringASCIICase(where, "afterbegin"))
+        return insertBefore(newChild, firstChild(), ec) ? newChild.ptr() : nullptr;
+
+    if (equalLettersIgnoringASCIICase(where, "beforeend"))
+        return appendChild(newChild, ec) ? newChild.ptr() : nullptr;
+
+    if (equalLettersIgnoringASCIICase(where, "afterend")) {
+        ContainerNode* parent = this->parentNode();
+        return (parent && parent->insertBefore(newChild, nextSibling(), ec)) ? newChild.ptr() : nullptr;
+    }
+
+    ec = SYNTAX_ERR;
+    return nullptr;
+}
+
+Element* Element::insertAdjacentElement(const String& where, Element& newChild, ExceptionCode& ec)
+{
+    Node* returnValue = insertAdjacent(where, newChild, ec);
+    ASSERT_WITH_SECURITY_IMPLICATION(!returnValue || is<Element>(*returnValue));
+    return downcast<Element>(returnValue);
+}
+
+// Step 1 of https://w3c.github.io/DOM-Parsing/#dom-element-insertadjacenthtml.
+static Element* contextElementForInsertion(const String& where, Element* element, ExceptionCode& ec)
+{
+    if (equalLettersIgnoringASCIICase(where, "beforebegin") || equalLettersIgnoringASCIICase(where, "afterend")) {
+        auto* parent = element->parentElement();
+        if (!parent) {
+            ec = NO_MODIFICATION_ALLOWED_ERR;
+            return nullptr;
+        }
+        return parent;
+    }
+    if (equalLettersIgnoringASCIICase(where, "afterbegin") || equalLettersIgnoringASCIICase(where, "beforeend"))
+        return element;
+    ec =  SYNTAX_ERR;
+    return nullptr;
+}
+
+void Element::insertAdjacentHTML(const String& where, const String& markup, ExceptionCode& ec)
+{
+    Element* contextElement = contextElementForInsertion(where, this, ec);
+    if (!contextElement)
+        return;
+    RefPtr<DocumentFragment> fragment = createFragmentForInnerOuterHTML(*contextElement, markup, AllowScriptingContent, ec);
+    if (!fragment)
+        return;
+    insertAdjacent(where, fragment.releaseNonNull(), ec);
+}
+
+void Element::insertAdjacentText(const String& where, const String& text, ExceptionCode& ec)
+{
+    insertAdjacent(where, document().createTextNode(text), ec);
 }
 
 } // namespace WebCore

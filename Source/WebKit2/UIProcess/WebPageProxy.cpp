@@ -851,6 +851,7 @@ void WebPageProxy::close()
     resetState(ResetStateReason::PageInvalidated);
 
     m_loaderClient = std::make_unique<API::LoaderClient>();
+    m_navigationClient = nullptr;
     m_policyClient = std::make_unique<API::PolicyClient>();
     m_formClient = std::make_unique<API::FormClient>();
     m_uiClient = std::make_unique<API::UIClient>();
@@ -2352,7 +2353,6 @@ void WebPageProxy::terminateProcess()
         return;
 
     m_process->requestTermination();
-    resetStateAfterProcessExited();
 }
 
 SessionState WebPageProxy::sessionState(const std::function<bool (WebBackForwardListItem&)>& filter) const
@@ -5469,6 +5469,15 @@ void WebPageProxy::backForwardClear()
 {
     m_backForwardList->clear();
 }
+
+#if ENABLE(GAMEPAD)
+
+void WebPageProxy::gamepadActivity(const Vector<GamepadData>& gamepadDatas)
+{
+    m_process->send(Messages::WebPage::GamepadActivity(gamepadDatas), m_pageID);
+}
+
+#endif
 
 void WebPageProxy::canAuthenticateAgainstProtectionSpace(uint64_t loaderID, uint64_t frameID, const ProtectionSpace& coreProtectionSpace)
 {

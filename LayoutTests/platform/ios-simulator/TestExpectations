@@ -1856,7 +1856,6 @@ fast/frames/sandboxed-iframe-navigation-allowed.html [ Failure ]
 fast/frames/valid.html [ Failure ]
 fast/gradients/background-clipped.html [ Failure ]
 fast/hidpi/image-srcset-data-srcset.html [ Failure ]
-fast/history/back-forward-reset-after-error-handling.html [ Failure ]
 fast/images/gif-large-checkerboard.html [ Failure ]
 fast/images/gray-scale-jpeg-with-color-profile.html [ Failure ]
 fast/images/icon-decoding.html [ Failure ]
@@ -2884,13 +2883,6 @@ webkit.org/b/152282 css3/filters/composited-during-animation-layertree.html [ Fa
 webkit.org/b/152282 css3/filters/composited-during-transition-layertree.html [ Failure ]
 
 webkit.org/b/152935 fast/scrolling/scroll-position-on-reload-rtl.html [ Failure ]
-
-# Since this test directory is explicitly enabled for iOS, the passing tests are being re-enabled individually until flakiness is resolved
-webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing.html [ Pass Failure ]
-webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden.html [ Pass Failure ]
-webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden-tall.html [ Pass Failure ]
-fast/viewport/ios/width-is-device-width.html [ Pass ]
-fast/viewport/ios/width-is-device-width-overflowing-no-shrink-to-fit.html [ Pass ]
 
 webkit.org/b/153371 imported/w3c/web-platform-tests/XMLHttpRequest/getresponseheader-chunked-trailer.htm [ Pass Failure ]
 

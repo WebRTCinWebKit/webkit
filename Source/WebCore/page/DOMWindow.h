@@ -49,6 +49,7 @@ namespace WebCore {
     class CSSRuleList;
     class CSSStyleDeclaration;
     class Crypto;
+    class CustomElementsRegistry;
     class DOMApplicationCache;
     class DOMSelection;
     class DOMURL;
@@ -244,8 +245,6 @@ namespace WebCore {
         String crossDomainAccessErrorMessage(const DOMWindow& activeWindow);
 
         void postMessage(PassRefPtr<SerializedScriptValue> message, const MessagePortArray*, const String& targetOrigin, DOMWindow& source, ExceptionCode&);
-        // Needed for Objective-C bindings (see bug 28774).
-        void postMessage(PassRefPtr<SerializedScriptValue> message, MessagePort*, const String& targetOrigin, DOMWindow& source, ExceptionCode&);
         void postMessageTimerFired(PostMessageTimer&);
         void dispatchMessageEventWithOriginCheck(SecurityOrigin* intendedTargetOrigin, Event&, PassRefPtr<Inspector::ScriptCallStack>);
 
@@ -305,6 +304,11 @@ namespace WebCore {
 
         DOMApplicationCache* applicationCache() const;
         DOMApplicationCache* optionalApplicationCache() const { return m_applicationCache.get(); }
+
+#if ENABLE(CUSTOM_ELEMENTS)
+        CustomElementsRegistry* customElementsRegistry() { return m_customElementsRegistry.get(); }
+        CustomElementsRegistry& ensureCustomElementsRegistry();
+#endif
 
 #if ENABLE(ORIENTATION_EVENTS)
         // This is the interface orientation in degrees. Some examples are:
@@ -417,6 +421,10 @@ namespace WebCore {
         mutable RefPtr<Storage> m_sessionStorage;
         mutable RefPtr<Storage> m_localStorage;
         mutable RefPtr<DOMApplicationCache> m_applicationCache;
+
+#if ENABLE(CUSTOM_ELEMENTS)
+        RefPtr<CustomElementsRegistry> m_customElementsRegistry;
+#endif
 
 #if ENABLE(WEB_TIMING)
         mutable RefPtr<Performance> m_performance;

@@ -244,12 +244,7 @@ sub SkipAttribute {
 
     return 1 if $attribute->isStatic;
     return 1 if $codeGenerator->IsTypedArrayType($propType);
-
-    $codeGenerator->AssertNotSequenceType($propType);
-
-    if ($codeGenerator->GetArrayType($propType)) {
-        return 1;
-    }
+    return 1 if $codeGenerator->GetSequenceType($propType);
 
     if ($codeGenerator->IsEnumType($propType)) {
         return 1;
@@ -338,7 +333,7 @@ sub SkipFunction {
         return 1;
     }
 
-    if ($codeGenerator->IsTypedArrayType($function->signature->type) || $codeGenerator->GetArrayType($function->signature->type)) {
+    if ($codeGenerator->IsTypedArrayType($function->signature->type)) {
         return 1;
     }
 
@@ -391,6 +386,7 @@ sub GetGValueTypeName {
     my $type = shift;
 
     my %types = ("DOMString", "string",
+                 "USVString", "string",
                  "DOMTimeStamp", "uint",
                  "float", "float",
                  "unrestricted float", "float",
@@ -420,6 +416,7 @@ sub GetGlibTypeName {
     my $name = GetClassName($type);
 
     my %types = ("DOMString", "gchar*",
+                 "USVString", "gchar*",
                  "DOMTimeStamp", "guint32",
                  "SerializedScriptValue", "gchar*",
                  "float", "gfloat",
@@ -1100,8 +1097,8 @@ sub GenerateFunction {
     my @callImplParams;
     foreach my $param (@{$function->parameters}) {
         my $paramIDLType = $param->type;
-        my $arrayOrSequenceType = $codeGenerator->GetArrayOrSequenceType($paramIDLType);
-        $paramIDLType = $arrayOrSequenceType if $arrayOrSequenceType ne "";
+        my $sequenceType = $codeGenerator->GetSequenceType($paramIDLType);
+        $paramIDLType = $sequenceType if $sequenceType ne "";
         my $paramType = GetGlibTypeName($paramIDLType);
         my $const = $paramType eq "gchar*" ? "const " : "";
         my $paramName = $param->name;
@@ -1119,7 +1116,7 @@ sub GenerateFunction {
                 $implIncludes{"WebKitDOM${paramIDLType}Private.h"} = 1;
             }
         }
-        if ($paramIsGDOMType || ($paramIDLType eq "DOMString") || $param->isVariadic) {
+        if ($paramIsGDOMType || $codeGenerator->IsStringType($paramIDLType) || $param->isVariadic) {
             $paramName = "converted" . $codeGenerator->WK_ucfirst($paramName);
             $paramName = "*$paramName" if $codeGenerator->ShouldPassWrapperByReference($param, $parentNode);
             $paramName = "WTFMove($paramName)" if $param->isVariadic;
@@ -1172,8 +1169,8 @@ sub GenerateFunction {
             last;
         }
         my $paramIDLType = $param->type;
-        my $arrayOrSequenceType = $codeGenerator->GetArrayOrSequenceType($paramIDLType);
-        $paramIDLType = $arrayOrSequenceType if $arrayOrSequenceType ne "";
+        my $sequenceType = $codeGenerator->GetSequenceType($paramIDLType);
+        $paramIDLType = $sequenceType if $sequenceType ne "";
         my $paramType = GetGlibTypeName($paramIDLType);
         # $paramType can have a trailing * in some cases
         $paramType =~ s/\*$//;
@@ -1272,7 +1269,7 @@ sub GenerateFunction {
 
         my $paramCoreType = $paramType;
         my $paramConversionFunction = "";
-        if ($paramIDLType eq "DOMString") {
+        if ($codeGenerator->IsStringType($paramIDLType)) {
             $paramCoreType = "WTF::String";
             $paramConversionFunction = "WTF::String::fromUTF8";
         } elsif ($paramIDLType eq "NodeFilter" || $paramIDLType eq "XPathNSResolver") {
@@ -1370,7 +1367,7 @@ EOF
         push(@cBody, "    return 0;\n");
         push(@cBody, "}\n\n");
         return;
-    } elsif ($functionSigType eq "DOMString") {
+    } elsif ($codeGenerator->IsStringType($functionSigType)) {
         my $getterContentHead;
         if ($prefix) {
             my ($functionName, @arguments) = $codeGenerator->GetterExpression(\%implIncludes, $interfaceName, $function);

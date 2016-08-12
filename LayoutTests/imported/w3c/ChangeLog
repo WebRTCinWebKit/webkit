@@ -1,3 +1,402 @@
+2016-08-11  Chris Dumez  <cdumez@apple.com>
+
+        Align Range.surroundContents() with the latest DOM specification
+        https://bugs.webkit.org/show_bug.cgi?id=160777
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that all checks are passing.
+
+        * web-platform-tests/dom/ranges/Range-surroundContents-expected.txt:
+
+2016-08-11  Chris Dumez  <cdumez@apple.com>
+
+        Move dataset attribute from Element to HTMLElement / SVGElement
+        https://bugs.webkit.org/show_bug.cgi?id=160766
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-08-11  Antoine Quint  <graouts@apple.com>
+
+        Test 2d.gradient.interpolate.colouralpha.html is broken on macOS Sierra
+        https://bugs.webkit.org/show_bug.cgi?id=160689
+        <rdar://problem/24025664>
+
+        Reviewed by Dean Jackson.
+
+        When the test samples 25th pixel it expect the value to be exactly 25% interpolation of the color values.
+        However, the sampling location is the center of the pixel, i.e. it should correspond to 25.5% interpolation,
+        which would expect the color of (189.975, 189.75, 65.25, 65.25). The new values are a rounded values of
+        interpolation “by hand” at steps of 25.5%, 50.5% and 75.5%.
+
+        * canvas/2d.gradient.interpolate.colouralpha.html:
+
+2016-08-10  Chris Dumez  <cdumez@apple.com>
+
+        Pull in recent upstream web-platform-tests changes for dom/ and html/
+        https://bugs.webkit.org/show_bug.cgi?id=160759
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/dom/events/EventTarget-dispatchEvent-expected.txt:
+        * web-platform-tests/dom/events/EventTarget-dispatchEvent.html:
+        * web-platform-tests/dom/nodes/Document-Element-getElementsByTagName.js:
+        (test_getElementsByTagName):
+        * web-platform-tests/dom/nodes/Document-getElementsByTagName-expected.txt:
+        * web-platform-tests/dom/nodes/Element-getElementsByTagName-expected.txt:
+
+2016-08-10  Chris Dumez  <cdumez@apple.com>
+
+        Optimization in Node.insertBefore() is not spec-compliant
+        https://bugs.webkit.org/show_bug.cgi?id=160746
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/dom/ranges/Range-mutations-expected.txt:
+
+2016-08-09  Chris Dumez  <cdumez@apple.com>
+
+        Optimization in Node.replaceChild() is not spec-compliant
+        https://bugs.webkit.org/show_bug.cgi?id=160730
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/nodes/MutationObserver-childList-expected.txt:
+        * web-platform-tests/dom/ranges/Range-mutations-expected.txt:
+
+2016-08-09  Chris Dumez  <cdumez@apple.com>
+
+        Optimization in Node::appendChild() is not spec-compliant
+        https://bugs.webkit.org/show_bug.cgi?id=160728
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/dom/ranges/Range-mutations-expected.txt:
+
+2016-08-09  Chris Dumez  <cdumez@apple.com>
+
+        CharacterData.data setter optimization is not spec-compliant and is observable
+        https://bugs.webkit.org/show_bug.cgi?id=160712
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/dom/ranges/Range-mutations-expected.txt:
+
+2016-08-09  Chris Dumez  <cdumez@apple.com>
+
+        Calling splitText() on a parent-less Text node should update associated ranges
+        https://bugs.webkit.org/show_bug.cgi?id=160710
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/dom/ranges/Range-mutations-expected.txt:
+
+2016-08-08  Chris Dumez  <cdumez@apple.com>
+
+        It should be possible to re-initialize an Event after it's been dispatched
+        https://bugs.webkit.org/show_bug.cgi?id=160651
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/dom/events/Event-propagation-expected.txt:
+
+2016-08-07  Chris Dumez  <cdumez@apple.com>
+
+        Node.baseURI should not be nullable
+        https://bugs.webkit.org/show_bug.cgi?id=160649
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        Rebaseline now that one more check is passing.
+
+        * web-platform-tests/domparsing/DOMParser-parseFromString-html-expected.txt:
+        Rebaseline now that the baseURI is "about:blank" instead of null. The check
+        is still failing. We are falling back to using the document's URL, as expected.
+        However, the document's URL should not be "about:blank" in this case, which is
+        why we are failing the previous check.
+
+2016-08-07  Chris Dumez  <cdumez@apple.com>
+
+        Drop SVGDocument as per the SVG2 specification
+        https://bugs.webkit.org/show_bug.cgi?id=160361
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/dom/nodes/DOMImplementation-createDocument-expected.txt:
+
+2016-08-07  Chris Dumez  <cdumez@apple.com>
+
+        Un-expose DOMSettableTokenList
+        https://bugs.webkit.org/show_bug.cgi?id=160643
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/dom/historical-expected.txt:
+
+2016-08-06  Chris Dumez  <cdumez@apple.com>
+
+        a.replaceChild(a, a) should throw a HierarchyRequestError
+        https://bugs.webkit.org/show_bug.cgi?id=160640
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/dom/nodes/Node-replaceChild-expected.txt:
+
+2016-08-06  Chris Dumez  <cdumez@apple.com>
+
+        Drop legacy Text.replaceWholeText() API
+        https://bugs.webkit.org/show_bug.cgi?id=160641
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/dom/historical-expected.txt:
+
+2016-08-06  Chris Dumez  <cdumez@apple.com>
+
+        Align Range.createContextualFragment() input validation with the specification
+        https://bugs.webkit.org/show_bug.cgi?id=160634
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/domparsing/createContextualFragment-expected.txt:
+
+2016-08-06  Chris Dumez  <cdumez@apple.com>
+
+        [Web IDL] Add support for [Unscopable] extended attribute
+        https://bugs.webkit.org/show_bug.cgi?id=160637
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/dom/nodes/remove-unscopable-expected.txt:
+
+2016-08-06  Youenn Fablet  <youenn@apple.com>
+
+        imported/w3c/web-platform-tests/fetch/api/basic/mode-same-origin.html and -worker.html are failing after r204224
+        https://bugs.webkit.org/show_bug.cgi?id=160639
+
+        Unreviewed.
+
+        * web-platform-tests/fetch/api/basic/mode-same-origin-expected.txt: Rebaased after redirect.py update in
+        https://bugs.webkit.org/show_bug.cgi?id=160593.
+        * web-platform-tests/fetch/api/basic/mode-same-origin-worker-expected.txt: Ditto.
+
+2016-08-06  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Fetching with a FormData body should reject until it is implemented
+        https://bugs.webkit.org/show_bug.cgi?id=160595
+
+        Reviewed by Alex Christensen.
+
+        Adding new tests to cover changes.
+        Removing HEAD with body test as it throws as expected and is redundant with
+        web-platform-tests/fetch/api/request/request-init-002.html.
+
+        * web-platform-tests/fetch/api/basic/request-headers-expected.txt:
+        * web-platform-tests/fetch/api/basic/request-headers-worker-expected.txt:
+        * web-platform-tests/fetch/api/basic/request-headers.js:
+        (checkContentType):
+        (requestHeaders):
+
+2016-08-06  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Fetch API should strip fragment and credentials from URLs used as referrer
+        https://bugs.webkit.org/show_bug.cgi?id=160593
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/basic/referrer-expected.txt:
+        * web-platform-tests/fetch/api/basic/referrer-worker-expected.txt:
+        * web-platform-tests/fetch/api/basic/referrer.js:
+        (runTest): Adding more tests.
+        One test is failing as the redirection from same-origin to cross-origin is stripping the referer header.
+        But none is added afterwards. Hence cross-origin redirected request is sent without any referer header.
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials-expected.txt: Rebasing according redirect.py script changes.
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials-worker-expected.txt: Ditto.
+        * web-platform-tests/fetch/api/resources/redirect.py:
+        (main): Fixing rediret.py script.
+
+2016-08-05  Chris Dumez  <cdumez@apple.com>
+
+        DOMException should be constructible
+        https://bugs.webkit.org/show_bug.cgi?id=160626
+
+        Reviewed by Darin Adler.
+
+        Import WebIDL tests from W3C web-platform-tests.
+
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constants-expected.txt: Added.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constants.html: Added.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constructor-expected.txt: Added.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constructor.html: Added.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/constructor-object-expected.txt: Added.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/constructor-object.html: Added.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/constructor-object.js: Added.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/constructor-object.worker.js: Added.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/exceptions-expected.txt: Added.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/exceptions.html: Added.
+        * web-platform-tests/WebIDL/ecmascript-binding/has-instance-expected.txt: Added.
+        * web-platform-tests/WebIDL/ecmascript-binding/has-instance.html: Added.
+        * web-platform-tests/WebIDL/ecmascript-binding/interface-object-expected.txt: Added.
+        * web-platform-tests/WebIDL/ecmascript-binding/interface-object.html: Added.
+
+2016-08-05  Chris Dumez  <cdumez@apple.com>
+
+        Align Range.insertNode() input validation with the specification
+        https://bugs.webkit.org/show_bug.cgi?id=160624
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/dom/ranges/Range-insertNode-expected.txt:
+
+2016-08-05  Chris Dumez  <cdumez@apple.com>
+
+        Window's named properties should be exposed on a WindowProperties object in its prototype
+        https://bugs.webkit.org/show_bug.cgi?id=160354
+
+        Reviewed by Gavin Barraclough.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-08-05  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] SubresourceLoader::checkRedirectionCrossOriginAccessControl should not always assert in SameOrigin mode
+        https://bugs.webkit.org/show_bug.cgi?id=160594
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/basic/mode-same-origin-expected.txt:
+        * web-platform-tests/fetch/api/basic/mode-same-origin-worker-expected.txt:
+        * web-platform-tests/fetch/api/basic/mode-same-origin.js: Adding redirection tests for same origin mode.
+
+2016-08-05  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Response.blob should not assert in case the created blob is empty
+        https://bugs.webkit.org/show_bug.cgi?id=160592
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/request/request-consume-expected.txt:
+        * web-platform-tests/fetch/api/request/request-consume.html: Adding response with empty blob test.
+
+2016-08-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r203935.
+        https://bugs.webkit.org/show_bug.cgi?id=160596
+
+        looks like a 1-2% PLUM regression on iPhone 6s (Requested by
+        kling_ on #webkit).
+
+        Reverted changeset:
+
+        "Window's named properties should be exposed on a
+        WindowProperties object in its prototype"
+        https://bugs.webkit.org/show_bug.cgi?id=160354
+        http://trac.webkit.org/changeset/203935
+
+2016-08-05  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Activate CSP checks
+        https://bugs.webkit.org/show_bug.cgi?id=160445
+
+        Reviewed by Daniel Bates.
+
+        * web-platform-tests/fetch/api/policies/csp-blocked-expected.txt:
+        * web-platform-tests/fetch/api/policies/csp-blocked-worker-expected.txt:
+
+2016-08-05  Youenn Fablet  <youenn@apple.com>
+
+        DocumentThreadableLoader should report an error when getting a null CachedResource
+        https://bugs.webkit.org/show_bug.cgi?id=160444
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/XMLHttpRequest/event-error-expected.txt:
+        * web-platform-tests/XMLHttpRequest/getresponseheader-error-state-expected.txt:
+        * web-platform-tests/XMLHttpRequest/timeout-cors-async-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-cookies-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-cookies-worker-expected.txt:
+
+2016-08-04  Chris Dumez  <cdumez@apple.com>
+
+        Add support for DOMTokenList.replace()
+        https://bugs.webkit.org/show_bug.cgi?id=160573
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/dom/nodes/Element-classlist-expected.txt:
+
+2016-08-04  Chris Dumez  <cdumez@apple.com>
+
+        Move insertAdjacent*() API from HTMLElement to Element
+        https://bugs.webkit.org/show_bug.cgi?id=160567
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/domparsing/insert_adjacent_html-expected.txt:
+
+2016-08-04  Chris Dumez  <cdumez@apple.com>
+
+        [[Prototype]] property of an interface object for a callback interface must be the Object.prototype object
+        https://bugs.webkit.org/show_bug.cgi?id=160555
+
+        Reviewed by Geoffrey Garen.
+
+        Rebaseline W3C trst now that one more check is passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+
+2016-08-04  Chris Dumez  <cdumez@apple.com>
+
+        Element.insertAdjacent*() should throw a SYNTAX_ERR for invalid "where" parameter
+        https://bugs.webkit.org/show_bug.cgi?id=160514
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/nodes/Element-insertAdjacentElement-expected.txt:
+        * web-platform-tests/dom/nodes/Element-insertAdjacentText-expected.txt:
+        * web-platform-tests/dom/nodes/insert-adjacent-expected.txt:
+
 2016-08-04  Youenn Fablet  <youenn@apple.com>
 
         DocumentThreadableLoader should pass the fetch mode to underlying loader code

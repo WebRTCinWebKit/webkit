@@ -338,14 +338,33 @@ void MediaPlayerPrivateGStreamerOwr::trackEnabledChanged(MediaStreamTrackPrivate
 
 GstElement* MediaPlayerPrivateGStreamerOwr::createVideoSink()
 {
-    GstElement* sink = MediaPlayerPrivateGStreamerBase::createVideoSink();
+#if USE(GSTREAMER_GL)
+    // No need to create glupload and glcolorconvert here because they are
+    // already created by the video renderer.
+    GstElement* sink = MediaPlayerPrivateGStreamerBase::createGLAppSink();
+    m_videoSink = sink;
+#else
+    GstElement* sink = gst_bin_new(nullptr);
+    GstElement* gldownload = gst_element_factory_make("gldownload", nullptr);
+    GstElement* videoconvert = gst_element_factory_make("videoconvert", nullptr);
+    GstElement* webkitSink = MediaPlayerPrivateGStreamerBase::createVideoSink();
+    gst_bin_add_many(GST_BIN(sink), gldownload, videoconvert, webkitSink, nullptr);
+    gst_element_link_many(gldownload, videoconvert, webkitSink, nullptr);
+    GRefPtr<GstPad> pad = gst_element_get_static_pad(gldownload, "sink");
+    gst_element_add_pad(sink, gst_ghost_pad_new("sink", pad.get()));
+#endif
     m_videoRenderer = adoptGRef(owr_gst_video_renderer_new(sink));
 
-    // FIXME: Remove hardcoded video dimensions when the rendering performance:
-    // https://webkit.org/b/153826.
-    g_object_set(m_videoRenderer.get(), "width", 640, "height", 480, nullptr);
-
     return sink;
+}
+
+void MediaPlayerPrivateGStreamerOwr::setSize(const IntSize& size)
+{
+    if (size == m_size)
+        return;
+
+    MediaPlayerPrivateGStreamerBase::setSize(size);
+    g_object_set(m_videoRenderer.get(), "width", size.width(), "height", size.height(), nullptr);
 }
 
 } // namespace WebCore

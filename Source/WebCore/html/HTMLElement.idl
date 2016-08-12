@@ -44,11 +44,6 @@
     [TreatNullAs=EmptyString, SetterRaisesException] attribute DOMString innerText;
     [TreatNullAs=EmptyString, SetterRaisesException] attribute DOMString outerText;
 
-    [RaisesException] Element insertAdjacentElement(DOMString where, Element element);
-
-    [RaisesException] void insertAdjacentHTML(DOMString where, DOMString html);
-    [RaisesException] void insertAdjacentText(DOMString where, DOMString text);
-
     [SetterRaisesException] attribute DOMString contentEditable;
     readonly attribute boolean isContentEditable;
 
@@ -59,12 +54,8 @@
 #if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     void focus();
     void blur();
-#endif
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    [Reflect] attribute DOMString id;
-    readonly attribute HTMLCollection children;
-    readonly attribute DOMString titleDisplayString;
+    readonly attribute DOMStringMap dataset;
 #endif
 };
 

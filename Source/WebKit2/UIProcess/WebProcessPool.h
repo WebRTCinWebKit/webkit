@@ -79,6 +79,7 @@ class PageConfiguration;
 namespace WebKit {
 
 class DownloadProxy;
+class UIGamepad;
 class WebAutomationSession;
 class WebContextSupplement;
 class WebIconDatabase;
@@ -98,9 +99,6 @@ int webProcessThroughputQOS();
 #endif
 
 class WebProcessPool final : public API::ObjectImpl<API::Object::Type::ProcessPool>, private IPC::MessageReceiver
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    , private PluginInfoStoreClient
-#endif
     {
 public:
     static Ref<WebProcessPool> create(API::ProcessPoolConfiguration&);
@@ -369,6 +367,11 @@ public:
     bool resourceLoadStatisticsEnabled() { return m_resourceLoadStatisticsEnabled; }
     void setResourceLoadStatisticsEnabled(bool enabled) { m_resourceLoadStatisticsEnabled = enabled; }
 
+#if ENABLE(GAMEPAD)
+    void gamepadConnected(const UIGamepad&);
+    void gamepadDisconnected(const UIGamepad&);
+#endif
+
 private:
     void platformInitialize();
 
@@ -386,6 +389,13 @@ private:
     void handleSynchronousMessage(IPC::Connection&, const String& messageName, const UserData& messageBody, UserData& returnUserData);
 
     void didGetStatistics(const StatisticsData&, uint64_t callbackID);
+
+#if ENABLE(GAMEPAD)
+    void startedUsingGamepads(IPC::Connection&);
+    void stoppedUsingGamepads(IPC::Connection&);
+
+    void processStoppedUsingGamepads(WebProcessProxy&);
+#endif
 
     // IPC::MessageReceiver.
     // Implemented in generated WebProcessPoolMessageReceiver.cpp
@@ -417,11 +427,6 @@ private:
     void plugInDidReceiveUserInteraction(unsigned plugInOriginHash, WebCore::SessionID);
 
     void setAnyPageGroupMightHavePrivateBrowsingEnabled(bool);
-
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    // PluginInfoStoreClient:
-    void pluginInfoStoreDidLoadPlugins(PluginInfoStore*) override;
-#endif
 
     Ref<API::ProcessPoolConfiguration> m_configuration;
 
@@ -538,6 +543,10 @@ private:
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
     HashMap<String, HashMap<String, HashMap<String, uint8_t>>> m_pluginLoadClientPolicies;
+#endif
+
+#if ENABLE(GAMEPAD)
+    HashSet<WebProcessProxy*> m_processesUsingGamepads;
 #endif
 };
 

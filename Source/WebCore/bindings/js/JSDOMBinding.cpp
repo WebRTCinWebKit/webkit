@@ -49,6 +49,7 @@
 #include <runtime/JSFunction.h>
 #include <stdarg.h>
 #include <wtf/MathExtras.h>
+#include <wtf/unicode/CharacterNames.h>
 
 using namespace JSC;
 using namespace Inspector;
@@ -115,6 +116,51 @@ String valueToStringWithUndefinedOrNullCheck(ExecState* exec, JSValue value)
     if (value.isUndefinedOrNull())
         return String();
     return value.toString(exec)->value(exec);
+}
+
+String valueToUSVString(ExecState* exec, JSValue value)
+{
+    String string = value.toWTFString(exec);
+    if (exec->hadException())
+        return { };
+    StringView view { string };
+
+    // Fast path for 8-bit strings, since they can't have any surrogates.
+    if (view.is8Bit())
+        return string;
+
+    // Fast path for the case where there are no unpaired surrogates.
+    bool foundUnpairedSurrogate = false;
+    for (auto codePoint : view.codePoints()) {
+        if (U_IS_SURROGATE(codePoint)) {
+            foundUnpairedSurrogate = true;
+            break;
+        }
+    }
+    if (!foundUnpairedSurrogate)
+        return string;
+
+    // Slow path: http://heycam.github.io/webidl/#dfn-obtain-unicode
+    // Replaces unpaired surrogates with the replacememnt character.
+    StringBuilder result;
+    result.reserveCapacity(view.length());
+    for (auto codePoint : view.codePoints()) {
+        if (U_IS_SURROGATE(codePoint))
+            result.append(replacementCharacter);
+        else
+            result.append(codePoint);
+    }
+    return result.toString();
+}
+
+String valueToUSVStringTreatingNullAsEmptyString(ExecState* exec, JSValue value)
+{
+    return value.isNull() ? emptyString() : valueToUSVString(exec, value);
+}
+
+String valueToUSVStringWithUndefinedOrNullCheck(ExecState* exec, JSValue value)
+{
+    return value.isUndefinedOrNull() ? String() : valueToUSVString(exec, value);
 }
 
 JSValue jsDateOrNaN(ExecState* exec, double value)

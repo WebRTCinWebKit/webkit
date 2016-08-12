@@ -228,17 +228,10 @@ webkit.org/b/158585 webgl/webgl-backing-store-size-update.html [ Pass Timeout ]
 [ Sierra+ ] accessibility/parent-delete.html [ Failure ]
 
 # rdar://problem/26422051
-[ Sierra+ ] fast/html/marquee-scroll.html [ Failure ]
 [ Sierra+ ] fast/inline-block/003.html [ Failure ]
 
 # rdar://problem/26478296
 [ Sierra+ ] svg/hixie/text/003.html [ Failure ]
-
-# rdar://problem/26789221
-[ Sierra+ ] compositing/masks/compositing-clip-path-change-no-repaint.html [ Failure ]
-
-# rdar://problem/26422407
-[ Sierra+ ] imported/blink/compositing/child-transform-with-anchor-point.html  [ ImageOnlyFailure ]
 
 [ Yosemite ] http/tests/media/hls/video-controller-getStartDate.html [ Pass Timeout ]
 

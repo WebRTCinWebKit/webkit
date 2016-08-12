@@ -38,6 +38,7 @@
 #include "ContentExtensionActions.h"
 #include "ContentExtensionRule.h"
 #include "Crypto.h"
+#include "CustomElementsRegistry.h"
 #include "DOMApplicationCache.h"
 #include "DOMSelection.h"
 #include "DOMStringList.h"
@@ -617,6 +618,15 @@ bool DOMWindow::isCurrentlyDisplayedInFrame() const
     return m_frame && m_frame->document()->domWindow() == this;
 }
 
+#if ENABLE(CUSTOM_ELEMENTS)
+CustomElementsRegistry& DOMWindow::ensureCustomElementsRegistry()
+{
+    if (!m_customElementsRegistry)
+        m_customElementsRegistry = CustomElementsRegistry::create();
+    return *m_customElementsRegistry;
+}
+#endif
+
 #if ENABLE(ORIENTATION_EVENTS)
 int DOMWindow::orientation() const
 {
@@ -878,14 +888,6 @@ Storage* DOMWindow::localStorage(ExceptionCode& ec) const
 
     m_localStorage = Storage::create(m_frame, WTFMove(storageArea));
     return m_localStorage.get();
-}
-
-void DOMWindow::postMessage(PassRefPtr<SerializedScriptValue> message, MessagePort* port, const String& targetOrigin, DOMWindow& source, ExceptionCode& ec)
-{
-    MessagePortArray ports;
-    if (port)
-        ports.append(port);
-    postMessage(message, &ports, targetOrigin, source, ec);
 }
 
 void DOMWindow::postMessage(PassRefPtr<SerializedScriptValue> message, const MessagePortArray* ports, const String& targetOrigin, DOMWindow& source, ExceptionCode& ec)

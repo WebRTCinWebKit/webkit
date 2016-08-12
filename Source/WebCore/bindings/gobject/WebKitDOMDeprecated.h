@@ -191,6 +191,30 @@ webkit_dom_document_set_title(WebKitDOMDocument* self, const gchar* title);
 WEBKIT_DEPRECATED_FOR(webkit_dom_html_title_element_set_text_with_error) void
 webkit_dom_html_title_element_set_text(WebKitDOMHTMLTitleElement* self, const gchar* text);
 
+/**
+ * webkit_dom_document_get_default_charset:
+ * @self: A #WebKitDOMDocument
+ *
+ * Returns: A #gchar
+ *
+ * Deprecated: 2.14
+ */
+WEBKIT_DEPRECATED gchar*
+webkit_dom_document_get_default_charset(WebKitDOMDocument* self);
+
+/**
+ * webkit_dom_text_replace_whole_text:
+ * @self: A #WebKitDOMText
+ * @content: A #gchar
+ * @error: #GError
+ *
+ * Returns: (transfer none): A #WebKitDOMText
+ *
+ * Deprecated: 2.14
+ */
+WEBKIT_DEPRECATED WebKitDOMText*
+webkit_dom_text_replace_whole_text(WebKitDOMText* self, const gchar* content, GError** error);
+
 #define WEBKIT_DOM_TYPE_ENTITY_REFERENCE            (webkit_dom_entity_reference_get_type())
 #define WEBKIT_DOM_ENTITY_REFERENCE(obj)            (G_TYPE_CHECK_INSTANCE_CAST((obj), WEBKIT_DOM_TYPE_ENTITY_REFERENCE, WebKitDOMEntityReference))
 #define WEBKIT_DOM_ENTITY_REFERENCE_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST((klass),  WEBKIT_DOM_TYPE_ENTITY_REFERENCE, WebKitDOMEntityReferenceClass)

@@ -1,3 +1,107 @@
+2016-08-11  Maureen Daum  <mdaum@apple.com>
+
+        Add NSButtonType to AppKitCompatibilityDeclarations.h.
+        https://bugs.webkit.org/show_bug.cgi?id=160767.
+
+        Reviewed by Dan Bernstein.
+
+        Add NSButtonType to AppKitCompatibilityDeclarations.h so that we can use the new
+        names but still build successfully on older OS versions.
+
+        * wtf/mac/AppKitCompatibilityDeclarations.h:
+
+2016-08-10  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] TinyPtrSet::deleteListIfNecessary() no longer needs to test for reservedValue
+        https://bugs.webkit.org/show_bug.cgi?id=160721
+
+        Reviewed by Sam Weinig.
+
+        Previously, TinyPtrSet was using a ThinFlag if there was no OutOfLineList.
+        A side effect is that isThin() was false for reservedValue. When deleting
+        the list, we had to consider both cases: isThin() and reservedValue.
+
+        In r204065, I changed the flag to a FatFlag to ensure TinyPtrSet can be initialized
+        with bzero().
+        This changes the value of isThin() of reservedValue to true since reservedValue
+        does not have the FatFlag bit set.
+        This patch removes the useless condition from deleteListIfNecessary().
+
+        * wtf/TinyPtrSet.h:
+        (WTF::TinyPtrSet::deleteListIfNecessary):
+
+2016-08-09  Sam Weinig  <sam@webkit.org>
+
+        Fix windows build.
+
+        * wtf/Variant.h:
+        (std::experimental::__visit_helper2::__visit):
+        MSVC does not support extended constexpr. Use a ternary operator instead of an if statement.
+
+2016-08-06  Sam Weinig  <sam@webkit.org>
+
+        Replace NodeOrString with std::variant<RefPtr<Node>, String>
+        https://bugs.webkit.org/show_bug.cgi?id=160638
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/StdLibExtras.h:
+        (WTF::Visitor::Visitor):
+        (WTF::makeVisitor):
+        Add WTF::makeVisitor() which takes a list of lambdas to use
+        an an overload set for a visitor object.
+
+        Also, re-export std::experimental::variant (and helpers) in the std
+        namespace using type aliasing.
+
+        * wtf/Variant.h:
+        Make std::experimental::variant work in WebCore.
+
+2016-08-06  Sam Weinig  <sam@webkit.org>
+
+        WTF needs a variant implementation
+        https://bugs.webkit.org/show_bug.cgi?id=160618
+
+        Reviewed by Darin Adler.
+
+        Add an implementation of std::experimental::variant matching the C++17 draft http://wg21.link/n4606 
+        taken from https://bitbucket.org/anthonyw/variant/src (5bce47fa788648f79e5ea1d77b0eef2e8f0b2999) and
+        modified to support compiling without exceptions (where it used to throw, we lovingly CRASH()).
+
+        * WTF.xcodeproj/project.pbxproj:
+        Add new file.
+
+        * wtf/Compiler.h:
+        Add COMPILER_SUPPORTS define for C++ exceptions.
+
+        * wtf/Variant.h: Added.
+
+2016-08-05  Keith Miller  <keith_miller@apple.com>
+
+        Add LEBDecoder and tests
+        https://bugs.webkit.org/show_bug.cgi?id=160625
+
+        Reviewed by Benjamin Poulain.
+
+        Adds some LEB decoder functions to WTF. These are used in the
+        WASM spec to encode numbers in a semi-compressed format.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/LEBDecoder.h: Added.
+        (decodeUInt32):
+        (decodeInt32):
+
+2016-08-05  Keith Miller  <keith_miller@apple.com>
+
+        Delete out of date WASM code.
+        https://bugs.webkit.org/show_bug.cgi?id=160603
+
+        Reviewed by Saam Barati.
+
+        Add Feature define for WebAssembly on mac.
+
+        * wtf/FeatureDefines.h:
+
 2016-08-03  Csaba Osztrogonác  <ossy@webkit.org>
 
         Lacking support on a arm-traditional disassembler.

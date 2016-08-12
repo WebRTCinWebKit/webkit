@@ -1464,7 +1464,6 @@ fast/dom/Geolocation/delayed-permission-denied.html
 fast/dom/Geolocation/disconnected-frame-permission-denied.html
 fast/dom/Geolocation/error.html
 fast/events/mouse-cursor-multiframecur.html
-fast/html/marquee-scrollamount.html [ Failure ]
 fast/loader/frames-with-unload-handlers-in-page-cache.html
 http/tests/cache/cache-redirections.html
 js/promises-tests/promises-tests-2-2-6.html
@@ -1840,6 +1839,11 @@ webkit.org/b/155201 storage/domstorage/events/basic-body-attribute.html [ Pass F
 
 # Forcing always allow user scalable is not supported on certain OS version.
 webkit.org/b/155056 fast/viewport/ios/force-always-user-scalable.html [ Skip ]
+webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing.html [ Pass Failure ]
+webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden.html [ Pass Failure ]
+webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden-tall.html [ Pass Failure ]
+fast/viewport/ios/width-is-device-width.html [ Pass ]
+fast/viewport/ios/width-is-device-width-overflowing-no-shrink-to-fit.html [ Pass ]
 
 webkit.org/b/155501 animations/3d/transform-origin-vs-functions.html [ Pass Failure ]
 
@@ -1906,3 +1910,8 @@ webkit.org/b/160368 [ Release ] http/tests/xmlhttprequest/workers/methods-async.
 webkit.org/b/160367 media/track/media-element-enqueue-event-crash.html [ Pass Crash ]
 webkit.org/b/142152 media/track/track-in-band-cues-added-once.html [ Pass Failure ]
 webkit.org/b/160367 media/track/track-remove-crash.html [ Skip ]
+
+webkit.org/b/160591 http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-fetch-in-worker.html [ Failure Timeout ]
+
+webkit.org/b/153809 transitions/clip-path-transitions.html [ Pass Failure ]
+webkit.org/b/153809 transitions/clip-path-path-transitions.html [ Pass Failure ]

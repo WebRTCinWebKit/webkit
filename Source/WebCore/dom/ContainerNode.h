@@ -89,12 +89,9 @@ public:
     RefPtr<NodeList> querySelectorAll(const String& selectors, ExceptionCode&);
 
     Ref<HTMLCollection> getElementsByTagName(const AtomicString&);
-    RefPtr<NodeList> getElementsByTagNameForObjC(const AtomicString&);
     Ref<HTMLCollection> getElementsByTagNameNS(const AtomicString& namespaceURI, const AtomicString& localName);
-    RefPtr<NodeList> getElementsByTagNameNSForObjC(const AtomicString& namespaceURI, const AtomicString& localName);
     Ref<NodeList> getElementsByName(const String& elementName);
     Ref<HTMLCollection> getElementsByClassName(const AtomicString& classNames);
-    Ref<NodeList> getElementsByClassNameForObjC(const AtomicString& classNames);
     Ref<RadioNodeList> radioNodeList(const AtomicString&);
 
     // From the ParentNode interface - https://dom.spec.whatwg.org/#interface-parentnode
@@ -102,8 +99,8 @@ public:
     Element* firstElementChild() const;
     Element* lastElementChild() const;
     unsigned childElementCount() const;
-    void append(Vector<NodeOrString>&&, ExceptionCode&);
-    void prepend(Vector<NodeOrString>&&, ExceptionCode&);
+    void append(Vector<std::variant<Ref<Node>, String>>&&, ExceptionCode&);
+    void prepend(Vector<std::variant<Ref<Node>, String>>&&, ExceptionCode&);
 
     bool ensurePreInsertionValidity(Node& newChild, Node* refChild, ExceptionCode&);
 
@@ -120,6 +117,7 @@ protected:
 
 private:
     void removeBetween(Node* previousChild, Node* nextChild, Node& oldChild);
+    bool appendChildWithoutPreInsertionValidityCheck(Node&, ExceptionCode&);
     void insertBeforeCommon(Node& nextChild, Node& oldChild);
     void appendChildCommon(Node&);
 

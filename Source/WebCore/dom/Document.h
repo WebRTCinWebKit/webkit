@@ -98,7 +98,6 @@ class DocumentMarkerController;
 class DocumentParser;
 class DocumentSharedObjectPool;
 class DocumentType;
-class EntityReference;
 class ExtensionStyleSheets;
 class FloatRect;
 class FloatQuad;
@@ -159,6 +158,7 @@ class StyleSheet;
 class StyleSheetContents;
 class StyleSheetList;
 class SVGDocumentExtensions;
+class SVGSVGElement;
 class Text;
 class TextResourceDecoder;
 class TreeWalker;
@@ -176,10 +176,6 @@ using PlatformDisplayID = uint32_t;
 
 #if ENABLE(XSLT)
 class TransformSource;
-#endif
-
-#if ENABLE(CUSTOM_ELEMENTS)
-class CustomElementDefinitions;
 #endif
 
 #if ENABLE(DASHBOARD_SUPPORT)
@@ -391,7 +387,6 @@ public:
     RefPtr<ProcessingInstruction> createProcessingInstruction(const String& target, const String& data, ExceptionCode&);
     RefPtr<Attr> createAttribute(const String& name, ExceptionCode&);
     RefPtr<Attr> createAttributeNS(const String& namespaceURI, const String& qualifiedName, ExceptionCode&, bool shouldIgnoreNamespaceChecks = false);
-    RefPtr<EntityReference> createEntityReference(const String& name, ExceptionCode&);
     RefPtr<Node> importNode(Node& nodeToImport, bool deep, ExceptionCode&);
     WEBCORE_EXPORT RefPtr<Element> createElementNS(const String& namespaceURI, const String& qualifiedName, ExceptionCode&);
     WEBCORE_EXPORT Ref<Element> createElement(const QualifiedName&, bool createdByParser);
@@ -1220,11 +1215,6 @@ public:
 #endif
     }
 
-#if ENABLE(CUSTOM_ELEMENTS)
-    CustomElementDefinitions* customElementDefinitions() { return m_customElementDefinitions.get(); }
-    CustomElementDefinitions& ensureCustomElementDefinitions();
-#endif
-
     const EventTargetSet* wheelEventTargets() const { return m_wheelEventTargets.get(); }
 
     typedef std::pair<Region, bool> RegionFixedPair;
@@ -1753,10 +1743,6 @@ private:
 
     RefPtr<Document> m_templateDocument;
     Document* m_templateDocumentHost; // Manually managed weakref (backpointer from m_templateDocument).
-
-#if ENABLE(CUSTOM_ELEMENTS)
-    std::unique_ptr<CustomElementDefinitions> m_customElementDefinitions;
-#endif
 
     Ref<CSSFontSelector> m_fontSelector;
 

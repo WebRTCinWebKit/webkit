@@ -127,13 +127,13 @@ public:
     void setFoundConstants(bool foundConstants) { m_foundConstants = foundConstants; }
 
 private:
-    bool mergeStateAtTail(AbstractValue& destination, AbstractValue& inVariable, Node*);
+    void mergeStateAtTail(AbstractValue& destination, AbstractValue& inVariable, Node*);
 
     static bool mergeVariableBetweenBlocks(AbstractValue& destination, AbstractValue& source, Node* destinationNode, Node* sourceNode);
     
     Graph& m_graph;
 
-    Vector<AbstractValue>& m_abstractValues;
+    Vector<AbstractValue, 0, UnsafeVectorOverflow>& m_abstractValues;
     Operands<AbstractValue> m_variables;
     BasicBlock* m_block;
     
