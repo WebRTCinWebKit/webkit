@@ -514,7 +514,9 @@
       <dep package="gst-plugins-openwebrtc"/>
       <dep package="libnice"/>
      </dependencies>
-    <branch repo="github.com" module="EricssonResearch/openwebrtc.git" checkoutdir="openwebrtc" tag="9b18c94a1c5e5cad16f241954613c267cb032c85"/>
+    <branch repo="github.com" module="EricssonResearch/openwebrtc.git" checkoutdir="openwebrtc" tag="9b18c94a1c5e5cad16f241954613c267cb032c85">
+      <patch file="openwebrtc-optional-glvideoflip.patch" strip="1"/>
+    </branch>
   </autotools>
 
   <autotools id="llvm"
