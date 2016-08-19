@@ -361,6 +361,9 @@ webkit.org/b/79203 fast/mediastream/MediaStream-video-element-track-stop.html [ 
 webkit.org/b/151344 fast/mediastream/MediaStream-add-ended-tracks.html [ Skip ]
 webkit.org/b/151344 fast/mediastream/MediaStream-add-remove-tracks.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/mock-media-source.html [ Skip ]
+webkit.org/b/160996 fast/mediastream/MediaStream-video-element-displays-buffer.html [ Skip ]
+webkit.org/b/160996 fast/mediastream/MediaStream-video-element-video-tracks-disabled-then-enabled.html [ Skip ]
+webkit.org/b/160996 fast/mediastream/MediaStream-video-element-video-tracks-disabled.html [ Skip ]
 
 # Text Autosizing is not yet enabled.
 webkit.org/b/99063 fast/text-autosizing [ Skip ]
