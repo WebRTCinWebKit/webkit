@@ -134,8 +134,6 @@ private:
     RefPtr<MediaEndpointSessionDescription> m_currentRemoteDescription;
     RefPtr<MediaEndpointSessionDescription> m_pendingRemoteDescription;
 
-    RefPtr<RTCConfiguration> m_configuration;
-
     HashMap<String, RefPtr<MediaStream>> m_remoteStreamMap;
 
     bool m_negotiationNeeded { false };
