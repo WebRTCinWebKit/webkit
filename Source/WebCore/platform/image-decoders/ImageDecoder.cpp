@@ -132,7 +132,6 @@ ImageFrame::ImageFrame()
     , m_status(FrameEmpty)
     , m_duration(0)
     , m_disposalMethod(DisposeNotSpecified)
-    , m_premultiplyAlpha(true)
 {
 } 
 
@@ -141,19 +140,19 @@ ImageFrame& ImageFrame::operator=(const ImageFrame& other)
     if (this == &other)
         return *this;
 
-    copyBitmapData(other);
-    setOriginalFrameRect(other.originalFrameRect());
+    if (other.backingStore())
+        initializeBackingStore(*other.backingStore());
+
+    setHasAlpha(other.m_hasAlpha);
     setStatus(other.status());
     setDuration(other.duration());
     setDisposalMethod(other.disposalMethod());
-    setPremultiplyAlpha(other.premultiplyAlpha());
     return *this;
 }
 
 void ImageFrame::clearPixelData()
 {
-    m_backingStore.clear();
-    m_bytes = 0;
+    m_backingStore = nullptr;
     m_status = FrameEmpty;
     // NOTE: Do not reset other members here; clearFrameBufferCache() calls this
     // to free the bitmap data, but other functions like initFrameBuffer() and
@@ -163,51 +162,35 @@ void ImageFrame::clearPixelData()
 
 void ImageFrame::zeroFillPixelData()
 {
-    memset(m_bytes, 0, m_size.width() * m_size.height() * sizeof(PixelData));
+    m_backingStore->clear();
     m_hasAlpha = true;
 }
 
 void ImageFrame::zeroFillFrameRect(const IntRect& rect)
 {
-    ASSERT(IntRect(IntPoint(), m_size).contains(rect));
-
     if (rect.isEmpty())
         return;
 
-    size_t rectWidthInBytes = rect.width() * sizeof(PixelData);
-    PixelData* start = m_bytes + (rect.y() * width()) + rect.x();
-    for (int i = 0; i < rect.height(); ++i) {
-        memset(start, 0, rectWidthInBytes);
-        start += width();
-    }
-
+    m_backingStore->clearRect(rect);
     setHasAlpha(true);
 }
 
-bool ImageFrame::copyBitmapData(const ImageFrame& other)
+bool ImageFrame::initializeBackingStore(const ImageBackingStore& backingStore)
 {
-    if (this == &other)
+    if (&backingStore == this->backingStore())
         return true;
 
-    m_backingStore = other.m_backingStore;
-    m_bytes = m_backingStore.data();
-    m_size = other.m_size;
-    setHasAlpha(other.m_hasAlpha);
-    return true;
+    m_backingStore = ImageBackingStore::create(backingStore);
+    return m_backingStore != nullptr;
 }
 
-bool ImageFrame::setSize(int newWidth, int newHeight)
+bool ImageFrame::initializeBackingStore(const IntSize& size, bool premultiplyAlpha)
 {
-    ASSERT(!width() && !height());
-    size_t backingStoreSize = newWidth * newHeight;
-    if (!m_backingStore.tryReserveCapacity(backingStoreSize))
+    if (size.isEmpty())
         return false;
-    m_backingStore.resize(backingStoreSize);
-    m_bytes = m_backingStore.data();
-    m_size = IntSize(newWidth, newHeight);
 
-    zeroFillPixelData();
-    return true;
+    m_backingStore = ImageBackingStore::create(size, premultiplyAlpha);
+    return m_backingStore != nullptr;
 }
 
 bool ImageFrame::hasAlpha() const
@@ -220,9 +203,10 @@ void ImageFrame::setHasAlpha(bool alpha)
     m_hasAlpha = alpha;
 }
 
-void ImageFrame::setColorProfile(const ColorProfile& colorProfile)
+void ImageFrame::setOriginalFrameRect(const IntRect& frameRect)
 {
-    m_colorProfile = colorProfile;
+    if (m_backingStore)
+        m_backingStore->setFrameRect(frameRect);
 }
 
 void ImageFrame::setStatus(FrameStatus status)
@@ -291,7 +275,7 @@ unsigned ImageDecoder::frameBytesAtIndex(size_t index) const
     if (m_frameBufferCache.size() <= index)
         return 0;
     // FIXME: Use the dimension of the requested frame.
-    return m_size.area() * sizeof(ImageFrame::PixelData);
+    return m_size.area() * sizeof(RGBA32);
 }
 
 float ImageDecoder::frameDurationAtIndex(size_t index)

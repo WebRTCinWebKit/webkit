@@ -53,7 +53,7 @@ WebInspector.OpenResourceDialog = class OpenResourceDialog extends WebInspector.
         this._treeOutline.large = true;
 
         this._treeOutline.addEventListener(WebInspector.TreeOutline.Event.SelectionDidChange, this._treeSelectionDidChange, this);
-        this._treeOutline.element.addEventListener("focus", () => {this._inputElement.focus();});
+        this._treeOutline.element.addEventListener("focus", () => { this._inputElement.focus(); });
 
         this.element.appendChild(this._treeOutline.element);
 
@@ -110,6 +110,7 @@ WebInspector.OpenResourceDialog = class OpenResourceDialog extends WebInspector.
                 continue;
 
             treeElement.mainTitle = createHighlightedTitleFragment(resource.displayName, result.matchingTextRanges);
+            treeElement[WebInspector.OpenResourceDialog.ResourceMatchCookieDataSymbol] = result.cookie;
             this._treeOutline.appendChild(treeElement);
         }
 
@@ -150,9 +151,23 @@ WebInspector.OpenResourceDialog = class OpenResourceDialog extends WebInspector.
             event.preventDefault();
         } else if (event.keyCode === WebInspector.KeyboardShortcut.Key.Enter.keyCode) {
             if (this._treeOutline.selectedTreeElement) {
-                this.dismiss(this._treeOutline.selectedTreeElement.representedObject);
+                this.dismiss(this._treeOutline.selectedTreeElement.representedObject, this._treeOutline.selectedTreeElement[WebInspector.OpenResourceDialog.ResourceMatchCookieDataSymbol]);
                 event.preventDefault();
                 return;
+            }
+
+            // ":<line>:<column>" jumps to a location for the current ContentView.
+            if (/^:\d/.test(this._inputElement.value)) {
+                let visibleContentView = WebInspector.focusedOrVisibleContentView();
+                let representedObject = visibleContentView ? visibleContentView.representedObject : null;
+                if (representedObject && representedObject instanceof WebInspector.SourceCode) {
+                    let [, lineNumber, columnNumber] = this._inputElement.value.split(":");
+                    lineNumber = lineNumber ? parseInt(lineNumber, 10) - 1 : 0;
+                    columnNumber = columnNumber ? parseInt(columnNumber, 10) - 1 : 0;
+                    this.dismiss(representedObject, {lineNumber, columnNumber});
+                    event.preventDefault();
+                    return;
+                }
             }
 
             this._inputElement.select();
@@ -231,7 +246,7 @@ WebInspector.OpenResourceDialog = class OpenResourceDialog extends WebInspector.
         if (!event.data.selectedByUser)
             return;
 
-        this.dismiss(treeElement.representedObject);
+        this.dismiss(treeElement.representedObject, treeElement[WebInspector.OpenResourceDialog.ResourceMatchCookieDataSymbol]);
     }
 
     _addResource(resource, suppressFilterUpdate)
@@ -257,7 +272,7 @@ WebInspector.OpenResourceDialog = class OpenResourceDialog extends WebInspector.
             for (let resource of resources)
                 this._addResource(resource, suppressFilterUpdate);
 
-            frames = frames.concat(frame.childFrames);
+            frames = frames.concat(currentFrame.childFrames);
         }
 
         this._updateFilter();
@@ -276,3 +291,5 @@ WebInspector.OpenResourceDialog = class OpenResourceDialog extends WebInspector.
         this._addResource(event.data.resource);
     }
 };
+
+WebInspector.OpenResourceDialog.ResourceMatchCookieDataSymbol = Symbol("open-resource-dialog-resource-match-cookie-data");

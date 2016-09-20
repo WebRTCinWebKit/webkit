@@ -36,7 +36,7 @@ namespace WebKit {
 class SharedMemory;
 class WebGamepad;
 
-struct GamepadData;
+class GamepadData;
 
 class WebGamepadProvider : public WebCore::GamepadProvider {
 public:
@@ -45,6 +45,8 @@ public:
     void gamepadConnected(const GamepadData&);
     void gamepadDisconnected(unsigned index);
     void gamepadActivity(const Vector<GamepadData>&);
+
+    void setInitialGamepads(const Vector<GamepadData>&);
 
 private:
     friend NeverDestroyed<WebGamepadProvider>;

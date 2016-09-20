@@ -31,7 +31,6 @@
 // #include "PlugInsResourcesData.cpp"
 // #include "UserAgentStyleSheetsData.cpp"
 
-#include "ExceptionCodeDescription.h"
 #include "HTMLElementFactory.cpp"
 #if ENABLE(WEBGL)
 #include "JSANGLEInstancedArrays.cpp"
@@ -49,9 +48,8 @@
 #include "JSCanvasGradient.cpp"
 #include "JSCanvasPattern.cpp"
 #include "JSCanvasProxy.cpp"
-#include "JSCanvasRenderingContext.cpp"
 #include "JSCanvasRenderingContext2D.cpp"
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
 #include "JSByteLengthQueuingStrategy.cpp"
 #include "JSCountQueuingStrategy.cpp"
 #endif
@@ -139,7 +137,7 @@
 #include "JSCSSValue.cpp"
 #include "JSCSSValueList.cpp"
 #if ENABLE(CUSTOM_ELEMENTS)
-#include "JSCustomElementsRegistry.cpp"
+#include "JSCustomElementRegistry.cpp"
 #endif
 #include "JSCustomEvent.cpp"
 #include "JSDatabase.cpp"
@@ -210,6 +208,7 @@
 #endif
 #include "JSGeolocation.cpp"
 #include "JSGeoposition.cpp"
+#include "JSGlobalCrypto.cpp"
 #include "JSGlobalEventHandlers.cpp"
 #include "JSHashChangeEvent.cpp"
 #include "JSHistory.cpp"
@@ -343,7 +342,6 @@
 #include "JSMediaStreamAudioSourceNode.cpp"
 #include "JSMediaStreamEvent.cpp"
 #include "JSMediaStreamTrack.cpp"
-#include "JSMediaStreamTrackSourcesCallback.cpp"
 #include "JSMediaTrackConstraint.cpp"
 #include "JSMediaTrackConstraintSet.cpp"
 #include "JSMediaTrackConstraints.cpp"
@@ -381,7 +379,6 @@
 #include "JSParentNode.cpp"
 #include "JSPerformance.cpp"
 #include "JSPerformanceEntry.cpp"
-#include "JSPerformanceEntryList.cpp"
 #include "JSPerformanceMark.cpp"
 #include "JSPerformanceMeasure.cpp"
 #include "JSPerformanceNavigation.cpp"
@@ -396,11 +393,10 @@
 #include "JSProgressEvent.cpp"
 #include "JSRadioNodeList.cpp"
 #include "JSRange.cpp"
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
 #include "JSReadableStream.cpp"
 #include "JSReadableStreamDefaultController.cpp"
 #include "JSReadableStreamDefaultReader.cpp"
-#include "JSWritableStream.cpp"
 #endif
 #include "JSRect.cpp"
 #include "JSRequestAnimationFrameCallback.cpp"
@@ -425,7 +421,6 @@
 #include "JSSecurityPolicyViolationEvent.cpp"
 #include "JSSourceBuffer.cpp"
 #include "JSSourceBufferList.cpp"
-#include "JSSourceInfo.cpp"
 #include "JSSpeechSynthesis.cpp"
 #include "JSSpeechSynthesisEvent.cpp"
 #include "JSSpeechSynthesisUtterance.cpp"
@@ -632,8 +627,11 @@
 #include "JSUIEvent.cpp"
 #include "JSUIRequestEvent.cpp"
 #include "JSURLUtils.cpp"
+#if ENABLE(USER_MESSAGE_HANDLERS)
 #include "JSUserMessageHandler.cpp"
 #include "JSUserMessageHandlersNamespace.cpp"
+#include "JSWebKitNamespace.cpp"
+#endif
 #include "JSValidityState.cpp"
 #include "JSVideoPlaybackQuality.cpp"
 #include "JSVoidCallback.cpp"
@@ -645,7 +643,6 @@
 #include "JSWebKitCSSRegionRule.cpp"
 #include "JSWebKitCSSViewportRule.cpp"
 #include "JSWebKitNamedFlow.cpp"
-#include "JSWebKitNamespace.cpp"
 #include "JSWebKitPlaybackTargetAvailabilityEvent.cpp"
 #include "JSWebKitPoint.cpp"
 #include "JSWebKitSubtleCrypto.cpp"
@@ -661,6 +658,9 @@
 #include "JSWorkerGlobalScopeNotifications.cpp"
 #include "JSWorkerLocation.cpp"
 #include "JSWorkerNavigator.cpp"
+#if ENABLE(WRITABLE_STREAM_API)
+#include "JSWritableStream.cpp"
+#endif
 #include "JSXMLDocument.cpp"
 #include "JSXMLHttpRequest.cpp"
 #include "JSXMLHttpRequestEventTarget.cpp"

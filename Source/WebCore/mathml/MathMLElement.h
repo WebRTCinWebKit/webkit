@@ -42,17 +42,9 @@ public:
     unsigned colSpan() const;
     unsigned rowSpan() const;
 
-    bool isMathMLToken() const
-    {
-        return hasTagName(MathMLNames::miTag) || hasTagName(MathMLNames::mnTag) || hasTagName(MathMLNames::moTag) || hasTagName(MathMLNames::msTag) || hasTagName(MathMLNames::mtextTag);
-    }
-
-    bool isSemanticAnnotation() const
-    {
-        return hasTagName(MathMLNames::annotationTag) || hasTagName(MathMLNames::annotation_xmlTag);
-    }
-
-    virtual bool isPresentationMathML() const;
+    virtual bool isMathMLToken() const { return false; }
+    virtual bool isSemanticAnnotation() const { return false; }
+    virtual bool isPresentationMathML() const { return false; }
 
     bool hasTagName(const MathMLQualifiedName& name) const { return hasLocalName(name.localName()); }
 
@@ -64,7 +56,6 @@ public:
         LengthType type { LengthType::ParsingFailed };
         float value { 0 };
     };
-    static Length parseMathMLLength(const String&);
 
     enum class BooleanValue { True, False, Default };
 
@@ -93,44 +84,29 @@ public:
         Stretched = 18
     };
 
-    virtual Optional<bool> specifiedDisplayStyle();
-    Optional<MathVariant> specifiedMathVariant();
+    virtual Optional<bool> specifiedDisplayStyle() { return Nullopt; }
+    virtual Optional<MathVariant> specifiedMathVariant() { return Nullopt; }
+
+    virtual void updateSelectedChild() { }
 
 protected:
     MathMLElement(const QualifiedName& tagName, Document&);
 
+    static StringView stripLeadingAndTrailingWhitespace(const StringView&);
+
     void parseAttribute(const QualifiedName&, const AtomicString&) override;
     bool childShouldCreateRenderer(const Node&) const override;
-    void attributeChanged(const QualifiedName&, const AtomicString& oldValue, const AtomicString& newValue, AttributeModificationReason) override;
 
     bool isPresentationAttribute(const QualifiedName&) const override;
     void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
 
-    bool isPhrasingContent(const Node&) const;
-    bool isFlowContent(const Node&) const;
-
     bool willRespondToMouseClickEvents() override;
-    void defaultEventHandler(Event*) override;
-
-    const Length& cachedMathMLLength(const QualifiedName&, Optional<Length>&);
-    const BooleanValue& cachedBooleanAttribute(const QualifiedName&, Optional<BooleanValue>&);
-
-    virtual bool acceptsDisplayStyleAttribute() { return false; }
-    virtual bool acceptsMathVariantAttribute() { return false; }
-
-    static Optional<bool> toOptionalBool(const BooleanValue& value) { return value == BooleanValue::Default ? Nullopt : Optional<bool>(value == BooleanValue::True); }
-    Optional<BooleanValue> m_displayStyle;
-    Optional<MathVariant> m_mathVariant;
+    void defaultEventHandler(Event&) override;
 
 private:
-    virtual void updateSelectedChild() { }
-    static Length parseNumberAndUnit(const StringView&);
-    static Length parseNamedSpace(const StringView&);
-    static MathVariant parseMathVariantAttribute(const AtomicString& attributeValue);
-
     bool canStartSelection() const final;
     bool isFocusable() const final;
-    bool isKeyboardFocusable(KeyboardEvent*) const final;
+    bool isKeyboardFocusable(KeyboardEvent&) const final;
     bool isMouseFocusable() const final;
     bool isURLAttribute(const Attribute&) const final;
     bool supportsFocus() const final;

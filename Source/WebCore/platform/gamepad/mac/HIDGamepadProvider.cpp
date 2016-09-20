@@ -26,7 +26,7 @@
 #include "config.h"
 #include "HIDGamepadProvider.h"
 
-#if ENABLE(GAMEPAD)
+#if ENABLE(GAMEPAD) && PLATFORM(MAC)
 
 #include "GamepadProviderClient.h"
 #include "Logging.h"
@@ -96,6 +96,20 @@ HIDGamepadProvider::HIDGamepadProvider()
     IOHIDManagerSetDeviceMatchingMultiple(m_manager.get(), matchingArray.get());
     IOHIDManagerRegisterDeviceMatchingCallback(m_manager.get(), deviceAddedCallback, this);
     IOHIDManagerRegisterDeviceRemovalCallback(m_manager.get(), deviceRemovedCallback, this);
+
+    startMonitoringInput();
+}
+
+void HIDGamepadProvider::stopMonitoringInput()
+{
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnonnull"
+    IOHIDManagerRegisterInputValueCallback(m_manager.get(), nullptr, nullptr);
+#pragma clang diagnostic pop
+}
+
+void HIDGamepadProvider::startMonitoringInput()
+{
     IOHIDManagerRegisterInputValueCallback(m_manager.get(), deviceValuesChangedCallback, this);
 }
 
@@ -111,6 +125,9 @@ unsigned HIDGamepadProvider::indexForNewlyConnectedDevice()
 void HIDGamepadProvider::connectionDelayTimerFired()
 {
     m_shouldDispatchCallbacks = true;
+
+    for (auto* client : m_clients)
+        client->setInitialConnectedGamepads(m_gamepadVector);
 }
 
 void HIDGamepadProvider::openAndScheduleManager()
@@ -251,4 +268,4 @@ std::unique_ptr<HIDGamepad> HIDGamepadProvider::removeGamepadForDevice(IOHIDDevi
 
 } // namespace WebCore
 
-#endif // ENABLE(GAMEPAD)
+#endif // ENABLE(GAMEPAD) && PLATFORM(MAC)

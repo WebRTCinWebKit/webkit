@@ -35,7 +35,7 @@ class MediaQuery;
 
 using ExceptionCode = int;
 
-class MediaQuerySet : public RefCounted<MediaQuerySet> {
+class MediaQuerySet final : public RefCounted<MediaQuerySet> {
 public:
     static Ref<MediaQuerySet> create()
     {
@@ -49,7 +49,7 @@ public:
     {
         return adoptRef(*new MediaQuerySet(mediaString, true));
     }
-    ~MediaQuerySet();
+    WEBCORE_EXPORT ~MediaQuerySet();
 
     bool parse(const String&);
     bool add(const String&);
@@ -62,7 +62,7 @@ public:
     int lastLine() const { return m_lastLine; }
     void setLastLine(int lastLine) { m_lastLine = lastLine; }
 
-    String mediaText() const;
+    WEBCORE_EXPORT String mediaText() const;
 
     Ref<MediaQuerySet> copy() const { return adoptRef(*new MediaQuerySet(*this)); }
 
@@ -70,7 +70,7 @@ public:
 
 private:
     MediaQuerySet();
-    MediaQuerySet(const String& mediaQuery, bool fallbackToDescription);
+    WEBCORE_EXPORT MediaQuerySet(const String& mediaQuery, bool fallbackToDescription);
     MediaQuerySet(const MediaQuerySet&);
 
     Optional<MediaQuery> internalParse(CSSParser&, const String&);
@@ -81,7 +81,7 @@ private:
     Vector<MediaQuery> m_queries;
 };
 
-class MediaList : public RefCounted<MediaList> {
+class MediaList final : public RefCounted<MediaList> {
 public:
     static Ref<MediaList> create(MediaQuerySet* mediaQueries, CSSStyleSheet* parentSheet)
     {
@@ -92,15 +92,15 @@ public:
         return adoptRef(*new MediaList(mediaQueries, parentRule));
     }
 
-    ~MediaList();
+    WEBCORE_EXPORT ~MediaList();
 
     unsigned length() const { return m_mediaQueries->queryVector().size(); }
-    String item(unsigned index) const;
-    void deleteMedium(const String& oldMedium, ExceptionCode&);
-    void appendMedium(const String& newMedium, ExceptionCode&);
+    WEBCORE_EXPORT String item(unsigned index) const;
+    WEBCORE_EXPORT void deleteMedium(const String& oldMedium, ExceptionCode&);
+    WEBCORE_EXPORT void appendMedium(const String& newMedium, ExceptionCode&);
 
     String mediaText() const { return m_mediaQueries->mediaText(); }
-    void setMediaText(const String&, ExceptionCode&);
+    WEBCORE_EXPORT void setMediaText(const String&, ExceptionCode&);
 
     CSSRule* parentRule() const { return m_parentRule; }
     CSSStyleSheet* parentStyleSheet() const { return m_parentStyleSheet; }

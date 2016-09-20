@@ -40,15 +40,20 @@ enum TextFieldEventBehavior { DispatchNoEvent, DispatchChangeEvent, DispatchInpu
 
 class HTMLTextFormControlElement : public HTMLFormControlElementWithState {
 public:
-    // Common flag for HTMLInputElement::tooLong() and HTMLTextAreaElement::tooLong().
+    // Common flag for HTMLInputElement::tooLong() / tooShort() and HTMLTextAreaElement::tooLong() / tooShort().
     enum NeedsToCheckDirtyFlag {CheckDirtyFlag, IgnoreDirtyFlag};
 
     virtual ~HTMLTextFormControlElement();
 
     void didEditInnerTextValue();
-    void forwardEvent(Event*);
+    void forwardEvent(Event&);
 
-    void setMaxLengthForBindings(int, ExceptionCode&);
+    long maxLength() const { return m_maxLength; }
+    WEBCORE_EXPORT void setMaxLength(int, ExceptionCode&);
+    void setMaxLength(int maxLength) { m_maxLength = maxLength; }
+    long minLength() const { return m_minLength; }
+    void setMinLength(int, ExceptionCode&);
+    void setMinLength(int minLength) { m_minLength = minLength; }
 
     InsertionNotificationRequest insertedInto(ContainerNode&) override;
 
@@ -61,17 +66,17 @@ public:
 
     int indexForVisiblePosition(const VisiblePosition&) const;
     WEBCORE_EXPORT VisiblePosition visiblePositionForIndex(int index) const;
-    int selectionStart() const;
-    int selectionEnd() const;
-    const AtomicString& selectionDirection() const;
-    void setSelectionStart(int);
-    void setSelectionEnd(int);
-    void setSelectionDirection(const String&);
-    void select(const AXTextStateChangeIntent& = AXTextStateChangeIntent());
-    virtual void setRangeText(const String& replacement, ExceptionCode&);
-    virtual void setRangeText(const String& replacement, unsigned start, unsigned end, const String& selectionMode, ExceptionCode&);
+    WEBCORE_EXPORT int selectionStart() const;
+    WEBCORE_EXPORT int selectionEnd() const;
+    WEBCORE_EXPORT const AtomicString& selectionDirection() const;
+    WEBCORE_EXPORT void setSelectionStart(int);
+    WEBCORE_EXPORT void setSelectionEnd(int);
+    WEBCORE_EXPORT void setSelectionDirection(const String&);
+    WEBCORE_EXPORT void select(const AXTextStateChangeIntent& = AXTextStateChangeIntent());
+    WEBCORE_EXPORT virtual void setRangeText(const String& replacement, ExceptionCode&);
+    WEBCORE_EXPORT virtual void setRangeText(const String& replacement, unsigned start, unsigned end, const String& selectionMode, ExceptionCode&);
     void setSelectionRange(int start, int end, const String& direction, const AXTextStateChangeIntent& = AXTextStateChangeIntent());
-    void setSelectionRange(int start, int end, TextFieldSelectionDirection = SelectionHasNoDirection, const AXTextStateChangeIntent& = AXTextStateChangeIntent());
+    WEBCORE_EXPORT void setSelectionRange(int start, int end, TextFieldSelectionDirection = SelectionHasNoDirection, const AXTextStateChangeIntent& = AXTextStateChangeIntent());
     PassRefPtr<Range> selection() const;
     String selectedText() const;
 
@@ -150,6 +155,9 @@ private:
 
     int m_cachedSelectionStart;
     int m_cachedSelectionEnd;
+
+    int m_maxLength { -1 };
+    int m_minLength { -1 };
 
     unsigned char m_cachedSelectionDirection : 2;
     unsigned char m_lastChangeWasUserEdit : 1;

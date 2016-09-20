@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef HTMLAnchorElement_h
-#define HTMLAnchorElement_h
+#pragma once
 
 #include "HTMLElement.h"
 #include "HTMLNames.h"
@@ -63,17 +62,15 @@ public:
 
     virtual ~HTMLAnchorElement();
 
-    URL href() const;
+    WEBCORE_EXPORT URL href() const;
     void setHref(const AtomicString&);
 
     const AtomicString& name() const;
 
-    String origin() const;
+    WEBCORE_EXPORT String origin() const;
 
-    String text();
-    void setText(const String&, ExceptionCode&);
-
-    String toString() const;
+    WEBCORE_EXPORT String text();
+    void setText(const String&);
 
     bool isLiveLink() const;
 
@@ -84,7 +81,7 @@ public:
     LinkHash visitedLinkHash() const;
     void invalidateCachedVisitedLinkHash() { m_cachedVisitedLinkHash = 0; }
 
-    DOMTokenList& relList();
+    WEBCORE_EXPORT DOMTokenList& relList();
 
 protected:
     HTMLAnchorElement(const QualifiedName&, Document&);
@@ -94,8 +91,8 @@ protected:
 private:
     bool supportsFocus() const override;
     bool isMouseFocusable() const override;
-    bool isKeyboardFocusable(KeyboardEvent*) const override;
-    void defaultEventHandler(Event*) final;
+    bool isKeyboardFocusable(KeyboardEvent&) const override;
+    void defaultEventHandler(Event&) final;
     void setActive(bool active = true, bool pause = false) final;
     void accessKeyAction(bool sendMouseEvents) final;
     bool isURLAttribute(const Attribute&) const final;
@@ -106,14 +103,14 @@ private:
 
     void sendPings(const URL& destinationURL);
 
-    void handleClick(Event*);
+    void handleClick(Event&);
 
     enum EventType {
         MouseEventWithoutShiftKey,
         MouseEventWithShiftKey,
         NonMouseEvent,
     };
-    static EventType eventType(Event*);
+    static EventType eventType(Event&);
     bool treatLinkAsLiveForEventType(EventType) const;
 
     Element* rootEditableElementForSelectionOnMouseDown() const;
@@ -137,9 +134,7 @@ inline LinkHash HTMLAnchorElement::visitedLinkHash() const
 
 // Functions shared with the other anchor elements (i.e., SVG).
 
-bool isEnterKeyKeydownEvent(Event*);
+bool isEnterKeyKeydownEvent(Event&);
 bool shouldProhibitLinks(Element*);
 
 } // namespace WebCore
-
-#endif // HTMLAnchorElement_h

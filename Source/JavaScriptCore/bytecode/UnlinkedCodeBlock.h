@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef UnlinkedCodeBlock_h
-#define UnlinkedCodeBlock_h
+#pragma once
 
 #include "BytecodeConventions.h"
 #include "CodeSpecializationKind.h"
@@ -41,13 +40,12 @@
 #include "UnlinkedFunctionExecutable.h"
 #include "VariableEnvironment.h"
 #include "VirtualRegister.h"
-#include <wtf/FastBitVector.h>
-#include <wtf/RefCountedArray.h>
 #include <wtf/TriState.h>
 #include <wtf/Vector.h>
 
 namespace JSC {
 
+class BytecodeRewriter;
 class Debugger;
 class FunctionMetadataNode;
 class FunctionExecutable;
@@ -69,7 +67,11 @@ typedef unsigned UnlinkedObjectAllocationProfile;
 typedef unsigned UnlinkedLLIntCallLinkInfo;
 
 struct UnlinkedStringJumpTable {
-    typedef HashMap<RefPtr<StringImpl>, int32_t> StringOffsetTable;
+    struct OffsetLocation {
+        int32_t branchOffset;
+    };
+
+    typedef HashMap<RefPtr<StringImpl>, OffsetLocation> StringOffsetTable;
     StringOffsetTable offsetTable;
 
     inline int32_t offsetForValue(StringImpl* value, int32_t defaultOffset)
@@ -78,7 +80,7 @@ struct UnlinkedStringJumpTable {
         StringOffsetTable::const_iterator loc = offsetTable.find(value);
         if (loc == end)
             return defaultOffset;
-        return loc->value;
+        return loc->value.branchOffset;
     }
 
 };
@@ -106,6 +108,8 @@ struct UnlinkedInstruction {
     } u;
 };
 
+class BytecodeGeneratorification;
+
 class UnlinkedCodeBlock : public JSCell {
 public:
     typedef JSCell Base;
@@ -114,6 +118,9 @@ public:
     static const bool needsDestruction = true;
 
     enum { CallFunction, ApplyFunction };
+
+    typedef UnlinkedInstruction Instruction;
+    typedef Vector<UnlinkedInstruction, 0, UnsafeVectorOverflow> UnpackedInstructions;
 
     bool isConstructor() const { return m_isConstructor; }
     bool isStrictMode() const { return m_isStrictMode; }
@@ -204,10 +211,14 @@ public:
     unsigned jumpTarget(int index) const { return m_jumpTargets[index]; }
     unsigned lastJumpTarget() const { return m_jumpTargets.last(); }
 
+    UnlinkedHandlerInfo* handlerForBytecodeOffset(unsigned bytecodeOffset, RequiredHandler = RequiredHandler::AnyHandler);
+    UnlinkedHandlerInfo* handlerForIndex(unsigned, RequiredHandler = RequiredHandler::AnyHandler);
+
     bool isBuiltinFunction() const { return m_isBuiltinFunction; }
 
     ConstructorKind constructorKind() const { return static_cast<ConstructorKind>(m_constructorKind); }
     SuperBinding superBinding() const { return static_cast<SuperBinding>(m_superBinding); }
+    JSParserCommentMode commentMode() const { return static_cast<JSParserCommentMode>(m_commentMode); }
 
     void shrinkToFit()
     {
@@ -232,6 +243,8 @@ public:
 
     void setInstructions(std::unique_ptr<UnlinkedInstructionStream>);
     const UnlinkedInstructionStream& instructions() const;
+
+    int numCalleeLocals() const { return m_numCalleeLocals; }
 
     int m_numVars;
     int m_numCapturedVars;
@@ -270,8 +283,6 @@ public:
     size_t numberOfExceptionHandlers() const { return m_rareData ? m_rareData->m_exceptionHandlers.size() : 0; }
     void addExceptionHandler(const UnlinkedHandlerInfo& handler) { createRareDataIfNecessary(); return m_rareData->m_exceptionHandlers.append(handler); }
     UnlinkedHandlerInfo& exceptionHandler(int index) { ASSERT(m_rareData); return m_rareData->m_exceptionHandlers[index]; }
-
-    VM* vm() const;
 
     UnlinkedArrayProfile addArrayProfile() { return m_arrayProfileCount++; }
     unsigned numberOfArrayProfiles() { return m_arrayProfileCount; }
@@ -384,6 +395,8 @@ protected:
     }
 
 private:
+    friend class BytecodeRewriter;
+    void applyModification(BytecodeRewriter&);
 
     void createRareDataIfNecessary()
     {
@@ -409,13 +422,14 @@ private:
     unsigned m_isConstructor : 1;
     unsigned m_hasCapturedVariables : 1;
     unsigned m_isBuiltinFunction : 1;
-    unsigned m_constructorKind : 2;
     unsigned m_superBinding : 1;
-    unsigned m_derivedContextType : 2;
-    unsigned m_evalContextType : 2;
+    unsigned m_commentMode: 1;
     unsigned m_isArrowFunctionContext : 1;
     unsigned m_isClassContext : 1;
     unsigned m_wasCompiledWithDebuggingOpcodes : 1;
+    unsigned m_constructorKind : 2;
+    unsigned m_derivedContextType : 2;
+    unsigned m_evalContextType : 2;
     unsigned m_firstLine;
     unsigned m_lineCount;
     unsigned m_endColumn;
@@ -674,5 +688,3 @@ public:
 };
 
 }
-
-#endif // UnlinkedCodeBlock_h

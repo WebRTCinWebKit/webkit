@@ -242,6 +242,7 @@ namespace WebCore {
     String validationMessageTypeMismatchForMultipleEmailText();
     String validationMessageTypeMismatchForURLText();
     String validationMessagePatternMismatchText();
+    String validationMessageTooShortText(int valueLength, int minLength);
     String validationMessageTooLongText(int valueLength, int maxLength);
     String validationMessageRangeUnderflowText(const String& minimum);
     String validationMessageRangeOverflowText(const String& maximum);
@@ -266,6 +267,7 @@ namespace WebCore {
     String sdhTrackMenuItemText(const String&);
     String easyReaderTrackMenuItemText(const String&);
     String forcedTrackMenuItemText(const String&);
+    String audioDescriptionTrackSuffixText(const String&);
 #endif
 #endif
 
@@ -281,11 +283,11 @@ namespace WebCore {
 
 #if PLATFORM(MAC)
     WEBCORE_EXPORT String insertListTypeNone();
-    WEBCORE_EXPORT String insertListTypeNoneAccessibilityTitle();
     WEBCORE_EXPORT String insertListTypeBulleted();
     WEBCORE_EXPORT String insertListTypeBulletedAccessibilityTitle();
     WEBCORE_EXPORT String insertListTypeNumbered();
     WEBCORE_EXPORT String insertListTypeNumberedAccessibilityTitle();
+    WEBCORE_EXPORT String exitFullScreenButtonAccessibilityTitle();
 #endif
 
 #define WEB_UI_STRING(string, description) WebCore::localizedString(string)

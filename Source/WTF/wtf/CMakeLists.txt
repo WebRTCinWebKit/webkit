@@ -45,6 +45,10 @@ set(WTF_HEADERS
     HashTable.h
     HashTraits.h
     HexNumber.h
+    IndexMap.h
+    IndexSet.h
+    IndexSparseSet.h
+    IndexedContainerIterator.h
     IteratorAdaptors.h
     IteratorRange.h
     ListHashSet.h
@@ -177,7 +181,6 @@ set(WTF_SOURCES
     DataLog.cpp
     DateMath.cpp
     DecimalNumber.cpp
-    FastBitVector.cpp
     FastMalloc.cpp
     FilePrintStream.cpp
     FunctionDispatcher.cpp
@@ -279,6 +282,7 @@ set(WTF_SYSTEM_INCLUDE_DIRECTORIES
     ${ICU_INCLUDE_DIRS}
 )
 list(APPEND WTF_LIBRARIES
+    ${ICU_DATA_LIBRARIES}
     ${ICU_I18N_LIBRARIES}
     ${ICU_LIBRARIES}
 )

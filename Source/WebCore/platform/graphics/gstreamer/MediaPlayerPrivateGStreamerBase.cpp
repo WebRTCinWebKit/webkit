@@ -72,7 +72,7 @@
 #endif // PLATFORM(X11) && GST_GL_HAVE_PLATFORM_EGL
 #endif // USE(GSTREAMER_GL)
 
-#if GST_CHECK_VERSION(1, 1, 0) && USE(TEXTURE_MAPPER_GL)
+#if USE(TEXTURE_MAPPER_GL)
 #include "BitmapTextureGL.h"
 #include "BitmapTexturePool.h"
 #include "TextureMapperGL.h"
@@ -235,8 +235,8 @@ bool MediaPlayerPrivateGStreamerBase::ensureGstGLContext()
     if (m_glContext)
         return true;
 
+    const auto& sharedDisplay = PlatformDisplay::sharedDisplayForCompositing();
     if (!m_glDisplay) {
-        const auto& sharedDisplay = PlatformDisplay::sharedDisplay();
 #if PLATFORM(X11)
         m_glDisplay = GST_GL_DISPLAY(gst_gl_display_x11_new_with_display(downcast<PlatformDisplayX11>(sharedDisplay).native()));
 #elif PLATFORM(WAYLAND)
@@ -244,7 +244,7 @@ bool MediaPlayerPrivateGStreamerBase::ensureGstGLContext()
 #endif
     }
 
-    GLContext* webkitContext = GLContext::sharingContext();
+    GLContext* webkitContext = sharedDisplay.sharingGLContext();
     // EGL and GLX are mutually exclusive, no need for ifdefs here.
     GstGLPlatform glPlatform = webkitContext->isEGLContext() ? GST_GL_PLATFORM_EGL : GST_GL_PLATFORM_GLX;
 
@@ -431,7 +431,6 @@ void MediaPlayerPrivateGStreamerBase::updateTexture(BitmapTextureGL& texture, Gs
 {
     GstBuffer* buffer = gst_sample_get_buffer(m_sample.get());
 
-#if GST_CHECK_VERSION(1, 1, 0)
     GstVideoGLTextureUploadMeta* meta;
     if ((meta = gst_buffer_get_video_gl_texture_upload_meta(buffer))) {
         if (meta->n_textures == 1) { // BRGx & BGRA formats use only one texture.
@@ -441,7 +440,6 @@ void MediaPlayerPrivateGStreamerBase::updateTexture(BitmapTextureGL& texture, Gs
                 return;
         }
     }
-#endif
 
     // Right now the TextureMapper only supports chromas with one plane
     ASSERT(GST_VIDEO_INFO_N_PLANES(&videoInfo) == 1);
@@ -684,10 +682,7 @@ void MediaPlayerPrivateGStreamerBase::paintToTextureMapper(TextureMapper& textur
 #if USE(GSTREAMER_GL)
 NativeImagePtr MediaPlayerPrivateGStreamerBase::nativeImageForCurrentTime()
 {
-#if !USE(CAIRO) || !ENABLE(ACCELERATED_2D_CANVAS)
-    return nullptr;
-#endif
-
+#if USE(CAIRO) && ENABLE(ACCELERATED_2D_CANVAS)
     if (m_usingFallbackVideoSink)
         return nullptr;
 
@@ -702,7 +697,7 @@ NativeImagePtr MediaPlayerPrivateGStreamerBase::nativeImageForCurrentTime()
     if (!gst_video_frame_map(&videoFrame, &videoInfo, buffer, static_cast<GstMapFlags>(GST_MAP_READ | GST_MAP_GL)))
         return nullptr;
 
-    GLContext* context = GLContext::sharingContext();
+    GLContext* context = PlatformDisplay::sharedDisplayForCompositing().sharingGLContext();
     context->makeContextCurrent();
     cairo_device_t* device = context->cairoDevice();
 
@@ -746,6 +741,9 @@ NativeImagePtr MediaPlayerPrivateGStreamerBase::nativeImageForCurrentTime()
     gst_video_frame_unmap(&videoFrame);
 
     return rotatedSurface;
+#else
+    return nullptr;
+#endif
 }
 #endif
 

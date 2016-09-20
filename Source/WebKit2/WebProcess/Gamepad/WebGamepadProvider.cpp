@@ -53,22 +53,36 @@ WebGamepadProvider::~WebGamepadProvider()
 {
 }
 
-void WebGamepadProvider::gamepadConnected(const GamepadData& gamepadData)
+void WebGamepadProvider::setInitialGamepads(const Vector<GamepadData>& gamepadDatas)
 {
-    if (m_gamepads.size() <= gamepadData.index) {
-        m_gamepads.resize(gamepadData.index + 1);
-        m_rawGamepads.resize(gamepadData.index + 1);
+    ASSERT(m_gamepads.isEmpty());
+
+    m_gamepads.resize(gamepadDatas.size());
+    m_rawGamepads.resize(gamepadDatas.size());
+    for (size_t i = 0; i < gamepadDatas.size(); ++i) {
+        if (gamepadDatas[i].isNull())
+            continue;
+
+        m_gamepads[i] = std::make_unique<WebGamepad>(gamepadDatas[i]);
+        m_rawGamepads[i] = m_gamepads[i].get();
     }
-
-    ASSERT(!m_gamepads[gamepadData.index]);
-
-    m_gamepads[gamepadData.index] = std::make_unique<WebGamepad>(gamepadData);
-    m_rawGamepads[gamepadData.index] = m_gamepads[gamepadData.index].get();
-
-    for (auto* client : m_clients)
-        client->platformGamepadConnected(*m_gamepads[gamepadData.index]);
 }
 
+void WebGamepadProvider::gamepadConnected(const GamepadData& gamepadData)
+{
+    if (m_gamepads.size() <= gamepadData.index()) {
+        m_gamepads.resize(gamepadData.index() + 1);
+        m_rawGamepads.resize(gamepadData.index() + 1);
+    }
+
+    ASSERT(!m_gamepads[gamepadData.index()]);
+
+    m_gamepads[gamepadData.index()] = std::make_unique<WebGamepad>(gamepadData);
+    m_rawGamepads[gamepadData.index()] = m_gamepads[gamepadData.index()].get();
+
+    for (auto* client : m_clients)
+        client->platformGamepadConnected(*m_gamepads[gamepadData.index()]);
+}
 
 void WebGamepadProvider::gamepadDisconnected(unsigned index)
 {

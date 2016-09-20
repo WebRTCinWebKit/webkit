@@ -109,7 +109,9 @@ public:
     void setAllowFileAccessFromFileURLs(bool);
     void setPluginsEnabled(bool);
     void setJavaScriptCanAccessClipboard(bool);
+    void setAutomaticLinkDetectionEnabled(bool);
     void setPrivateBrowsingEnabled(bool);
+    void setUseDashboardCompatibilityMode(bool);
     void setPopupBlockingEnabled(bool);
     void setAuthorAndUserStylesEnabled(bool);
     void setCustomPolicyDelegate(bool enabled, bool permissive = false);
@@ -328,6 +330,13 @@ public:
     void accummulateLogsForChannel(JSStringRef channel);
 
     unsigned imageCountInGeneralPasteboard() const;
+
+    // Gamepads
+    void connectMockGamepad(unsigned index);
+    void disconnectMockGamepad(unsigned index);
+    void setMockGamepadDetails(unsigned index, JSStringRef gamepadID, unsigned axisCount, unsigned buttonCount);
+    void setMockGamepadAxisValue(unsigned index, unsigned axisIndex, double value);
+    void setMockGamepadButtonValue(unsigned index, unsigned buttonIndex, double value);
 
 private:
     TestRunner();

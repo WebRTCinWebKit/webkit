@@ -38,7 +38,7 @@
 #include "ContentExtensionActions.h"
 #include "ContentExtensionRule.h"
 #include "Crypto.h"
-#include "CustomElementsRegistry.h"
+#include "CustomElementRegistry.h"
 #include "DOMApplicationCache.h"
 #include "DOMSelection.h"
 #include "DOMStringList.h"
@@ -81,6 +81,7 @@
 #include "PageTransitionEvent.h"
 #include "Performance.h"
 #include "ResourceLoadInfo.h"
+#include "RuntimeApplicationChecks.h"
 #include "RuntimeEnabledFeatures.h"
 #include "ScheduledAction.h"
 #include "Screen.h"
@@ -481,6 +482,8 @@ Page* DOMWindow::page()
 
 void DOMWindow::frameDestroyed()
 {
+    Ref<DOMWindow> protectedThis(*this);
+
     willDestroyDocumentInFrame();
     FrameDestructionObserver::frameDestroyed();
     resetDOMWindowProperties();
@@ -619,11 +622,11 @@ bool DOMWindow::isCurrentlyDisplayedInFrame() const
 }
 
 #if ENABLE(CUSTOM_ELEMENTS)
-CustomElementsRegistry& DOMWindow::ensureCustomElementsRegistry()
+CustomElementRegistry& DOMWindow::ensureCustomElementRegistry()
 {
-    if (!m_customElementsRegistry)
-        m_customElementsRegistry = CustomElementsRegistry::create();
-    return *m_customElementsRegistry;
+    if (!m_customElementRegistry)
+        m_customElementRegistry = CustomElementRegistry::create(*this);
+    return *m_customElementRegistry;
 }
 #endif
 
@@ -1403,6 +1406,19 @@ RefPtr<CSSStyleDeclaration> DOMWindow::getComputedStyle(Element& element, const 
     return CSSComputedStyleDeclaration::create(element, false, pseudoElt);
 }
 
+// FIXME: Drop this overload once <rdar://problem/28016778> has been fixed.
+RefPtr<CSSStyleDeclaration> DOMWindow::getComputedStyle(Document&, const String&, ExceptionCode& ec)
+{
+#if PLATFORM(MAC)
+    if (MacApplication::isAppStore()) {
+        printErrorMessage(ASCIILiteral("Passing a non-Element as first parameter to window.getComputedStyle() is invalid and always returns null"));
+        return nullptr;
+    }
+#endif
+    ec = TypeError;
+    return nullptr;
+}
+
 RefPtr<CSSRuleList> DOMWindow::getMatchedCSSRules(Element* element, const String& pseudoElement, bool authorOnly) const
 {
     if (!isCurrentlyDisplayedInFrame())
@@ -1787,7 +1803,7 @@ void DOMWindow::decrementScrollEventListenersCount()
     Document* document = this->document();
     if (!--m_scrollEventListenerCount && document == &document->topDocument()) {
         Frame* frame = this->frame();
-        if (frame && frame->page() && !document->inPageCache())
+        if (frame && frame->page() && document->pageCacheState() == Document::NotInPageCache)
             frame->page()->chrome().client().setNeedsScrollNotifications(frame, false);
     }
 }
@@ -1868,10 +1884,10 @@ void DOMWindow::dispatchLoadEvent()
 {
     Ref<Event> loadEvent = Event::create(eventNames().loadEvent, false, false);
     if (m_frame && m_frame->loader().documentLoader() && !m_frame->loader().documentLoader()->timing().loadEventStart()) {
-        // The DocumentLoader (and thus its DocumentLoadTiming) might get destroyed while dispatching
+        // The DocumentLoader (and thus its LoadTiming) might get destroyed while dispatching
         // the event, so protect it to prevent writing the end time into freed memory.
         RefPtr<DocumentLoader> documentLoader = m_frame->loader().documentLoader();
-        DocumentLoadTiming& timing = documentLoader->timing();
+        LoadTiming& timing = documentLoader->timing();
         timing.markLoadEventStart();
         dispatchEvent(loadEvent, document());
         timing.markLoadEventEnd();

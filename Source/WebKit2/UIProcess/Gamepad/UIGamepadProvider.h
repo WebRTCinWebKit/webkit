@@ -38,7 +38,7 @@ namespace WebKit {
 class UIGamepad;
 class WebPageProxy;
 class WebProcessPool;
-struct GamepadData;
+class GamepadData;
 
 class UIGamepadProvider : public WebCore::GamepadProviderClient {
 public:
@@ -52,6 +52,10 @@ public:
 
     Vector<GamepadData> gamepadStates() const;
 
+#if PLATFORM(COCOA)
+    static void setUsesGameControllerFramework();
+#endif
+
 private:
     friend NeverDestroyed<UIGamepadProvider>;
     UIGamepadProvider();
@@ -60,11 +64,12 @@ private:
     void startMonitoringGamepads();
     void stopMonitoringGamepads();
 
-    void platformStartMonitoringGamepads();
-    void platformStopMonitoringGamepads();
-    const Vector<WebCore::PlatformGamepad*>& platformGamepads();
+    void platformSetDefaultGamepadProvider();
     WebPageProxy* platformWebPageProxyForGamepadInput();
+    void platformStopMonitoringInput();
+    void platformStartMonitoringInput();
 
+    void setInitialConnectedGamepads(const Vector<WebCore::PlatformGamepad*>&) final;
     void platformGamepadConnected(WebCore::PlatformGamepad&) final;
     void platformGamepadDisconnected(WebCore::PlatformGamepad&) final;
     void platformGamepadInputActivity() final;
@@ -72,17 +77,16 @@ private:
     void scheduleGamepadStateSync();
     void gamepadSyncTimerFired();
 
-    void scheduleDisableGamepadMonitoring();
-    void disableMonitoringTimerFired();
+    Vector<GamepadData> snapshotGamepads();
 
     HashSet<WebProcessPool*> m_processPoolsUsingGamepads;
 
     Vector<std::unique_ptr<UIGamepad>> m_gamepads;
 
     RunLoop::Timer<UIGamepadProvider> m_gamepadSyncTimer;
-    RunLoop::Timer<UIGamepadProvider> m_disableMonitoringTimer;
 
     bool m_isMonitoringGamepads { false };
+    bool m_hasInitialGamepads { false };
 };
 
 }

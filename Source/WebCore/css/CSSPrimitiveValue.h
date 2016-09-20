@@ -77,7 +77,7 @@ template<> inline float roundForImpreciseConversion(double value)
     return static_cast<float>(value);
 }
 
-class CSSPrimitiveValue : public CSSValue {
+class CSSPrimitiveValue final : public CSSValue {
 public:
     enum UnitTypes {
         CSS_UNKNOWN = 0,
@@ -156,7 +156,13 @@ public:
         CSS_VALUE_ID = 118,
         
         // More internal parse stuff for CSS variables
-        CSS_PARSER_WHITESPACE = 119
+        CSS_PARSER_WHITESPACE = 119,
+        
+        // This value is used to handle quirky margins in reflow roots (body, td, and th) like WinIE.
+        // The basic idea is that a stylesheet can use the value __qem (for quirky em) instead of em.
+        // When the quirky value is used, if you're in quirks mode, the margin will collapse away
+        // inside a table cell. This quirk is specified in the HTML spec but our impl is different.
+        CSS_QUIRKY_EMS = 120
     };
 
     // This enum follows the CSSParser::Units enum augmented with UNIT_FREQUENCY for frequencies.
@@ -189,16 +195,19 @@ public:
         return primitiveUnitType == CSS_EMS
             || primitiveUnitType == CSS_EXS
             || primitiveUnitType == CSS_REMS
-            || primitiveUnitType == CSS_CHS;
+            || primitiveUnitType == CSS_CHS
+            || primitiveUnitType == CSS_QUIRKY_EMS;
     }
     bool isFontRelativeLength() const { return isFontRelativeLength(m_primitiveUnitType); }
+    
+    bool isQuirkyEms() const { return primitiveType() == UnitTypes::CSS_QUIRKY_EMS; }
 
     static bool isViewportPercentageLength(unsigned short type) { return type >= CSS_VW && type <= CSS_VMAX; }
     bool isViewportPercentageLength() const { return isViewportPercentageLength(m_primitiveUnitType); }
 
     static bool isLength(unsigned short type)
     {
-        return (type >= CSS_EMS && type <= CSS_PC) || type == CSS_REMS || type == CSS_CHS || isViewportPercentageLength(type);
+        return (type >= CSS_EMS && type <= CSS_PC) || type == CSS_REMS || type == CSS_CHS || isViewportPercentageLength(type) || type == CSS_QUIRKY_EMS;
     }
 
     bool isLength() const { return isLength(primitiveType()); }
@@ -270,7 +279,7 @@ public:
 
     void cleanup();
 
-    unsigned short primitiveType() const;
+    WEBCORE_EXPORT unsigned short primitiveType() const;
 
     double computeDegrees() const;
     
@@ -311,11 +320,11 @@ public:
     // use with care!!!
     void setPrimitiveType(unsigned short type) { m_primitiveUnitType = type; }
 
-    double getDoubleValue(unsigned short unitType, ExceptionCode&) const;
+    WEBCORE_EXPORT double getDoubleValue(unsigned short unitType, ExceptionCode&) const;
     double getDoubleValue(unsigned short unitType) const;
     double getDoubleValue() const;
 
-    void setFloatValue(unsigned short unitType, double floatValue, ExceptionCode&);
+    WEBCORE_EXPORT void setFloatValue(unsigned short unitType, double floatValue, ExceptionCode&);
     float getFloatValue(unsigned short unitType, ExceptionCode& ec) const { return getValue<float>(unitType, ec); }
     float getFloatValue(unsigned short unitType) const { return getValue<float>(unitType); }
     float getFloatValue() const { return getValue<float>(); }
@@ -328,14 +337,14 @@ public:
     template<typename T> inline T getValue(unsigned short unitType) const { return clampTo<T>(getDoubleValue(unitType)); }
     template<typename T> inline T getValue() const { return clampTo<T>(getDoubleValue()); }
 
-    void setStringValue(unsigned short stringType, const String& stringValue, ExceptionCode&);
-    String getStringValue(ExceptionCode&) const;
-    String getStringValue() const;
+    WEBCORE_EXPORT void setStringValue(unsigned short stringType, const String& stringValue, ExceptionCode&);
+    WEBCORE_EXPORT String getStringValue(ExceptionCode&) const;
+    WEBCORE_EXPORT String getStringValue() const;
 
-    Counter* getCounterValue(ExceptionCode&) const;
+    WEBCORE_EXPORT Counter* getCounterValue(ExceptionCode&) const;
     Counter* getCounterValue() const { return m_primitiveUnitType != CSS_COUNTER ? 0 : m_value.counter; }
 
-    Rect* getRectValue(ExceptionCode&) const;
+    WEBCORE_EXPORT Rect* getRectValue(ExceptionCode&) const;
     Rect* getRectValue() const { return m_primitiveUnitType != CSS_RECT ? 0 : m_value.rect; }
 
     Quad* getQuadValue(ExceptionCode&) const;
@@ -346,7 +355,7 @@ public:
     LengthRepeat* getLengthRepeatValue() const { return m_primitiveUnitType != CSS_LENGTH_REPEAT ? 0 : m_value.lengthRepeat; }
 #endif
 
-    RefPtr<RGBColor> getRGBColorValue(ExceptionCode&) const;
+    WEBCORE_EXPORT RefPtr<RGBColor> getRGBColorValue(ExceptionCode&) const;
     RGBA32 getRGBA32Value() const { return m_primitiveUnitType != CSS_RGBCOLOR ? 0 : m_value.rgbcolor; }
 
     Pair* getPairValue(ExceptionCode&) const;
@@ -369,7 +378,8 @@ public:
 
     String customCSSText() const;
 
-    bool isQuirkValue() const { return m_isQuirkValue; }
+    // FIXME-NEWPARSER: Can ditch the boolean and just use the unit type once old parser is gone.
+    bool isQuirkValue() const { return m_isQuirkValue || primitiveType() == CSS_QUIRKY_EMS; }
 
     void addSubresourceStyleURLs(ListHashSet<URL>&, const StyleSheetContents*) const;
 

@@ -69,11 +69,13 @@
 #include <WebCore/LogInitialization.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/SessionID.h>
+#include <WebCore/URLParser.h>
 #include <runtime/JSCInlines.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/RunLoop.h>
+#include <wtf/text/StringBuilder.h>
 
 #if ENABLE(BATTERY_STATUS)
 #include "WebBatteryManagerProxy.h"
@@ -98,6 +100,11 @@
 
 #if OS(LINUX)
 #include "MemoryPressureMonitor.h"
+#endif
+
+#if PLATFORM(WAYLAND)
+#include "WaylandCompositor.h"
+#include <WebCore/PlatformDisplay.h>
 #endif
 
 #ifndef NDEBUG
@@ -207,10 +214,10 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
 
     addLanguageChangeObserver(this, languageChanged);
 
-#if !LOG_DISABLED
+#if !LOG_DISABLED || !RELEASE_LOG_DISABLED
     WebCore::initializeLogChannelsIfNecessary();
     WebKit::initializeLogChannelsIfNecessary();
-#endif // !LOG_DISABLED
+#endif // !LOG_DISABLED || !RELEASE_LOG_DISABLED
 
 #ifndef NDEBUG
     processPoolCounter.increment();
@@ -381,6 +388,8 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess()
 
     parameters.shouldUseTestingNetworkSession = m_shouldUseTestingNetworkSession;
 
+    parameters.urlParserEnabled = URLParser::enabled();
+    
     // Add any platform specific parameters
     platformInitializeNetworkProcess(parameters);
 
@@ -542,6 +551,8 @@ WebProcessProxy& WebProcessPool::createNewWebProcess()
 
     WebProcessCreationParameters parameters;
 
+    parameters.urlParserEnabled = URLParser::enabled();
+    
     parameters.injectedBundlePath = injectedBundlePath();
     if (!parameters.injectedBundlePath.isEmpty())
         SandboxExtension::createHandle(parameters.injectedBundlePath, SandboxExtension::ReadOnly, parameters.injectedBundlePathExtensionHandle);
@@ -637,6 +648,11 @@ WebProcessProxy& WebProcessPool::createNewWebProcess()
     parameters.shouldEnableMemoryPressureReliefLogging = true;
     if (MemoryPressureMonitor::isEnabled())
         parameters.memoryPressureMonitorHandle = MemoryPressureMonitor::singleton().createHandle();
+#endif
+
+#if PLATFORM(WAYLAND)
+    if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::Wayland)
+        parameters.waylandCompositorDisplayName = WaylandCompositor::singleton().displayName();
 #endif
 
     parameters.resourceLoadStatisticsEnabled = resourceLoadStatisticsEnabled();
@@ -1030,12 +1046,12 @@ void WebProcessPool::removeMessageReceiver(IPC::StringReference messageReceiverN
     m_messageReceiverMap.removeMessageReceiver(messageReceiverName, destinationID);
 }
 
-bool WebProcessPool::dispatchMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
+bool WebProcessPool::dispatchMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
     return m_messageReceiverMap.dispatchMessage(connection, decoder);
 }
 
-bool WebProcessPool::dispatchSyncMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder, std::unique_ptr<IPC::MessageEncoder>& replyEncoder)
+bool WebProcessPool::dispatchSyncMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)
 {
     return m_messageReceiverMap.dispatchSyncMessage(connection, decoder, replyEncoder);
 }
@@ -1206,9 +1222,20 @@ void WebProcessPool::requestNetworkingStatistics(StatisticsRequest* request)
     m_networkProcess->send(Messages::NetworkProcess::GetNetworkProcessStatistics(requestID), 0);
 }
 
+static WebProcessProxy* webProcessProxyFromConnection(IPC::Connection& connection, const Vector<RefPtr<WebProcessProxy>>& processes)
+{
+    for (auto& process : processes) {
+        if (process->connection() == &connection)
+            return process.get();
+    }
+
+    // FIXME: Can this ever return null?
+    return nullptr;
+}
+
 void WebProcessPool::handleMessage(IPC::Connection& connection, const String& messageName, const WebKit::UserData& messageBody)
 {
-    auto* webProcessProxy = WebProcessProxy::fromConnection(&connection);
+    auto* webProcessProxy = webProcessProxyFromConnection(connection, m_processes);
     if (!webProcessProxy)
         return;
     m_injectedBundleClient.didReceiveMessageFromInjectedBundle(this, messageName, webProcessProxy->transformHandlesToObjects(messageBody.object()).get());
@@ -1216,7 +1243,7 @@ void WebProcessPool::handleMessage(IPC::Connection& connection, const String& me
 
 void WebProcessPool::handleSynchronousMessage(IPC::Connection& connection, const String& messageName, const UserData& messageBody, UserData& returnUserData)
 {
-    auto* webProcessProxy = WebProcessProxy::fromConnection(&connection);
+    auto* webProcessProxy = webProcessProxyFromConnection(connection, m_processes);
     if (!webProcessProxy)
         return;
 
@@ -1240,7 +1267,7 @@ void WebProcessPool::didGetStatistics(const StatisticsData& statisticsData, uint
 
 void WebProcessPool::startedUsingGamepads(IPC::Connection& connection)
 {
-    auto* proxy = WebProcessProxy::fromConnection(&connection);
+    auto* proxy = webProcessProxyFromConnection(connection, m_processes);
     if (!proxy)
         return;
 
@@ -1255,7 +1282,7 @@ void WebProcessPool::startedUsingGamepads(IPC::Connection& connection)
 
 void WebProcessPool::stoppedUsingGamepads(IPC::Connection& connection)
 {
-    auto* proxy = WebProcessProxy::fromConnection(&connection);
+    auto* proxy = webProcessProxyFromConnection(connection, m_processes);
     if (!proxy)
         return;
 
@@ -1277,13 +1304,27 @@ void WebProcessPool::processStoppedUsingGamepads(WebProcessProxy& process)
 void WebProcessPool::gamepadConnected(const UIGamepad& gamepad)
 {
     for (auto& process : m_processesUsingGamepads)
-        process->send(Messages::WebProcess::GamepadConnected(gamepad.gamepadData()), 0);
+        process->send(Messages::WebProcess::GamepadConnected(gamepad.fullGamepadData()), 0);
 }
 
 void WebProcessPool::gamepadDisconnected(const UIGamepad& gamepad)
 {
     for (auto& process : m_processesUsingGamepads)
         process->send(Messages::WebProcess::GamepadDisconnected(gamepad.index()), 0);
+}
+
+void WebProcessPool::setInitialConnectedGamepads(const Vector<std::unique_ptr<UIGamepad>>& gamepads)
+{
+    Vector<GamepadData> gamepadDatas;
+    gamepadDatas.resize(gamepads.size());
+    for (size_t i = 0; i < gamepads.size(); ++i) {
+        if (!gamepads[i])
+            continue;
+        gamepadDatas[i] = gamepads[i]->fullGamepadData();
+    }
+
+    for (auto& process : m_processesUsingGamepads)
+        process->send(Messages::WebProcess::SetInitialGamepads(gamepadDatas), 0);
 }
 
 #endif // ENABLE(GAMEPAD)

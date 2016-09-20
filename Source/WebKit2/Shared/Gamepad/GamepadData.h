@@ -31,21 +31,39 @@
 #include <wtf/text/WTFString.h>
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
 
-struct GamepadData {
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, GamepadData&);
+class GamepadData {
+public:
+    GamepadData()
+        : m_isNull(true)
+    {
+    }
 
-    bool isNull() const;
+    GamepadData(unsigned index, const Vector<double>& axisValues, const Vector<double>& buttonValues);
+    GamepadData(unsigned index, const String& id, const Vector<double>& axisValues, const Vector<double>& buttonValues);
 
-    unsigned index;
-    Vector<double> axisValues;
-    Vector<double> buttonValues;
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, GamepadData&);
+
+    bool isNull() const { return m_isNull; }
+
+    unsigned index() const { return m_index; }
+    const String& id() const { return m_id; }
+    const Vector<double>& axisValues() const { return m_axisValues; }
+    const Vector<double>& buttonValues() const { return m_buttonValues; }
+
+private:
+    unsigned m_index;
+    String m_id;
+    Vector<double> m_axisValues;
+    Vector<double> m_buttonValues;
+
+    bool m_isNull { false };
 
 #if !LOG_DISABLED
     String loggingString() const;

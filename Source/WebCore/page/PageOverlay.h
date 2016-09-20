@@ -30,7 +30,6 @@
 #include "FloatPoint.h"
 #include "IntRect.h"
 #include "Timer.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
@@ -107,8 +106,8 @@ public:
 
     WEBCORE_EXPORT IntSize viewToOverlayOffset() const;
 
-    RGBA32 backgroundColor() const { return m_backgroundColor; }
-    void setBackgroundColor(RGBA32);
+    Color backgroundColor() const { return m_backgroundColor; }
+    void setBackgroundColor(Color);
 
     void setShouldIgnoreMouseEventsOutsideBounds(bool flag) { m_shouldIgnoreMouseEventsOutsideBounds = flag; }
 
@@ -145,7 +144,7 @@ private:
     OverlayType m_overlayType;
     IntRect m_overrideFrame;
 
-    RGBA32 m_backgroundColor { Color::transparent };
+    Color m_backgroundColor { Color::transparent };
     PageOverlayID m_pageOverlayID;
 
     bool m_shouldIgnoreMouseEventsOutsideBounds { true };

@@ -149,6 +149,9 @@ WebInspector.NetworkGridContentView = class NetworkGridContentView extends WebIn
     {
         this._dataGrid.hidden();
 
+        if (this._scheduledCurrentTimeUpdateIdentifier)
+            this._stopUpdatingCurrentTime();
+
         super.hidden();
     }
 
@@ -206,7 +209,10 @@ WebInspector.NetworkGridContentView = class NetworkGridContentView extends WebIn
                 continue;
 
             treeElement = new WebInspector.ResourceTreeElement(resourceTimelineRecord.resource);
-            var dataGridNode = new WebInspector.ResourceTimelineDataGridNode(resourceTimelineRecord, false, this);
+
+            const includesGraph = false;
+            const shouldShowPopover = true;
+            let dataGridNode = new WebInspector.ResourceTimelineDataGridNode(resourceTimelineRecord, includesGraph, this, shouldShowPopover);
 
             this._dataGrid.addRowInSortOrder(treeElement, dataGridNode);
         }
@@ -236,7 +242,9 @@ WebInspector.NetworkGridContentView = class NetworkGridContentView extends WebIn
                 return;
 
             this._endTime = resourceTimelineRecord.endTime;
-            this.debounce(150)._stopUpdatingCurrentTime();
+
+            if (this._scheduledCurrentTimeUpdateIdentifier)
+                this.debounce(150)._stopUpdatingCurrentTime();
         };
 
         this._pendingRecords.push(resourceTimelineRecord);
@@ -252,12 +260,14 @@ WebInspector.NetworkGridContentView = class NetworkGridContentView extends WebIn
         resource.addEventListener(WebInspector.Resource.Event.LoadingDidFail, update, this);
 
         this._loadingResourceCount++;
-        if (this._loadingResourceCount && !this._scheduledCurrentTimeUpdateIdentifier) {
-            if (isNaN(this._startTime))
-                this._startTime = resourceTimelineRecord.startTime;
+        if (this._scheduledCurrentTimeUpdateIdentifier)
+            return;
 
+        if (isNaN(this._startTime))
+            this._startTime = resourceTimelineRecord.startTime;
+
+        if (this.visible)
             this._startUpdatingCurrentTime();
-        }
     }
 
     _treeElementPathComponentSelected(event)
@@ -329,6 +339,8 @@ WebInspector.NetworkGridContentView = class NetworkGridContentView extends WebIn
         console.assert(this._scheduledCurrentTimeUpdateIdentifier);
         if (!this._scheduledCurrentTimeUpdateIdentifier)
             return;
+
+        this._stopUpdatingCurrentTime.cancelDebounce();
 
         cancelAnimationFrame(this._scheduledCurrentTimeUpdateIdentifier);
         this._scheduledCurrentTimeUpdateIdentifier = undefined;

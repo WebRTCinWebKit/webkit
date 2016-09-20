@@ -61,7 +61,6 @@
 #import <WebCore/CachedResourceLoader.h>
 #import <WebCore/Chrome.h>
 #import <WebCore/ColorMac.h>
-#import <WebCore/DOMImplementation.h>
 #import <WebCore/DatabaseManager.h>
 #import <WebCore/DocumentFragment.h>
 #import <WebCore/DocumentLoader.h>
@@ -80,6 +79,7 @@
 #import <WebCore/HitTestResult.h>
 #import <WebCore/JSNode.h>
 #import <WebCore/LegacyWebArchive.h>
+#import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/MainFrame.h>
 #import <WebCore/Page.h>
 #import <WebCore/PlatformEventFactoryMac.h>
@@ -101,9 +101,9 @@
 #import <WebCore/markup.h>
 #import <WebKitSystemInterface.h>
 #import <bindings/ScriptValue.h>
+#import <runtime/JSCJSValue.h>
 #import <runtime/JSLock.h>
 #import <runtime/JSObject.h>
-#import <runtime/JSCJSValue.h>
 #import <wtf/CurrentTime.h>
 
 #if PLATFORM(IOS)
@@ -111,7 +111,6 @@
 #import "WebResource.h"
 #import "WebUIKitDelegate.h"
 #import <WebCore/Document.h>
-#import <WebCore/Editor.h>
 #import <WebCore/EditorClient.h>
 #import <WebCore/FocusController.h>
 #import <WebCore/Font.h>
@@ -988,7 +987,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     String mimeType = frame->document()->loader()->writer().mimeType();
     PluginData* pluginData = frame->page() ? &frame->page()->pluginData() : 0;
 
-    if (WebCore::DOMImplementation::isTextMIMEType(mimeType)
+    if (WebCore::MIMETypeRegistry::isTextMIMEType(mimeType)
         || Image::supportsType(mimeType)
         || (pluginData && pluginData->supportsWebVisibleMimeType(mimeType, PluginData::AllPlugins) && frame->loader().subframeLoader().allowPlugins())
         || (pluginData && pluginData->supportsWebVisibleMimeType(mimeType, PluginData::OnlyApplicationPlugins)))
@@ -1202,10 +1201,10 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 #endif
 
 #if PLATFORM(IOS)
+
 - (unsigned)formElementsCharacterCount
 {
-    WebCore::Frame *frame = core(self);
-    return frame->formElementsCharacterCount();
+    return core(self)->formElementsCharacterCount();
 }
 
 - (void)setTimeoutsPaused:(BOOL)flag
@@ -1386,20 +1385,28 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 
 - (BOOL)hasEditableSelection
 {
-    WebCore::Frame *frame = core(self);
-    return frame->selection().selection().isContentEditable();
+    return core(self)->selection().selection().isContentEditable();
 }
 
 - (int)preferredHeight
 {
-    WebCore::Frame *frame = core(self);
-    return frame->preferredHeight();
+    return core(self)->preferredHeight();
 }
 
 - (int)innerLineHeight:(DOMNode *)node
 {
-    WebCore::Frame *frame = core(self);
-    return frame->innerLineHeight(node);
+    if (!node)
+        return 0;
+
+    auto& coreNode = *core(node);
+
+    coreNode.document().updateLayout();
+
+    auto* renderer = coreNode.renderer();
+    if (!renderer)
+        return 0;
+
+    return renderer->innerLineHeight();
 }
 
 - (void)updateLayout
@@ -1422,14 +1429,12 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 
 - (NSRect)caretRect
 {
-    WebCore::Frame *frame = core(self);
-    return frame->caretRect();
+    return core(self)->caretRect();
 }
 
 - (NSRect)rectForScrollToVisible
 {
-    WebCore::Frame *frame = core(self);
-    return frame->rectForScrollToVisible();
+    return core(self)->rectForScrollToVisible();
 }
 
 - (void)setCaretColor:(CGColorRef)color
@@ -1526,20 +1531,17 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 
 - (unichar)characterInRelationToCaretSelection:(int)amount
 {
-    WebCore::Frame *frame = core(self);
-    return frame->selection().characterInRelationToCaretSelection(amount);
+    return core(self)->selection().characterInRelationToCaretSelection(amount);
 }
 
 - (unichar)characterBeforeCaretSelection
 {
-    WebCore::Frame *frame = core(self);
-    return frame->selection().characterBeforeCaretSelection();
+    return core(self)->selection().characterBeforeCaretSelection();
 }
 
 - (unichar)characterAfterCaretSelection
 {
-    WebCore::Frame *frame = core(self);
-    return frame->selection().characterAfterCaretSelection();
+    return core(self)->selection().characterAfterCaretSelection();
 }
 
 - (DOMRange *)wordRangeContainingCaretSelection
@@ -1558,20 +1560,17 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 
 - (int)wordOffsetInRange:(DOMRange *)range
 {
-    WebCore::Frame *frame = core(self);
-    return frame->selection().wordOffsetInRange(core(range));
+    return core(self)->selection().wordOffsetInRange(core(range));
 }
 
 - (BOOL)spaceFollowsWordInRange:(DOMRange *)range
 {
-    WebCore::Frame *frame = core(self);
-    return frame->selection().spaceFollowsWordInRange(core(range));
+    return core(self)->selection().spaceFollowsWordInRange(core(range));
 }
 
 - (NSArray *)wordsInCurrentParagraph
 {
-    WebCore::Frame *frame = core(self);
-    return frame->wordsInCurrentParagraph();
+    return core(self)->wordsInCurrentParagraph();
 }
 
 - (BOOL)selectionAtDocumentStart

@@ -26,13 +26,12 @@
 #include "config.h"
 #include "CSSSelector.h"
 
-#include "CSSOMUtils.h"
+#include "CSSMarkup.h"
 #include "CSSSelectorList.h"
 #include "HTMLNames.h"
 #include "SelectorPseudoTypeMap.h"
 #include <wtf/Assertions.h>
 #include <wtf/HashMap.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
 #include <wtf/text/AtomicStringHash.h>
@@ -669,7 +668,7 @@ String CSSSelector::selectorText(const String& rightSide) const
         } else if (cs->isAttributeSelector()) {
             str.append('[');
             const AtomicString& prefix = cs->attribute().prefix();
-            if (!prefix.isNull()) {
+            if (!prefix.isEmpty()) {
                 str.append(prefix);
                 str.append('|');
             }
@@ -736,6 +735,8 @@ String CSSSelector::selectorText(const String& rightSide) const
             return tagHistory->selectorText(" " + str.toString() + rightSide);
         case CSSSelector::Child:
             return tagHistory->selectorText(" > " + str.toString() + rightSide);
+        case CSSSelector::ShadowDeep:
+            return tagHistory->selectorText(" /deep/ " + str.toString() + rightSide);
         case CSSSelector::DirectAdjacent:
             return tagHistory->selectorText(" + " + str.toString() + rightSide);
         case CSSSelector::IndirectAdjacent:
@@ -746,6 +747,8 @@ String CSSSelector::selectorText(const String& rightSide) const
             FALLTHROUGH;
 #endif
         case CSSSelector::ShadowDescendant:
+        case CSSSelector::ShadowPseudo:
+        case CSSSelector::ShadowSlot:
             return tagHistory->selectorText(str.toString() + rightSide);
         }
     }

@@ -63,7 +63,6 @@
 #include "ScriptProcessorNode.h"
 #include "WaveShaperNode.h"
 #include <inspector/ScriptCallStack.h>
-#include <wtf/NeverDestroyed.h>
 
 #if ENABLE(MEDIA_STREAM)
 #include "MediaStream.h"
@@ -115,10 +114,8 @@ bool AudioContext::isSampleRateRangeGood(float sampleRate)
 const unsigned MaxHardwareContexts = 4;
 unsigned AudioContext::s_hardwareContextCount = 0;
     
-RefPtr<AudioContext> AudioContext::create(Document& document, ExceptionCode& ec)
+RefPtr<AudioContext> AudioContext::create(Document& document)
 {
-    UNUSED_PARAM(ec);
-
     ASSERT(isMainThread());
     if (s_hardwareContextCount >= MaxHardwareContexts)
         return nullptr;

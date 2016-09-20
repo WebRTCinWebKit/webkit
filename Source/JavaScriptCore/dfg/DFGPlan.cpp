@@ -74,7 +74,6 @@
 #include "DFGVarargsForwardingPhase.h"
 #include "DFGVirtualRegisterAllocationPhase.h"
 #include "DFGWatchpointCollectionPhase.h"
-#include "Debugger.h"
 #include "JSCInlines.h"
 #include "OperandsInlines.h"
 #include "ProfilerDatabase.h"
@@ -692,7 +691,7 @@ void Plan::cleanMustHandleValuesIfNecessary()
     FastBitVector liveness = codeBlock->alternative()->livenessAnalysis().getLivenessInfoAtBytecodeOffset(osrEntryBytecodeIndex);
     
     for (unsigned local = mustHandleValues.numberOfLocals(); local--;) {
-        if (!liveness.get(local))
+        if (!liveness[local])
             mustHandleValues.local(local) = jsUndefined();
     }
 }

@@ -25,7 +25,7 @@
 
 #pragma once
 
-#if ENABLE(GAMEPAD)
+#if ENABLE(GAMEPAD) && PLATFORM(MAC)
 
 #include "GamepadProvider.h"
 #include "HIDGamepad.h"
@@ -51,6 +51,9 @@ public:
     WEBCORE_EXPORT void stopMonitoringGamepads(GamepadProviderClient&) final;
     const Vector<PlatformGamepad*>& platformGamepads() final { return m_gamepadVector; }
 
+    WEBCORE_EXPORT void stopMonitoringInput();
+    WEBCORE_EXPORT void startMonitoringInput();
+    
     void deviceAdded(IOHIDDeviceRef);
     void deviceRemoved(IOHIDDeviceRef);
     void valuesChanged(IOHIDValueRef);
@@ -82,4 +85,4 @@ private:
 
 } // namespace WebCore
 
-#endif // ENABLE(GAMEPAD)
+#endif // ENABLE(GAMEPAD) && PLATFORM(MAC)

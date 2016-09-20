@@ -21,7 +21,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/GLContext.cpp
     platform/graphics/PlatformDisplay.cpp
 
-    platform/graphics/cairo/BitmapImageCairo.cpp
     platform/graphics/cairo/CairoUtilities.cpp
     platform/graphics/cairo/FloatRectCairo.cpp
     platform/graphics/cairo/FontCairo.cpp
@@ -31,6 +30,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cairo/ImageBufferCairo.cpp
     platform/graphics/cairo/ImageCairo.cpp
     platform/graphics/cairo/IntRectCairo.cpp
+    platform/graphics/cairo/NativeImageCairo.cpp
     platform/graphics/cairo/PathCairo.cpp
     platform/graphics/cairo/PatternCairo.cpp
     platform/graphics/cairo/PlatformContextCairo.cpp
@@ -46,7 +46,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp
     platform/graphics/win/SimpleFontDataCairoWin.cpp
 
-    platform/image-decoders/cairo/ImageDecoderCairo.cpp
+    platform/image-decoders/cairo/ImageBackingStoreCairo.cpp
 
     platform/network/NetworkStorageSessionStub.cpp
 
@@ -62,7 +62,7 @@ list(APPEND WebCore_SOURCES
     platform/network/curl/ResourceHandleCurl.cpp
     platform/network/curl/ResourceHandleManager.cpp
     platform/network/curl/SSLHandle.cpp
-    platform/network/curl/SocketStreamHandleCurl.cpp
+    platform/network/curl/SocketStreamHandleImplCurl.cpp
 
     platform/text/win/LocaleWin.cpp
 

@@ -38,7 +38,7 @@ NetworkProcessCreationParameters::NetworkProcessCreationParameters()
 {
 }
 
-void NetworkProcessCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
+void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
 {
     encoder << privateBrowsingEnabled;
     encoder.encodeEnum(cacheModel);
@@ -63,6 +63,7 @@ void NetworkProcessCreationParameters::encode(IPC::ArgumentEncoder& encoder) con
 #endif
     encoder << shouldSuppressMemoryPressureHandler;
     encoder << shouldUseTestingNetworkSession;
+    encoder << urlParserEnabled;
     encoder << urlSchemesRegisteredForCustomProtocols;
 #if PLATFORM(COCOA)
     encoder << parentProcessName;
@@ -74,6 +75,7 @@ void NetworkProcessCreationParameters::encode(IPC::ArgumentEncoder& encoder) con
 #if TARGET_OS_IPHONE || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
     IPC::encode(encoder, networkATSContext.get());
 #endif
+    encoder << cookieStoragePartitioningEnabled;
 #endif
 #if USE(SOUP)
     encoder << cookiePersistentStoragePath;
@@ -87,7 +89,7 @@ void NetworkProcessCreationParameters::encode(IPC::ArgumentEncoder& encoder) con
 #endif
 }
 
-bool NetworkProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, NetworkProcessCreationParameters& result)
+bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProcessCreationParameters& result)
 {
     if (!decoder.decode(result.privateBrowsingEnabled))
         return false;
@@ -127,6 +129,8 @@ bool NetworkProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, Net
         return false;
     if (!decoder.decode(result.shouldUseTestingNetworkSession))
         return false;
+    if (!decoder.decode(result.urlParserEnabled))
+        return false;
     if (!decoder.decode(result.urlSchemesRegisteredForCustomProtocols))
         return false;
 #if PLATFORM(COCOA)
@@ -146,6 +150,8 @@ bool NetworkProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, Net
     if (!IPC::decode(decoder, result.networkATSContext))
         return false;
 #endif
+    if (!decoder.decode(result.cookieStoragePartitioningEnabled))
+        return false;
 #endif
 
 #if USE(SOUP)

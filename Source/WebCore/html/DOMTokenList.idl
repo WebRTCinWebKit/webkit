@@ -37,10 +37,5 @@
 
     iterable<DOMString>;
 
-    attribute DOMString value;
-
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    DOMString toString();
-#endif
+    stringifier attribute DOMString value;
 };
-

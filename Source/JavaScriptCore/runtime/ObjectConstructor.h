@@ -101,8 +101,9 @@ inline JSObject* constructObject(ExecState* exec, JSGlobalObject* globalObject, 
 inline JSObject* constructObjectFromPropertyDescriptor(ExecState* exec, const PropertyDescriptor& descriptor)
 {
     VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSObject* description = constructEmptyObject(exec);
-    if (vm.exception())
+    if (UNLIKELY(scope.exception()))
         return nullptr;
 
     if (!descriptor.isAccessorDescriptor()) {
@@ -123,8 +124,7 @@ inline JSObject* constructObjectFromPropertyDescriptor(ExecState* exec, const Pr
 }
 
 
-JSObject* objectConstructorFreeze(ExecState*, JSObject*);
-JSValue objectConstructorGetPrototypeOf(ExecState*, JSObject*);
+JS_EXPORT_PRIVATE JSObject* objectConstructorFreeze(ExecState*, JSObject*);
 JSValue objectConstructorGetOwnPropertyDescriptor(ExecState*, JSObject*, const Identifier&);
 JSValue objectConstructorGetOwnPropertyDescriptors(ExecState*, JSObject*);
 JSArray* ownPropertyKeys(ExecState*, JSObject*, PropertyNameMode, DontEnumPropertiesMode);

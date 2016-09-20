@@ -34,7 +34,6 @@
 #include "DFGMayExit.h"
 #include "JSCInlines.h"
 #include <wtf/Assertions.h>
-#include <wtf/BitVector.h>
 
 namespace JSC { namespace DFG {
 
@@ -310,6 +309,10 @@ public:
                     // while the inline one will not take a storage child at all.
                     // https://bugs.webkit.org/show_bug.cgi?id=159602
                     break;
+                case HasOwnProperty: {
+                    VALIDATE((node), !!m_graph.m_vm.hasOwnPropertyCache());
+                    break;
+                }
                 default:
                     break;
                 }

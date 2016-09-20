@@ -49,7 +49,7 @@ using namespace SVGNames;
 
 inline SVGFontFaceElement::SVGFontFaceElement(const QualifiedName& tagName, Document& document)
     : SVGElement(tagName, document)
-    , m_fontFaceRule(StyleRuleFontFace::create(MutableStyleProperties::create(CSSStrictMode)))
+    , m_fontFaceRule(StyleRuleFontFace::create(MutableStyleProperties::create(HTMLStandardMode)))
     , m_fontElement(nullptr)
 {
     ASSERT(hasTagName(font_faceTag));
@@ -76,7 +76,7 @@ unsigned SVGFontFaceElement::unitsPerEm() const
 {
     const AtomicString& value = attributeWithoutSynchronization(units_per_emAttr);
     if (value.isEmpty())
-        return gDefaultUnitsPerEm;
+        return FontMetrics::defaultUnitsPerEm;
 
     return static_cast<unsigned>(ceilf(value.toFloat()));
 }

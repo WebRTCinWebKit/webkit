@@ -28,11 +28,11 @@
 #define WTF_StdLibExtras_h
 
 #include <chrono>
+#include <cstring>
 #include <memory>
-#include <string.h>
 #include <wtf/Assertions.h>
 #include <wtf/CheckedArithmetic.h>
-#include <wtf/Variant.h>
+#include <wtf/Compiler.h>
 
 // This was used to declare and define a static local variable (static T;) so that
 //  it was leaked so that its destructors were not called at exit.
@@ -71,6 +71,11 @@
 // STRINGIZE: Can convert any value to quoted string, even expandable macros
 #define STRINGIZE(exp) #exp
 #define STRINGIZE_VALUE_OF(exp) STRINGIZE(exp)
+
+// WTF_CONCAT: concatenate two symbols into one, even expandable macros
+#define WTF_CONCAT_INTERNAL_DONT_USE(a, b) a ## b
+#define WTF_CONCAT(a, b) WTF_CONCAT_INTERNAL_DONT_USE(a, b)
+
 
 // Make "PRId64" format specifier work for Visual C++ on Windows.
 #if OS(WINDOWS) && !defined(PRId64)
@@ -141,12 +146,14 @@ template<typename ToType, typename FromType>
 inline ToType bitwise_cast(FromType from)
 {
     static_assert(sizeof(FromType) == sizeof(ToType), "bitwise_cast size of FromType and ToType must be equal!");
-    union {
-        FromType from;
-        ToType to;
-    } u;
-    u.from = from;
-    return u.to;
+#if COMPILER_SUPPORTS(BUILTIN_IS_TRIVIALLY_COPYABLE)
+    // Not all recent STL implementations support the std::is_trivially_copyable type trait. Work around this by only checking on toolchains which have the equivalent compiler intrinsic.
+    static_assert(__is_trivially_copyable(ToType), "bitwise_cast of non-trivially-copyable type!");
+    static_assert(__is_trivially_copyable(FromType), "bitwise_cast of non-trivially-copyable type!");
+#endif
+    typename std::remove_const<ToType>::type to { };
+    std::memcpy(&to, &from, sizeof(to));
+    return to;
 }
 
 template<typename ToType, typename FromType>
@@ -310,6 +317,24 @@ bool checkAndSet(T& left, U right)
     return true;
 }
 
+template<typename T>
+bool findBitInWord(T word, size_t& index, size_t endIndex, bool value)
+{
+    static_assert(std::is_unsigned<T>::value, "Type used in findBitInWord must be unsigned");
+    
+    word >>= index;
+    
+    while (index < endIndex) {
+        if ((word & 1) == static_cast<T>(value))
+            return true;
+        index++;
+        word >>= 1;
+    }
+    
+    index = endIndex;
+    return false;
+}
+
 // Visitor adapted from http://stackoverflow.com/questions/25338795/is-there-a-name-for-this-tuple-creation-idiom
 
 template <class A, class... B>
@@ -335,7 +360,7 @@ struct Visitor<A> : A {
 };
  
 template <class... F>
-auto makeVisitor(F... f)
+Visitor<F...> makeVisitor(F... f)
 {
     return Visitor<F...>(f...);
 }
@@ -403,14 +428,6 @@ ALWAYS_INLINE constexpr typename remove_reference<T>::type&& move(T&& value)
     return move(forward<T>(value));
 }
 
-template<typename... Types>
-using variant = std::experimental::variant<Types...>;
-
-using std::experimental::get;
-using std::experimental::get_if;
-using std::experimental::holds_alternative;
-using std::experimental::visit;
-
 } // namespace std
 
 #define WTFMove(value) std::move<WTF::CheckMoveParameter>(value)
@@ -422,6 +439,7 @@ using WTF::binarySearch;
 using WTF::bitwise_cast;
 using WTF::callStatelessLambda;
 using WTF::checkAndSet;
+using WTF::findBitInWord;
 using WTF::insertIntoBoundedVector;
 using WTF::isCompilationThread;
 using WTF::isPointerAligned;

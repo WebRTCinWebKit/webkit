@@ -22,8 +22,7 @@
  *
  */
 
-#ifndef RenderStyle_h
-#define RenderStyle_h
+#pragma once
 
 #include "AnimationList.h"
 #include "BorderValue.h"
@@ -722,10 +721,6 @@ public:
     int fontSize() const;
     std::pair<FontOrientation, NonCJKGlyphOrientation> fontAndGlyphOrientation();
 
-#if ENABLE(TEXT_AUTOSIZING)
-    float textAutosizingMultiplier() const { return visual->m_textAutosizingMultiplier; }
-#endif
-
     const Length& textIndent() const { return rareInheritedData->indent; }
 #if ENABLE(CSS3_TEXT)
     TextIndentLine textIndentLine() const { return static_cast<TextIndentLine>(rareInheritedData->m_textIndentLine); }
@@ -757,7 +752,7 @@ public:
 
     const Length& specifiedLineHeight() const;
     WEBCORE_EXPORT Length lineHeight() const;
-    int computedLineHeight() const;
+    WEBCORE_EXPORT int computedLineHeight() const;
 
     EWhiteSpace whiteSpace() const { return static_cast<EWhiteSpace>(inherited_flags._white_space); }
     static bool autoWrap(EWhiteSpace ws)
@@ -1219,7 +1214,12 @@ public:
 #if ENABLE(CSS_TRAILING_WORD)
     TrailingWord trailingWord() const { return static_cast<TrailingWord>(rareInheritedData->trailingWord); }
 #endif
-    
+
+#if ENABLE(APPLE_PAY)
+    ApplePayButtonStyle applePayButtonStyle() const { return static_cast<ApplePayButtonStyle>(rareNonInheritedData->m_applePayButtonStyle); }
+    ApplePayButtonType applePayButtonType() const { return static_cast<ApplePayButtonType>(rareNonInheritedData->m_applePayButtonType); }
+#endif
+
     void checkVariablesInCustomProperties();
 
 // attribute setter methods
@@ -1367,14 +1367,6 @@ public:
     bool setFontDescription(const FontCascadeDescription&);
     // Only used for blending font sizes when animating, for MathML anonymous blocks, and for text autosizing.
     void setFontSize(float);
-
-#if ENABLE(TEXT_AUTOSIZING)
-    void setTextAutosizingMultiplier(float v)
-    {
-        SET_VAR(visual, m_textAutosizingMultiplier, v);
-        setFontSize(fontDescription().specifiedSize());
-    }
-#endif
 
     void setColor(const Color&);
     void setTextIndent(Length length) { SET_VAR(rareInheritedData, indent, WTFMove(length)); }
@@ -1736,6 +1728,11 @@ public:
     void setTrailingWord(TrailingWord v) { SET_VAR(rareInheritedData, trailingWord, static_cast<unsigned>(v)); }
 #endif
 
+#if ENABLE(APPLE_PAY)
+    void setApplePayButtonStyle(ApplePayButtonStyle v) { SET_VAR(rareNonInheritedData, m_applePayButtonStyle, static_cast<unsigned>(v)); }
+    void setApplePayButtonType(ApplePayButtonType v) { SET_VAR(rareNonInheritedData, m_applePayButtonType, static_cast<unsigned>(v)); }
+#endif
+
     const SVGRenderStyle& svgStyle() const { return *m_svgStyle; }
     SVGRenderStyle& accessSVGStyle() { return *m_svgStyle.access(); }
 
@@ -2002,8 +1999,8 @@ public:
     static Length initialFlexBasis() { return Length(Auto); }
     static int initialOrder() { return 0; }
     static StyleSelfAlignmentData initialSelfAlignment() { return StyleSelfAlignmentData(ItemPositionAuto, OverflowAlignmentDefault); }
-    static StyleSelfAlignmentData initialDefaultAlignment() { return StyleSelfAlignmentData(ItemPositionNormal, OverflowAlignmentDefault); }
-    static StyleContentAlignmentData initialContentAlignment() { return StyleContentAlignmentData(ContentPositionNormal, ContentDistributionDefault, OverflowAlignmentDefault); }
+    static StyleSelfAlignmentData initialDefaultAlignment() { return StyleSelfAlignmentData(isCSSGridLayoutEnabled() ? ItemPositionNormal : ItemPositionStretch, OverflowAlignmentDefault); }
+    static StyleContentAlignmentData initialContentAlignment() { return StyleContentAlignmentData(isCSSGridLayoutEnabled() ? ContentPositionNormal : ContentPositionFlexStart, ContentDistributionDefault, OverflowAlignmentDefault); }
     static EFlexDirection initialFlexDirection() { return FlowRow; }
     static EFlexWrap initialFlexWrap() { return FlexNoWrap; }
     static int initialMarqueeLoopCount() { return -1; }
@@ -2067,6 +2064,8 @@ public:
     static QuotesData* initialQuotes() { return nullptr; }
     static const AtomicString& initialContentAltText() { return emptyAtom; }
 
+    static bool isCSSGridLayoutEnabled();
+
     static WillChangeData* initialWillChange() { return nullptr; }
 
 #if ENABLE(TOUCH_EVENTS)
@@ -2083,6 +2082,11 @@ public:
 
 #if ENABLE(CSS_TRAILING_WORD)
     static TrailingWord initialTrailingWord() { return TrailingWord::Auto; }
+#endif
+
+#if ENABLE(APPLE_PAY)
+    static ApplePayButtonStyle initialApplePayButtonStyle() { return ApplePayButtonStyle::Black; }
+    static ApplePayButtonType initialApplePayButtonType() { return ApplePayButtonType::Plain; }
 #endif
 
 #if ENABLE(CSS_GRID_LAYOUT)
@@ -2355,5 +2359,3 @@ inline bool pseudoElementRendererIsNeeded(const RenderStyle* style)
 }
 
 } // namespace WebCore
-
-#endif // RenderStyle_h

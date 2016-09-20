@@ -20,8 +20,5 @@
  */
 
 partial interface Document {
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     readonly attribute SVGSVGElement? rootElement;
-#endif
 };
-

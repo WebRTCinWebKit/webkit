@@ -346,7 +346,9 @@ const SymbolType = 7
 const ObjectType = 20
 const FinalObjectType = 21
 const JSFunctionType = 23
-const ArrayType = 29
+const ArrayType = 31
+const DerivedArrayType = 32
+const ProxyObjectType = 116
 
 # The typed array types need to be numbered in a particular order because of the manually written
 # switch statement in get_by_val and put_by_val.
@@ -434,6 +436,45 @@ macro assert(assertion)
         assertion(.ok)
         crash()
     .ok:
+    end
+end
+
+# The probe macro can be used to insert some debugging code without perturbing scalar
+# registers. Presently, the probe macro only preserves scalar registers. Hence, the
+# C probe callback function should not trash floating point registers.
+#
+# The macro you pass to probe() can pass whatever registers you like to your probe
+# callback function. However, you need to be mindful of which of the registers are
+# also used as argument registers, and ensure that you don't trash the register value
+# before storing it in the probe callback argument register that you desire.
+#
+# Here's an example of how it's used:
+#
+#     probe(
+#         macro()
+#             move cfr, a0 # pass the ExecState* as arg0.
+#             move t0, a1 # pass the value of register t0 as arg1.
+#             call _cProbeCallbackFunction # to do whatever you want.
+#         end
+#     )
+#
+if X86_64
+    macro probe(action)
+        # save all the registers that the LLInt may use.
+        push a0, a1
+        push a2, a3
+        push t0, t1
+        push t2, t3
+        push t4, t5
+
+        action()
+
+        # restore all the registers we saved previously.
+        pop t5, t4
+        pop t3, t2
+        pop t1, t0
+        pop a3, a2
+        pop a1, a0
     end
 end
 
@@ -1029,24 +1070,6 @@ macro functionInitialization(profileArgSkip)
 .argumentProfileDone:
 end
 
-macro allocateJSObject(allocator, structure, result, scratch1, slowCase)
-    const offsetOfFirstFreeCell = 
-        MarkedAllocator::m_freeList + 
-        MarkedBlock::FreeList::head
-
-    # Get the object from the free list.   
-    loadp offsetOfFirstFreeCell[allocator], result
-    btpz result, slowCase
-    
-    # Remove the object from the free list.
-    loadp [result], scratch1
-    storep scratch1, offsetOfFirstFreeCell[allocator]
-
-    # Initialize the object.
-    storep 0, JSObject::m_butterfly[result]
-    storeStructureWithTypeInfo(result, structure, scratch1)
-end
-
 macro doReturn()
     restoreCalleeSavesUsedByLLInt()
     restoreCallerPCAndCFR()
@@ -1268,6 +1291,18 @@ _llint_op_create_cloned_arguments:
     dispatch(2)
 
 
+_llint_op_create_this:
+    traceExecution()
+    callOpcodeSlowPath(_slow_path_create_this)
+    dispatch(5)
+
+
+_llint_op_new_object:
+    traceExecution()
+    callOpcodeSlowPath(_llint_slow_path_new_object)
+    dispatch(4)
+
+
 _llint_op_new_func:
     traceExecution()
     callOpcodeSlowPath(_llint_slow_path_new_func)
@@ -1366,7 +1401,7 @@ _llint_op_in:
 _llint_op_try_get_by_id:
     traceExecution()
     callOpcodeSlowPath(_llint_slow_path_try_get_by_id)
-    dispatch(4)
+    dispatch(5)
 
 
 _llint_op_del_by_id:
@@ -1670,16 +1705,8 @@ _llint_op_assert:
     dispatch(3)
 
 
-_llint_op_save:
-    traceExecution()
-    callOpcodeSlowPath(_slow_path_save)
-    dispatch(4)
-
-
-_llint_op_resume:
-    traceExecution()
-    callOpcodeSlowPath(_slow_path_resume)
-    dispatch(3)
+_llint_op_yield:
+    notSupported()
 
 
 _llint_op_create_lexical_environment:
@@ -1762,9 +1789,9 @@ _llint_op_to_index_string:
     callOpcodeSlowPath(_slow_path_to_index_string)
     dispatch(3)
 
-_llint_op_copy_rest:
+_llint_op_create_rest:
     traceExecution()
-    callOpcodeSlowPath(_slow_path_copy_rest)
+    callOpcodeSlowPath(_slow_path_create_rest)
     dispatch(4)
 
 _llint_op_instanceof:
@@ -1775,12 +1802,12 @@ _llint_op_instanceof:
 _llint_op_get_by_id_with_this:
     traceExecution()
     callOpcodeSlowPath(_slow_path_get_by_id_with_this)
-    dispatch(5)
+    dispatch(6)
 
 _llint_op_get_by_val_with_this:
     traceExecution()
     callOpcodeSlowPath(_slow_path_get_by_val_with_this)
-    dispatch(5)
+    dispatch(6)
 
 _llint_op_put_by_id_with_this:
     traceExecution()

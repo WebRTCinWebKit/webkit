@@ -90,7 +90,6 @@
 #import <WebCore/EditorDeleteAction.h>
 #import <WebCore/Element.h>
 #import <WebCore/EventHandler.h>
-#import <WebCore/ExceptionHandlers.h>
 #import <WebCore/FloatRect.h>
 #import <WebCore/FocusController.h>
 #import <WebCore/Font.h>
@@ -1183,7 +1182,7 @@ static NSCellStateValue kit(TriState state)
             // Omit tags that will get stripped when converted to a fragment anyway.
             @"doctype", @"html", @"head", @"body",
             // Omit deprecated tags.
-            @"applet", @"basefont", @"center", @"dir", @"font", @"isindex", @"menu", @"s", @"strike", @"u",
+            @"applet", @"basefont", @"center", @"dir", @"font", @"menu", @"s", @"strike", @"u",
             // Omit object so no file attachments are part of the fragment.
             @"object", nil];
         CFRetain(elements);
@@ -2557,10 +2556,7 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
         return [[self _frame] _documentFragmentWithMarkupString:HTMLString baseURLString:nil];
     }
 
-    // The _hasHTMLDocument clause here is a workaround for a bug in NSAttributedString: Radar 5052369.
-    // If we call _documentFromRange on an XML document we'll get "setInnerHTML: method not found".
-    // FIXME: Remove this once bug 5052369 is fixed.
-    if ([self _hasHTMLDocument] && (pboardType == NSRTFPboardType || pboardType == NSRTFDPboardType)) {
+    if (pboardType == NSRTFPboardType || pboardType == NSRTFDPboardType) {
         NSAttributedString *string = nil;
         if (pboardType == NSRTFDPboardType)
             string = [[NSAttributedString alloc] initWithRTFD:[pasteboard dataForType:NSRTFDPboardType] documentAttributes:NULL];
@@ -3631,7 +3627,7 @@ WEBCORE_COMMAND(toggleUnderline)
     if (!coreFrame)
         return;
     if (coreFrame->document()) {
-        if (coreFrame->document()->inPageCache())
+        if (coreFrame->document()->pageCacheState() != Document::NotInPageCache)
             return;
         coreFrame->document()->updateStyleIfNeeded();
     }
@@ -4131,7 +4127,7 @@ static RetainPtr<NSArray> customMenuFromDefaultItems(WebView *webView, const Con
     if (!flag)
         return; // There's no way to say you don't need a layout.
     if (Frame* frame = core([self _frame])) {
-        if (frame->document() && frame->document()->inPageCache())
+        if (frame->document() && frame->document()->pageCacheState() != Document::NotInPageCache)
             return;
         if (FrameView* view = frame->view())
             view->setNeedsLayout();
@@ -4144,7 +4140,7 @@ static RetainPtr<NSArray> customMenuFromDefaultItems(WebView *webView, const Con
     if (!flag)
         return; // There's no way to say you don't need a style recalc.
     if (Frame* frame = core([self _frame])) {
-        if (frame->document() && frame->document()->inPageCache())
+        if (frame->document() && frame->document()->pageCacheState() != Document::NotInPageCache)
             return;
         frame->document()->scheduleForcedStyleRecalc();
     }

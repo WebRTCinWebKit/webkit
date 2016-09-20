@@ -21,10 +21,8 @@
  *
  */
 
-#ifndef HTMLLabelElement_h
-#define HTMLLabelElement_h
+#pragma once
 
-#include "HTMLElement.h"
 #include "LabelableElement.h"
 
 namespace WebCore {
@@ -33,8 +31,8 @@ class HTMLLabelElement final : public HTMLElement {
 public:
     static Ref<HTMLLabelElement> create(const QualifiedName&, Document&);
 
-    LabelableElement* control();
-    HTMLFormElement* form() const;
+    WEBCORE_EXPORT LabelableElement* control();
+    WEBCORE_EXPORT HTMLFormElement* form() const;
 
     bool willRespondToMouseClickEvents() final;
 
@@ -50,11 +48,9 @@ private:
     void setHovered(bool = true) final;
 
     // Overridden to either click() or focus() the corresponding control.
-    void defaultEventHandler(Event*) final;
+    void defaultEventHandler(Event&) final;
 
     void focus(bool restorePreviousSelection, FocusDirection) final;
 };
 
 } //namespace
-
-#endif

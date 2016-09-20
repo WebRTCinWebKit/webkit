@@ -47,11 +47,10 @@ public:
 private:
     ~RealtimeMediaSourceCenterMac();
 
-    void validateRequestConstraints(MediaStreamCreationClient*, RefPtr<MediaConstraints>& audioConstraints, RefPtr<MediaConstraints>& videoConstraints) override;
-    void createMediaStream(PassRefPtr<MediaStreamCreationClient>, PassRefPtr<MediaConstraints> audioConstraints, PassRefPtr<MediaConstraints> videoConstraints) override;
-    void createMediaStream(MediaStreamCreationClient*, const String& audioDeviceID, const String& videoDeviceID) override;
-    bool getMediaStreamTrackSources(PassRefPtr<MediaStreamTrackSourcesRequestClient>) override;
-    RefPtr<TrackSourceInfo> sourceWithUID(const String&, RealtimeMediaSource::Type, MediaConstraints*) override;
+    void validateRequestConstraints(MediaStreamCreationClient*, MediaConstraints& audioConstraints, MediaConstraints& videoConstraints) final;
+    void createMediaStream(PassRefPtr<MediaStreamCreationClient>, MediaConstraints& audioConstraints, MediaConstraints& videoConstraints) final;
+    void createMediaStream(MediaStreamCreationClient*, const String& audioDeviceID, const String& videoDeviceID) final;
+    Vector<CaptureDevice> getMediaStreamDevices() final;
 };
 
 } // namespace WebCore

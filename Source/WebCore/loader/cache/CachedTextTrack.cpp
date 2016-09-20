@@ -34,12 +34,11 @@
 #include "CachedResourceLoader.h"
 #include "SharedBuffer.h"
 #include "TextResourceDecoder.h"
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
-CachedTextTrack::CachedTextTrack(const ResourceRequest& resourceRequest, SessionID sessionID)
-    : CachedResource(resourceRequest, TextTrackResource, sessionID)
+CachedTextTrack::CachedTextTrack(CachedResourceRequest&& request, SessionID sessionID)
+    : CachedResource(WTFMove(request), TextTrackResource, sessionID)
 {
 }
 

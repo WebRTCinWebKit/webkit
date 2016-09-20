@@ -27,13 +27,16 @@
 
 #if USE(APPLE_INTERNAL_SDK)
 
-#import <PassKit/PKPaymentAuthorizationViewController.h>
-#import <PassKit/PKPaymentAuthorizationViewController_Private.h>
 #import <PassKit/PassKit.h>
+#import <PassKit/PKPaymentAuthorizationViewController_Private.h>
 
 #else
 
-#if PLATFORM(MAC)
+#if PLATFORM(IOS)
+
+#import <PassKit/PassKit.h>
+
+#elif PLATFORM(MAC)
 
 #import <Contacts/Contacts.h>
 #import <Foundation/Foundation.h>
@@ -211,3 +214,21 @@ NS_ASSUME_NONNULL_BEGIN
 NS_ASSUME_NONNULL_END
 
 #endif
+
+#if PLATFORM(MAC) && (!USE(APPLE_INTERNAL_SDK) || !__has_include(<PassKitCore/PKApplePayButton.h>))
+typedef NS_ENUM(NSInteger, PKPaymentButtonStyle) {
+    PKPaymentButtonStyleWhite = 0,
+    PKPaymentButtonStyleWhiteOutline,
+    PKPaymentButtonStyleBlack
+};
+
+typedef NS_ENUM(NSInteger, PKPaymentButtonType) {
+    PKPaymentButtonTypePlain = 0,
+    PKPaymentButtonTypeBuy,
+    PKPaymentButtonTypeSetUp,
+    PKPaymentButtonTypeInStore,
+};
+#endif
+
+extern "C"
+void PKDrawApplePayButton(_Nonnull CGContextRef, CGRect drawRect, CGFloat scale, PKPaymentButtonType, PKPaymentButtonStyle, NSString * _Nullable languageCode);

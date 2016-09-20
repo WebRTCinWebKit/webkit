@@ -28,16 +28,16 @@
 #include "ErrorConstructor.h"
 #include "ExceptionHelpers.h"
 #include "FunctionPrototype.h"
+#include "Interpreter.h"
 #include "JSArray.h"
 #include "JSFunction.h"
 #include "JSGlobalObject.h"
 #include "JSObject.h"
 #include "JSString.h"
-#include "NativeErrorConstructor.h"
 #include "JSCInlines.h"
+#include "NativeErrorConstructor.h"
 #include "SourceCode.h"
-
-#include <wtf/text/StringBuilder.h>
+#include "StackFrame.h"
 
 namespace JSC {
 
@@ -143,7 +143,7 @@ bool addErrorInfoAndGetBytecodeOffset(ExecState* exec, VM& vm, JSObject* obj, bo
 
         ASSERT(exec == vm.topCallFrame || exec == exec->lexicalGlobalObject()->globalExec() || exec == exec->vmEntryGlobalObject()->globalExec());
 
-        StackFrame* firstNonNativeFrame;
+        StackFrame* firstNonNativeFrame = nullptr;
         for (unsigned i = 0 ; i < stackTrace.size(); ++i) {
             firstNonNativeFrame = &stackTrace.at(i);
             if (!firstNonNativeFrame->isNative())
@@ -161,12 +161,12 @@ bool addErrorInfoAndGetBytecodeOffset(ExecState* exec, VM& vm, JSObject* obj, bo
         unsigned line;
         unsigned column;
         firstNonNativeFrame->computeLineAndColumn(line, column);
-        obj->putDirect(vm, vm.propertyNames->line, jsNumber(line), ReadOnly | DontDelete);
-        obj->putDirect(vm, vm.propertyNames->column, jsNumber(column), ReadOnly | DontDelete);
+        obj->putDirect(vm, vm.propertyNames->line, jsNumber(line));
+        obj->putDirect(vm, vm.propertyNames->column, jsNumber(column));
 
         String frameSourceURL = firstNonNativeFrame->sourceURL();
         if (!frameSourceURL.isEmpty())
-            obj->putDirect(vm, vm.propertyNames->sourceURL, jsString(&vm, frameSourceURL), ReadOnly | DontDelete);
+            obj->putDirect(vm, vm.propertyNames->sourceURL, jsString(&vm, frameSourceURL));
 
         obj->putDirect(vm, vm.propertyNames->stack, Interpreter::stackTraceAsString(vm, stackTrace), DontEnum);
 
@@ -187,9 +187,9 @@ JSObject* addErrorInfo(CallFrame* callFrame, JSObject* error, int line, const So
     const String& sourceURL = source.provider()->url();
 
     if (line != -1)
-        error->putDirect(*vm, Identifier::fromString(vm, linePropertyName), jsNumber(line), ReadOnly | DontDelete);
+        error->putDirect(*vm, Identifier::fromString(vm, linePropertyName), jsNumber(line));
     if (!sourceURL.isNull())
-        error->putDirect(*vm, Identifier::fromString(vm, sourceURLPropertyName), jsString(vm, sourceURL), ReadOnly | DontDelete);
+        error->putDirect(*vm, Identifier::fromString(vm, sourceURLPropertyName), jsString(vm, sourceURL));
     return error;
 }
 
@@ -200,34 +200,34 @@ bool hasErrorInfo(ExecState* exec, JSObject* error)
         || error->hasProperty(exec, Identifier::fromString(exec, sourceURLPropertyName));
 }
 
-JSObject* throwConstructorCannotBeCalledAsFunctionTypeError(ExecState* exec, const char* constructorName)
+JSObject* throwConstructorCannotBeCalledAsFunctionTypeError(ExecState* exec, ThrowScope& scope, const char* constructorName)
 {
-    return throwTypeError(exec, makeString("calling ", constructorName, " constructor without new is invalid"));
+    return throwTypeError(exec, scope, makeString("calling ", constructorName, " constructor without new is invalid"));
 }
 
-JSObject* throwTypeError(ExecState* exec)
+JSObject* throwTypeError(ExecState* exec, ThrowScope& scope)
 {
-    return exec->vm().throwException(exec, createTypeError(exec));
+    return throwException(exec, scope, createTypeError(exec));
 }
 
-JSObject* throwTypeError(ExecState* exec, ASCIILiteral errorMessage)
+JSObject* throwTypeError(ExecState* exec, ThrowScope& scope, ASCIILiteral errorMessage)
 {
-    return throwTypeError(exec, String(errorMessage));
+    return throwTypeError(exec, scope, String(errorMessage));
 }
 
-JSObject* throwTypeError(ExecState* exec, const String& message)
+JSObject* throwTypeError(ExecState* exec, ThrowScope& scope, const String& message)
 {
-    return exec->vm().throwException(exec, createTypeError(exec, message));
+    return throwException(exec, scope, createTypeError(exec, message));
 }
 
-JSObject* throwSyntaxError(ExecState* exec)
+JSObject* throwSyntaxError(ExecState* exec, ThrowScope& scope)
 {
-    return exec->vm().throwException(exec, createSyntaxError(exec, ASCIILiteral("Syntax error")));
+    return throwException(exec, scope, createSyntaxError(exec, ASCIILiteral("Syntax error")));
 }
 
-JSObject* throwSyntaxError(ExecState* exec, const String& message)
+JSObject* throwSyntaxError(ExecState* exec, ThrowScope& scope, const String& message)
 {
-    return exec->vm().throwException(exec, createSyntaxError(exec, message));
+    return throwException(exec, scope, createSyntaxError(exec, message));
 }
 
 JSObject* createError(ExecState* exec, const String& message)

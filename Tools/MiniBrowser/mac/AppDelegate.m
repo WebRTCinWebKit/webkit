@@ -35,9 +35,12 @@
 #import <WebKit/WKWebViewConfigurationPrivate.h>
 #import <WebKit/WKWebsiteDataStorePrivate.h>
 #import <WebKit/WebKit.h>
-#import <WebKit/_WKExperimentalFeature.h>
 #import <WebKit/_WKProcessPoolConfiguration.h>
 #import <WebKit/_WKUserContentExtensionStore.h>
+
+#if WK_API_ENABLED
+#import <WebKit/_WKExperimentalFeature.h>
+#endif
 
 enum {
     WebKit1NewWindowTag = 1,
@@ -63,6 +66,12 @@ enum {
 {
     NSMenuItem *item = [[NSMenuItem alloc] init];
     [item setSubmenu:[[SettingsController shared] menu]];
+
+#if WK_API_ENABLED
+    if ([[SettingsController shared] usesGameControllerFramework])
+        [WKProcessPool _forceGameControllerFramework];
+#endif
+
     [[NSApp mainMenu] insertItem:[item autorelease] atIndex:[[NSApp mainMenu] indexOfItemWithTitle:@"Debug"]];
 }
 
@@ -83,11 +92,13 @@ static WKWebViewConfiguration *defaultConfiguration()
             [singleProcessConfiguration release];
         }
 
+#if WK_API_ENABLED
         NSArray<_WKExperimentalFeature *> *features = [WKPreferences _experimentalFeatures];
         for (_WKExperimentalFeature *feature in features) {
             BOOL enabled = [[NSUserDefaults standardUserDefaults] boolForKey:feature.key];
             [configuration.preferences _setEnabled:enabled forFeature:feature];
         }
+#endif
     }
 
     configuration.suppressesIncrementalRendering = [SettingsController shared].incrementalRenderingSuppressed;

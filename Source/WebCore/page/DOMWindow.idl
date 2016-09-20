@@ -25,19 +25,21 @@
  */
 
 [
-    ImplicitThis,
     CheckSecurity,
-    JSCustomDefineOwnProperty,
     CustomDeleteProperty,
-    CustomGetOwnPropertySlot,
     CustomEnumerateProperty,
+    CustomGetOwnPropertySlot,
+    CustomGetPrototype,
+    CustomPreventExtensions,
     CustomProxyToJSObject,
+    CustomPutFunction,
+    ExportMacro=WEBCORE_EXPORT,
+    ImplicitThis,
+    InterfaceName=Window,
+    JSCustomDefineOwnProperty,
     JSCustomMarkFunction,
     JSCustomToNativeObject,
-    CustomPutFunction,
     JSLegacyParent=JSDOMWindowBase,
-    InterfaceName=Window,
-    ExportMacro=WEBCORE_EXPORT,
 ] interface DOMWindow : EventTarget {
     // DOM Level 0
     [Replaceable] readonly attribute Screen screen;
@@ -50,7 +52,6 @@
     [Replaceable] readonly attribute BarProp toolbar;
     readonly attribute Navigator navigator;
     [Replaceable] readonly attribute Navigator clientInformation;
-    readonly attribute Crypto crypto;
     [DoNotCheckSecurity, CustomSetter, Unforgeable] attribute Location location;
     [Replaceable, CustomGetter] readonly attribute Event event;
 
@@ -67,13 +68,9 @@
 
     [Custom] DOMWindow open(optional USVString url = "about:blank", optional DOMString target = "_blank", [TreatNullAs=EmptyString] optional DOMString features = "");
 
-    [Custom] any showModalDialog(DOMString url,
-                                       optional any dialogArgs,
-                                       optional DOMString featureArgs);
+    [Custom] any showModalDialog(DOMString url, optional any dialogArgs, optional DOMString featureArgs);
 
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     void alert();
-#endif
     void alert(DOMString message);
     boolean confirm(optional DOMString message = "");
     DOMString? prompt(optional DOMString message = "", optional DOMString defaultValue = "");
@@ -97,20 +94,19 @@
     [Replaceable] readonly attribute long screenY;
     [Replaceable] readonly attribute long screenLeft;
     [Replaceable] readonly attribute long screenTop;
-    [Replaceable] readonly attribute long scrollX;
-    [Replaceable] readonly attribute long scrollY;
-    readonly attribute long pageXOffset;
-    readonly attribute long pageYOffset;
+
+    [Replaceable] readonly attribute double scrollX;
+    [Replaceable] readonly attribute double scrollY;
+    [Replaceable, ImplementedAs=scrollX] readonly attribute double pageXOffset;
+    [Replaceable, ImplementedAs=scrollY] readonly attribute double pageYOffset;
 
     void scrollBy(unrestricted double x, unrestricted double y);
     void scrollTo(unrestricted double x, unrestricted double y);
     [ImplementedAs=scrollTo] void scroll(unrestricted double x, unrestricted double y);
 
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     void scrollBy(optional ScrollToOptions option);
     void scrollTo(optional ScrollToOptions options);
     [ImplementedAs=scrollTo] void scroll(optional ScrollToOptions options);
-#endif
 
     void moveBy(optional unrestricted float x = NaN, optional unrestricted float y = NaN); // FIXME: this should take longs not floats.
     void moveTo(optional unrestricted float x = NaN, optional unrestricted float y = NaN); // FIXME: this should take longs not floats.
@@ -125,10 +121,8 @@
 
     attribute DOMString status;
     attribute DOMString defaultStatus;
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     // This attribute is an alias of defaultStatus and is necessary for legacy uses.
     [ImplementedAs=defaultStatus] attribute DOMString defaultstatus;
-#endif
 
     // Self referential attributes
     [Replaceable, DoNotCheckSecurityOnGetter] readonly attribute DOMWindow self;
@@ -150,11 +144,11 @@
 
     // DOM Level 2 Style Interface
     [NewObject] CSSStyleDeclaration getComputedStyle(Element element, optional DOMString? pseudoElement = null);
+    // FIXME: Drop this overload once <rdar://problem/28016778> has been fixed.
+    [NewObject, RaisesException] CSSStyleDeclaration getComputedStyle(Document document, optional DOMString? pseudoElement = null);
 
     // WebKit extensions
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     CSSRuleList getMatchedCSSRules(optional Element? element = null, optional DOMString? pseudoElement = null);
-#endif
 
     [Replaceable] readonly attribute unrestricted double devicePixelRatio;
     
@@ -174,12 +168,7 @@
     [Conditional=ORIENTATION_EVENTS] readonly attribute long orientation;
 
     // cross-document messaging
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     [DoNotCheckSecurity, Custom, RaisesException, ForwardDeclareInHeader] void postMessage(SerializedScriptValue message, USVString targetOrigin, optional Array messagePorts);
-#else
-    // There's no good way to expose an array via the ObjC bindings, so for now just allow passing in a single port.
-    [DoNotCheckSecurity, Custom, RaisesException, ForwardDeclareInHeader] void postMessage(SerializedScriptValue message, optional MessagePort messagePort, DOMString targetOrigin);
-#endif
 
     [Conditional=WEB_TIMING, Replaceable] readonly attribute Performance performance;
 
@@ -192,19 +181,13 @@
     void captureEvents(/*in long eventFlags*/);
     void releaseEvents(/*in long eventFlags*/);
 
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    // Additional constructors.
     [CustomGetter, CustomConstructor] attribute HTMLImageElementNamedConstructor Image; // Usable with new operator
     attribute XMLDocumentConstructor SVGDocument;
 
     attribute DOMURLConstructor webkitURL; // FIXME: deprecate this.
     attribute MutationObserverConstructor WebKitMutationObserver; // FIXME: Add metrics to determine when we can remove this.
-#endif // defined(LANGUAGE_JAVASCRIPT)
 
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    [Conditional=CUSTOM_ELEMENTS, ImplementedAs=ensureCustomElementsRegistry] readonly attribute CustomElementsRegistry customElements;
-#endif
-
+    [Conditional=CUSTOM_ELEMENTS, EnabledAtRuntime=CustomElements, ImplementedAs=ensureCustomElementRegistry] readonly attribute CustomElementRegistry customElements;
 
     // Event Handlers
 
@@ -234,6 +217,7 @@ dictionary ScrollToOptions {
     unrestricted double top;
 };
 
+DOMWindow implements GlobalCrypto;
 DOMWindow implements GlobalEventHandlers;
 DOMWindow implements WindowEventHandlers;
 DOMWindow implements WindowOrWorkerGlobalScope;

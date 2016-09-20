@@ -35,7 +35,7 @@
 #import "WKUserContentController.h"
 #import "WKWebViewContentProviderRegistry.h"
 #import "WeakObjCPtr.h"
-#import "_WKVisitedLinkProvider.h"
+#import "_WKVisitedLinkStore.h"
 #import "_WKWebsiteDataStoreInternal.h"
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <wtf/RetainPtr.h>
@@ -92,12 +92,12 @@ private:
     LazyInitialized<RetainPtr<WKWebsiteDataStore>> _websiteDataStore;
     WebKit::WeakObjCPtr<WKWebView> _relatedWebView;
     WebKit::WeakObjCPtr<WKWebView> _alternateWebViewForNavigationGestures;
-    BOOL _treatsSHA1SignedCertificatesAsInsecure;
     RetainPtr<NSString> _groupIdentifier;
     LazyInitialized<RetainPtr<NSString>> _applicationNameForUserAgent;
+    NSTimeInterval _incrementalRenderingSuppressionTimeout;
+    BOOL _treatsSHA1SignedCertificatesAsInsecure;
     BOOL _respectsImageOrientation;
     BOOL _printsBackgrounds;
-    CGFloat _incrementalRenderingSuppressionTimeout;
     BOOL _allowsJavaScriptMarkup;
     BOOL _convertsPositionStyleOnCopy;
     BOOL _allowsMetaRefresh;
@@ -396,16 +396,6 @@ static NSString *defaultApplicationNameForUserAgent()
     self.websiteDataStore = websiteDataStore ? websiteDataStore->_dataStore.get() : nullptr;
 }
 
--(_WKVisitedLinkProvider *)_visitedLinkProvider
-{
-    return (_WKVisitedLinkProvider *)self._visitedLinkStore;
-}
-
-- (void)_setVisitedLinkProvider:(_WKVisitedLinkProvider *)_visitedLinkProvider
-{
-    self._visitedLinkStore = _visitedLinkProvider;
-}
-
 #pragma clang diagnostic pop
 
 #if PLATFORM(IOS)
@@ -507,12 +497,12 @@ static NSString *defaultApplicationNameForUserAgent()
     _printsBackgrounds = printsBackgrounds;
 }
 
-- (CGFloat)_incrementalRenderingSuppressionTimeout
+- (NSTimeInterval)_incrementalRenderingSuppressionTimeout
 {
     return _incrementalRenderingSuppressionTimeout;
 }
 
-- (void)_setIncrementalRenderingSuppressionTimeout:(CGFloat)incrementalRenderingSuppressionTimeout
+- (void)_setIncrementalRenderingSuppressionTimeout:(NSTimeInterval)incrementalRenderingSuppressionTimeout
 {
     _incrementalRenderingSuppressionTimeout = incrementalRenderingSuppressionTimeout;
 }
@@ -760,6 +750,20 @@ static NSString *defaultApplicationNameForUserAgent()
 }
 
 #endif // PLATFORM(IOS)
+
+@end
+
+@implementation WKWebViewConfiguration (WKBinaryCompatibilityWithIOS10)
+
+-(_WKVisitedLinkStore *)_visitedLinkProvider
+{
+    return self._visitedLinkStore;
+}
+
+- (void)_setVisitedLinkProvider:(_WKVisitedLinkStore *)visitedLinkProvider
+{
+    self._visitedLinkStore = visitedLinkProvider;
+}
 
 @end
 

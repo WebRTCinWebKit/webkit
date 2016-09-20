@@ -235,9 +235,9 @@ bool PNGImageDecoder::isSizeAvailable()
     return ImageDecoder::isSizeAvailable();
 }
 
-bool PNGImageDecoder::setSize(unsigned width, unsigned height)
+bool PNGImageDecoder::setSize(const IntSize& size)
 {
-    if (!ImageDecoder::setSize(width, height))
+    if (!ImageDecoder::setSize(size))
         return false;
 
     prepareScaleDataIfNecessary();
@@ -257,10 +257,8 @@ ImageFrame* PNGImageDecoder::frameBufferAtIndex(size_t index)
         return nullptr;
 #endif
 
-    if (m_frameBufferCache.isEmpty()) {
+    if (m_frameBufferCache.isEmpty())
         m_frameBufferCache.resize(1);
-        m_frameBufferCache[0].setPremultiplyAlpha(m_premultiplyAlpha);
-    }
 
     ImageFrame& frame = m_frameBufferCache[index];
     if (frame.status() != ImageFrame::FrameComplete)
@@ -274,37 +272,6 @@ bool PNGImageDecoder::setFailed()
         return false;
     m_reader = nullptr;
     return ImageDecoder::setFailed();
-}
-
-static void readColorProfile(png_structp png, png_infop info, ColorProfile& colorProfile)
-{
-    ASSERT(colorProfile.isEmpty());
-
-#ifdef PNG_iCCP_SUPPORTED
-    char* profileName;
-    int compressionType;
-#if (PNG_LIBPNG_VER < 10500)
-    png_charp profile;
-#else
-    png_bytep profile;
-#endif
-    png_uint_32 profileLength;
-    if (!png_get_iCCP(png, info, &profileName, &compressionType, &profile, &profileLength))
-        return;
-
-    // Only accept RGB color profiles from input class devices.
-    bool ignoreProfile = false;
-    char* profileData = reinterpret_cast<char*>(profile);
-    if (profileLength < ImageDecoder::iccColorProfileHeaderLength)
-        ignoreProfile = true;
-    else if (!ImageDecoder::rgbColorProfile(profileData, profileLength))
-        ignoreProfile = true;
-    else if (!ImageDecoder::inputDeviceColorProfile(profileData, profileLength))
-        ignoreProfile = true;
-
-    if (!ignoreProfile)
-        colorProfile.append(profileData, profileLength);
-#endif
 }
 
 void PNGImageDecoder::headerAvailable()
@@ -326,7 +293,7 @@ void PNGImageDecoder::headerAvailable()
     // will cease to exist.  Note that we'll still properly set the failure flag
     // in this case as soon as we longjmp().
     m_doNothingOnFailure = true;
-    bool result = setSize(width, height);
+    bool result = setSize(IntSize(width, height));
     m_doNothingOnFailure = false;
     if (!result) {
         longjmp(JMPBUF(png), 1);
@@ -405,16 +372,6 @@ void PNGImageDecoder::headerAvailable()
     if (colorType == PNG_COLOR_TYPE_GRAY || colorType == PNG_COLOR_TYPE_GRAY_ALPHA)
         png_set_gray_to_rgb(png);
 
-    if ((colorType & PNG_COLOR_MASK_COLOR) && !m_ignoreGammaAndColorProfile) {
-        // We only support color profiles for color PALETTE and RGB[A] PNG. Supporting
-        // color profiles for gray-scale images is slightly tricky, at least using the
-        // CoreGraphics ICC library, because we expand gray-scale images to RGB but we
-        // do not similarly transform the color profile. We'd either need to transform
-        // the color profile or we'd need to decode into a gray-scale image buffer and
-        // hand that to CoreGraphics.
-        readColorProfile(png, info, m_colorProfile);
-    }
-
     // Deal with gamma and keep it under our control.
     double gamma;
     if (!m_ignoreGammaAndColorProfile && png_get_gAMA(png, info, &gamma)) {
@@ -452,29 +409,6 @@ void PNGImageDecoder::headerAvailable()
     }
 }
 
-static inline void setPixelRGB(ImageFrame::PixelData* dest, png_bytep pixel)
-{
-    *dest = 0xFF000000U | pixel[0] << 16 | pixel[1] << 8 | pixel[2];
-}
-
-static inline void setPixelRGBA(ImageFrame::PixelData* dest, png_bytep pixel, unsigned char& nonTrivialAlphaMask)
-{
-    unsigned char a = pixel[3];
-    *dest = a << 24 | pixel[0] << 16 | pixel[1] << 8 | pixel[2];
-    nonTrivialAlphaMask |= (255 - a);
-}
-
-static inline void setPixelPremultipliedRGBA(ImageFrame::PixelData* dest, png_bytep pixel, unsigned char& nonTrivialAlphaMask)
-{
-    unsigned char a = pixel[3];
-    unsigned char r = fastDivideBy255(pixel[0] * a);
-    unsigned char g = fastDivideBy255(pixel[1] * a);
-    unsigned char b = fastDivideBy255(pixel[2] * a);
-
-    *dest = a << 24 | r << 16 | g << 8 | b;
-    nonTrivialAlphaMask |= (255 - a);
-}
-
 void PNGImageDecoder::rowAvailable(unsigned char* rowBuffer, unsigned rowIndex, int)
 {
     if (m_frameBufferCache.isEmpty())
@@ -488,7 +422,7 @@ void PNGImageDecoder::rowAvailable(unsigned char* rowBuffer, unsigned rowIndex, 
     ImageFrame& buffer = m_frameBufferCache[m_currentFrame];
     if (buffer.status() == ImageFrame::FrameEmpty) {
         png_structp png = m_reader->pngPtr();
-        if (!buffer.setSize(scaledSize().width(), scaledSize().height())) {
+        if (!buffer.initializeBackingStore(scaledSize(), m_premultiplyAlpha)) {
             longjmp(JMPBUF(png), 1);
             return;
         }
@@ -506,15 +440,11 @@ void PNGImageDecoder::rowAvailable(unsigned char* rowBuffer, unsigned rowIndex, 
 
         buffer.setStatus(ImageFrame::FramePartial);
         buffer.setHasAlpha(false);
-        buffer.setColorProfile(m_colorProfile);
 
 #if ENABLE(APNG)
         if (m_currentFrame)
             initFrameBuffer(m_currentFrame);
-        else
 #endif
-        // For PNGs, the frame always fills the entire image.
-        buffer.setOriginalFrameRect(IntRect(IntPoint(), size()));
     }
 
     /* libpng comments (here to explain what follows).
@@ -573,16 +503,16 @@ void PNGImageDecoder::rowAvailable(unsigned char* rowBuffer, unsigned rowIndex, 
     }
 
     // Write the decoded row pixels to the frame buffer.
-    ImageFrame::PixelData* address = buffer.getAddr(0, y);
+    RGBA32* address = buffer.pixelAt(0, y);
     int width = scaledSize().width();
     unsigned char nonTrivialAlphaMask = 0;
 
 #if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
     if (m_scaled) {
-        for (int x = 0; x < width; ++x) {
+        for (int x = 0; x < width; ++x, ++address) {
             png_bytep pixel = row + m_scaledColumns[x] * colorChannels;
             unsigned alpha = hasAlpha ? pixel[3] : 255;
-            buffer.setRGBA(address++, pixel[0], pixel[1], pixel[2], alpha);
+            buffer.setPixel(address, pixel[0], pixel[1], pixel[2], alpha);
             nonTrivialAlphaMask |= (255 - alpha);
         }
     } else
@@ -590,19 +520,16 @@ void PNGImageDecoder::rowAvailable(unsigned char* rowBuffer, unsigned rowIndex, 
     {
         png_bytep pixel = row;
         if (hasAlpha) {
-            if (buffer.premultiplyAlpha()) {
-                for (int x = 0; x < width; ++x, pixel += 4)
-                    setPixelPremultipliedRGBA(address++, pixel, nonTrivialAlphaMask);
-            } else {
-                for (int x = 0; x < width; ++x, pixel += 4)
-                    setPixelRGBA(address++, pixel, nonTrivialAlphaMask);
+            for (int x = 0; x < width; ++x, pixel += 4, ++address) {
+                unsigned alpha = pixel[3];
+                buffer.setPixel(address, pixel[0], pixel[1], pixel[2], alpha);
+                nonTrivialAlphaMask |= (255 - alpha);
             }
         } else {
-            for (int x = 0; x < width; ++x, pixel += 3)
-                setPixelRGB(address++, pixel);
+            for (int x = 0; x < width; ++x, pixel += 3, ++address)
+                *address = makeRGB(pixel[0], pixel[1], pixel[2]);
         }
     }
-
 
     if (nonTrivialAlphaMask && !buffer.hasAlpha())
         buffer.setHasAlpha(true);
@@ -663,8 +590,6 @@ void PNGImageDecoder::readChunks(png_unknown_chunkp chunk)
             return;
 
         m_frameBufferCache.resize(m_frameCount);
-        for (auto& imageFrame : m_frameBufferCache)
-            imageFrame.setPremultiplyAlpha(m_premultiplyAlpha);
     } else if (!memcmp(chunk->name, "fcTL", 4) && chunk->size == 26) {
         if (m_hasInfo && !m_isAnimated)
             return;
@@ -706,10 +631,8 @@ void PNGImageDecoder::readChunks(png_unknown_chunkp chunk)
             return;
         }
 
-        if (m_frameBufferCache.isEmpty()) {
+        if (m_frameBufferCache.isEmpty())
             m_frameBufferCache.resize(1);
-            m_frameBufferCache[0].setPremultiplyAlpha(m_premultiplyAlpha);
-        }
 
         if (m_currentFrame < m_frameBufferCache.size()) {
             ImageFrame& buffer = m_frameBufferCache[m_currentFrame];
@@ -854,22 +777,28 @@ void PNGImageDecoder::initFrameBuffer(size_t frameIndex)
         prevBuffer = &m_frameBufferCache[--frameIndex];
         prevMethod = prevBuffer->disposalMethod();
     }
+
+    png_structp png = m_reader->pngPtr();
     ASSERT(prevBuffer->status() == ImageFrame::FrameComplete);
 
     if (prevMethod == ImageFrame::DisposeKeep) {
         // Preserve the last frame as the starting state for this frame.
-        buffer.copyBitmapData(*prevBuffer);
+        if (!prevBuffer->backingStore() || !buffer.initializeBackingStore(*prevBuffer->backingStore()))
+            longjmp(JMPBUF(png), 1);
     } else {
         // We want to clear the previous frame to transparent, without
         // affecting pixels in the image outside of the frame.
-        const IntRect& prevRect = prevBuffer->originalFrameRect();
+        IntRect prevRect = prevBuffer->originalFrameRect();
         if (!frameIndex || prevRect.contains(IntRect(IntPoint(), scaledSize()))) {
             // Clearing the first frame, or a frame the size of the whole
             // image, results in a completely empty image.
             buffer.zeroFillPixelData();
         } else {
             // Copy the whole previous buffer, then clear just its frame.
-            buffer.copyBitmapData(*prevBuffer);
+            if (!prevBuffer->backingStore() || !buffer.initializeBackingStore(*prevBuffer->backingStore())) {
+                longjmp(JMPBUF(png), 1);
+                return;
+            }
             buffer.zeroFillFrameRect(prevRect);
         }
     }
@@ -886,7 +815,7 @@ void PNGImageDecoder::frameComplete()
     png_bytep interlaceBuffer = m_reader->interlaceBuffer();
 
     if (m_currentFrame && interlaceBuffer) {
-        const IntRect& rect = buffer.originalFrameRect();
+        IntRect rect = buffer.originalFrameRect();
         bool hasAlpha = m_reader->hasAlpha();
         unsigned colorChannels = hasAlpha ? 4 : 3;
         bool nonTrivialAlpha = false;
@@ -896,15 +825,15 @@ void PNGImageDecoder::frameComplete()
 #if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
         for (int y = 0; y < rect.maxY() - rect.y(); ++y) {
             png_bytep row = interlaceBuffer + (m_scaled ? m_scaledRows[y] : y) * colorChannels * size().width();
-            ImageFrame::PixelData* address = buffer.getAddr(rect.x(), y + rect.y());
+            RGBA32* address = buffer.pixelAt(rect.x(), y + rect.y());
             for (int x = 0; x < rect.maxX() - rect.x(); ++x) {
                 png_bytep pixel = row + (m_scaled ? m_scaledColumns[x] : x) * colorChannels;
                 unsigned alpha = hasAlpha ? pixel[3] : 255;
                 nonTrivialAlpha |= alpha < 255;
                 if (!m_blend)
-                    buffer.setRGBA(address++, pixel[0], pixel[1], pixel[2], alpha);
+                    buffer.setPixel(address++, pixel[0], pixel[1], pixel[2], alpha);
                 else
-                    buffer.overRGBA(address++, pixel[0], pixel[1], pixel[2], alpha);
+                    buffer.blendPixel(address++, pixel[0], pixel[1], pixel[2], alpha);
             }
         }
 #else
@@ -912,14 +841,14 @@ void PNGImageDecoder::frameComplete()
         png_bytep row = interlaceBuffer;
         for (int y = rect.y(); y < rect.maxY(); ++y, row += colorChannels * size().width()) {
             png_bytep pixel = row;
-            ImageFrame::PixelData* address = buffer.getAddr(rect.x(), y);
+            RGBA32* address = buffer.pixelAt(rect.x(), y);
             for (int x = rect.x(); x < rect.maxX(); ++x, pixel += colorChannels) {
                 unsigned alpha = hasAlpha ? pixel[3] : 255;
                 nonTrivialAlpha |= alpha < 255;
                 if (!m_blend)
-                    buffer.setRGBA(address++, pixel[0], pixel[1], pixel[2], alpha);
+                    buffer.setPixel(address++, pixel[0], pixel[1], pixel[2], alpha);
                 else
-                    buffer.overRGBA(address++, pixel[0], pixel[1], pixel[2], alpha);
+                    buffer.blendPixel(address++, pixel[0], pixel[1], pixel[2], alpha);
             }
         }
 #endif

@@ -28,7 +28,6 @@
 #define BytecodeIntrinsicRegistry_h
 
 #include "Identifier.h"
-#include <wtf/HashTable.h>
 #include <wtf/Noncopyable.h>
 
 namespace JSC {
@@ -44,11 +43,17 @@ class Identifier;
     macro(assert) \
     macro(isObject) \
     macro(isJSArray) \
+    macro(isProxyObject) \
+    macro(isDerivedArray) \
+    macro(isRegExpObject) \
+    macro(isMap) \
+    macro(isSet) \
     macro(tailCallForwardArguments) \
     macro(tryGetById) \
     macro(putByValDirect) \
     macro(toNumber) \
-    macro(toString)
+    macro(toString) \
+    macro(newArrayWithSize) \
 
 #define JSC_COMMON_BYTECODE_INTRINSIC_CONSTANTS_EACH_NAME(macro) \
     macro(undefined) \
@@ -61,7 +66,7 @@ class Identifier;
     macro(ModuleFetch) \
     macro(ModuleTranslate) \
     macro(ModuleInstantiate) \
-    macro(ModuleResolveDependencies) \
+    macro(ModuleSatisfy) \
     macro(ModuleLink) \
     macro(ModuleReady) \
     macro(promiseStatePending) \

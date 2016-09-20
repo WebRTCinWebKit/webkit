@@ -43,7 +43,6 @@
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/AtomicStringHash.h>
 
@@ -74,6 +73,7 @@ struct SecurityOriginData;
 namespace WebKit {
 
 class EventDispatcher;
+class GamepadData;
 class InjectedBundle;
 class NetworkProcessConnection;
 class ObjCObjectGraph;
@@ -87,11 +87,11 @@ class WebPage;
 class WebPageGroupProxy;
 class WebProcessSupplement;
 enum class WebsiteDataType;
-struct GamepadData;
 struct WebPageCreationParameters;
 struct WebPageGroupData;
 struct WebPreferencesStore;
 struct WebProcessCreationParameters;
+struct WebsiteData;
 
 #if ENABLE(DATABASE_PROCESS)
 class WebToDatabaseProcessConnection;
@@ -150,6 +150,7 @@ public:
 #endif
     
     const TextCheckerState& textCheckerState() const { return m_textCheckerState; }
+    void setTextCheckerState(const TextCheckerState&);
 
     void clearResourceCaches(ResourceCachesToClear = AllResourceCaches);
     
@@ -196,6 +197,10 @@ public:
 
 #if PLATFORM(IOS)
     void resetAllGeolocationPermissions();
+#endif
+
+#if PLATFORM(WAYLAND)
+    String waylandCompositorDisplayName() const { return m_waylandCompositorDisplayName; }
 #endif
 
     RefPtr<API::Object> transformHandlesToObjects(API::Object*);
@@ -267,8 +272,6 @@ private:
     
     void startMemorySampler(const SandboxExtension::Handle&, const String&, const double);
     void stopMemorySampler();
-
-    void setTextCheckerState(const TextCheckerState&);
     
     void getWebCoreStatistics(uint64_t callbackID);
     void garbageCollectJavaScriptObjects();
@@ -277,15 +280,16 @@ private:
     void mainThreadPing();
 
 #if ENABLE(GAMEPAD)
+    void setInitialGamepads(const Vector<GamepadData>&);
     void gamepadConnected(const GamepadData&);
     void gamepadDisconnected(unsigned index);
 #endif
 
     void releasePageCache();
 
-    void fetchWebsiteData(WebCore::SessionID, OptionSet<WebsiteDataType>, uint64_t callbackID);
-    void deleteWebsiteData(WebCore::SessionID, OptionSet<WebsiteDataType>, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID);
-    void deleteWebsiteDataForOrigins(WebCore::SessionID, OptionSet<WebsiteDataType>, const Vector<WebCore::SecurityOriginData>& origins, uint64_t callbackID);
+    void fetchWebsiteData(WebCore::SessionID, OptionSet<WebsiteDataType>, WebsiteData&);
+    void deleteWebsiteData(WebCore::SessionID, OptionSet<WebsiteDataType>, std::chrono::system_clock::time_point modifiedSince);
+    void deleteWebsiteDataForOrigins(WebCore::SessionID, OptionSet<WebsiteDataType>, const Vector<WebCore::SecurityOriginData>& origins);
 
     void setMemoryCacheDisabled(bool);
 
@@ -319,16 +323,14 @@ private:
 
     // IPC::Connection::Client
     friend class WebConnectionToUIProcess;
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
-    void didReceiveSyncMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
+    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
     void didClose(IPC::Connection&) override;
     void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
-    IPC::ProcessType localProcessType() override { return IPC::ProcessType::Web; }
-    IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::UI; }
 
     // Implemented in generated WebProcessMessageReceiver.cpp
-    void didReceiveWebProcessMessage(IPC::Connection&, IPC::MessageDecoder&);
-    void didReceiveSyncWebProcessMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&);
+    void didReceiveWebProcessMessage(IPC::Connection&, IPC::Decoder&);
+    void didReceiveSyncWebProcessMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
 
     RefPtr<WebConnectionToUIProcess> m_webConnection;
 
@@ -404,6 +406,10 @@ private:
     bool m_suppressMemoryPressureHandler { false };
 
     HashMap<WebCore::UserGestureToken *, uint64_t> m_userGestureTokens;
+
+#if PLATFORM(WAYLAND)
+    String m_waylandCompositorDisplayName;
+#endif
 };
 
 } // namespace WebKit

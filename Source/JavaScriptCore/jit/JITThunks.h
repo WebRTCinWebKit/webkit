@@ -30,7 +30,6 @@
 
 #include "CallData.h"
 #include "Intrinsic.h"
-#include "LowLevelInterpreter.h"
 #include "MacroAssemblerCodeRef.h"
 #include "ThunkGenerator.h"
 #include "Weak.h"
@@ -38,7 +37,6 @@
 #include "WeakInlines.h"
 #include <tuple>
 #include <wtf/HashMap.h>
-#include <wtf/RefPtr.h>
 #include <wtf/ThreadingPrimitives.h>
 
 namespace JSC {

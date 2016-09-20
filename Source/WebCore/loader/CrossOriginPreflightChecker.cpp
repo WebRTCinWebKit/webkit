@@ -100,8 +100,8 @@ void CrossOriginPreflightChecker::notifyFinished(CachedResource* resource)
 
 void CrossOriginPreflightChecker::startPreflight()
 {
-    ResourceLoaderOptions options = static_cast<FetchOptions>(m_loader.options());
-    options.credentials = FetchOptions::Credentials::Omit;
+    ResourceLoaderOptions options;
+    options.referrerPolicy = m_loader.options().referrerPolicy;
     options.redirect = FetchOptions::Redirect::Manual;
 
     CachedResourceRequest preflightRequest(createAccessControlPreflightRequest(m_request, m_loader.securityOrigin()), options);
@@ -112,7 +112,7 @@ void CrossOriginPreflightChecker::startPreflight()
         preflightRequest.mutableResourceRequest().setHTTPReferrer(m_loader.referrer());
 
     ASSERT(!m_resource);
-    m_resource = m_loader.document().cachedResourceLoader().requestRawResource(preflightRequest);
+    m_resource = m_loader.document().cachedResourceLoader().requestRawResource(WTFMove(preflightRequest));
     if (m_resource)
         m_resource->addClient(this);
 }

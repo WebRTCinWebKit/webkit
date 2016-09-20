@@ -76,9 +76,9 @@ RefPtr<DocumentThreadableLoader> DocumentThreadableLoader::create(Document& docu
     return loader;
 }
 
-RefPtr<DocumentThreadableLoader> DocumentThreadableLoader::create(Document& document, ThreadableLoaderClient& client, ResourceRequest&& request, const ThreadableLoaderOptions& options)
+RefPtr<DocumentThreadableLoader> DocumentThreadableLoader::create(Document& document, ThreadableLoaderClient& client, ResourceRequest&& request, const ThreadableLoaderOptions& options, String&& referrer)
 {
-    return create(document, client, WTFMove(request), options, nullptr, nullptr, String());
+    return create(document, client, WTFMove(request), options, nullptr, nullptr, WTFMove(referrer));
 }
 
 DocumentThreadableLoader::DocumentThreadableLoader(Document& document, ThreadableLoaderClient& client, BlockingBehavior blockingBehavior, ResourceRequest&& request, const ThreadableLoaderOptions& options, RefPtr<SecurityOrigin>&& origin, std::unique_ptr<ContentSecurityPolicy>&& contentSecurityPolicy, String&& referrer)
@@ -92,12 +92,25 @@ DocumentThreadableLoader::DocumentThreadableLoader(Document& document, Threadabl
     , m_async(blockingBehavior == LoadAsynchronously)
     , m_contentSecurityPolicy(WTFMove(contentSecurityPolicy))
 {
-    // Setting an outgoing referer is only supported in the async code path.
-    ASSERT(m_async || request.httpReferrer().isEmpty());
+    // Setting a referrer header is only supported in the async code path.
+    ASSERT(m_async || m_referrer.isEmpty());
+
+    // Referrer and Origin headers should be set after the preflight if any.
+    ASSERT(!request.hasHTTPReferrer() && !request.hasHTTPOrigin());
 
     ASSERT_WITH_SECURITY_IMPLICATION(isAllowedByContentSecurityPolicy(request.url()));
 
     m_options.allowCredentials = (m_options.credentials == FetchOptions::Credentials::Include || (m_options.credentials == FetchOptions::Credentials::SameOrigin && m_sameOriginRequest)) ? AllowStoredCredentials : DoNotAllowStoredCredentials;
+
+    ASSERT(!request.httpHeaderFields().contains(HTTPHeaderName::Origin));
+
+    // Copy headers if we need to replay the request after a redirection.
+    if (m_async && m_options.mode == FetchOptions::Mode::Cors)
+        m_originalHeaders = request.httpHeaderFields();
+
+    // As per step 11 of https://fetch.spec.whatwg.org/#main-fetch, data scheme (if same-origin data-URL flag is set) and about scheme are considered same-origin.
+    if (request.url().protocolIsData())
+        m_sameOriginRequest = options.sameOriginDataURLFlag == SameOriginDataURLFlag::Set;
 
     if (m_sameOriginRequest || m_options.mode == FetchOptions::Mode::NoCors) {
         loadRequest(WTFMove(request), DoSecurityCheck);
@@ -212,7 +225,7 @@ void DocumentThreadableLoader::redirectReceived(CachedResource* resource, Resour
     Ref<DocumentThreadableLoader> protectedThis(*this);
     if (!isAllowedByContentSecurityPolicy(request.url(), !redirectResponse.isNull())) {
         reportContentSecurityPolicyError(*m_client, redirectResponse.url());
-        request = ResourceRequest();
+        clearResource();
         return;
     }
 
@@ -226,29 +239,26 @@ void DocumentThreadableLoader::redirectReceived(CachedResource* resource, Resour
     ASSERT(m_resource);
     ASSERT(m_resource->loader());
     ASSERT(m_options.mode == FetchOptions::Mode::Cors);
-
-    // FIXME: We could remove that restriction, since we can use preflighting.
-    if (!m_simpleRequest) {
-        reportCrossOriginResourceSharingError(*m_client, redirectResponse.url());
-        request = ResourceRequest();
-        return;
-    }
+    ASSERT(m_originalHeaders);
 
     // Loader might have modified the origin to a unique one, let's reuse it for subsequent loads.
     m_origin = m_resource->loader()->origin();
 
     // Except in case where preflight is needed, loading should be able to continue on its own.
     // But we also handle credentials here if it is restricted to SameOrigin.
-    if (m_options.credentials != FetchOptions::Credentials::SameOrigin)
+    if (m_options.credentials != FetchOptions::Credentials::SameOrigin && m_simpleRequest && isSimpleCrossOriginAccessRequest(request.httpMethod(), *m_originalHeaders))
         return;
 
     m_options.allowCredentials = DoNotAllowStoredCredentials;
 
     clearResource();
 
-    // We need to clean the request again as SubresourceLoader may not always do the cleaning,
-    // especially in the case of a cross-origin load but redirection sticking to the same origin.
-    cleanRedirectedRequestForAccessControl(request);
+    // Let's fetch the request with the original headers (equivalent to request cloning specified by fetch algorithm).
+    // Do not copy the Authorization header if removed by the network layer.
+    if (!request.httpHeaderFields().contains(HTTPHeaderName::Authorization))
+        m_originalHeaders->remove(HTTPHeaderName::Authorization);
+    request.setHTTPHeaderFields(*m_originalHeaders);
+
     makeCrossOriginAccessRequest(ResourceRequest(request));
 }
 
@@ -269,19 +279,16 @@ void DocumentThreadableLoader::didReceiveResponse(unsigned long identifier, cons
 {
     ASSERT(m_client);
 
-    String accessControlErrorDescription;
-    if (!m_sameOriginRequest && m_options.mode == FetchOptions::Mode::Cors) {
-        if (!passesAccessControlCheck(response, m_options.allowCredentials, securityOrigin(), accessControlErrorDescription)) {
-            m_client->didFail(ResourceError(errorDomainWebKitInternal, 0, response.url(), accessControlErrorDescription, ResourceError::Type::AccessControl));
-            return;
-        }
-    }
-
     ASSERT(response.type() != ResourceResponse::Type::Error);
-    if (response.type() == ResourceResponse::Type::Default)
+    if (response.type() == ResourceResponse::Type::Default) {
         m_client->didReceiveResponse(identifier, ResourceResponse::filterResponse(response, tainting));
-    else {
-        ASSERT(response.isNull() && response.type() == ResourceResponse::Type::Opaqueredirect);
+        if (tainting == ResourceResponse::Tainting::Opaque && options().opaqueResponse == OpaqueResponseBodyPolicy::DoNotReceive) {
+            clearResource();
+            if (m_client)
+                m_client->didFinishLoading(identifier, 0.0);
+        }
+    } else {
+        ASSERT(response.type() == ResourceResponse::Type::Opaqueredirect);
         m_client->didReceiveResponse(identifier, response);
     }
 }
@@ -365,12 +372,14 @@ void DocumentThreadableLoader::loadRequest(ResourceRequest&& request, SecurityCh
         newRequest.mutableResourceRequest().setAllowCookies(m_options.allowCredentials == AllowStoredCredentials);
 
         ASSERT(!m_resource);
-        m_resource = m_document.cachedResourceLoader().requestRawResource(newRequest);
+        // We create an URL here as the request will be moved in requestRawResource
+        URL requestUrl = newRequest.resourceRequest().url();
+        m_resource = m_document.cachedResourceLoader().requestRawResource(WTFMove(newRequest));
         if (m_resource)
             m_resource->addClient(this);
         else {
             // FIXME: Since we receive a synchronous error, this is probably due to some AccessControl checks. We should try to retrieve the actual error.
-            m_client->didFail(ResourceError(String(), 0, newRequest.resourceRequest().url(), String(), ResourceError::Type::AccessControl));
+            m_client->didFail(ResourceError(String(), 0, requestUrl, String(), ResourceError::Type::AccessControl));
         }
         return;
     }
@@ -418,8 +427,19 @@ void DocumentThreadableLoader::loadRequest(ResourceRequest&& request, SecurityCh
     }
 
     ResourceResponse::Tainting tainting = ResourceResponse::Tainting::Basic;
-    if (!m_sameOriginRequest)
-        tainting = m_options.mode == FetchOptions::Mode::Cors ? ResourceResponse::Tainting::Cors : ResourceResponse::Tainting::Opaque;
+    if (!m_sameOriginRequest) {
+        if (m_options.mode == FetchOptions::Mode::NoCors)
+            tainting = ResourceResponse::Tainting::Opaque;
+        else {
+            ASSERT(m_options.mode == FetchOptions::Mode::Cors);
+            tainting = ResourceResponse::Tainting::Cors;
+            String accessControlErrorDescription;
+            if (!passesAccessControlCheck(response, m_options.allowCredentials, securityOrigin(), accessControlErrorDescription)) {
+                m_client->didFail(ResourceError(errorDomainWebKitInternal, 0, response.url(), accessControlErrorDescription, ResourceError::Type::AccessControl));
+                return;
+            }
+        }
+    }
     didReceiveResponse(identifier, response, tainting);
 
     if (data)

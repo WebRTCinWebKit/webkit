@@ -35,7 +35,6 @@
 
 namespace IPC {
 class Connection;
-class MessageDecoder;
 }
 
 namespace WebCore {
@@ -81,7 +80,7 @@ public:
     virtual WebCore::GraphicsLayerFactory* graphicsLayerFactory() { return nullptr; }
 
 #if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-    virtual void didReceiveCoordinatedLayerTreeHostMessage(IPC::Connection&, IPC::MessageDecoder&) = 0;
+    virtual void didReceiveCoordinatedLayerTreeHostMessage(IPC::Connection&, IPC::Decoder&) = 0;
 #endif
 
 #if USE(COORDINATED_GRAPHICS_THREADED)

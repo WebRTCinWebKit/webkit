@@ -22,8 +22,7 @@
  *
  */
 
-#ifndef Node_h
-#define Node_h
+#pragma once
 
 #include "EventTarget.h"
 #include "URLHash.h"
@@ -35,7 +34,6 @@
 #include <wtf/ListHashSet.h>
 #include <wtf/MainThread.h>
 #include <wtf/TypeCasts.h>
-#include <wtf/Variant.h>
 
 // This needs to be here because Document.h also depends on it.
 #define DUMP_NODE_STATISTICS 0
@@ -123,9 +121,6 @@ public:
         DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC = 0x20,
     };
 
-    // Only used by ObjC / GObject bindings.
-    static bool isSupportedForBindings(const String& feature, const String& version);
-
     WEBCORE_EXPORT static void startIgnoringLeaks();
     WEBCORE_EXPORT static void stopIgnoringLeaks();
 
@@ -151,7 +146,7 @@ public:
     static ptrdiff_t previousSiblingMemoryOffset() { return OBJECT_OFFSETOF(Node, m_previous); }
     Node* nextSibling() const { return m_next; }
     static ptrdiff_t nextSiblingMemoryOffset() { return OBJECT_OFFSETOF(Node, m_next); }
-    RefPtr<NodeList> childNodes();
+    WEBCORE_EXPORT RefPtr<NodeList> childNodes();
     Node* firstChild() const;
     Node* lastChild() const;
     bool hasAttributes() const;
@@ -161,7 +156,7 @@ public:
     Node* pseudoAwareFirstChild() const;
     Node* pseudoAwareLastChild() const;
 
-    const URL& baseURI() const;
+    WEBCORE_EXPORT const URL& baseURI() const;
     
     void getSubresourceURLs(ListHashSet<URL>&) const;
 
@@ -169,7 +164,7 @@ public:
     // which will already know and hold a ref on the right node to return. Returning bool allows
     // these methods to be more efficient since they don't need to return a ref
     WEBCORE_EXPORT bool insertBefore(Node& newChild, Node* refChild, ExceptionCode&);
-    bool replaceChild(Node& newChild, Node& oldChild, ExceptionCode&);
+    WEBCORE_EXPORT bool replaceChild(Node& newChild, Node& oldChild, ExceptionCode&);
     WEBCORE_EXPORT bool removeChild(Node& child, ExceptionCode&);
     WEBCORE_EXPORT bool appendChild(Node& newChild, ExceptionCode&);
 
@@ -182,21 +177,20 @@ public:
     };
     virtual Ref<Node> cloneNodeInternal(Document&, CloningOperation) = 0;
     Ref<Node> cloneNode(bool deep) { return cloneNodeInternal(document(), deep ? CloningOperation::Everything : CloningOperation::OnlySelf); }
-    RefPtr<Node> cloneNodeForBindings(bool deep, ExceptionCode&);
+    WEBCORE_EXPORT RefPtr<Node> cloneNodeForBindings(bool deep, ExceptionCode&);
 
     virtual const AtomicString& localName() const;
     virtual const AtomicString& namespaceURI() const;
     virtual const AtomicString& prefix() const;
     virtual void setPrefix(const AtomicString&, ExceptionCode&);
-    void normalize();
+    WEBCORE_EXPORT void normalize();
 
     bool isSameNode(Node* other) const { return this == other; }
-    bool isEqualNode(Node*) const;
-    bool isDefaultNamespace(const AtomicString& namespaceURI) const;
-    String lookupPrefix(const AtomicString& namespaceURI) const;
-    String lookupNamespaceURI(const String& prefix) const;
-    String lookupNamespacePrefix(const AtomicString& namespaceURI, const Element* originalElement) const;
-    
+    WEBCORE_EXPORT bool isEqualNode(Node*) const;
+    WEBCORE_EXPORT bool isDefaultNamespace(const AtomicString& namespaceURI) const;
+    WEBCORE_EXPORT const AtomicString& lookupPrefix(const AtomicString& namespaceURI) const;
+    WEBCORE_EXPORT const AtomicString& lookupNamespaceURI(const AtomicString& prefix) const;
+
     WEBCORE_EXPORT String textContent(bool convertBRsToNewlines = false) const;
     WEBCORE_EXPORT void setTextContent(const String&, ExceptionCode&);
     
@@ -204,13 +198,13 @@ public:
     Node* firstDescendant() const;
 
     // From the NonDocumentTypeChildNode - https://dom.spec.whatwg.org/#nondocumenttypechildnode
-    Element* previousElementSibling() const;
-    Element* nextElementSibling() const;
+    WEBCORE_EXPORT Element* previousElementSibling() const;
+    WEBCORE_EXPORT Element* nextElementSibling() const;
 
     // From the ChildNode - https://dom.spec.whatwg.org/#childnode
-    void before(Vector<std::variant<Ref<Node>, String>>&&, ExceptionCode&);
-    void after(Vector<std::variant<Ref<Node>, String>>&&, ExceptionCode&);
-    void replaceWith(Vector<std::variant<Ref<Node>, String>>&&, ExceptionCode&);
+    void before(Vector<std::experimental::variant<Ref<Node>, String>>&&, ExceptionCode&);
+    void after(Vector<std::experimental::variant<Ref<Node>, String>>&&, ExceptionCode&);
+    void replaceWith(Vector<std::experimental::variant<Ref<Node>, String>>&&, ExceptionCode&);
     WEBCORE_EXPORT void remove(ExceptionCode&);
 
     // Other methods (not part of DOM)
@@ -265,12 +259,10 @@ public:
     HTMLSlotElement* assignedSlotForBindings() const;
 
 #if ENABLE(CUSTOM_ELEMENTS)
-    bool isCustomElement() const { return getFlag(IsCustomElement); }
-    void setIsCustomElement() { setFlag(IsCustomElement); }
-
-    bool isUnresolvedCustomElement() const { return isElementNode() && getFlag(IsEditingTextOrUnresolvedCustomElementFlag); }
-    void setIsUnresolvedCustomElement() { setFlag(IsEditingTextOrUnresolvedCustomElementFlag); }
-    void setCustomElementIsResolved();
+    bool isUndefinedCustomElement() const { return isElementNode() && getFlag(IsEditingTextOrUndefinedCustomElementFlag); }
+    bool isCustomElementUpgradeCandidate() const { return getFlag(IsCustomElement) && getFlag(IsEditingTextOrUndefinedCustomElementFlag); }
+    bool isDefinedCustomElement() const { return getFlag(IsCustomElement) && !getFlag(IsEditingTextOrUndefinedCustomElementFlag); }
+    bool isFailedCustomElement() const { return isElementNode() && !getFlag(IsCustomElement) && getFlag(IsEditingTextOrUndefinedCustomElementFlag); }
 #endif
 
     // Returns null, a child of ShadowRoot, or a legacy shadow root.
@@ -325,7 +317,7 @@ public:
     StyleChangeType styleChangeType() const { return static_cast<StyleChangeType>(m_nodeFlags & StyleChangeMask); }
     bool childNeedsStyleRecalc() const { return getFlag(ChildNeedsStyleRecalcFlag); }
     bool styleIsAffectedByPreviousSibling() const { return getFlag(StyleIsAffectedByPreviousSibling); }
-    bool isEditingText() const { return getFlag(IsTextFlag) && getFlag(IsEditingTextOrUnresolvedCustomElementFlag); }
+    bool isEditingText() const { return getFlag(IsTextFlag) && getFlag(IsEditingTextOrUndefinedCustomElementFlag); }
 
     void setChildNeedsStyleRecalc() { setFlag(ChildNeedsStyleRecalcFlag); }
     void clearChildNeedsStyleRecalc() { m_nodeFlags &= ~(ChildNeedsStyleRecalcFlag | DirectChildNeedsStyleRecalcFlag); }
@@ -404,7 +396,7 @@ public:
 
     WEBCORE_EXPORT bool isDescendantOf(const Node*) const;
     bool isDescendantOrShadowDescendantOf(const Node*) const;
-    bool contains(const Node*) const;
+    WEBCORE_EXPORT bool contains(const Node*) const;
     bool containsIncludingShadowDOM(const Node*) const;
     bool containsIncludingHostElements(const Node*) const;
 
@@ -512,7 +504,7 @@ public:
     virtual void handleLocalEvents(Event&);
 
     void dispatchSubtreeModifiedEvent();
-    bool dispatchDOMActivateEvent(int detail, PassRefPtr<Event> underlyingEvent);
+    bool dispatchDOMActivateEvent(int detail, Event& underlyingEvent);
 
 #if ENABLE(TOUCH_EVENTS)
     virtual bool allowsDoubleTapGesture() const { return true; }
@@ -530,7 +522,7 @@ public:
     virtual void dispatchInputEvent();
 
     // Perform the default action for an event.
-    virtual void defaultEventHandler(Event*);
+    virtual void defaultEventHandler(Event&);
 
     void ref();
     void deref();
@@ -598,7 +590,7 @@ protected:
         IsParsingChildrenFinishedFlag = 1 << 13, // Element
 
         StyleChangeMask = 1 << nodeStyleChangeShift | 1 << (nodeStyleChangeShift + 1) | 1 << (nodeStyleChangeShift + 2),
-        IsEditingTextOrUnresolvedCustomElementFlag = 1 << 17,
+        IsEditingTextOrUndefinedCustomElementFlag = 1 << 17,
         HasFocusWithin = 1 << 18,
         HasSyntheticAttrChildNodesFlag = 1 << 19,
         HasCustomStyleResolveCallbacksFlag = 1 << 20,
@@ -637,7 +629,7 @@ protected:
         CreateHTMLElement = CreateStyledElement | IsHTMLFlag,
         CreateSVGElement = CreateStyledElement | IsSVGFlag | HasCustomStyleResolveCallbacksFlag,
         CreateDocument = CreateContainer | InDocumentFlag,
-        CreateEditingText = CreateText | IsEditingTextOrUnresolvedCustomElementFlag,
+        CreateEditingText = CreateText | IsEditingTextOrUndefinedCustomElementFlag,
         CreateMathMLElement = CreateStyledElement | IsMathMLFlag
     };
     Node(Document&, ConstructionType);
@@ -661,7 +653,7 @@ protected:
     void setStyleChange(StyleChangeType changeType) { m_nodeFlags = (m_nodeFlags & ~StyleChangeMask) | changeType; }
     void updateAncestorsForStyleRecalc();
 
-    RefPtr<Node> convertNodesOrStringsIntoNode(Vector<std::variant<Ref<Node>, String>>&&, ExceptionCode&);
+    RefPtr<Node> convertNodesOrStringsIntoNode(Vector<std::experimental::variant<Ref<Node>, String>>&&, ExceptionCode&);
 
 private:
     virtual PseudoId customPseudoId() const
@@ -772,22 +764,10 @@ inline ContainerNode* Node::parentNodeGuaranteedHostFree() const
     return parentNode();
 }
 
-#if ENABLE(CUSTOM_ELEMENTS)
-
-inline void Node::setCustomElementIsResolved()
-{
-    clearFlag(IsEditingTextOrUnresolvedCustomElementFlag);
-    setFlag(IsCustomElement);
-}
-
-#endif
-
 } // namespace WebCore
 
 #if ENABLE(TREE_DEBUGGING)
 // Outside the WebCore namespace for ease of invocation from gdb.
 void showTree(const WebCore::Node*);
 void showNodePath(const WebCore::Node*);
-#endif
-
 #endif

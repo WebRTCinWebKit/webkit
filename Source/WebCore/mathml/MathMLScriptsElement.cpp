@@ -25,9 +25,9 @@
  */
 
 #include "config.h"
+#include "MathMLScriptsElement.h"
 
 #if ENABLE(MATHML)
-#include "MathMLScriptsElement.h"
 
 #include "RenderMathMLScripts.h"
 
@@ -36,7 +36,7 @@ namespace WebCore {
 using namespace MathMLNames;
 
 MathMLScriptsElement::MathMLScriptsElement(const QualifiedName& tagName, Document& document)
-    : MathMLInlineContainerElement(tagName, document)
+    : MathMLPresentationElement(tagName, document)
 {
 }
 

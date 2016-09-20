@@ -53,6 +53,7 @@ private:
     RealtimeMediaSourceSettings m_sourceSettings;
 };
 
+#if !USE(OPENWEBRTC)
 class EmptyMediaEndpoint : public MediaEndpoint {
 public:
     EmptyMediaEndpoint(MediaEndpointClient&) { }
@@ -71,6 +72,7 @@ public:
 
     Ref<RealtimeMediaSource> createMutedRemoteSource(const String&, RealtimeMediaSource::Type) override { return EmptyRealtimeMediaSource::create(); }
     void replaceSendSource(RealtimeMediaSource&, const String&) override { }
+    void replaceMutedRemoteSourceMid(const String&, const String&) final { };
 
     void stop() override { }
 };
@@ -81,6 +83,7 @@ static std::unique_ptr<MediaEndpoint> createMediaEndpoint(MediaEndpointClient& c
 }
 
 CreateMediaEndpoint MediaEndpoint::create = createMediaEndpoint;
+#endif //USE(OPENWEBRTC)
 
 } // namespace WebCore
 

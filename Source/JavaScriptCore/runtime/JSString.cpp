@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2002 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2004, 2007, 2008, 2015 Apple Inc. All rights reserved.
+ *  Copyright (C) 2004, 2007-2008, 2015-2016 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -70,6 +70,17 @@ void JSString::dumpToStream(const JSCell* cell, PrintStream& out)
             out.printf("[16 %p]", ourImpl->characters16());
     }
     out.printf(">");
+}
+
+bool JSString::equalSlowCase(ExecState* exec, JSString* other) const
+{
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    String str1 = value(exec);
+    String str2 = other->value(exec);
+    if (UNLIKELY(scope.exception()))
+        return false;
+    return WTF::equal(*str1.impl(), *str2.impl());
 }
 
 size_t JSString::estimatedSize(JSCell* cell)
@@ -371,11 +382,14 @@ void JSRopeString::resolveRopeSlowCase(UChar* buffer) const
 
 void JSRopeString::outOfMemory(ExecState* exec) const
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     clearFibers();
     ASSERT(isRope());
     ASSERT(m_value.isNull());
     if (exec)
-        throwOutOfMemoryError(exec);
+        throwOutOfMemoryError(exec, scope);
 }
 
 JSValue JSString::toPrimitive(ExecState*, PreferredPrimitiveType) const

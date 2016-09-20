@@ -71,8 +71,8 @@ public:
 
     const IntSize& size() const { return m_size; }
 
-    void setWidth(unsigned);
-    void setHeight(unsigned);
+    WEBCORE_EXPORT void setWidth(unsigned);
+    WEBCORE_EXPORT void setHeight(unsigned);
 
     void setSize(const IntSize& newSize)
     { 
@@ -86,14 +86,13 @@ public:
     }
 
     CanvasRenderingContext* getContext(const String&, CanvasContextAttributes* = nullptr);
-    bool probablySupportsContext(const String&, CanvasContextAttributes* = nullptr);
     static bool is2dType(const String&);
 #if ENABLE(WEBGL)
     static bool is3dType(const String&);
 #endif
 
     static String toEncodingMimeType(const String& mimeType);
-    String toDataURL(const String& mimeType, const double* quality, ExceptionCode&);
+    WEBCORE_EXPORT String toDataURL(const String& mimeType, const double* quality, ExceptionCode&);
     String toDataURL(const String& mimeType, ExceptionCode& ec) { return toDataURL(mimeType, nullptr, ec); }
 
     // Used for rendering

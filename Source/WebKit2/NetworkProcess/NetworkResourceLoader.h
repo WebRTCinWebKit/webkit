@@ -32,7 +32,6 @@
 #include "NetworkResourceLoadParameters.h"
 #include "ShareableResource.h"
 #include <WebCore/Timer.h>
-#include <wtf/Optional.h>
 
 namespace WebCore {
 class BlobDataFileReference;
@@ -67,7 +66,7 @@ public:
     void setDefersLoading(bool);
 
     // Message handlers.
-    void didReceiveNetworkResourceLoaderMessage(IPC::Connection&, IPC::MessageDecoder&);
+    void didReceiveNetworkResourceLoaderMessage(IPC::Connection&, IPC::Decoder&);
 
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     void continueCanAuthenticateAgainstProtectionSpace(bool);
@@ -130,12 +129,10 @@ private:
 
     void startBufferingTimerIfNeeded();
     void bufferingTimerFired();
-    bool sendBufferMaybeAborting(WebCore::SharedBuffer&, size_t encodedDataLength);
+    void sendBuffer(WebCore::SharedBuffer&, size_t encodedDataLength);
 
     void consumeSandboxExtensions();
     void invalidateSandboxExtensions();
-
-    template<typename T> bool sendAbortingOnFailure(T&& message, unsigned messageSendFlags = 0);
 
     const NetworkResourceLoadParameters m_parameters;
 

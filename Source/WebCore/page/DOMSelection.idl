@@ -54,9 +54,7 @@
     void removeAllRanges();
     void addRange(Range range);
 
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     [NotEnumerable] DOMString toString();
-#endif
 
     readonly attribute DOMString type;
 

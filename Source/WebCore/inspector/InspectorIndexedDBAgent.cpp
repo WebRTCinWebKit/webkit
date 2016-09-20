@@ -201,10 +201,10 @@ static RefPtr<KeyPath> keyPathFromIDBKeyPath(const IDBKeyPath& idbKeyPath)
     return keyPath;
 }
 
-static RefPtr<IDBTransaction> transactionForDatabase(ScriptExecutionContext* scriptExecutionContext, IDBDatabase* idbDatabase, const String& objectStoreName, const String& mode = IDBTransaction::modeReadOnly())
+static RefPtr<IDBTransaction> transactionForDatabase(IDBDatabase* idbDatabase, const String& objectStoreName, const String& mode = IDBTransaction::modeReadOnly())
 {
     ExceptionCodeWithMessage ec;
-    RefPtr<IDBTransaction> idbTransaction = idbDatabase->transaction(scriptExecutionContext, objectStoreName, mode, ec);
+    RefPtr<IDBTransaction> idbTransaction = idbDatabase->transaction(objectStoreName, mode, ec);
     if (ec.code)
         return nullptr;
     return idbTransaction;
@@ -335,19 +335,21 @@ static RefPtr<IDBKey> idbKeyFromInspectorObject(InspectorObject* key)
 
 static RefPtr<IDBKeyRange> idbKeyRangeFromKeyRange(const InspectorObject* keyRange)
 {
+    RefPtr<IDBKey> idbLower;
     RefPtr<InspectorObject> lower;
-    if (!keyRange->getObject(ASCIILiteral("lower"), lower))
-        return nullptr;
-    RefPtr<IDBKey> idbLower = idbKeyFromInspectorObject(lower.get());
-    if (!idbLower)
-        return nullptr;
+    if (keyRange->getObject(ASCIILiteral("lower"), lower)) {
+        idbLower = idbKeyFromInspectorObject(lower.get());
+        if (!idbLower)
+            return nullptr;
+    }
 
+    RefPtr<IDBKey> idbUpper;
     RefPtr<InspectorObject> upper;
-    if (!keyRange->getObject(ASCIILiteral("upper"), upper))
-        return nullptr;
-    RefPtr<IDBKey> idbUpper = idbKeyFromInspectorObject(upper.get());
-    if (!idbUpper)
-        return nullptr;
+    if (keyRange->getObject(ASCIILiteral("upper"), upper)) {
+        idbUpper = idbKeyFromInspectorObject(upper.get());
+        if (!idbUpper)
+            return nullptr;
+    }
 
     bool lowerOpen;
     if (!keyRange->getBoolean(ASCIILiteral("lowerOpen"), lowerOpen))
@@ -472,11 +474,12 @@ public:
         if (!requestCallback().isActive())
             return;
 
-        RefPtr<IDBTransaction> idbTransaction = transactionForDatabase(context(), &database, m_objectStoreName);
+        RefPtr<IDBTransaction> idbTransaction = transactionForDatabase(&database, m_objectStoreName);
         if (!idbTransaction) {
             m_requestCallback->sendFailure("Could not get transaction");
             return;
         }
+
         RefPtr<IDBObjectStore> idbObjectStore = objectStoreForTransaction(idbTransaction.get(), m_objectStoreName);
         if (!idbObjectStore) {
             m_requestCallback->sendFailure("Could not get object store");
@@ -503,7 +506,7 @@ public:
             return;
         }
 
-        Ref<OpenCursorCallback> openCursorCallback = OpenCursorCallback::create(m_injectedScript, m_requestCallback.copyRef(), 0, m_pageSize);
+        Ref<OpenCursorCallback> openCursorCallback = OpenCursorCallback::create(m_injectedScript, m_requestCallback.copyRef(), m_skipCount, m_pageSize);
         idbRequest->addEventListener(eventNames().successEvent, WTFMove(openCursorCallback), false);
     }
 
@@ -706,7 +709,7 @@ public:
         if (!requestCallback().isActive())
             return;
 
-        RefPtr<IDBTransaction> idbTransaction = transactionForDatabase(context(), &database, m_objectStoreName);
+        RefPtr<IDBTransaction> idbTransaction = transactionForDatabase(&database, m_objectStoreName, IDBTransaction::modeReadWrite());
         if (!idbTransaction) {
             m_requestCallback->sendFailure("Could not get transaction");
             return;
@@ -718,6 +721,7 @@ public:
             return;
         }
 
+        TransactionActivator activator(idbTransaction.get());
         ExceptionCodeWithMessage ec;
         JSC::ExecState* exec = context() ? context()->execState() : nullptr;
         RefPtr<IDBRequest> idbRequest = exec ? idbObjectStore->clear(*exec, ec) : nullptr;
@@ -726,6 +730,7 @@ public:
             m_requestCallback->sendFailure(String::format("Could not clear object store '%s': %d", m_objectStoreName.utf8().data(), ec.code));
             return;
         }
+
         idbTransaction->addEventListener(eventNames().completeEvent, ClearObjectStoreListener::create(m_requestCallback.copyRef()), false);
     }
 
@@ -750,5 +755,4 @@ void InspectorIndexedDBAgent::clearObjectStore(ErrorString& errorString, const S
 }
 
 } // namespace WebCore
-
 #endif // ENABLE(INDEXED_DATABASE)

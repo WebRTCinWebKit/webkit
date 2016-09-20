@@ -43,7 +43,7 @@ namespace WebCore {
 using namespace MathMLNames;
 
 MathMLSelectElement::MathMLSelectElement(const QualifiedName& tagName, Document& document)
-    : MathMLInlineContainerElement(tagName, document)
+    : MathMLRowElement(tagName, document)
     , m_selectedChild(nullptr)
 {
 }
@@ -89,13 +89,13 @@ bool MathMLSelectElement::childShouldCreateRenderer(const Node& child) const
 void MathMLSelectElement::finishParsingChildren()
 {
     updateSelectedChild();
-    MathMLInlineContainerElement::finishParsingChildren();
+    MathMLRowElement::finishParsingChildren();
 }
 
 void MathMLSelectElement::childrenChanged(const ChildChange& change)
 {
     updateSelectedChild();
-    MathMLInlineContainerElement::childrenChanged(change);
+    MathMLRowElement::childrenChanged(change);
 }
 
 void MathMLSelectElement::attributeChanged(const QualifiedName& name, const AtomicString& oldValue, const AtomicString& newValue, AttributeModificationReason reason)
@@ -103,7 +103,7 @@ void MathMLSelectElement::attributeChanged(const QualifiedName& name, const Atom
     if (hasTagName(mactionTag) && (name == MathMLNames::actiontypeAttr || name == MathMLNames::selectionAttr))
         updateSelectedChild();
 
-    MathMLInlineContainerElement::attributeChanged(name, oldValue, newValue, reason);
+    MathMLRowElement::attributeChanged(name, oldValue, newValue, reason);
 }
 
 int MathMLSelectElement::getSelectedActionChildAndIndex(Element*& selectedChild)
@@ -209,22 +209,22 @@ void MathMLSelectElement::updateSelectedChild()
     setNeedsStyleRecalc();
 }
 
-void MathMLSelectElement::defaultEventHandler(Event* event)
+void MathMLSelectElement::defaultEventHandler(Event& event)
 {
-    if (event->type() == eventNames().clickEvent) {
+    if (event.type() == eventNames().clickEvent) {
         if (attributeWithoutSynchronization(MathMLNames::actiontypeAttr) == "toggle") {
             toggle();
-            event->setDefaultHandled();
+            event.setDefaultHandled();
             return;
         }
     }
 
-    MathMLInlineContainerElement::defaultEventHandler(event);
+    MathMLRowElement::defaultEventHandler(event);
 }
 
 bool MathMLSelectElement::willRespondToMouseClickEvents()
 {
-    return attributeWithoutSynchronization(MathMLNames::actiontypeAttr) == "toggle" || MathMLInlineContainerElement::willRespondToMouseClickEvents();
+    return attributeWithoutSynchronization(MathMLNames::actiontypeAttr) == "toggle" || MathMLRowElement::willRespondToMouseClickEvents();
 }
 
 void MathMLSelectElement::toggle()

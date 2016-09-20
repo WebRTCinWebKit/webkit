@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -156,7 +156,7 @@ public:
 
 // DOM API
 // error state
-    MediaError* error() const;
+    WEBCORE_EXPORT MediaError* error() const;
 
     void setSrc(const String&);
     const URL& currentSrc() const { return m_currentSrc; }
@@ -166,24 +166,24 @@ public:
     void setSrcObject(ScriptExecutionContext&, MediaStream*);
 #endif
 
-    void setCrossOrigin(const AtomicString&);
-    String crossOrigin() const;
+    WEBCORE_EXPORT void setCrossOrigin(const AtomicString&);
+    WEBCORE_EXPORT String crossOrigin() const;
 
 // network state
     using HTMLMediaElementEnums::NetworkState;
-    NetworkState networkState() const;
+    WEBCORE_EXPORT NetworkState networkState() const;
 
-    String preload() const;    
-    void setPreload(const String&);
+    WEBCORE_EXPORT String preload() const;
+    WEBCORE_EXPORT void setPreload(const String&);
 
     Ref<TimeRanges> buffered() const override;
-    void load();
-    String canPlayType(const String& mimeType, const String& keySystem = String(), const URL& = URL()) const;
+    WEBCORE_EXPORT void load();
+    WEBCORE_EXPORT String canPlayType(const String& mimeType, const String& keySystem = String(), const URL& = URL()) const;
 
 // ready state
     using HTMLMediaElementEnums::ReadyState;
     ReadyState readyState() const override;
-    bool seeking() const;
+    WEBCORE_EXPORT bool seeking() const;
 
 // playback state
     WEBCORE_EXPORT double currentTime() const override;
@@ -201,11 +201,11 @@ public:
     MediaTime currentMediaTime() const;
     void setCurrentTime(const MediaTime&);
     MediaTime durationMediaTime() const;
-    void fastSeek(const MediaTime&);
+    WEBCORE_EXPORT void fastSeek(const MediaTime&);
 
     void updatePlaybackRate();
-    bool webkitPreservesPitch() const;
-    void setWebkitPreservesPitch(bool);
+    WEBCORE_EXPORT bool webkitPreservesPitch() const;
+    WEBCORE_EXPORT void setWebkitPreservesPitch(bool);
     Ref<TimeRanges> played() override;
     Ref<TimeRanges> seekable() const override;
     WEBCORE_EXPORT bool ended() const;
@@ -220,16 +220,16 @@ public:
     WEBCORE_EXPORT void play() override;
     WEBCORE_EXPORT void pause() override;
     void setShouldBufferData(bool) override;
-    void fastSeek(double);
+    WEBCORE_EXPORT void fastSeek(double);
     double minFastReverseRate() const;
     double maxFastForwardRate() const;
 
     void purgeBufferedDataIfPossible();
 
 // captions
-    bool webkitHasClosedCaptions() const;
-    bool webkitClosedCaptionsVisible() const;
-    void setWebkitClosedCaptionsVisible(bool);
+    WEBCORE_EXPORT bool webkitHasClosedCaptions() const;
+    WEBCORE_EXPORT bool webkitClosedCaptionsVisible() const;
+    WEBCORE_EXPORT void setWebkitClosedCaptionsVisible(bool);
 
     bool elementIsHidden() const override { return m_elementIsHidden; }
 
@@ -241,7 +241,7 @@ public:
 
 #if ENABLE(MEDIA_SOURCE)
 //  Media Source.
-    void closeMediaSource();
+    void detachMediaSource();
     void incrementDroppedFrameCount() { ++m_droppedVideoFrames; }
     size_t maximumSourceBufferSize(const SourceBuffer&) const;
 #endif
@@ -260,8 +260,8 @@ public:
 #endif
 
 // controls
-    bool controls() const;
-    void setControls(bool);
+    WEBCORE_EXPORT bool controls() const;
+    WEBCORE_EXPORT void setControls(bool);
     WEBCORE_EXPORT double volume() const override;
     void setVolume(double, ExceptionCode&) override;
     WEBCORE_EXPORT bool muted() const override;
@@ -468,6 +468,14 @@ public:
 
     RenderMedia* renderer() const;
 
+    void resetPlaybackSessionState();
+    bool isVisibleInViewport() const;
+    bool hasEverNotifiedAboutPlaying() const;
+    void setShouldDelayLoadEvent(bool);
+
+    bool hasEverHadAudio() const { return m_hasEverHadAudio; }
+    bool hasEverHadVideo() const { return m_hasEverHadVideo; }
+
 protected:
     HTMLMediaElement(const QualifiedName&, Document&, bool createdByParser);
     virtual ~HTMLMediaElement();
@@ -615,6 +623,8 @@ private:
     GraphicsDeviceAdapter* mediaPlayerGraphicsDeviceAdapter(const MediaPlayer*) const override;
 #endif
 
+    void mediaPlayerActiveSourceBuffersChanged(const MediaPlayer*) override;
+
     bool mediaPlayerShouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge&) override;
     void mediaPlayerHandlePlaybackCommand(PlatformMediaSession::RemoteControlCommandType command) override { didReceiveRemoteControlCommand(command, nullptr); }
     String mediaPlayerSourceApplicationIdentifier() const override;
@@ -715,7 +725,6 @@ private:
 
     void mediaCanStart() override;
 
-    void setShouldDelayLoadEvent(bool);
     void invalidateCachedTime() const;
     void refreshCachedTime() const;
 
@@ -787,6 +796,7 @@ private:
     void pauseAfterDetachedTask();
     void updatePlaybackControlsManager();
     void scheduleUpdatePlaybackControlsManager();
+    void playbackControlsManagerBehaviorRestrictionsTimerFired();
 
     void updateRenderer();
 
@@ -794,16 +804,20 @@ private:
     void updateUsesLTRUserInterfaceLayoutDirectionJSProperty();
     void setControllerJSProperty(const char*, JSC::JSValue);
 
+    void addBehaviorRestrictionsOnEndIfNecessary();
+
     Timer m_pendingActionTimer;
     Timer m_progressEventTimer;
     Timer m_playbackProgressTimer;
     Timer m_scanTimer;
+    Timer m_playbackControlsManagerBehaviorRestrictionsTimer;
     GenericTaskQueue<Timer> m_seekTaskQueue;
     GenericTaskQueue<Timer> m_resizeTaskQueue;
     GenericTaskQueue<Timer> m_shadowDOMTaskQueue;
     GenericTaskQueue<Timer> m_promiseTaskQueue;
     GenericTaskQueue<Timer> m_pauseAfterDetachedTaskQueue;
     GenericTaskQueue<Timer> m_updatePlaybackControlsManagerQueue;
+    GenericTaskQueue<Timer> m_playbackControlsManagerBehaviorRestrictionsQueue;
     RefPtr<TimeRanges> m_playedTimeRanges;
     GenericEventQueue m_asyncEventQueue;
 
@@ -938,6 +952,10 @@ private:
     bool m_elementIsHidden : 1;
     bool m_creatingControls : 1;
     bool m_receivedLayoutSizeChanged : 1;
+    bool m_hasEverNotifiedAboutPlaying : 1;
+
+    bool m_hasEverHadAudio : 1;
+    bool m_hasEverHadVideo : 1;
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     bool m_mediaControlsDependOnPageScaleFactor : 1;

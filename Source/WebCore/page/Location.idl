@@ -27,20 +27,24 @@
  */
 
 [
-    JSCustomGetOwnPropertySlotAndDescriptor,
-    CustomNamedSetter,
-    GenerateIsReachable=ImplFrame,
+    CheckSecurity,
     CustomDeleteProperty,
     CustomEnumerateProperty,
+    CustomGetPrototype,
+    CustomNamedSetter,
+    CustomPreventExtensions,
+    CustomSetPrototype,
+    GenerateIsReachable=ImplFrame,
     JSCustomDefineOwnProperty,
-    JSCustomNamedGetterOnPrototype,
     JSCustomDefineOwnPropertyOnPrototype,
-    Unforgeable
+    JSCustomGetOwnPropertySlotAndDescriptor,
+    JSCustomNamedGetterOnPrototype,
+    Unforgeable,
 ] interface Location {
-    [SetterCallWith=ActiveWindow&FirstWindow] attribute USVString href;
+    [SetterCallWith=ActiveWindow&FirstWindow, DoNotCheckSecurityOnSetter] stringifier attribute USVString href;
 
     [CallWith=ActiveWindow&FirstWindow, ForwardDeclareInHeader] void assign(USVString url);
-    [CallWith=ActiveWindow&FirstWindow, ForwardDeclareInHeader] void replace(USVString url);
+    [DoNotCheckSecurity, CallWith=ActiveWindow&FirstWindow, ForwardDeclareInHeader] void replace(USVString url);
     [CallWith=ActiveWindow, ForwardDeclareInHeader] void reload();
 
     // URI decomposition attributes
@@ -54,10 +58,6 @@
 
     readonly attribute USVString origin;
 
-    readonly attribute DOMStringList ancestorOrigins;
-
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    [NotEnumerable, Custom, ImplementedAs=toStringFunction] DOMString toString();
-#endif
+    // FIXME: Add support for SameObject
+    [Unforgeable, CachedAttribute] readonly attribute FrozenArray<USVString> ancestorOrigins;
 };
-

@@ -6,6 +6,7 @@ ftpDirectoryTemplatePath type=String
 localStorageDatabasePath type=String
 editableLinkBehavior type=EditableLinkBehavior, initial=EditableLinkDefaultBehavior
 textDirectionSubmenuInclusionBehavior type=TextDirectionSubmenuInclusionBehavior, initial=TextDirectionSubmenuAutomaticallyIncluded
+pdfImageCachingPolicy type=PDFImageCachingPolicy, initial = PDFImageCachingDefault
 passwordEchoDurationInSeconds type=double, initial=1
 
 # Sets the magnification value for validation message timer.  If the
@@ -251,6 +252,8 @@ attachmentElementEnabled initial=true, conditional=ATTACHMENT_ELEMENT
 
 newBlockInsideInlineModelEnabled initial=false, setNeedsStyleRecalcInAllFrames=1
 
+newCSSParserEnabled initial=false
+
 httpEquivEnabled initial=true
 
 # Some ports (e.g. iOS) might choose to display attachments inline, regardless of whether the response includes the
@@ -273,3 +276,9 @@ shouldConvertInvalidURLsToBlank initial=true
 springTimingFunctionEnabled initial=false
 
 treatIPAddressAsDomain initial=false
+
+# Runtime-enabled features
+visualViewportEnabled initial=false
+
+quickTimePluginReplacementEnabled initial=defaultQuickTimePluginReplacementEnabled
+youTubeFlashPluginReplacementEnabled initial=defaultYouTubeFlashPluginReplacementEnabled

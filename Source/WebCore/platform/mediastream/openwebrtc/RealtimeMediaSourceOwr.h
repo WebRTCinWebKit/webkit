@@ -48,7 +48,7 @@ namespace WebCore {
 
 class RealtimeMediaSourceCapabilities;
 
-class RealtimeMediaSourceOwr final : public RealtimeMediaSource {
+class RealtimeMediaSourceOwr : public RealtimeMediaSource {
 public:
 RealtimeMediaSourceOwr(OwrMediaSource* mediaSource, const String& id, RealtimeMediaSource::Type type, const String& name)
     : RealtimeMediaSource(id, type, name)
@@ -56,6 +56,12 @@ RealtimeMediaSourceOwr(OwrMediaSource* mediaSource, const String& id, RealtimeMe
     {
         if (!mediaSource)
             m_muted = true;
+    }
+
+RealtimeMediaSourceOwr(const String& id, RealtimeMediaSource::Type type, const String& name)
+    : RealtimeMediaSource(id, type, name)
+    , m_mediaSource(nullptr)
+    {
     }
 
     virtual ~RealtimeMediaSourceOwr() { }

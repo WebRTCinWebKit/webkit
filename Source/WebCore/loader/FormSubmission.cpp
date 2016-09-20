@@ -49,7 +49,6 @@
 #include "HTMLParserIdioms.h"
 #include "TextEncoding.h"
 #include <wtf/CurrentTime.h>
-#include <wtf/RandomNumber.h>
 
 namespace WebCore {
 
@@ -93,10 +92,10 @@ void FormSubmission::Attributes::parseAction(const String& action)
 String FormSubmission::Attributes::parseEncodingType(const String& type)
 {
     if (equalLettersIgnoringASCIICase(type, "multipart/form-data"))
-        return "multipart/form-data";
+        return ASCIILiteral("multipart/form-data");
     if (equalLettersIgnoringASCIICase(type, "text/plain"))
-        return "text/plain";
-    return "application/x-www-form-urlencoded";
+        return ASCIILiteral("text/plain");
+    return ASCIILiteral("application/x-www-form-urlencoded");
 }
 
 void FormSubmission::Attributes::updateEncodingType(const String& type)

@@ -30,7 +30,6 @@
 #if ENABLE(MATHML)
 
 #include "MathMLFractionElement.h"
-#include "MathMLInlineContainerElement.h"
 #include "RenderMathMLBlock.h"
 
 namespace WebCore {
@@ -61,8 +60,19 @@ private:
     RenderBox& denominator() const;
     LayoutUnit horizontalOffset(RenderBox&, MathMLFractionElement::FractionAlignment);
     void updateLineThickness();
-    void getFractionParameters(LayoutUnit& numeratorGapMin, LayoutUnit& denominatorGapMin, LayoutUnit& numeratorMinShiftUp, LayoutUnit& denominatorMinShiftDown);
-    void getStackParameters(LayoutUnit& gapMin, LayoutUnit& topShiftUp, LayoutUnit& bottomShiftDown);
+    struct FractionParameters {
+        LayoutUnit numeratorGapMin;
+        LayoutUnit denominatorGapMin;
+        LayoutUnit numeratorMinShiftUp;
+        LayoutUnit denominatorMinShiftDown;
+    };
+    FractionParameters fractionParameters();
+    struct StackParameters {
+        LayoutUnit gapMin;
+        LayoutUnit topShiftUp;
+        LayoutUnit bottomShiftDown;
+    };
+    StackParameters stackParameters();
 
     LayoutUnit m_ascent;
     LayoutUnit m_defaultLineThickness { 1 };

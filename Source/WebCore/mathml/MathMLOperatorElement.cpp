@@ -25,9 +25,9 @@
  */
 
 #include "config.h"
+#include "MathMLOperatorElement.h"
 
 #if ENABLE(MATHML)
-#include "MathMLOperatorElement.h"
 
 #include "RenderMathMLOperator.h"
 #include <wtf/unicode/CharacterNames.h>
@@ -38,7 +38,7 @@ using namespace MathMLNames;
 using namespace MathMLOperatorDictionary;
 
 MathMLOperatorElement::MathMLOperatorElement(const QualifiedName& tagName, Document& document)
-    : MathMLTextElement(tagName, document)
+    : MathMLTokenElement(tagName, document)
 {
 }
 
@@ -50,16 +50,15 @@ Ref<MathMLOperatorElement> MathMLOperatorElement::create(const QualifiedName& ta
 MathMLOperatorElement::OperatorChar MathMLOperatorElement::parseOperatorChar(const String& string)
 {
     OperatorChar operatorChar;
-
-    // We collapse the whitespace and replace the hyphens by minus signs.
-    AtomicString textContent = string.stripWhiteSpace().simplifyWhiteSpace().replace(hyphenMinus, minusSign).impl();
-
-    // We verify whether the operator text can be represented by a single UChar.
-    // FIXME: This is a really inefficient way to extract a character from a string (https://webkit.org/b/160241#c7).
-    // FIXME: This does not handle surrogate pairs (https://webkit.org/b/122296).
-    // FIXME: This does not handle <mo> operators with multiple characters (https://webkit.org/b/124828).
-    operatorChar.character = textContent.length() == 1 ? textContent[0] : 0;
-    operatorChar.isVertical = MathMLOperatorDictionary::isVertical(operatorChar.character);
+    // FIXME: This operator dictionary does not accept multiple characters (https://webkit.org/b/124828).
+    if (auto codePoint = convertToSingleCodePoint(string)) {
+        auto character = codePoint.value();
+        // The minus sign renders better than the hyphen sign used in some MathML formulas.
+        if (character == hyphenMinus)
+            character = minusSign;
+        operatorChar.character = character;
+        operatorChar.isVertical = isVertical(operatorChar.character);
+    }
     return operatorChar;
 }
 
@@ -70,9 +69,9 @@ const MathMLOperatorElement::OperatorChar& MathMLOperatorElement::operatorChar()
     return m_operatorChar.value();
 }
 
-MathMLOperatorElement::DictionaryProperty MathMLOperatorElement::computeDictionaryProperty()
+Property MathMLOperatorElement::computeDictionaryProperty()
 {
-    DictionaryProperty dictionaryProperty;
+    Property dictionaryProperty;
 
     // We first determine the form attribute and use the default spacing and properties.
     const auto& value = attributeWithoutSynchronization(formAttr);
@@ -95,17 +94,13 @@ MathMLOperatorElement::DictionaryProperty MathMLOperatorElement::computeDictiona
     }
 
     // We then try and find an entry in the operator dictionary to override the default values.
-    if (auto entry = search(operatorChar().character, dictionaryProperty.form, explicitForm)) {
-        dictionaryProperty.form = static_cast<MathMLOperatorDictionary::Form>(entry.value().form);
-        dictionaryProperty.leadingSpaceInMathUnit = entry.value().lspace;
-        dictionaryProperty.trailingSpaceInMathUnit = entry.value().rspace;
-        dictionaryProperty.flags = entry.value().flags;
-    }
+    if (auto entry = search(operatorChar().character, dictionaryProperty.form, explicitForm))
+        dictionaryProperty = entry.value();
 
     return dictionaryProperty;
 }
 
-const MathMLOperatorElement::DictionaryProperty& MathMLOperatorElement::dictionaryProperty()
+const Property& MathMLOperatorElement::dictionaryProperty()
 {
     if (!m_dictionaryProperty)
         m_dictionaryProperty = computeDictionaryProperty();
@@ -219,7 +214,7 @@ void MathMLOperatorElement::childrenChanged(const ChildChange& change)
     m_operatorChar = Nullopt;
     m_dictionaryProperty = Nullopt;
     m_properties.dirtyFlags = MathMLOperatorDictionary::allFlags;
-    MathMLTextElement::childrenChanged(change);
+    MathMLTokenElement::childrenChanged(change);
 }
 
 static Optional<MathMLOperatorDictionary::Flag> attributeNameToPropertyFlag(const QualifiedName& name)
@@ -262,7 +257,7 @@ void MathMLOperatorElement::parseAttribute(const QualifiedName& name, const Atom
         return;
     }
 
-    MathMLTextElement::parseAttribute(name, value);
+    MathMLTokenElement::parseAttribute(name, value);
 }
 
 RenderPtr<RenderElement> MathMLOperatorElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)

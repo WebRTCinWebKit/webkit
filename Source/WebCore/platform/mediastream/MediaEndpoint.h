@@ -28,14 +28,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaEndpoint_h
-#define MediaEndpoint_h
+#pragma once
 
 #if ENABLE(WEB_RTC)
 
 #include "MediaEndpointConfiguration.h"
 #include "PeerConnectionStates.h"
 #include "RealtimeMediaSource.h"
+#include <wtf/HashMap.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -96,5 +96,3 @@ public:
 } // namespace WebCore
 
 #endif // ENABLE(WEB_RTC)
-
-#endif // MediaEndpoint_h

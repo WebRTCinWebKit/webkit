@@ -116,14 +116,6 @@ namespace JSC  {
         // pointer, so these are inefficient, and should be used sparingly in new code.
         // But they're used in many places in legacy code, so they're not going away any time soon.
 
-        void clearException() { vm().clearException(); }
-
-        Exception* exception() const { return vm().exception(); }
-        bool hadException() const { return !!vm().exception(); }
-
-        Exception* lastException() const { return vm().lastException(); }
-        void clearLastException() { vm().clearLastException(); }
-
         AtomicStringTable* atomicStringTable() const { return vm().atomicStringTable(); }
         const CommonIdentifiers& propertyNames() const { return *vm().propertyNames; }
         const MarkedArgumentBuffer& emptyList() const { return *vm().emptyList; }
@@ -211,6 +203,7 @@ namespace JSC  {
         // arguments(0) will not fetch the 'this' value. To get/set 'this',
         // use thisValue() and setThisValue() below.
 
+        JSValue* addressOfArgumentsStart() const { return bitwise_cast<JSValue*>(this + argumentOffset(0)); }
         JSValue argument(size_t argument)
         {
             if (argument >= argumentCount())

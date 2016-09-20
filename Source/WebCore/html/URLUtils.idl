@@ -23,12 +23,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-[NoInterfaceObject]
-interface URLUtils {
+[NoInterfaceObject] interface URLUtils {
     [SetterRaisesException, URL] attribute USVString href;
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
+
     [NotEnumerable] DOMString toString();
-#endif
 
     readonly attribute USVString origin;
 
@@ -41,4 +39,5 @@ interface URLUtils {
     attribute USVString pathname;
     attribute USVString hash;
     attribute USVString search;
+    [CachedAttribute] readonly attribute URLSearchParams searchParams;
 };

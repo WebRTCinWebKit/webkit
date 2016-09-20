@@ -24,13 +24,13 @@
  */
 
 #include "config.h"
+#include "RenderMathMLFenced.h"
 
 #if ENABLE(MATHML)
 
-#include "RenderMathMLFenced.h"
-
 #include "FontSelector.h"
 #include "MathMLNames.h"
+#include "MathMLRowElement.h"
 #include "RenderInline.h"
 #include "RenderMathMLFencedOperator.h"
 #include "RenderText.h"
@@ -43,7 +43,7 @@ using namespace MathMLNames;
 static const char* gOpeningBraceChar = "(";
 static const char* gClosingBraceChar = ")";
 
-RenderMathMLFenced::RenderMathMLFenced(MathMLInlineContainerElement& element, RenderStyle&& style)
+RenderMathMLFenced::RenderMathMLFenced(MathMLRowElement& element, RenderStyle&& style)
     : RenderMathMLRow(element, WTFMove(style))
     , m_closeFenceRenderer(nullptr)
 {

@@ -37,12 +37,10 @@
     // FIXME: Using "undefined" as default parameter value is wrong.
     CSSValue getPresentationAttribute(optional DOMString name = "undefined");
 
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     void focus();
     void blur();
 
     readonly attribute DOMStringMap dataset;
-#endif
 };
 
 SVGElement implements GlobalEventHandlers;

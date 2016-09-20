@@ -49,7 +49,7 @@ namespace WebCore {
         static void loadResourceSynchronously(Document&, ResourceRequest&&, ThreadableLoaderClient&, const ThreadableLoaderOptions&);
 
         static RefPtr<DocumentThreadableLoader> create(Document&, ThreadableLoaderClient&, ResourceRequest&&, const ThreadableLoaderOptions&, RefPtr<SecurityOrigin>&&, std::unique_ptr<ContentSecurityPolicy>&&, String&& referrer);
-        static RefPtr<DocumentThreadableLoader> create(Document&, ThreadableLoaderClient&, ResourceRequest&&, const ThreadableLoaderOptions&);
+        static RefPtr<DocumentThreadableLoader> create(Document&, ThreadableLoaderClient&, ResourceRequest&&, const ThreadableLoaderOptions&, String&& referrer = String());
 
         virtual ~DocumentThreadableLoader();
 
@@ -117,6 +117,7 @@ namespace WebCore {
         bool m_async;
         std::unique_ptr<ContentSecurityPolicy> m_contentSecurityPolicy;
         Optional<CrossOriginPreflightChecker> m_preflightChecker;
+        Optional<HTTPHeaderMap> m_originalHeaders;
     };
 
 } // namespace WebCore

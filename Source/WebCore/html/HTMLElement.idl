@@ -51,12 +51,10 @@
 
     void click();
 
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     void focus();
     void blur();
 
     readonly attribute DOMStringMap dataset;
-#endif
 };
 
 HTMLElement implements GlobalEventHandlers;

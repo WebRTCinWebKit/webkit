@@ -46,7 +46,6 @@
 #include "SimpleLineLayoutFunctions.h"
 #include "TrailingFloatsRootInlineBox.h"
 #include "VerticalPositionCache.h"
-#include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
 
 namespace WebCore {
@@ -489,7 +488,7 @@ static inline void setLogicalWidthForTextRun(RootInlineBox* lineBox, BidiRun* ru
     // the style is linebox-contain: glyph.
     
     if (!lineBox->fitsToGlyphs() && canUseSimpleFontCodePath) {
-        int lastEndOffset = run->m_start;
+        unsigned lastEndOffset = run->m_start;
         for (size_t i = 0, size = wordMeasurements.size(); i < size && lastEndOffset < run->m_stop; ++i) {
             WordMeasurement& wordMeasurement = wordMeasurements[i];
             if (wordMeasurement.width <= 0 || wordMeasurement.startOffset == wordMeasurement.endOffset)
@@ -854,6 +853,21 @@ BidiRun* RenderBlockFlow::computeInlineDirectionPositionsForSegment(RootInlineBo
     BidiRun* run = firstRun;
     BidiRun* previousRun = nullptr;
     for (; run; run = run->next()) {
+        auto computeExpansionOpportunities = [&expansionOpportunities, &expansionOpportunityCount, textAlign, &isAfterExpansion] (RenderBlockFlow& block,
+            InlineTextBox& textBox, BidiRun* previousRun, BidiRun* nextRun, const StringView& stringView, TextDirection direction)
+        {
+            if (stringView.isEmpty()) {
+                // Empty runs should still produce an entry in expansionOpportunities list so that the number of items matches the number of runs.
+                expansionOpportunities.append(0);
+                return;
+            }
+            ExpansionBehavior expansionBehavior = expansionBehaviorForInlineTextBox(block, textBox, previousRun, nextRun, textAlign, isAfterExpansion);
+            applyExpansionBehavior(textBox, expansionBehavior);
+            unsigned opportunitiesInRun;
+            std::tie(opportunitiesInRun, isAfterExpansion) = FontCascade::expansionOpportunityCount(stringView, direction, expansionBehavior);
+            expansionOpportunities.append(opportunitiesInRun);
+            expansionOpportunityCount += opportunitiesInRun;
+        };
         if (!run->box() || run->renderer().isOutOfFlowPositioned() || run->box()->isLineBreak()) {
             continue; // Positioned objects are only participating to figure out their
                       // correct static x position.  They have no effect on the width.
@@ -880,18 +894,13 @@ BidiRun* RenderBlockFlow::computeInlineDirectionPositionsForSegment(RootInlineBo
                 canHangPunctuationAtEnd = false;
             }
             
-            if (textAlign == JUSTIFY && run != trailingSpaceRun) {
-                ExpansionBehavior expansionBehavior = expansionBehaviorForInlineTextBox(*this, textBox, previousRun, run->next(), textAlign, isAfterExpansion);
-                applyExpansionBehavior(textBox, expansionBehavior);
-                unsigned opportunitiesInRun;
-                std::tie(opportunitiesInRun, isAfterExpansion) = FontCascade::expansionOpportunityCount(renderText.stringView(run->m_start, run->m_stop), run->box()->direction(), expansionBehavior);
-                expansionOpportunities.append(opportunitiesInRun);
-                expansionOpportunityCount += opportunitiesInRun;
-            }
+            if (textAlign == JUSTIFY && run != trailingSpaceRun)
+                computeExpansionOpportunities(*this, textBox, previousRun, run->next(), renderText.stringView(run->m_start, run->m_stop), run->box()->direction());
 
-            if (int length = renderText.textLength()) {
+            if (unsigned length = renderText.textLength()) {
                 if (!run->m_start && needsWordSpacing && isSpaceOrNewline(renderText.characterAt(run->m_start)))
                     totalLogicalWidth += lineStyle(*renderText.parent(), lineInfo).fontCascade().wordSpacing();
+                ASSERT(run->m_stop > 0);
                 needsWordSpacing = !isSpaceOrNewline(renderText.characterAt(run->m_stop - 1)) && run->m_stop == length;
             }
 
@@ -906,15 +915,9 @@ BidiRun* RenderBlockFlow::computeInlineDirectionPositionsForSegment(RootInlineBo
                     for (auto* leafChild = rubyBase->firstRootBox()->firstLeafChild(); leafChild; leafChild = leafChild->nextLeafChild()) {
                         if (!is<InlineTextBox>(*leafChild))
                             continue;
-                        auto& textBox = downcast<InlineTextBox>(*leafChild);
                         encounteredJustifiedRuby = true;
-                        auto& renderText = downcast<RenderText>(leafChild->renderer());
-                        ExpansionBehavior expansionBehavior = expansionBehaviorForInlineTextBox(*rubyBase, textBox, nullptr, nullptr, textAlign, isAfterExpansion);
-                        applyExpansionBehavior(textBox, expansionBehavior);
-                        unsigned opportunitiesInRun;
-                        std::tie(opportunitiesInRun, isAfterExpansion) = FontCascade::expansionOpportunityCount(renderText.stringView(), leafChild->direction(), expansionBehavior);
-                        expansionOpportunities.append(opportunitiesInRun);
-                        expansionOpportunityCount += opportunitiesInRun;
+                        computeExpansionOpportunities(*rubyBase, downcast<InlineTextBox>(*leafChild), nullptr, nullptr,
+                            downcast<RenderText>(leafChild->renderer()).stringView(), leafChild->direction());
                     }
                 }
             }
@@ -936,8 +939,15 @@ BidiRun* RenderBlockFlow::computeInlineDirectionPositionsForSegment(RootInlineBo
     }
 
     if (isAfterExpansion && !expansionOpportunities.isEmpty()) {
-        expansionOpportunities.last()--;
-        expansionOpportunityCount--;
+        // FIXME: see <webkit.org/b/139393#c11>
+        int lastValidExpansionOpportunitiesIndex = expansionOpportunities.size() - 1;
+        while (lastValidExpansionOpportunitiesIndex >= 0 && !expansionOpportunities.at(lastValidExpansionOpportunitiesIndex))
+            --lastValidExpansionOpportunitiesIndex;
+        if (lastValidExpansionOpportunitiesIndex >= 0) {
+            ASSERT(expansionOpportunities.at(lastValidExpansionOpportunitiesIndex));
+            expansionOpportunities.at(lastValidExpansionOpportunitiesIndex)--;
+            expansionOpportunityCount--;
+        }
     }
 
     if (is<RenderRubyBase>(*this) && !expansionOpportunityCount)
@@ -1026,9 +1036,9 @@ static inline bool isCollapsibleSpace(UChar character, const RenderText& rendere
 }
 
 template <typename CharacterType>
-static inline int findFirstTrailingSpace(const RenderText& lastText, const CharacterType* characters, int start, int stop)
+static inline unsigned findFirstTrailingSpace(const RenderText& lastText, const CharacterType* characters, unsigned start, unsigned stop)
 {
-    int firstSpace = stop;
+    unsigned firstSpace = stop;
     while (firstSpace > start) {
         UChar current = characters[firstSpace - 1];
         if (!isCollapsibleSpace(current, lastText))
@@ -1052,7 +1062,7 @@ inline BidiRun* RenderBlockFlow::handleTrailingSpaces(BidiRunList<BidiRun>& bidi
         return nullptr;
 
     const RenderText& lastText = downcast<RenderText>(lastObject);
-    int firstSpace;
+    unsigned firstSpace;
     if (lastText.is8Bit())
         firstSpace = findFirstTrailingSpace(lastText, lastText.characters8(), trailingSpaceRun->start(), trailingSpaceRun->stop());
     else

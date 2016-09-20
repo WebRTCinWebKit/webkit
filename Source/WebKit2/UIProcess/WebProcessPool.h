@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebProcessPool_h
-#define WebProcessPool_h
+#pragma once
 
 #include "APIDictionary.h"
 #include "APIObject.h"
@@ -127,8 +126,8 @@ public:
     void removeMessageReceiver(IPC::StringReference messageReceiverName);
     void removeMessageReceiver(IPC::StringReference messageReceiverName, uint64_t destinationID);
 
-    bool dispatchMessage(IPC::Connection&, IPC::MessageDecoder&);
-    bool dispatchSyncMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&);
+    bool dispatchMessage(IPC::Connection&, IPC::Decoder&);
+    bool dispatchSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
 
     void initializeClient(const WKContextClientBase*);
     void initializeInjectedBundleClient(const WKContextInjectedBundleClientBase*);
@@ -370,6 +369,13 @@ public:
 #if ENABLE(GAMEPAD)
     void gamepadConnected(const UIGamepad&);
     void gamepadDisconnected(const UIGamepad&);
+
+    void setInitialConnectedGamepads(const Vector<std::unique_ptr<UIGamepad>>&);
+#endif
+
+#if PLATFORM(COCOA)
+    bool cookieStoragePartitioningEnabled() const { return m_cookieStoragePartitioningEnabled; }
+    void setCookieStoragePartitioningEnabled(bool);
 #endif
 
 private:
@@ -399,8 +405,8 @@ private:
 
     // IPC::MessageReceiver.
     // Implemented in generated WebProcessPoolMessageReceiver.cpp
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
-    void didReceiveSyncMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
+    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
 
     static void languageChanged(void* context);
     void languageChanged();
@@ -548,6 +554,10 @@ private:
 #if ENABLE(GAMEPAD)
     HashSet<WebProcessProxy*> m_processesUsingGamepads;
 #endif
+
+#if PLATFORM(COCOA)
+    bool m_cookieStoragePartitioningEnabled { false };
+#endif
 };
 
 template<typename T>
@@ -616,5 +626,3 @@ void WebProcessPool::sendToOneProcess(T&& message)
 }
 
 } // namespace WebKit
-
-#endif // UIProcessPool_h

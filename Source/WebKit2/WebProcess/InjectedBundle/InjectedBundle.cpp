@@ -28,10 +28,10 @@
 
 #include "APIArray.h"
 #include "APIData.h"
-#include "Arguments.h"
 #include "InjectedBundleScriptWorld.h"
 #include "NotificationPermissionRequestManager.h"
 #include "SessionTracker.h"
+#include "TextChecker.h"
 #include "UserData.h"
 #include "WKAPICast.h"
 #include "WKBundleAPICast.h"
@@ -46,6 +46,7 @@
 #include "WebPreferencesStore.h"
 #include "WebProcess.h"
 #include "WebProcessCreationParameters.h"
+#include "WebProcessMessages.h"
 #include "WebProcessPoolMessages.h"
 #include "WebUserContentController.h"
 #include <JavaScriptCore/APICast.h>
@@ -231,7 +232,8 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
     macro(WebKitEnableCaretBrowsing, CaretBrowsingEnabled, caretBrowsingEnabled) \
     macro(WebKitDisplayImagesKey, LoadsImagesAutomatically, loadsImagesAutomatically) \
     macro(WebKitMediaStreamEnabled, MediaStreamEnabled, mediaStreamEnabled) \
-    macro(WebKitHTTPEquivEnabled, HttpEquivEnabled, httpEquivEnabled)
+    macro(WebKitHTTPEquivEnabled, HttpEquivEnabled, httpEquivEnabled) \
+    macro(WebKitVisualViewportEnabled, VisualViewportEnabled, visualViewportEnabled)
 
 #define OVERRIDE_PREFERENCE_AND_SET_IN_EXISTING_PAGES(TestRunnerName, SettingsName, WebPreferencesName) \
     if (preference == #TestRunnerName) { \
@@ -302,6 +304,16 @@ void InjectedBundle::setJavaScriptCanAccessClipboard(WebPageGroupProxy* pageGrou
         (*iter)->settings().setJavaScriptCanAccessClipboard(enabled);
 }
 
+void InjectedBundle::setAutomaticLinkDetectionEnabled(WebPageGroupProxy* pageGroup, bool enabled)
+{
+#if USE(APPKIT)
+    if (enabled == TextChecker::state().isAutomaticLinkDetectionEnabled)
+        return;
+    TextChecker::setAutomaticLinkDetectionEnabled(enabled);
+    WebProcess::singleton().setTextCheckerState(TextChecker::state());
+#endif
+}
+
 void InjectedBundle::setPrivateBrowsingEnabled(WebPageGroupProxy* pageGroup, bool enabled)
 {
     if (enabled) {
@@ -313,6 +325,14 @@ void InjectedBundle::setPrivateBrowsingEnabled(WebPageGroupProxy* pageGroup, boo
     const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
     for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
         (*iter)->enableLegacyPrivateBrowsing(enabled);
+}
+
+void InjectedBundle::setUseDashboardCompatibilityMode(WebPageGroupProxy* pageGroup, bool enabled)
+{
+#if ENABLE(DASHBOARD_SUPPORT)
+    for (auto& page : PageGroup::pageGroup(pageGroup->identifier())->pages())
+        page->settings().setUsesDashboardBackwardCompatibilityMode(enabled);
+#endif
 }
 
 void InjectedBundle::setPopupBlockingEnabled(WebPageGroupProxy* pageGroup, bool enabled)

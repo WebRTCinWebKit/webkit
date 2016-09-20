@@ -36,12 +36,11 @@
 #if ENABLE(MEDIA_STREAM) && USE(OPENWEBRTC)
 #include "RealtimeMediaSourceCenterOwr.h"
 
+#include "CaptureDevice.h"
 #include "MediaStreamCreationClient.h"
 #include "MediaStreamPrivate.h"
-#include "MediaStreamTrackSourcesRequestClient.h"
 #include "NotImplemented.h"
 #include "OpenWebRTCUtilities.h"
-#include "RealtimeMediaSource.h"
 #include "RealtimeMediaSourceCapabilities.h"
 #include <owr/owr.h>
 #include <owr/owr_local.h>
@@ -88,7 +87,7 @@ RealtimeMediaSourceCenterOwr::~RealtimeMediaSourceCenterOwr()
 {
 }
 
-void RealtimeMediaSourceCenterOwr::validateRequestConstraints(MediaStreamCreationClient* client, RefPtr<MediaConstraints>& audioConstraints, RefPtr<MediaConstraints>& videoConstraints)
+void RealtimeMediaSourceCenterOwr::validateRequestConstraints(MediaStreamCreationClient* client, MediaConstraints& audioConstraints, MediaConstraints& videoConstraints)
 {
     m_client = client;
 
@@ -96,15 +95,15 @@ void RealtimeMediaSourceCenterOwr::validateRequestConstraints(MediaStreamCreatio
     // need to comply with the available audio/video device(s)
     // capabilities. See bug #123345.
     int types = OWR_MEDIA_TYPE_UNKNOWN;
-    if (audioConstraints)
+    if (audioConstraints.isValid())
         types |= OWR_MEDIA_TYPE_AUDIO;
-    if (videoConstraints)
+    if (videoConstraints.isValid())
         types |= OWR_MEDIA_TYPE_VIDEO;
 
     owr_get_capture_sources(static_cast<OwrMediaType>(types), mediaSourcesAvailableCallback, this);
 }
 
-void RealtimeMediaSourceCenterOwr::createMediaStream(PassRefPtr<MediaStreamCreationClient> prpQueryClient, PassRefPtr<MediaConstraints> audioConstraints, PassRefPtr<MediaConstraints> videoConstraints)
+void RealtimeMediaSourceCenterOwr::createMediaStream(PassRefPtr<MediaStreamCreationClient> prpQueryClient, MediaConstraints& audioConstraints, MediaConstraints& videoConstraints)
 {
     RefPtr<MediaStreamCreationClient> client = prpQueryClient;
     ASSERT(client);
@@ -115,7 +114,7 @@ void RealtimeMediaSourceCenterOwr::createMediaStream(PassRefPtr<MediaStreamCreat
     Vector<RefPtr<RealtimeMediaSource>> audioSources;
     Vector<RefPtr<RealtimeMediaSource>> videoSources;
 
-    if (audioConstraints) {
+    if (audioConstraints.isValid()) {
         // TODO: verify constraints according to registered
         // sources. For now, unconditionally pick the first source, see bug #123345.
         RefPtr<RealtimeMediaSource> audioSource = selectSource(RealtimeMediaSource::Audio);
@@ -125,7 +124,7 @@ void RealtimeMediaSourceCenterOwr::createMediaStream(PassRefPtr<MediaStreamCreat
         }
     }
 
-    if (videoConstraints) {
+    if (videoConstraints.isValid()) {
         // TODO: verify constraints according to registered
         // sources. For now, unconditionally pick the first source, see bug #123345.
         RefPtr<RealtimeMediaSource> videoSource = selectSource(RealtimeMediaSource::Video);
@@ -164,10 +163,10 @@ void RealtimeMediaSourceCenterOwr::createMediaStream(MediaStreamCreationClient* 
     client->didCreateStream(MediaStreamPrivate::create(audioSources, videoSources));
 }
 
-bool RealtimeMediaSourceCenterOwr::getMediaStreamTrackSources(PassRefPtr<MediaStreamTrackSourcesRequestClient>)
+Vector<CaptureDevice> RealtimeMediaSourceCenterOwr::getMediaStreamDevices()
 {
     notImplemented();
-    return false;
+    return Vector<CaptureDevice>();
 }
 
 static String getSourceId(OwrMediaSource* source)
@@ -255,15 +254,6 @@ PassRefPtr<RealtimeMediaSource> RealtimeMediaSourceCenterOwr::selectSource(Realt
     return selectedSource;
 }
 
-RefPtr<TrackSourceInfo> RealtimeMediaSourceCenterOwr::sourceWithUID(const String& UID, RealtimeMediaSource::Type, MediaConstraints*)
-{
-    for (auto& source : m_sourceMap.values()) {
-        if (source->id() == UID)
-            return TrackSourceInfo::create(source->persistentID(), source->id(), source->type() == RealtimeMediaSource::Type::Video ? TrackSourceInfo::SourceKind::Video : TrackSourceInfo::SourceKind::Audio , source->name());
-    }
-
-    return nullptr;
-}
 } // namespace WebCore
 
 #endif // ENABLE(MEDIA_STREAM) && USE(OPENWEBRTC)

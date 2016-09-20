@@ -53,6 +53,9 @@ class GtkPort(Port):
         super(GtkPort, self).__init__(*args, **kwargs)
         self._pulseaudio_sanitizer = PulseAudioSanitizer()
         self._wayland = self.get_option("wayland")
+        self._nativexorg = False
+        if os.environ.get("USE_NATIVE_XDISPLAY"):
+            self._nativexorg = True
 
         if self.get_option("leaks"):
             self._leakdetector = LeakDetectorValgrind(self._executive, self._filesystem, self.results_directory())
@@ -79,7 +82,7 @@ class GtkPort(Port):
     def _driver_class(self):
         if self._wayland:
             return WestonDriver
-        if os.environ.get("USE_NATIVE_XDISPLAY"):
+        if self._nativexorg:
             return XorgDriver
         return XvfbDriver
 
@@ -100,8 +103,8 @@ class GtkPort(Port):
             return self.default_timeout_ms()
         return super(GtkPort, self).driver_stop_timeout()
 
-    def setup_test_run(self):
-        super(GtkPort, self).setup_test_run()
+    def setup_test_run(self, device_class=None):
+        super(GtkPort, self).setup_test_run(device_class)
         self._pulseaudio_sanitizer.unload_pulseaudio_module()
 
         if self.get_option("leaks"):
@@ -216,7 +219,7 @@ class GtkPort(Port):
 
     def _get_crash_log(self, name, pid, stdout, stderr, newer_than):
         name = "WebKitWebProcess" if name == "WebProcess" else name
-        return GDBCrashLogGenerator(name, pid, newer_than, self._filesystem, self.path_to_script("process-linux-coredump"), self._path_to_driver).generate_crash_log(stdout, stderr)
+        return GDBCrashLogGenerator(name, pid, newer_than, self._filesystem, self._path_to_driver).generate_crash_log(stdout, stderr)
 
     def test_expectations_file_position(self):
         # GTK port baseline search path is gtk -> wk2 -> generic (as gtk-wk2 and gtk baselines are merged), so port test expectations file is at third to last position.

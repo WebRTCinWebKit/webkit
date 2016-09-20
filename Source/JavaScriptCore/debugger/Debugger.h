@@ -144,7 +144,6 @@ public:
     void didEvaluateScript(double startTime, ProfilingReason);
 
 protected:
-    virtual bool needPauseHandling(JSGlobalObject*) { return false; }
     virtual void handleBreakpointHit(JSGlobalObject*, const Breakpoint&) { }
     virtual void handleExceptionInBreakpointCondition(ExecState*, Exception*) const { }
     virtual void handlePause(JSGlobalObject*, ReasonForPause) { }
@@ -220,8 +219,8 @@ private:
 
     ReasonForPause m_reasonForPause;
     JSValue m_currentException;
-    CallFrame* m_pauseOnCallFrame;
-    CallFrame* m_currentCallFrame;
+    CallFrame* m_pauseOnCallFrame { nullptr };
+    CallFrame* m_currentCallFrame { nullptr };
     unsigned m_lastExecutedLine;
     SourceID m_lastExecutedSourceID;
 

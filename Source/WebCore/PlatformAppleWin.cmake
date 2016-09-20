@@ -55,7 +55,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/ca/win/WebTiledBackingLayerWin.cpp
     platform/graphics/ca/win/WKCACFViewLayerTreeHost.cpp
 
-    platform/graphics/cg/BitmapImageCG.cpp
     platform/graphics/cg/ColorCG.cpp
     platform/graphics/cg/FloatPointCG.cpp
     platform/graphics/cg/FloatRectCG.cpp
@@ -72,6 +71,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cg/IntPointCG.cpp
     platform/graphics/cg/IntRectCG.cpp
     platform/graphics/cg/IntSizeCG.cpp
+    platform/graphics/cg/NativeImageCG.cpp
     platform/graphics/cg/PDFDocumentImage.cpp
     platform/graphics/cg/PathCG.cpp
     platform/graphics/cg/PatternCG.cpp
@@ -103,7 +103,7 @@ list(APPEND WebCore_SOURCES
     platform/network/cf/ResourceHandleCFURLConnectionDelegate.cpp
     platform/network/cf/ResourceRequestCFNet.cpp
     platform/network/cf/ResourceResponseCFNet.cpp
-    platform/network/cf/SocketStreamHandleCFNet.cpp
+    platform/network/cf/SocketStreamHandleImplCFNet.cpp
     platform/network/cf/SynchronousLoaderClientCFNet.cpp
     platform/network/cf/SynchronousResourceHandleCFURLConnectionDelegate.cpp
 

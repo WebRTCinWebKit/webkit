@@ -28,12 +28,42 @@
 #include "TextEncoding.h"
 #include "URL.h"
 #include <wtf/Forward.h>
+#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
-    
+
+template<typename CharacterType> class CodePointIterator;
+
 class URLParser {
 public:
-    WEBCORE_EXPORT static Optional<URL> parse(const String&, const URL& = { }, const TextEncoding& = UTF8Encoding());
+    WEBCORE_EXPORT URL parse(const String&, const URL& = { }, const TextEncoding& = UTF8Encoding());
+    WEBCORE_EXPORT URL parseSerializedURL(const String&);
+    WEBCORE_EXPORT static bool allValuesEqual(const URL&, const URL&);
+
+    WEBCORE_EXPORT static bool enabled();
+    WEBCORE_EXPORT static void setEnabled(bool);
+    
+    typedef Vector<std::pair<String, String>> URLEncodedForm;
+    static URLEncodedForm parseURLEncodedForm(StringView);
+    static String serialize(const URLEncodedForm&);
+
+private:
+    URL m_url;
+    Vector<LChar> m_asciiBuffer;
+    Vector<UChar32> m_unicodeFragmentBuffer;
+    bool m_urlIsSpecial { false };
+    bool m_hostHasPercentOrNonASCII { false };
+
+    template<bool serialized, typename CharacterType> URL parse(const CharacterType*, const unsigned length, const URL&, const TextEncoding&);
+    template<bool serialized, typename CharacterType> void parseAuthority(CodePointIterator<CharacterType>);
+    template<bool serialized, typename CharacterType> bool parseHost(CodePointIterator<CharacterType>);
+    template<bool serialized, typename CharacterType> bool parsePort(CodePointIterator<CharacterType>&);
+    template<typename CharacterType> URL failure(const CharacterType*, unsigned length);
+
+    enum class URLPart;
+    void copyURLPartsUntil(const URL& base, URLPart);
+    static size_t urlLengthUntilPart(const URL&, URLPart);
+    void popPath();
 };
 
 }

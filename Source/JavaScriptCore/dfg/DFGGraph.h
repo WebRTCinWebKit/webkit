@@ -659,6 +659,12 @@ public:
         doToChildren(node, [&] (Edge edge) { result |= edge == child; });
         return result;
     }
+
+    bool isWatchingHavingABadTimeWatchpoint(Node* node)
+    {
+        JSGlobalObject* globalObject = globalObjectFor(node->origin.semantic);
+        return watchpoints().isWatched(globalObject->havingABadTimeWatchpoint());
+    }
     
     Profiler::Compilation* compilation() { return m_plan.compilation.get(); }
     
@@ -739,7 +745,7 @@ public:
                 if (reg >= exclusionStart && reg < exclusionEnd)
                     continue;
                 
-                if (liveness.get(relativeLocal))
+                if (liveness[relativeLocal])
                     functor(reg);
             }
             

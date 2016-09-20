@@ -25,9 +25,9 @@
  */
 
 #include "config.h"
+#include "MathMLPaddedElement.h"
 
 #if ENABLE(MATHML)
-#include "MathMLPaddedElement.h"
 
 #include "RenderMathMLPadded.h"
 
@@ -36,7 +36,7 @@ namespace WebCore {
 using namespace MathMLNames;
 
 inline MathMLPaddedElement::MathMLPaddedElement(const QualifiedName& tagName, Document& document)
-    : MathMLInlineContainerElement(tagName, document)
+    : MathMLRowElement(tagName, document)
 {
 }
 

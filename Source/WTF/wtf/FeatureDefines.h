@@ -66,10 +66,6 @@
 #define ENABLE_CONTEXT_MENUS 0
 #endif
 
-#if !defined(ENABLE_CSS_IMAGE_SET)
-#define ENABLE_CSS_IMAGE_SET 1
-#endif
-
 #if !defined(ENABLE_CURSOR_SUPPORT)
 #define ENABLE_CURSOR_SUPPORT 0
 #endif
@@ -157,7 +153,7 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #endif
 
 #if !defined(ENABLE_WEBASSEMBLY)
-#define ENABLE_WEBASSEMBLY 0
+#define ENABLE_WEBASSEMBLY (defined(ENABLE_B3_JIT) && ENABLE_B3_JIT)
 #endif
 
 #if !defined(ENABLE_WEBGL)
@@ -175,10 +171,6 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_CONTENT_EXTENSIONS)
 #define ENABLE_CONTENT_EXTENSIONS 1
-#endif
-
-#if !defined(ENABLE_CSS_IMAGE_SET)
-#define ENABLE_CSS_IMAGE_SET 1
 #endif
 
 #if !defined(ENABLE_DASHBOARD_SUPPORT)
@@ -223,7 +215,7 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #endif
 
 #if !defined(ENABLE_WEBASSEMBLY)
-#define ENABLE_WEBASSEMBLY 0
+#define ENABLE_WEBASSEMBLY (defined(ENABLE_B3_JIT) && ENABLE_B3_JIT)
 #endif
 
 #if !defined(ENABLE_WEB_ARCHIVE)
@@ -402,10 +394,6 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_CSS_IMAGE_RESOLUTION)
 #define ENABLE_CSS_IMAGE_RESOLUTION 0
-#endif
-
-#if !defined(ENABLE_CSS_IMAGE_SET)
-#define ENABLE_CSS_IMAGE_SET 0
 #endif
 
 #if !defined(ENABLE_CURSOR_SUPPORT)
@@ -684,20 +672,24 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_SPELLCHECK 0
 #endif
 
-#if !defined(ENABLE_STREAMS_API)
+#if !defined(ENABLE_READABLE_STREAM_API)
 #if PLATFORM(WIN)
-#define ENABLE_STREAMS_API 0
+#define ENABLE_READABLE_STREAM_API 0
 #else
-#define ENABLE_STREAMS_API 1
+#define ENABLE_READABLE_STREAM_API 1
+#endif
+#endif
+
+#if !defined(ENABLE_WRITABLE_STREAM_API)
+#if PLATFORM(WIN)
+#define ENABLE_WRITABLE_STREAM_API 0
+#else
+#define ENABLE_WRITABLE_STREAM_API 1
 #endif
 #endif
 
 #if !defined(ENABLE_SVG_FONTS)
 #define ENABLE_SVG_FONTS 1
-#endif
-
-#if !defined(ENABLE_TEXT_AUTOSIZING)
-#define ENABLE_TEXT_AUTOSIZING 0
 #endif
 
 #if !defined(ENABLE_TEXT_CARET)

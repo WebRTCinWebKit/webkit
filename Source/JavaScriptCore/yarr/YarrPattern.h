@@ -29,7 +29,6 @@
 
 #include "RegExpKey.h"
 #include <wtf/CheckedArithmetic.h>
-#include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -322,10 +321,11 @@ struct YarrPattern {
         InvalidIdentityEscape,
         TooManyDisjunctions,
         OffsetTooLarge,
+        InvalidRegularExpressionFlags,
         NumberOfErrorCodes
     };
     
-    WTF_EXPORT_PRIVATE static const char* errorMessage(ErrorCode);
+    JS_EXPORT_PRIVATE static const char* errorMessage(ErrorCode);
 
     void reset()
     {

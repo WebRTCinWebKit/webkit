@@ -146,13 +146,20 @@ bool JSDollarVMPrototype::isInHeap(Heap* heap, void* ptr)
 bool JSDollarVMPrototype::isInObjectSpace(Heap* heap, void* ptr)
 {
     MarkedBlock* candidate = MarkedBlock::blockFor(ptr);
-    return heap->objectSpace().blocks().set().contains(candidate);
+    if (heap->objectSpace().blocks().set().contains(candidate))
+        return true;
+    for (LargeAllocation* allocation : heap->objectSpace().largeAllocations()) {
+        if (allocation->contains(ptr))
+            return true;
+    }
+    return false;
 }
 
-bool JSDollarVMPrototype::isInStorageSpace(Heap* heap, void* ptr)
+bool JSDollarVMPrototype::isInStorageSpace(Heap*, void*)
 {
-    CopiedBlock* candidate = CopiedSpace::blockFor(ptr);
-    return heap->storageSpace().contains(candidate);
+    // FIXME: Do something with this.
+    // https://bugs.webkit.org/show_bug.cgi?id=161753
+    return false;
 }
 
 struct CellAddressCheckFunctor : MarkedBlock::CountFunctor {
@@ -301,9 +308,10 @@ static EncodedJSValue JSC_HOST_CALL functionPrintByteCodeFor(ExecState* exec)
 
 static EncodedJSValue JSC_HOST_CALL functionPrint(ExecState* exec)
 {
+    auto scope = DECLARE_THROW_SCOPE(exec->vm());
     for (unsigned i = 0; i < exec->argumentCount(); ++i) {
         String argStr = exec->uncheckedArgument(i).toString(exec)->value(exec);
-        if (exec->hadException())
+        if (UNLIKELY(scope.exception()))
             return JSValue::encode(jsUndefined());
         dataLog(argStr);
     }

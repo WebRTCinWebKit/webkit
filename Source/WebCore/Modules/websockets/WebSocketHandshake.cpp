@@ -50,7 +50,6 @@
 #include <wtf/ASCIICType.h>
 #include <wtf/CryptographicallyRandomNumber.h>
 #include <wtf/MD5.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/SHA1.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/StringExtras.h>
@@ -201,8 +200,8 @@ CString WebSocketHandshake::clientHandshakeMessage() const
         fields.append("Sec-WebSocket-Protocol: " + m_clientProtocol);
 
     URL url = httpURLForAuthenticationAndCookies();
-    if (m_allowCookies) {
-        String cookie = cookieRequestHeaderFieldValue(m_document, url);
+    if (m_allowCookies && m_document) {
+        String cookie = cookieRequestHeaderFieldValue(*m_document, url);
         if (!cookie.isEmpty())
             fields.append("Cookie: " + cookie);
     }
@@ -250,8 +249,8 @@ ResourceRequest WebSocketHandshake::clientHandshakeRequest() const
         request.setHTTPHeaderField(HTTPHeaderName::SecWebSocketProtocol, m_clientProtocol);
 
     URL url = httpURLForAuthenticationAndCookies();
-    if (m_allowCookies) {
-        String cookie = cookieRequestHeaderFieldValue(m_document, url);
+    if (m_allowCookies && m_document) {
+        String cookie = cookieRequestHeaderFieldValue(*m_document, url);
         if (!cookie.isEmpty())
             request.setHTTPHeaderField(HTTPHeaderName::Cookie, cookie);
     }

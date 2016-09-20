@@ -46,6 +46,7 @@
 #include "SVGElement.h"
 #include "SVGRenderStyle.h"
 #include "StyleBuilderConverter.h"
+#include "StyleCachedImage.h"
 #include "StyleFontSizeFunctions.h"
 #include "StyleGeneratedImage.h"
 #include "StyleResolver.h"
@@ -1146,7 +1147,7 @@ inline void StyleBuilderCustom::applyValueCursor(StyleResolver& styleResolver, C
     for (auto& item : list) {
         if (is<CSSCursorImageValue>(item.get())) {
             auto& image = downcast<CSSCursorImageValue>(item.get());
-            styleResolver.style()->addCursor(styleResolver.styleImage(CSSPropertyCursor, image), image.hotSpot());
+            styleResolver.style()->addCursor(styleResolver.styleImage(image), image.hotSpot());
             continue;
         }
 
@@ -1312,15 +1313,13 @@ inline void StyleBuilderCustom::applyValueContent(StyleResolver& styleResolver, 
             else
                 styleResolver.style()->setContent(StyleGeneratedImage::create(downcast<CSSImageGeneratorValue>(item.get())), didSet);
             didSet = true;
-#if ENABLE(CSS_IMAGE_SET)
         } else if (is<CSSImageSetValue>(item.get())) {
-            styleResolver.style()->setContent(styleResolver.setOrPendingFromValue(CSSPropertyContent, downcast<CSSImageSetValue>(item.get())), didSet);
+            styleResolver.style()->setContent(StyleCachedImage::create(item), didSet);
             didSet = true;
-#endif
         }
 
         if (is<CSSImageValue>(item.get())) {
-            styleResolver.style()->setContent(styleResolver.cachedOrPendingFromValue(CSSPropertyContent, downcast<CSSImageValue>(item.get())), didSet);
+            styleResolver.style()->setContent(StyleCachedImage::create(item), didSet);
             didSet = true;
             continue;
         }

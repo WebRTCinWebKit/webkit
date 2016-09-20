@@ -35,8 +35,10 @@
 #include <heap/WeakInlines.h>
 #include <runtime/JSObject.h>
 #include <wtf/Forward.h>
+#include <wtf/Function.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
+#include <wtf/text/AtomicStringHash.h>
 
 namespace JSC {
 
@@ -48,6 +50,7 @@ class PrivateName;
 namespace WebCore {
 
 class DOMWrapperWorld;
+class Document;
 class Element;
 class JSDOMGlobalObject;
 class MathMLElement;
@@ -65,7 +68,21 @@ public:
 
     void upgradeElement(Element&);
 
-    void attributeChanged(Element&, const QualifiedName&, const AtomicString& oldValue, const AtomicString& newValue);
+    void setConnectedCallback(JSC::JSObject*);
+    bool hasConnectedCallback() const { return !!m_connectedCallback; }
+    void invokeConnectedCallback(Element&);
+
+    void setDisconnectedCallback(JSC::JSObject*);
+    bool hasDisconnectedCallback() const { return !!m_disconnectedCallback; }
+    void invokeDisconnectedCallback(Element&);
+
+    void setAdoptedCallback(JSC::JSObject*);
+    bool hasAdoptedCallback() const { return !!m_adoptedCallback; }
+    void invokeAdoptedCallback(Element&, Document& oldDocument, Document& newDocument);
+
+    void setAttributeChangedCallback(JSC::JSObject* callback, const Vector<String>& observedAttributes);
+    bool observesAttribute(const AtomicString& name) const { return m_observedAttributes.contains(name); }
+    void invokeAttributeChangedCallback(Element&, const QualifiedName&, const AtomicString& oldValue, const AtomicString& newValue);
 
     ScriptExecutionContext* scriptExecutionContext() const { return ContextDestructionObserver::scriptExecutionContext(); }
     JSC::JSObject* constructor() { return m_constructor.get(); }
@@ -81,10 +98,17 @@ public:
 private:
     JSCustomElementInterface(const QualifiedName&, JSC::JSObject* callback, JSDOMGlobalObject*);
 
+    void invokeCallback(Element&, JSC::JSObject* callback, const WTF::Function<void(JSC::ExecState*, JSDOMGlobalObject*, JSC::MarkedArgumentBuffer&)>& addArguments = { });
+
     QualifiedName m_name;
-    mutable JSC::Weak<JSC::JSObject> m_constructor;
+    JSC::Weak<JSC::JSObject> m_constructor;
+    JSC::Weak<JSC::JSObject> m_connectedCallback;
+    JSC::Weak<JSC::JSObject> m_disconnectedCallback;
+    JSC::Weak<JSC::JSObject> m_adoptedCallback;
+    JSC::Weak<JSC::JSObject> m_attributeChangedCallback;
     RefPtr<DOMWrapperWorld> m_isolatedWorld;
     Vector<RefPtr<Element>, 1> m_constructionStack;
+    HashSet<AtomicString> m_observedAttributes;
 };
 
 } // namespace WebCore

@@ -1,3 +1,104 @@
+2016-09-12  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win][Direct2D] Provide Direct2D-based geometry and transform cast operations
+        https://bugs.webkit.org/show_bug.cgi?id=161818
+
+        Reviewed by Dean Jackson.
+
+        * PlatformWin.cmake: Link to Direct2D on Windows.
+
+2016-09-06  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] WebKitLegacy.framework is re-signed on incremental build even if nothing’s changed
+        https://bugs.webkit.org/show_bug.cgi?id=161642
+
+        Reviewed by Tim Horton.
+
+        * WebKit.xcodeproj/project.pbxproj:  Removed the output file listed under the
+        Symlink WebKitPluginHost script build phase, because it doesn’t produce that file on iOS.
+        With no outputs listed, the script will still run every time, but the fact that it has run
+        won’t trigger re-signing the framework.
+
+2016-08-25  Alex Christensen  <achristensen@webkit.org>
+
+        CMake build fix.
+
+        * PlatformMac.cmake:
+        Availability was spelled wrong, resulting in a missing header.
+
+2016-08-22  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac CMake build after r204717.
+
+        * PlatformMac.cmake:
+
+2016-08-22  Alex Christensen  <achristensen@webkit.org>
+
+        Mostly fix Mac CMake build after r204717.
+
+        * PlatformMac.cmake:
+
+2016-08-22  Darin Adler  <darin@apple.com>
+
+        Move Objective-C DOM bindings from WebCore to legacy WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=160654
+
+        Reviewed by Alex Christensen.
+
+        * WebKit.xcodeproj/project.pbxproj: Added the new source files to the project.
+        For now they all have project visibility, since MigrateHeaders.make takes care
+        of exporting them as public and private. Later, we can likely use the built-in
+        Xcode feature instead of that script. Also pass DOM as an acceptable prefix
+        when calling check-for-inappropriate-objc-class-names. Also sorted this file
+        with the sort-Xcode-project-file script.
+
+2016-08-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Migrate off of deprecated CoreGraphics API CGContextSelectFont() and CGContextShowTextAtPoint()
+        https://bugs.webkit.org/show_bug.cgi?id=160895
+
+        Reviewed by Dean Jackson.
+
+        Link to the existing CoreText framework.
+
+        * PlatformWin.cmake:
+
+2016-08-16  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        Unreviewed, CMake build fix
+
+        * PlatformMac.cmake:
+
+2016-08-15  Anders Carlsson  <andersca@apple.com>
+
+        Remove OldWebAssertions.c
+        https://bugs.webkit.org/show_bug.cgi?id=160862
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-08-15  Anders Carlsson  <andersca@apple.com>
+
+        Remove WebKeyGenerator
+        https://bugs.webkit.org/show_bug.cgi?id=160854
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-08-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove unused includes of wtf headers
+        https://bugs.webkit.org/show_bug.cgi?id=160839
+
+        Reviewed by Alex Christensen.
+
+        * Storage/StorageSyncManager.h:
+        * Storage/StorageThread.cpp:
+        * Storage/StorageThread.h:
+        * Storage/WebDatabaseProvider.cpp:
+
 2016-08-08  Anders Carlsson  <andersca@apple.com>
 
         Add a new PluginInfoProvider class, to replace PluginStrategy

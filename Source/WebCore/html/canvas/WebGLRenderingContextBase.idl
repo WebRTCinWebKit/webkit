@@ -39,11 +39,16 @@ typedef unrestricted float GLfloat;
 typedef unrestricted float GLclampf;
 
 [
-Conditional=WEBGL,
-DoNotCheckConstants,
-JSCustomMarkFunction,
-NoInterfaceObject,
-] interface WebGLRenderingContextBase : CanvasRenderingContext {
+    Conditional=WEBGL,
+    CustomIsReachable,
+    CustomToJSObject,
+    DoNotCheckConstants,
+    JSCustomMarkFunction,
+    NoInterfaceObject,
+] interface WebGLRenderingContextBase {
+
+    // back-reference to the canvas
+    readonly attribute HTMLCanvasElement canvas;
 
     /* ClearBufferMask */
     const GLenum DEPTH_BUFFER_BIT = 0x00000100;

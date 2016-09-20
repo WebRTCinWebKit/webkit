@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
  * Copyright (C) 2012 Intel Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -29,14 +30,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Performance_h
-#define Performance_h
+#pragma once
 
 #if ENABLE(WEB_TIMING)
 
 #include "DOMWindowProperty.h"
 #include "EventTarget.h"
-#include "PerformanceEntryList.h"
 #include "PerformanceNavigation.h"
 #include "PerformanceTiming.h"
 #include "ScriptWrappable.h"
@@ -47,9 +46,12 @@
 namespace WebCore {
 
 class Document;
+class LoadTiming;
+class PerformanceEntry;
 class ResourceRequest;
 class ResourceResponse;
 class UserTiming;
+class URL;
 
 class Performance final : public RefCounted<Performance>, public DOMWindowProperty, public EventTargetWithInlineData {
 public:
@@ -63,14 +65,14 @@ public:
     PerformanceTiming* timing() const;
     double now() const;
 
-    RefPtr<PerformanceEntryList> getEntries() const;
-    RefPtr<PerformanceEntryList> getEntriesByType(const String& entryType);
-    RefPtr<PerformanceEntryList> getEntriesByName(const String& name, const String& entryType);
+    Vector<RefPtr<PerformanceEntry>> getEntries() const;
+    Vector<RefPtr<PerformanceEntry>> getEntriesByType(const String& entryType) const;
+    Vector<RefPtr<PerformanceEntry>> getEntriesByName(const String& name, const String& entryType) const;
 
     void clearResourceTimings();
     void setResourceTimingBufferSize(unsigned);
 
-    void addResourceTiming(const String& initiatorName, Document*, const ResourceRequest&, const ResourceResponse&, double initiationTime, double finishTime);
+    void addResourceTiming(const String& initiatorName, Document*, const URL& originalURL, const ResourceResponse&, LoadTiming);
 
     using RefCounted<Performance>::ref;
     using RefCounted<Performance>::deref;
@@ -82,6 +84,8 @@ public:
     void webkitMeasure(const String& measureName, const String& startMark, const String& endMark, ExceptionCode&);
     void webkitClearMeasures(const String& measureName);
 #endif // ENABLE(USER_TIMING)
+
+    static double reduceTimeResolution(double seconds);
 
 private:
     explicit Performance(Frame&);
@@ -106,5 +110,3 @@ private:
 }
 
 #endif // ENABLE(WEB_TIMING)
-
-#endif // Performance_h

@@ -18,11 +18,11 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef CSSValue_h
-#define CSSValue_h
+#pragma once
 
 #include "ExceptionCode.h"
 #include "URLHash.h"
+#include <wtf/HashMap.h>
 #include <wtf/ListHashSet.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -32,6 +32,7 @@ namespace WebCore {
 
 class CachedResource;
 class StyleSheetContents;
+
 enum CSSPropertyID : uint16_t;
 
 // FIXME: The current CSSValue and subclasses should be turned into internal types (StyleValue).
@@ -59,9 +60,9 @@ public:
             destroy();
     }
 
-    Type cssValueType() const;
+    WEBCORE_EXPORT Type cssValueType() const;
 
-    String cssText() const;
+    WEBCORE_EXPORT String cssText() const;
 
     void setCssText(const String&, ExceptionCode&) { } // FIXME: Not implemented.
 
@@ -87,9 +88,7 @@ public:
     bool isImageGeneratorValue() const { return m_classType >= CanvasClass && m_classType <= RadialGradientClass; }
     bool isGradientValue() const { return m_classType >= LinearGradientClass && m_classType <= RadialGradientClass; }
     bool isNamedImageValue() const { return m_classType == NamedImageClass; }
-#if ENABLE(CSS_IMAGE_SET)
     bool isImageSetValue() const { return m_classType == ImageSetClass; }
-#endif
     bool isImageValue() const { return m_classType == ImageClass; }
     bool isImplicitInitialValue() const;
     bool isInheritedValue() const { return m_classType == InheritedClass; }
@@ -123,6 +122,10 @@ public:
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)
     bool isAnimationTriggerScrollValue() const { return m_classType == AnimationTriggerScrollClass; }
 #endif
+
+    bool isCustomPropertyDeclaration() const { return m_classType == CustomPropertyDeclarationClass; }
+    bool isCustomIdentValue() const { return m_classType == CustomIdentClass; }
+    bool isVariableReferenceValue() const { return m_classType == VariableReferenceClass; }
 
     bool isCSSOMSafe() const { return m_isCSSOMSafe; }
     bool isSubtypeExposedToCSSOM() const
@@ -193,15 +196,20 @@ protected:
 #endif
 
         CSSContentDistributionClass,
+        
+        // FIXME-NEWPARSER: Remove in favor of new variables implementation.
         CustomPropertyClass,
         VariableDependentClass,
         VariableClass,
 
+        // New variables implementation.
+        CustomPropertyDeclarationClass,
+        CustomIdentClass,
+        VariableReferenceClass,
+
         // List class types must appear after ValueListClass.
         ValueListClass,
-#if ENABLE(CSS_IMAGE_SET)
         ImageSetClass,
-#endif
         WebKitCSSFilterClass,
         WebKitCSSTransformClass,
 #if ENABLE(CSS_GRID_LAYOUT)
@@ -295,5 +303,3 @@ typedef HashMap<AtomicString, RefPtr<CSSValue>> CustomPropertyValueMap;
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToValueTypeName) \
     static bool isType(const WebCore::CSSValue& value) { return value.predicate; } \
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // CSSValue_h

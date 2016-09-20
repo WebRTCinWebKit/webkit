@@ -41,16 +41,19 @@ namespace IPC {
 
 #if ENABLE(DRAG_SUPPORT)
 template<> struct ArgumentCoder<WebCore::DragData> {
-    static void encode(ArgumentEncoder&, const WebCore::DragData&);
-    static bool decode(ArgumentDecoder&, WebCore::DragData&);
+    static void encode(Encoder&, const WebCore::DragData&);
+    static bool decode(Decoder&, WebCore::DragData&);
 };
 #endif
 
-void encode(ArgumentEncoder&, GtkPrintSettings*);
-bool decode(ArgumentDecoder&, GRefPtr<GtkPrintSettings>&);
+void encode(Encoder&, GtkPrintSettings*);
+bool decode(Decoder&, GRefPtr<GtkPrintSettings>&);
 
-void encode(ArgumentEncoder&, GtkPageSetup*);
-bool decode(ArgumentDecoder&, GRefPtr<GtkPageSetup>&);
+void encode(Encoder&, GtkPageSetup*);
+bool decode(Decoder&, GRefPtr<GtkPageSetup>&);
+
+void encode(Encoder&, const WebCore::DataObjectGtk*);
+bool decode(Decoder&, RefPtr<WebCore::DataObjectGtk>&);
 
 } // namespace IPC
 
