@@ -1,3 +1,60 @@
+2016-09-20  Alex Christensen  <achristensen@webkit.org>
+
+        Require WTFMove for String::adopt
+        https://bugs.webkit.org/show_bug.cgi?id=162313
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::removeCharacters):
+        (WTF::StringImpl::simplifyMatchedCharactersToSpace):
+        (WTF::StringImpl::adopt):
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::adopt):
+        * wtf/text/WTFString.h:
+        (WTF::String::adopt):
+
+2016-09-20  Filip Pizlo  <fpizlo@apple.com>
+
+        Make MarkedBlock state tracking support overlapped allocation and marking state
+        https://bugs.webkit.org/show_bug.cgi?id=161581
+
+        Reviewed by Geoffrey Garen.
+        
+        The main change here is to bring back FastBitVector.cpp, so that I could outline some
+        large slow path functions. This also adds some utilities, like atomicSetAndCheck() and
+        isEmpty(). The GC uses these.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/FastBitVector.cpp: Added.
+        (WTF::FastBitVectorWordOwner::setEqualsSlow):
+        (WTF::FastBitVectorWordOwner::resizeSlow):
+        * wtf/FastBitVector.h:
+        (WTF::FastBitVectorWordOwner::operator=):
+        (WTF::FastBitVectorWordOwner::resize):
+        (WTF::FastBitVectorImpl::isEmpty):
+        (WTF::FastBitVector::atomicSetAndCheck):
+        (WTF::FastBitVector::operator[]): Deleted.
+
+2016-09-20  Jonathan Bedard  <jbedard@apple.com>
+
+        Undefined behavior: Left shift negative number
+        https://bugs.webkit.org/show_bug.cgi?id=161866
+
+        Reviewed by Keith Miller.
+
+        Left shifting a negative number is undefined behavior in C/C++, although most implementations do define it. Explicitly clarifying the intended behavior due to shifting negative number in some cases.
+
+        * wtf/text/Base64.cpp:
+        (WTF::base64EncodeInternal): Changed signed character to unsigned when shifting.
+        (WTF::base64Encode): Ditto.
+        (WTF::base64URLEncode): Ditto.
+        (WTF::base64DecodeInternal): Ditto.
+        * wtf/text/Base64.h: Ditto.
+        (WTF::SignedOrUnsignedCharVectorAdapter): Rebuilt to stop using union as a bitwise_cast.
+        (WTF::ConstSignedOrUnsignedCharVectorAdapter): Ditto.
+
 2016-09-19  Daniel Bates  <dabates@apple.com>
 
         Remove ENABLE(TEXT_AUTOSIZING) automatic text size adjustment code

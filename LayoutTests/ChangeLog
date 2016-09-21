@@ -1,3 +1,127 @@
+2016-09-21  Chris Dumez  <cdumez@apple.com>
+
+        Import html/syntax web platform tests
+        https://bugs.webkit.org/show_bug.cgi?id=162331
+
+        Reviewed by Youenn Fablet.
+
+        * tests-options.json:
+
+2016-09-20  Nan Wang  <n_wang@apple.com>
+
+        AX: AppleVisUser: VO can't navigate web dialogs iOS10
+        https://bugs.webkit.org/show_bug.cgi?id=162322
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/ios-simulator/dialog-did-become-focused-expected.txt: Added.
+        * accessibility/ios-simulator/dialog-did-become-focused.html: Added.
+
+2016-09-20  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r204552): Athlete search on Strava gives bad rendering.
+        https://bugs.webkit.org/show_bug.cgi?id=162250
+
+        Reviewed by Simon Fraser.
+
+        While computing the size of a particular layer, we unite the content size and the descendant layers' size.
+        If a descendant layer is positioned far off, the computed rectangle might not fully cover the original rectangles.
+        This happens when the 2 rectangles' distance is close to the maximum LayoutUnit value.
+        It's fairly common technic to put some content offscreen (top: -99999999px;). In order to keep the main content
+        visible, we need to ensure that the parent layer never gets cut off, while uniting it with the descendant layers.
+
+        * fast/layers/blank-content-when-child-layer-is-at-negative-big-number-expected.html: Added.
+        * fast/layers/blank-content-when-child-layer-is-at-negative-big-number.html: Added.
+
+2016-09-20  Jer Noble  <jer.noble@apple.com>
+
+        [media-source] Fix imported/w3c/web-platform-tests/media-source/mediasource-appendwindow.html
+        https://bugs.webkit.org/show_bug.cgi?id=162306
+
+        Reviewed by Darin Adler.
+
+        * platform/mac/TestExpectations:
+
+2016-09-20  Jer Noble  <jer.noble@apple.com>
+
+        [media-source] Fix imported/w3c/web-platform-tests/media-source/mediasource-preload.html
+        https://bugs.webkit.org/show_bug.cgi?id=162304
+
+        Reviewed by Darin Adler.
+
+        * platform/mac/TestExpectations:
+
+2016-09-20  Nan Wang  <n_wang@apple.com>
+
+        AX: voiceover does not read contents of input role="spinbutton"
+        https://bugs.webkit.org/show_bug.cgi?id=162137
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/ios-simulator/spinbutton-expected.txt:
+        * accessibility/ios-simulator/spinbutton.html:
+
+2016-09-20  Alex Christensen  <achristensen@webkit.org>
+
+        Non-special URLs should have an opaque origin
+        https://bugs.webkit.org/show_bug.cgi?id=162254
+
+        Reviewed by Sam Weinig.
+
+        * http/tests/security/postMessage/invalid-origin-throws-exception-expected.txt:
+        * http/tests/security/postMessage/invalid-origin-throws-exception.html:
+
+2016-09-20  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-grid] The 'grid' shorthand has a new syntax.
+        https://bugs.webkit.org/show_bug.cgi?id=161954
+
+        Reviewed by Darin Adler.
+
+        Adapted the already defined test cases to the new syntax of the
+        'grid' shorthand. Also added a few additional test cases.
+
+        * fast/css-grid-layout/grid-shorthand-get-set-expected.txt:
+        * fast/css-grid-layout/grid-shorthand-get-set.html:
+
+2016-09-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking js/regress-139548.html as a flaky timeout on mac-wk2 debug.
+        https://bugs.webkit.org/show_bug.cgi?id=160017
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-09-20  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: adopt Object.awaitEvent in LayoutTests/inspector/model
+        https://bugs.webkit.org/show_bug.cgi?id=162074
+
+        Reviewed by Brian Burg.
+
+        Replace instances of singleFireEventListener with awaitEvent and use promise logic to make
+        tests more readable.
+
+        * inspector/model/frame-extra-scripts.html:
+        * inspector/model/scope-chain-node.html:
+        * inspector/model/script-resource-relationship-expected.txt:
+        * inspector/model/script-resource-relationship.html:
+        * inspector/model/stack-trace.html:
+
+2016-09-20  Jer Noble  <jer.noble@apple.com>
+
+        [media-source] Support MediaSource.setLiveSeekableRanges()
+        https://bugs.webkit.org/show_bug.cgi?id=162252
+
+        Reviewed by Sam Weinig.
+
+        * platform/mac/TestExpectations:
+        * platform/mac/imported/w3c/web-platform-tests/media-source/interfaces-expected.txt:
+        * platform/mac-wk1/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+
 2016-09-19  Devin Rousso  <dcrousso+webkit@gmail.com>
 
         Web Inspector: adopt Object.awaitEvent in LayoutTests/inspector/css

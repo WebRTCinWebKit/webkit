@@ -145,6 +145,8 @@ public:
     ResourceTimingInformation& resourceTimingInformation() { return m_resourceTimingInfo; }
 #endif
 
+    bool isAlwaysOnLoggingAllowed() const;
+
 private:
     explicit CachedResourceLoader(DocumentLoader*);
 
@@ -161,6 +163,7 @@ private:
 
     bool shouldContinueAfterNotifyingLoadedFromMemoryCache(const CachedResourceRequest&, CachedResource*);
     bool checkInsecureContent(CachedResource::Type, const URL&) const;
+    bool allowedByContentSecurityPolicy(CachedResource::Type, const URL&, const ResourceLoaderOptions&, bool);
 
     void performPostLoadActions();
 

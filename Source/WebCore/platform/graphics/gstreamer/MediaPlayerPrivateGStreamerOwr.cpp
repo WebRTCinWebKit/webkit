@@ -115,7 +115,7 @@ float MediaPlayerPrivateGStreamerOwr::currentTime() const
     if (static_cast<GstClockTime>(position) != GST_CLOCK_TIME_NONE)
         result = static_cast<double>(position) / GST_SECOND;
 
-    GST_DEBUG("Position %" GST_TIME_FORMAT, GST_TIME_ARGS(position));
+    GST_LOG("Position %" GST_TIME_FORMAT, GST_TIME_ARGS(position));
     gst_query_unref(query);
 
     return result;
@@ -148,7 +148,7 @@ void MediaPlayerPrivateGStreamerOwr::load(MediaStreamPrivate& streamPrivate)
     if (streamPrivate.hasAudio() && !m_audioSink)
         createGSTAudioSinkBin();
 
-    GST_DEBUG("Loading MediaStreamPrivate %p", &streamPrivate);
+    GST_DEBUG("Loading MediaStreamPrivate %p video: %s, audio: %s", &streamPrivate, streamPrivate.hasVideo() ? "yes":"no", streamPrivate.hasAudio() ? "yes":"no");
 
     m_streamPrivate = &streamPrivate;
     if (!m_streamPrivate->active()) {
@@ -188,6 +188,7 @@ void MediaPlayerPrivateGStreamerOwr::load(MediaStreamPrivate& streamPrivate)
 void MediaPlayerPrivateGStreamerOwr::loadingFailed(MediaPlayer::NetworkState error)
 {
     if (m_networkState != error) {
+        GST_WARNING("Loading failed, error: %d", error);
         m_networkState = error;
         m_player->networkStateChanged();
     }
@@ -302,6 +303,7 @@ void MediaPlayerPrivateGStreamerOwr::maybeHandleChangeMutedState(MediaStreamTrac
     auto realTimeMediaSource = reinterpret_cast<RealtimeMediaSourceOwr*>(&track.source());
     auto mediaSource = OWR_MEDIA_SOURCE(realTimeMediaSource->mediaSource());
 
+    GST_DEBUG("%s track now %s", track.type() == RealtimeMediaSource::Audio ? "audio":"video", realTimeMediaSource->muted() ? "muted":"un-muted");
     switch (track.type()) {
     case RealtimeMediaSource::Audio:
         if (!realTimeMediaSource->muted()) {
@@ -364,7 +366,8 @@ void MediaPlayerPrivateGStreamerOwr::setSize(const IntSize& size)
         return;
 
     MediaPlayerPrivateGStreamerBase::setSize(size);
-    g_object_set(m_videoRenderer.get(), "width", size.width(), "height", size.height(), nullptr);
+    if (m_videoRenderer)
+        g_object_set(m_videoRenderer.get(), "width", size.width(), "height", size.height(), nullptr);
 }
 
 } // namespace WebCore

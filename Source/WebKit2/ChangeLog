@@ -1,3 +1,146 @@
+2016-09-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Clean up DataObjectGtk handling
+        https://bugs.webkit.org/show_bug.cgi?id=162267
+
+        Reviewed by Michael Catanzaro.
+
+        In some cases the ownership of DataObjectGtk instances is not clear enough, and we have hacks to avoid memory
+        leaks because of that.
+
+        * Shared/gtk/ArgumentCodersGtk.cpp:
+        (IPC::encodeImage): Use Image instead of GdkPixbuf.
+        (IPC::decodeImage): Ditto.
+        (IPC::ArgumentCoder<DataObjectGtk>::encode):
+        (IPC::ArgumentCoder<DataObjectGtk>::decode):
+        (IPC::encode): Deleted.
+        (IPC::decode): Deleted.
+        (IPC::ArgumentCoder<DragData>::encode): Deleted.
+        (IPC::ArgumentCoder<DragData>::decode): Deleted.
+        * Shared/gtk/ArgumentCodersGtk.h:
+        * Shared/gtk/PasteboardContent.cpp:
+        (WebKit::PasteboardContent::PasteboardContent): Add empty constructor that creates a new DataObjectGtk, a
+        constructor that receives a const reference and another one that takes the ownership of the given DataObjectGtk.
+        (WebKit::PasteboardContent::encode):
+        (WebKit::PasteboardContent::decode):
+        * Shared/gtk/PasteboardContent.h: Use Ref instead of RefPtr for the DataObjectGtk member.
+        * UIProcess/API/gtk/PageClientImpl.cpp:
+        (WebKit::PageClientImpl::startDrag): Transfer the DataObjectGtk to the DragAndDropHandler, instead of using DragData.
+        * UIProcess/API/gtk/PageClientImpl.h:
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::performDragControllerAction): Instead of sending a DragData object to the web process,
+        send the DataObjectGtk and DragData members needed as parameters.
+        (WebKit::WebPageProxy::startDrag): Transfer the received DataObjectGtk to page client, instead of using
+        DragData. Also notify the web process that drag started.
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in: Update StartDrag message parameters.
+        * UIProcess/gtk/DragAndDropHandler.cpp:
+        (WebKit::DragAndDropHandler::DragAndDropHandler): Remove unneeded initialization.
+        (WebKit::DragAndDropHandler::startDrag): Take ownership of the given DataObjectGtk.
+        * UIProcess/gtk/DragAndDropHandler.h:
+        * UIProcess/gtk/WebPasteboardProxyGtk.cpp:
+        (WebKit::WebPasteboardProxy::writeToClipboard):
+        (WebKit::WebPasteboardProxy::readFromClipboard):
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::writeToClipboard):
+        (WebKit::WebPlatformStrategies::readFromClipboard):
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.h:
+        * WebProcess/WebCoreSupport/gtk/WebDragClientGtk.cpp:
+        (WebKit::convertCairoSurfaceToShareableBitmap):
+        (WebKit::WebDragClient::startDrag): Do not create a DragData and pass the DataObjectGtk directly to the
+        message. Also notify the WebPage that drag is about to start.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::performDragControllerAction): Remove explicit DataObjectGtk derefs and simply create a
+        DragData using the DataObjectGtk pointer as platform data.
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in: Update PerformDragControllerAction message parameters.
+
+2016-09-20  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] ewk_context_menu_item_select test have been failed
+        https://bugs.webkit.org/show_bug.cgi?id=162143
+
+        Reviewed by Gyuyoung Kim.
+
+        ewk_context_menu_item_select has been waited until test page loading is finished, but it is
+        unnecessary to wait the loading is finished. It would be good to pass if *testFinished*
+        flag is true.
+
+        * UIProcess/API/efl/tests/test_ewk2_context_menu.cpp:
+        (EWK2ContextMenuTest::checkBasicContextMenuItem):
+        (EWK2ContextMenuTest::testContextMenu):
+        (TEST_F):
+
+2016-09-20  Keith Rollin  <krollin@apple.com>
+
+        Add new logging for network resource loading
+        https://bugs.webkit.org/show_bug.cgi?id=162237
+
+        Reviewed by Antti Koivisto.
+
+        Add new logging along the non-main path for resource loading. This
+        logging should allow us to differentiate between lack-of-logging due
+        execution along a path that doesn't have logging statements and
+        lack-of-logging due to a hung process.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::start):
+        (WebKit::NetworkResourceLoader::startNetworkLoad):
+        (WebKit::NetworkResourceLoader::setDefersLoading):
+        (WebKit::NetworkResourceLoader::abort):
+        (WebKit::NetworkResourceLoader::didReceiveBuffer):
+        * NetworkProcess/NetworkResourceLoader.h:
+        * WebProcess/Network/WebLoaderStrategy.cpp:
+        (WebKit::WebLoaderStrategy::loadResource):
+        (WebKit::WebLoaderStrategy::scheduleLoad):
+
+2016-09-20  Anders Carlsson  <andersca@apple.com>
+
+        Can't present a payment sheet if a sheet is already active in another window
+        https://bugs.webkit.org/show_bug.cgi?id=162314
+        rdar://problem/27643511
+
+        Reviewed by Tim Horton.
+
+        Instead of keeping track of whether a sheet is active or not, keep track of its underlying payment coordinator proxy,
+        so we can hide it and send a cancel event to WebCore if another sheet is being presented.
+
+        * UIProcess/ApplePay/WebPaymentCoordinatorProxy.cpp:
+        (WebKit::WebPaymentCoordinatorProxy::~WebPaymentCoordinatorProxy):
+        (WebKit::WebPaymentCoordinatorProxy::showPaymentUI):
+        (WebKit::WebPaymentCoordinatorProxy::didReachFinalState):
+
+2016-09-20  Keith Rollin  <krollin@apple.com>
+
+        Adjust current networking logging
+        https://bugs.webkit.org/show_bug.cgi?id=162235
+
+        Reviewed by Antti Koivisto.
+
+        Update the "always on" network logging in order to better track the
+        loading of a particular resource and to better bind together the
+        resources downloaded for a particular page and frame. Do this by
+        consistently logging pageID, frameID, and resourceID.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::didFinishLoading):
+        (WebKit::NetworkResourceLoader::didFailLoading):
+        (WebKit::NetworkResourceLoader::continueWillSendRequest):
+        * WebProcess/Network/WebLoaderStrategy.cpp:
+        (WebKit::WebLoaderStrategy::scheduleLoad):
+        (WebKit::WebLoaderStrategy::startLocalLoad):
+        * WebProcess/Network/WebResourceLoader.cpp:
+        (WebKit::WebResourceLoader::create):
+        (WebKit::WebResourceLoader::WebResourceLoader):
+        (WebKit::WebResourceLoader::willSendRequest):
+        (WebKit::WebResourceLoader::didReceiveResponse):
+        (WebKit::WebResourceLoader::didReceiveData):
+        (WebKit::WebResourceLoader::didFinishResourceLoad):
+        (WebKit::WebResourceLoader::didFailResourceLoad):
+        (WebKit::WebResourceLoader::didReceiveResource):
+        * WebProcess/Network/WebResourceLoader.h:
+
 2016-09-19  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         Add a unit test covering <https://trac.webkit.org/changeset/205983>

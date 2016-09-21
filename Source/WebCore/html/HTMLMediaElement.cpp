@@ -4836,6 +4836,11 @@ Ref<TimeRanges> HTMLMediaElement::played()
 
 Ref<TimeRanges> HTMLMediaElement::seekable() const
 {
+#if ENABLE(MEDIA_SOURCE)
+    if (m_mediaSource)
+        return m_mediaSource->seekable();
+#endif
+
     if (m_player)
         return TimeRanges::create(*m_player->seekable());
 
@@ -6509,7 +6514,7 @@ bool HTMLMediaElement::mediaPlayerShouldWaitForResponseToAuthenticationChallenge
     return true;
 }
 
-String HTMLMediaElement::mediaPlayerSourceApplicationIdentifier() const
+String HTMLMediaElement::sourceApplicationIdentifier() const
 {
     if (Frame* frame = document().frame()) {
         if (NetworkingContext* networkingContext = frame->loader().networkingContext())

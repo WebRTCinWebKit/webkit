@@ -1,3 +1,171 @@
+2016-09-20  Alex Christensen  <achristensen@webkit.org>
+
+        Optimize URLParser
+        https://bugs.webkit.org/show_bug.cgi?id=162105
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2016-09-20  Aakash Jain  <aakash_jain@apple.com>
+
+        enable remote_api (for debugging) in flakiness dashboard app
+        https://bugs.webkit.org/show_bug.cgi?id=162325
+
+        Reviewed by Alexey Proskuryakov.
+
+        * TestResultServer/app.yaml: enabled remote_api and datastore_admin.
+
+2016-09-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r206180.
+
+        Roll r206178 back in as the necessary changes have been made
+        on the build master.
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r206178."
+        https://bugs.webkit.org/show_bug.cgi?id=162249
+        http://trac.webkit.org/changeset/206180
+
+2016-09-20  Alexey Proskuryakov  <ap@apple.com>
+
+        Use a hardcoded patch for sRGB color profile
+        https://bugs.webkit.org/show_bug.cgi?id=162320
+        rdar://problem/28387318
+
+        Reviewed by Simon Fraser.
+
+        This is a workaround for rdar://problem/28392768
+
+        * DumpRenderTree/mac/LayoutTestHelper.m:
+        (installLayoutTestColorProfile):
+
+2016-09-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r206178.
+
+        This change caused buildbot config issues.
+
+        Reverted changeset:
+
+        "Add Sierra bots to buildbot and dashboard."
+        https://bugs.webkit.org/show_bug.cgi?id=162249
+        http://trac.webkit.org/changeset/206178
+
+2016-09-20  Dean Johnson  <dean_johnson@apple.com>
+
+        Add Sierra bots to buildbot and dashboard.
+        https://bugs.webkit.org/show_bug.cgi?id=162249
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot):
+
+2016-09-20  Alex Christensen  <achristensen@webkit.org>
+
+        Reduce allocations in URLParser
+        https://bugs.webkit.org/show_bug.cgi?id=162241
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+        (TestWebKitAPI::checkURL):
+
+2016-09-20  Alex Christensen  <achristensen@webkit.org>
+
+        Align URLParser with web platform tests when parsing non-special relative URLs ending in AuthorityOrHost state
+        https://bugs.webkit.org/show_bug.cgi?id=162251
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::checkURL):
+        (TestWebKitAPI::TEST_F):
+        (TestWebKitAPI::checkRelativeURL):
+        (TestWebKitAPI::checkURLDifferences):
+        (TestWebKitAPI::checkRelativeURLDifferences):
+
+2016-09-20  Alex Christensen  <achristensen@webkit.org>
+
+        URLParser should allow '@' in user
+        https://bugs.webkit.org/show_bug.cgi?id=162272
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2016-09-20  Alex Christensen  <achristensen@webkit.org>
+
+        URLParser: Fix parsing relative URLs with one slash after the scheme:
+        https://bugs.webkit.org/show_bug.cgi?id=162294
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2016-09-20  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Windows file URL quirks in URLParser
+        https://bugs.webkit.org/show_bug.cgi?id=162303
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2016-09-20  Filip Pizlo  <fpizlo@apple.com>
+
+        Make MarkedBlock state tracking support overlapped allocation and marking state
+        https://bugs.webkit.org/show_bug.cgi?id=161581
+
+        Reviewed by Geoffrey Garen.
+        
+        Remove the always-trigger-copy-phase configuration.
+
+        * Scripts/run-jsc-stress-tests:
+
+2016-09-20  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [WinCairo] Use find_package cairo in build
+        https://bugs.webkit.org/show_bug.cgi?id=162239
+
+        Reviewed by Alex Christensen.
+
+        * DumpRenderTree/PlatformWin.cmake:
+        * TestWebKitAPI/PlatformWin.cmake:
+
+2016-09-20  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed build fix on 10.10 bots.
+
+        * TestWebKitAPI/mac/TestWKWebViewMac.h:
+
+2016-09-20  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        VideoControlsManager.VideoControlsManagerSingleLargeVideo fails intermittently on the Mac WK2 bot
+        https://bugs.webkit.org/show_bug.cgi?id=162255
+
+        Reviewed by Jer Noble.
+
+        This is reproducible by running the test repeatedly in a for loop (locally, I observed that running the test
+        back-to-back would result in the second one failing). This suggests that even on the runloop after the video
+        starts playing, the state of the playback controls manager may not be up to date in the UI process. Instead, we
+        can just spin the runloop until the playback controls are shown, which makes back-to-back tests to succeed and
+        will probably address flakiness on the bots for this test.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/VideoControlsManager.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/large-video-with-audio.html:
+
 2016-09-20  Per Arne Vollan  <pvollan@apple.com>
 
         [Win] Run layout tests in parallel.

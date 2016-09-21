@@ -1297,7 +1297,7 @@ static void appendStringToResult(NSMutableString *result, NSString *string)
     if (![self stringValueShouldBeUsedInLabel])
         return m_object->stringValue();
     
-    if (m_object->isProgressIndicator() || m_object->isSlider()) {
+    if (m_object->isRangeControl()) {
         // Prefer a valueDescription if provided by the author (through aria-valuetext).
         String valueDescription = m_object->valueDescription();
         if (!valueDescription.isEmpty())
@@ -1891,6 +1891,12 @@ static RenderObject* rendererForView(WAKView* view)
             // webkit.org/b/162041 Taking focus onto elements inside a details node will cause VO focusing onto random items.
             if ([self detailParentForObject:object])
                 break;
+            
+            // webkit.org/b/162322 When a dialog is focusable, allowing focusing onto the dialog node will cause VO cursor jumping
+            // back and forward while navigating its children.
+            if ([object->wrapper() accessibilityIsDialog])
+                break;
+            
             object->setFocused(true);
             break;
         }

@@ -27,13 +27,12 @@
 #define IncrementalSweeper_h
 
 #include "HeapTimer.h"
-#include "MarkedBlock.h"
 #include <wtf/Vector.h>
 
 namespace JSC {
 
 class Heap;
-class MarkedBlock;
+class MarkedAllocator;
 
 class IncrementalSweeper : public HeapTimer {
     WTF_MAKE_FAST_ALLOCATED;
@@ -56,7 +55,7 @@ private:
     void scheduleTimer();
     void cancelTimer();
     
-    Vector<MarkedBlock::Handle*>& m_blocksToSweep;
+    MarkedAllocator* m_currentAllocator;
 #endif
 };
 

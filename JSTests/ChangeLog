@@ -1,3 +1,67 @@
+2016-09-20  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Do not use EagerRun on tests counting recompilation
+        https://bugs.webkit.org/show_bug.cgi?id=162248
+
+        Reviewed by Geoffrey Garen.
+
+        This patch adds defaultNoEagerRun to all the tests
+        for which recompilation is the symptom of a bug.
+        The reason is that an OSR Exit can be unrelated to the tested
+        nodes when we are running in Eager mode.
+
+        * stress/arith-abs-on-various-types.js:
+        * stress/arith-ceil-on-various-types.js:
+        * stress/arith-clz32-on-various-types.js:
+        * stress/arith-cos-on-various-types.js:
+        * stress/arith-floor-on-various-types.js:
+        * stress/arith-fround-on-various-types.js:
+        * stress/arith-log-on-various-types.js:
+        * stress/arith-round-on-various-types.js:
+        * stress/arith-sin-on-various-types.js:
+        * stress/arith-sqrt-on-various-types.js:
+        * stress/arith-tan-on-various-types.js:
+        * stress/arith-trunc-on-various-types.js:
+
+        * stress/compare-strict-eq-on-various-types.js:
+        (testAllTypesCall):
+        The value 2 came from the other tests.
+        CompareStrictEq supports many more cases, the worst case
+        is bool->int->int52->number->polymorphic.
+
+2016-09-20  Filip Pizlo  <fpizlo@apple.com>
+
+        Make MarkedBlock state tracking support overlapped allocation and marking state
+        https://bugs.webkit.org/show_bug.cgi?id=161581
+
+        Reviewed by Geoffrey Garen.
+        
+        Add a microbenchmark for why we want to reclaim empty blocks from other allocators.
+
+        * microbenchmarks/switching-size-classes.js: Added.
+
+2016-09-20  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed, added test for x86 32-bit failure for HasOwnProperty node in DFG.
+
+        * stress/has-own-property-called-on-non-object.js: Added.
+        (let.objs):
+        (new.String):
+        (foo):
+
+2016-09-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Add `typeof value === "symbol"` handling to bytecode compiler
+        https://bugs.webkit.org/show_bug.cgi?id=162253
+
+        Reviewed by Sam Weinig.
+
+        * microbenchmarks/is-symbol-mixed.js: Added.
+        (isSymbol):
+        (i.let.pair.of.list.String):
+        * microbenchmarks/is-symbol.js: Added.
+        (isSymbol):
+
 2016-09-19  Saam Barati  <sbarati@apple.com>
 
         Make HasOwnProperty faster
