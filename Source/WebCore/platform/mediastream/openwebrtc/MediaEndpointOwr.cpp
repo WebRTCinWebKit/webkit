@@ -38,6 +38,7 @@
 #include "NotImplemented.h"
 #include "OpenWebRTCUtilities.h"
 #include "RTCDataChannelHandler.h"
+#include "PeerConnectionStates.h"
 #include "RealtimeMediaSourceOwr.h"
 #include <owr/owr.h>
 #include <owr/owr_audio_payload.h>
@@ -239,6 +240,7 @@ MediaEndpoint::UpdateResult MediaEndpointOwr::updateReceiveConfiguration(MediaEn
         owr_transport_agent_add_session(m_transportAgent, session);
     }
 
+    owr_transport_agent_start(m_transportAgent);
     m_numberOfReceivePreparedSessions = m_transceivers.size();
 
     return UpdateResult::Success;
@@ -313,6 +315,14 @@ MediaEndpoint::UpdateResult MediaEndpointOwr::updateSendConfiguration(MediaEndpo
 
         owr_media_session_set_send_payload(OWR_MEDIA_SESSION(session), sendPayload);
         owr_media_session_set_send_source(OWR_MEDIA_SESSION(session), source->mediaSource());
+
+        const Vector<unsigned> receiveSsrcs = mdesc.ssrcs;
+        if (receiveSsrcs.size()) {
+            g_object_set(session, "receive-ssrc", receiveSsrcs[0], nullptr);
+            if (receiveSsrcs.size() == 2) {
+                g_object_set(session, "receive-rtx-ssrc", receiveSsrcs[1], nullptr);
+            }
+        }
 
         m_numberOfSendPreparedSessions = i + 1;
     }
@@ -559,7 +569,23 @@ void MediaEndpointOwr::ensureTransportAgentAndTransceivers(bool isInitiator, con
     ASSERT(m_dtlsCertificate);
 
     if (!m_transportAgent) {
-        m_transportAgent = owr_transport_agent_new(false);
+        OwrBundlePolicyType bundlePolicy = OWR_BUNDLE_POLICY_TYPE_BALANCED;
+
+        switch (m_configuration->bundlePolicy) {
+        case PeerConnectionStates::BundlePolicy::Balanced:
+            bundlePolicy = OWR_BUNDLE_POLICY_TYPE_BALANCED;
+            break;
+        case PeerConnectionStates::BundlePolicy::MaxCompat:
+            bundlePolicy = OWR_BUNDLE_POLICY_TYPE_MAX_COMPAT;
+            break;
+        case PeerConnectionStates::BundlePolicy::MaxBundle:
+            bundlePolicy = OWR_BUNDLE_POLICY_TYPE_MAX_BUNDLE;
+            break;
+        default:
+            ASSERT_NOT_REACHED();
+        };
+
+        m_transportAgent = owr_transport_agent_new(false, bundlePolicy);
 
         ASSERT(m_configuration);
         for (auto& server : m_configuration->iceServers) {
