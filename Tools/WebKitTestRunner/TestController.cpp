@@ -57,6 +57,7 @@
 #include <WebKit/WKProtectionSpace.h>
 #include <WebKit/WKRetainPtr.h>
 #include <WebKit/WKSecurityOriginRef.h>
+#include <WebKit/WKTextChecker.h>
 #include <WebKit/WKUserMediaPermissionCheck.h>
 #include <algorithm>
 #include <cstdio>
@@ -78,10 +79,6 @@
 #if PLATFORM(COCOA)
 #include <WebKit/WKContextPrivateMac.h>
 #include <WebKit/WKPagePrivateMac.h>
-#endif
-
-#if !PLATFORM(COCOA)
-#include <WebKit/WKTextChecker.h>
 #endif
 
 namespace WTR {
@@ -1083,6 +1080,7 @@ TestCommand parseInputLine(const std::string& inputLine)
 
 bool TestController::runTest(const char* inputLine)
 {
+    WKTextCheckerSetTestingMode(true);
     TestCommand command = parseInputLine(std::string(inputLine));
 
     m_state = RunningTest;
@@ -1675,14 +1673,25 @@ void TestController::downloadDidStart(WKContextRef context, WKDownloadRef downlo
 
 WKStringRef TestController::decideDestinationWithSuggestedFilename(WKContextRef, WKDownloadRef, WKStringRef filename, bool*& allowOverwrite)
 {
+    String suggestedFilename = toWTFString(filename);
+
     StringBuilder builder;
     builder.append("Downloading URL with suggested filename \"");
-    builder.append(toWTFString(filename));
+    builder.append(suggestedFilename);
     builder.append("\"\n");
 
     m_currentInvocation->outputText(builder.toString());
 
-    return nullptr;
+    const char* dumpRenderTreeTemp = libraryPathForTesting();
+    if (!dumpRenderTreeTemp)
+        return nullptr;
+
+    *allowOverwrite = true;
+    String temporaryFolder = String::fromUTF8(dumpRenderTreeTemp);
+    if (suggestedFilename.isEmpty())
+        suggestedFilename = "Unknown";
+
+    return toWK(temporaryFolder + "/" + suggestedFilename).leakRef();
 }
 
 void TestController::downloadDidFinish(WKContextRef, WKDownloadRef)

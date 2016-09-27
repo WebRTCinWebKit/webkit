@@ -1553,14 +1553,15 @@ private:
 
     void compileValueAdd()
     {
-        JITAddIC* addIC = codeBlock()->addJITAddIC();
+        ArithProfile* arithProfile = m_ftlState.graph.baselineCodeBlockFor(m_node->origin.semantic)->arithProfileForBytecodeOffset(m_node->origin.semantic.bytecodeIndex);
+        JITAddIC* addIC = codeBlock()->addJITAddIC(arithProfile);
         auto repatchingFunction = operationValueAddOptimize;
         auto nonRepatchingFunction = operationValueAdd;
         compileMathIC(addIC, repatchingFunction, nonRepatchingFunction);
     }
 
     template <typename Generator>
-    void compileMathIC(JITMathIC<Generator>* mathIC, FunctionPtr repatchingFunction, FunctionPtr nonRepatchingFunction)
+    void compileMathIC(JITBinaryMathIC<Generator>* mathIC, FunctionPtr repatchingFunction, FunctionPtr nonRepatchingFunction)
     {
         Node* node = m_node;
         
@@ -1593,10 +1594,9 @@ private:
 #endif
 
                 Box<MathICGenerationState> mathICGenerationState = Box<MathICGenerationState>::create();
-                ArithProfile* arithProfile = state->graph.baselineCodeBlockFor(node->origin.semantic)->arithProfileForBytecodeOffset(node->origin.semantic.bytecodeIndex);
                 mathIC->m_generator = Generator(leftOperand, rightOperand, JSValueRegs(params[0].gpr()),
                     JSValueRegs(params[1].gpr()), JSValueRegs(params[2].gpr()), params.fpScratch(0),
-                    params.fpScratch(1), params.gpScratch(0), InvalidFPRReg, arithProfile);
+                    params.fpScratch(1), params.gpScratch(0), InvalidFPRReg);
 
                 bool shouldEmitProfiling = false;
                 bool generatedInline = mathIC->generateInline(jit, *mathICGenerationState, shouldEmitProfiling);
@@ -1724,7 +1724,8 @@ private:
                 break;
             }
 
-            JITSubIC* subIC = codeBlock()->addJITSubIC();
+            ArithProfile* arithProfile = m_ftlState.graph.baselineCodeBlockFor(m_node->origin.semantic)->arithProfileForBytecodeOffset(m_node->origin.semantic.bytecodeIndex);
+            JITSubIC* subIC = codeBlock()->addJITSubIC(arithProfile);
             auto repatchingFunction = operationValueSubOptimize;
             auto nonRepatchingFunction = operationValueSub;
             compileMathIC(subIC, repatchingFunction, nonRepatchingFunction);
@@ -1818,7 +1819,8 @@ private:
         }
 
         case UntypedUse: {
-            JITMulIC* mulIC = codeBlock()->addJITMulIC();
+            ArithProfile* arithProfile = m_ftlState.graph.baselineCodeBlockFor(m_node->origin.semantic)->arithProfileForBytecodeOffset(m_node->origin.semantic.bytecodeIndex);
+            JITMulIC* mulIC = codeBlock()->addJITMulIC(arithProfile);
             auto repatchingFunction = operationValueMulOptimize;
             auto nonRepatchingFunction = operationValueMul;
             compileMathIC(mulIC, repatchingFunction, nonRepatchingFunction);
@@ -5293,8 +5295,8 @@ private:
 
         LValue jsCallee = lowJSValue(m_graph.varArgChild(node, 0));
 
-        unsigned frameSize = CallFrame::headerSizeInRegisters + numArgs;
-        unsigned alignedFrameSize = WTF::roundUpToMultipleOf(stackAlignmentRegisters(), frameSize);
+        unsigned frameSize = (CallFrame::headerSizeInRegisters + numArgs) * sizeof(EncodedJSValue);
+        unsigned alignedFrameSize = WTF::roundUpToMultipleOf(stackAlignmentBytes(), frameSize);
 
         // JS->JS calling convention requires that the caller allows this much space on top of stack to
         // get trashed by the callee, even if not all of that space is used to pass arguments. We tell
@@ -5304,7 +5306,7 @@ private:
         // - The trashed stack guarantee is logically separate from the act of passing arguments, so we
         //   shouldn't rely on Air to infer the trashed stack property based on the arguments it ends
         //   up seeing.
-        m_proc.requestCallArgAreaSize(alignedFrameSize);
+        m_proc.requestCallArgAreaSizeInBytes(alignedFrameSize);
 
         // Collect the arguments, since this can generate code and we want to generate it before we emit
         // the call.
@@ -5554,7 +5556,7 @@ private:
             sizeof(CallerFrameAndPC) +
             WTF::roundUpToMultipleOf(stackAlignmentBytes(), 5 * sizeof(EncodedJSValue));
 
-        m_proc.requestCallArgAreaSize(minimumJSCallAreaSize);
+        m_proc.requestCallArgAreaSizeInBytes(minimumJSCallAreaSize);
         
         CodeOrigin codeOrigin = codeOriginDescriptionOfCallSite();
         State* state = &m_ftlState;
@@ -5780,10 +5782,10 @@ private:
         
         LValue jsCallee = lowJSValue(m_graph.varArgChild(node, 0));
         
-        unsigned frameSize = CallFrame::headerSizeInRegisters + numArgs;
-        unsigned alignedFrameSize = WTF::roundUpToMultipleOf(stackAlignmentRegisters(), frameSize);
+        unsigned frameSize = (CallFrame::headerSizeInRegisters + numArgs) * sizeof(EncodedJSValue);
+        unsigned alignedFrameSize = WTF::roundUpToMultipleOf(stackAlignmentBytes(), frameSize);
         
-        m_proc.requestCallArgAreaSize(alignedFrameSize);
+        m_proc.requestCallArgAreaSizeInBytes(alignedFrameSize);
         
         Vector<ConstrainedValue> arguments;
         arguments.append(ConstrainedValue(jsCallee, ValueRep::reg(GPRInfo::regT0)));
@@ -11435,7 +11437,8 @@ private:
         LBasicBlock continuation = m_out.newBlock();
 
         m_out.branch(
-            m_out.notZero32(loadCellState(base)), usually(continuation), rarely(slowPath));
+            m_out.above(loadCellState(base), m_out.constInt32(blackThreshold)),
+            usually(continuation), rarely(slowPath));
 
         LBasicBlock lastNext = m_out.appendTo(slowPath, continuation);
 

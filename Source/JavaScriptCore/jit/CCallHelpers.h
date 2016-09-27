@@ -361,6 +361,16 @@ public:
         addCallArgument(arg4);
     }
 
+    ALWAYS_INLINE void setupArgumentsWithExecState(GPRReg arg1, GPRReg arg2, TrustedImmPtr arg3, TrustedImmPtr arg4)
+    {
+        resetCallArguments();
+        addCallArgument(GPRInfo::callFrameRegister);
+        addCallArgument(arg1);
+        addCallArgument(arg2);
+        addCallArgument(arg3);
+        addCallArgument(arg4);
+    }
+
     ALWAYS_INLINE void setupArgumentsWithExecState(GPRReg arg1, TrustedImm32 arg2, TrustedImmPtr arg3)
     {
         resetCallArguments();
@@ -1914,6 +1924,13 @@ public:
         setupArgumentsWithExecState(arg1, arg2, arg3);
     }
 
+    ALWAYS_INLINE void setupArgumentsWithExecState(TrustedImm32 arg1, GPRReg arg2, GPRReg arg3, TrustedImmPtr arg4, TrustedImmPtr arg5)
+    {
+        poke(arg5, POKE_ARGUMENT_OFFSET + 1);
+        poke(arg4, POKE_ARGUMENT_OFFSET);
+        setupArgumentsWithExecState(arg1, arg2, arg3);
+    }
+
     ALWAYS_INLINE void setupArgumentsWithExecState(GPRReg arg1, GPRReg arg2, TrustedImmPtr arg3, GPRReg arg4, TrustedImm32 arg5)
     {
         poke(arg5, POKE_ARGUMENT_OFFSET + 1);
@@ -2266,6 +2283,15 @@ public:
         move(arg4, GPRInfo::argumentGPR3);
     }
 #endif
+
+    void setupArgumentsWithExecState(JSValueRegs arg)
+    {
+#if USE(JSVALUE64)
+        setupArgumentsWithExecState(arg.gpr());
+#else
+        setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg.payloadGPR(), arg.tagGPR());
+#endif
+    }
     
     void setupArgumentsWithExecState(JSValueRegs arg1, JSValueRegs arg2)
     {
@@ -2273,6 +2299,15 @@ public:
         setupArgumentsWithExecState(arg1.gpr(), arg2.gpr());
 #else
         setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1.payloadGPR(), arg1.tagGPR(), arg2.payloadGPR(), arg2.tagGPR());
+#endif
+    }
+
+    void setupArgumentsWithExecState(JSValueRegs arg1, TrustedImmPtr arg2)
+    {
+#if USE(JSVALUE64)
+        setupArgumentsWithExecState(arg1.gpr(), arg2);
+#else
+        setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1.payloadGPR(), arg1.tagGPR(), arg2);
 #endif
     }
 
@@ -2291,6 +2326,15 @@ public:
         setupArgumentsWithExecState(arg1.gpr(), arg2.gpr(), arg3, arg4);
 #else
         setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1.payloadGPR(), arg1.tagGPR(), arg2.payloadGPR(), arg2.tagGPR(), arg3, arg4);
+#endif
+    }
+
+    void setupArgumentsWithExecState(JSValueRegs arg1, TrustedImmPtr arg2, TrustedImmPtr arg3)
+    {
+#if USE(JSVALUE64)
+        setupArgumentsWithExecState(arg1.gpr(), arg2, arg3);
+#else
+        setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1.payloadGPR(), arg1.tagGPR(), arg2, arg3);
 #endif
     }
     

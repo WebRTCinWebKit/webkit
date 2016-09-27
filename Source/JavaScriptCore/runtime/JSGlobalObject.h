@@ -64,8 +64,6 @@ class ErrorConstructor;
 class ErrorPrototype;
 class EvalCodeBlock;
 class EvalExecutable;
-class FunctionCodeBlock;
-class FunctionExecutable;
 class FunctionPrototype;
 class GeneratorPrototype;
 class GeneratorFunctionPrototype;
@@ -818,8 +816,7 @@ inline JSArray* constructEmptyArray(ExecState* exec, ArrayAllocationProfile* pro
         structure = globalObject->arrayStructureForIndexingTypeDuringAllocation(exec, ArrayWithArrayStorage, newTarget);
     else
         structure = globalObject->arrayStructureForProfileDuringAllocation(exec, profile, newTarget);
-    if (UNLIKELY(scope.exception()))
-        return nullptr;
+    RETURN_IF_EXCEPTION(scope, nullptr);
 
     return ArrayAllocationProfile::updateLastAllocationFor(profile, JSArray::create(exec->vm(), structure, initialLength));
 }
@@ -834,8 +831,7 @@ inline JSArray* constructArray(ExecState* exec, ArrayAllocationProfile* profile,
     VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
     Structure* structure = globalObject->arrayStructureForProfileDuringAllocation(exec, profile, newTarget);
-    if (UNLIKELY(scope.exception()))
-        return nullptr;
+    RETURN_IF_EXCEPTION(scope, nullptr);
     return ArrayAllocationProfile::updateLastAllocationFor(profile, constructArray(exec, structure, values));
 }
 
@@ -849,8 +845,7 @@ inline JSArray* constructArray(ExecState* exec, ArrayAllocationProfile* profile,
     VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
     Structure* structure = globalObject->arrayStructureForProfileDuringAllocation(exec, profile, newTarget);
-    if (UNLIKELY(scope.exception()))
-        return nullptr;
+    RETURN_IF_EXCEPTION(scope, nullptr);
     return ArrayAllocationProfile::updateLastAllocationFor(profile, constructArray(exec, structure, values, length));
 }
 
@@ -864,8 +859,7 @@ inline JSArray* constructArrayNegativeIndexed(ExecState* exec, ArrayAllocationPr
     VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
     Structure* structure = globalObject->arrayStructureForProfileDuringAllocation(exec, profile, newTarget);
-    if (UNLIKELY(scope.exception()))
-        return nullptr;
+    RETURN_IF_EXCEPTION(scope, nullptr);
     return ArrayAllocationProfile::updateLastAllocationFor(profile, constructArrayNegativeIndexed(exec, structure, values, length));
 }
 

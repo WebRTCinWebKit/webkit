@@ -809,7 +809,7 @@ public:
 #endif
 #endif
 #if PLATFORM(GTK)
-    void startDrag(PasteboardContent&&, uint64_t dragOperation, const ShareableBitmap::Handle& dragImage);
+    void startDrag(WebSelectionData&&, uint64_t dragOperation, const ShareableBitmap::Handle& dragImage);
 #endif
 #endif
 
@@ -1422,6 +1422,14 @@ private:
 #endif
 
     bool maybeInitializeSandboxExtensionHandle(const WebCore::URL&, SandboxExtension::Handle&);
+
+#if USE(AUTOMATIC_TEXT_REPLACEMENT)
+    void toggleSmartInsertDelete();
+    void toggleAutomaticQuoteSubstitution();
+    void toggleAutomaticLinkDetection();
+    void toggleAutomaticDashSubstitution();
+    void toggleAutomaticTextReplacement();
+#endif
 
 #if PLATFORM(MAC)
     void substitutionsPanelIsShowing(bool&);

@@ -70,6 +70,7 @@
     macro(Map)\
     macro(MapIterator)\
     macro(Math) \
+    macro(ModernMediaControls) \
     macro(NaN) \
     macro(Number) \
     macro(NumberFormat) \
@@ -109,6 +110,7 @@
     macro(arguments) \
     macro(as) \
     macro(assign) \
+    macro(async) \
     macro(back) \
     macro(bind) \
     macro(blur) \
@@ -271,6 +273,7 @@
     macro(year)
 
 #define JSC_COMMON_IDENTIFIERS_EACH_KEYWORD(macro) \
+    macro(await) \
     macro(break) \
     macro(case) \
     macro(catch) \

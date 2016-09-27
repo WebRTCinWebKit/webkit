@@ -26,7 +26,6 @@
 #include "JSDOMConstructor.h"
 #include "JSDOMIterator.h"
 #include "JSDOMPromise.h"
-#include "ObjectConstructor.h"
 #include "RuntimeEnabledFeatures.h"
 #include "URL.h"
 #include <runtime/Error.h>
@@ -52,8 +51,6 @@ JSC::EncodedJSValue jsTestNodeName(JSC::ExecState*, JSC::EncodedJSValue, JSC::Pr
 bool setJSTestNodeName(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestNodeConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 bool setJSTestNodeConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-
-EncodedJSValue JSC_HOST_CALL jsTestNodePrototypeFunctionToJSON(ExecState*);
 
 class JSTestNodePrototype : public JSC::JSNonFinalObject {
 public:
@@ -118,7 +115,6 @@ static const HashTableValue JSTestNodePrototypeTableValues[] =
     { "keys", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestNodePrototypeFunctionKeys), (intptr_t) (0) } },
     { "values", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestNodePrototypeFunctionValues), (intptr_t) (0) } },
     { "forEach", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestNodePrototypeFunctionForEach), (intptr_t) (1) } },
-    { "toJSON", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestNodePrototypeFunctionToJSON), (intptr_t) (0) } },
 };
 
 const ClassInfo JSTestNodePrototype::s_info = { "TestNodePrototype", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestNodePrototype) };
@@ -169,8 +165,6 @@ JSObject* JSTestNode::prototype(VM& vm, JSGlobalObject* globalObject)
     return getDOMPrototype<JSTestNode>(vm, globalObject);
 }
 
-JSValue jsTestNodeNameGetter(ExecState*, JSTestNode*);
-
 EncodedJSValue jsTestNodeName(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     VM& vm = state->vm();
@@ -182,16 +176,9 @@ EncodedJSValue jsTestNodeName(ExecState* state, EncodedJSValue thisValue, Proper
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, throwScope, "TestNode", "name");
     }
-    return JSValue::encode(jsTestNodeNameGetter(state, castedThis));
-}
-
-JSValue jsTestNodeNameGetter(ExecState* state, JSTestNode* thisObject)
-{
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisObject);
-    auto& impl = thisObject->wrapped();
+    auto& impl = castedThis->wrapped();
     JSValue result = jsStringWithCache(state, impl.name());
-    return result;
+    return JSValue::encode(result);
 }
 
 
@@ -232,8 +219,7 @@ bool setJSTestNodeName(ExecState* state, EncodedJSValue thisValue, EncodedJSValu
     }
     auto& impl = castedThis->wrapped();
     auto nativeValue = value.toWTFString(state);
-    if (UNLIKELY(throwScope.exception()))
-        return false;
+    RETURN_IF_EXCEPTION(throwScope, false);
     impl.setName(WTFMove(nativeValue));
     return true;
 }
@@ -244,7 +230,7 @@ JSValue JSTestNode::getConstructor(VM& vm, const JSGlobalObject* globalObject)
     return getDOMConstructor<JSTestNodeConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
 }
 
-static EncodedJSValue jsTestNodePrototypeFunctionTestWorkerPromisePromise(ExecState*, Ref<DeferredWrapper>&&);
+static EncodedJSValue jsTestNodePrototypeFunctionTestWorkerPromisePromise(ExecState*, Ref<DeferredPromise>&&);
 
 EncodedJSValue JSC_HOST_CALL jsTestNodePrototypeFunctionTestWorkerPromise(ExecState* state)
 {
@@ -252,7 +238,7 @@ EncodedJSValue JSC_HOST_CALL jsTestNodePrototypeFunctionTestWorkerPromise(ExecSt
     return JSValue::encode(callPromiseFunction<jsTestNodePrototypeFunctionTestWorkerPromisePromise, PromiseExecutionScope::WindowOrWorker>(*state));
 }
 
-static inline EncodedJSValue jsTestNodePrototypeFunctionTestWorkerPromisePromise(ExecState* state, Ref<DeferredWrapper>&& deferredWrapper)
+static inline EncodedJSValue jsTestNodePrototypeFunctionTestWorkerPromisePromise(ExecState* state, Ref<DeferredPromise>&& promise)
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
@@ -263,23 +249,8 @@ static inline EncodedJSValue jsTestNodePrototypeFunctionTestWorkerPromisePromise
         return throwThisTypeError(*state, throwScope, "TestNode", "testWorkerPromise");
     ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestNode::info());
     auto& impl = castedThis->wrapped();
-    impl.testWorkerPromise(WTFMove(deferredWrapper));
+    impl.testWorkerPromise(WTFMove(promise));
     return JSValue::encode(jsUndefined());
-}
-
-EncodedJSValue JSC_HOST_CALL jsTestNodePrototypeFunctionToJSON(ExecState* state)
-{
-    auto castedThis = jsDynamicCast<JSTestNode*>(state->thisValue());
-    VM& vm = state->vm();
-    if (UNLIKELY(!castedThis)){
-        auto throwScope = DECLARE_THROW_SCOPE(vm);
-        return throwThisTypeError(*state, throwScope, "TestNode", "toJSON");
-    }
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestNode::info());
-
-    auto* result = constructEmptyObject(state);
-    result->putDirect(vm, Identifier::fromString(&vm, "name"), jsTestNodeNameGetter(state, castedThis));
-    return JSValue::encode(result);
 }
 
 using TestNodeIterator = JSDOMIterator<JSTestNode>;

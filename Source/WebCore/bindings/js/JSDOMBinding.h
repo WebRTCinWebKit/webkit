@@ -24,6 +24,7 @@
 #pragma once
 
 #include "DOMWrapperWorld.h"
+#include "ExceptionCode.h"
 #include "JSDOMGlobalObject.h"
 #include "JSDOMWrapper.h"
 #include "ScriptWrappable.h"
@@ -68,8 +69,6 @@ class DOMWindow;
 class Frame;
 class URL;
 class Node;
-
-struct ExceptionCodeWithMessage;
 
 template<typename> class ExceptionOr;
 
@@ -189,6 +188,23 @@ JSC::JSValue createDOMException(JSC::ExecState*, ExceptionCode, const String&);
 // Convert a DOM implementation exception code into a JavaScript exception in the execution state.
 WEBCORE_EXPORT void setDOMException(JSC::ExecState*, ExceptionCode);
 void setDOMException(JSC::ExecState*, const ExceptionCodeWithMessage&);
+
+WEBCORE_EXPORT void setDOMExceptionSlow(JSC::ExecState*, JSC::ThrowScope&, ExceptionCode);
+void setDOMExceptionSlow(JSC::ExecState*, JSC::ThrowScope&, const ExceptionCodeWithMessage&);
+
+ALWAYS_INLINE void setDOMException(JSC::ExecState* exec, JSC::ThrowScope& throwScope, const ExceptionCodeWithMessage& message)
+{
+    if (LIKELY(!message.code || throwScope.exception()))
+        return;
+    setDOMExceptionSlow(exec, throwScope, message);
+}
+
+ALWAYS_INLINE void setDOMException(JSC::ExecState* exec, JSC::ThrowScope& throwScope, ExceptionCode ec)
+{
+    if (LIKELY(!ec || throwScope.exception()))
+        return;
+    setDOMExceptionSlow(exec, throwScope, ec);
+}
 
 template<typename T> inline JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, ExceptionOr<T>&&);
 template<typename T> inline JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject*, ExceptionOr<T>&&);
@@ -563,8 +579,7 @@ inline JSC::JSObject* toJSSequence(JSC::ExecState& exec, JSC::JSValue value, uns
     }
 
     JSC::JSValue lengthValue = object->get(&exec, exec.propertyNames().length);
-    if (UNLIKELY(scope.exception()))
-        return nullptr;
+    RETURN_IF_EXCEPTION(scope, nullptr);
 
     if (lengthValue.isUndefinedOrNull()) {
         throwSequenceTypeError(exec, scope);
@@ -572,8 +587,7 @@ inline JSC::JSObject* toJSSequence(JSC::ExecState& exec, JSC::JSValue value, uns
     }
 
     length = lengthValue.toUInt32(&exec);
-    if (UNLIKELY(scope.exception()))
-        return nullptr;
+    RETURN_IF_EXCEPTION(scope, nullptr);
 
     return object;
 }
@@ -619,8 +633,7 @@ template<typename T> inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalO
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     JSC::JSArray* array = constructEmptyArray(exec, nullptr, vector.size());
-    if (UNLIKELY(scope.exception()))
-        return JSC::jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSC::JSValue());
     for (size_t i = 0; i < vector.size(); ++i)
         array->putDirectIndex(exec, i, toJS(exec, globalObject, vector[i]));
     return array;
@@ -632,8 +645,7 @@ template<typename T> inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalO
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     JSC::JSArray* array = constructEmptyArray(exec, nullptr, vector.size());
-    if (UNLIKELY(scope.exception()))
-        return JSC::jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSC::JSValue());
     for (size_t i = 0; i < vector.size(); ++i)
         array->putDirectIndex(exec, i, toJS(exec, globalObject, vector[i].get()));
     return array;
@@ -722,12 +734,10 @@ template<typename T, size_t inlineCapacity> JSC::JSValue jsFrozenArray(JSC::Exec
     JSC::MarkedArgumentBuffer list;
     for (auto& element : vector) {
         list.append(JSValueTraits<T>::arrayJSValue(exec, globalObject, element));
-        if (UNLIKELY(scope.exception()))
-            return JSC::jsUndefined();
+        RETURN_IF_EXCEPTION(scope, JSC::JSValue());
     }
     auto* array = JSC::constructArray(exec, nullptr, globalObject, list);
-    if (UNLIKELY(scope.exception()))
-        return JSC::jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSC::JSValue());
     return JSC::objectConstructorFreeze(exec, array);
 }
 

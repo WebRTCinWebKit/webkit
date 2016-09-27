@@ -274,8 +274,6 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-// #define INSTRUMENT_LAYOUT_SCHEDULING 1
-
 static const unsigned cMaxWriteRecursionDepth = 21;
 
 // DOM Level 2 says (letters added):
@@ -408,7 +406,7 @@ static void printNavigationErrorMessage(Frame* frame, const URL& activeURL, cons
     frame->document()->domWindow()->printErrorMessage(message);
 }
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
 
 void TextAutoSizingTraits::constructDeletedValue(TextAutoSizingKey& slot)
 {
@@ -437,7 +435,6 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_touchEventsChangedTimer(*this, &Document::touchEventsChangedTimerFired)
 #endif
     , m_referencingNodeCount(0)
-    , m_didCalculateStyleResolver(false)
     , m_hasNodesWithPlaceholderStyle(false)
     , m_needsNotifyRemoveAllPendingStylesheet(false)
     , m_ignorePendingStylesheets(false)
@@ -460,7 +457,6 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_visuallyOrdered(false)
     , m_readyState(Complete)
     , m_bParsing(false)
-    , m_optimizedStyleSheetUpdateTimer(*this, &Document::optimizedStyleSheetUpdateTimerFired)
     , m_styleRecalcTimer(*this, &Document::updateStyleIfNeeded)
     , m_pendingStyleRecalcShouldForce(false)
     , m_inStyleRecalc(false)
@@ -670,7 +666,7 @@ void Document::removedLastRef()
         // until after removeDetachedChildren returns, so we protect ourselves.
         incrementReferencingNodeCount();
 
-        prepareForDestruction();
+        RELEASE_ASSERT(!hasLivingRenderTree());
         // We must make sure not to be retaining any of our children through
         // these extra pointers or we will create a reference cycle.
         m_focusedElement = nullptr;
@@ -1359,7 +1355,7 @@ void Document::setContentLanguage(const String& language)
     m_contentLanguage = language;
 
     // Recalculate style so language is used when selecting the initial font.
-    styleResolverChanged(DeferRecalcStyle);
+    m_authorStyleSheets->didChangeContentsOrInterpretation();
 }
 
 void Document::setXMLVersion(const String& version, ExceptionCode& ec)
@@ -1537,7 +1533,7 @@ static inline StringWithDirection canonicalizedTitle(Document* document, const S
     // Skip leading spaces and leading characters that would convert to spaces
     for (i = 0; i < length; ++i) {
         CharacterType c = characters[i];
-        if (!(c <= 0x20 || c == 0x7F))
+        if (isNotHTMLSpace(c))
             break;
     }
 
@@ -1548,7 +1544,7 @@ static inline StringWithDirection canonicalizedTitle(Document* document, const S
     bool previousCharWasWS = false;
     for (; i < length; ++i) {
         CharacterType c = characters[i];
-        if (c <= 0x20 || c == 0x7F || (U_GET_GC_MASK(c) & (U_GC_ZL_MASK | U_GC_ZP_MASK))) {
+        if (isHTMLSpace(c)) {
             if (previousCharWasWS)
                 continue;
             buffer[builderIndex++] = ' ';
@@ -1863,7 +1859,7 @@ void Document::recalcStyle(Style::Change change)
     // re-attaching our containing iframe, which when asked HTMLFrameElementBase::isURLAllowed
     // hits a null-dereference due to security code always assuming the document has a SecurityOrigin.
 
-    authorStyleSheets().flushPendingUpdates();
+    authorStyleSheets().flushPendingUpdate();
 
     frameView.willRecalcStyle();
 
@@ -1947,6 +1943,14 @@ void Document::recalcStyle(Style::Change change)
         frameView.frame().mainFrame().eventHandler().dispatchFakeMouseMoveEventSoon();
 }
 
+bool Document::needsStyleRecalc() const
+{
+    if (pageCacheState() != NotInPageCache)
+        return false;
+
+    return m_pendingStyleRecalcShouldForce || childNeedsStyleRecalc() || authorStyleSheets().hasPendingUpdate();
+}
+
 void Document::updateStyleIfNeeded()
 {
     ASSERT(isMainThread());
@@ -1955,13 +1959,12 @@ void Document::updateStyleIfNeeded()
     if (!view() || view()->isInRenderTreeLayout())
         return;
 
-    if (m_optimizedStyleSheetUpdateTimer.isActive())
-        styleResolverChanged(RecalcStyleIfNeeded);
+    authorStyleSheets().flushPendingUpdate();
 
     if (!needsStyleRecalc())
         return;
 
-    recalcStyle(Style::NoChange);
+    recalcStyle();
 }
 
 void Document::updateLayout()
@@ -2010,7 +2013,8 @@ void Document::updateLayoutIgnorePendingStylesheets(Document::RunPostLayoutTasks
         HTMLElement* bodyElement = bodyOrFrameset();
         if (bodyElement && !bodyElement->renderer() && m_pendingSheetLayout == NoLayoutWithPendingSheets) {
             m_pendingSheetLayout = DidLayoutWithPendingSheets;
-            styleResolverChanged(RecalcStyleImmediately);
+            authorStyleSheets().didChangeContentsOrInterpretation();
+            recalcStyle(Style::Force);
         } else if (m_hasNodesWithPlaceholderStyle)
             // If new nodes have been added or style recalc has been done with style sheets still pending, some nodes 
             // may not have had their real style calculated yet. Normally this gets cleaned when style sheets arrive 
@@ -2324,7 +2328,7 @@ void Document::destroyRenderTree()
     m_renderView = nullptr;
     Node::setRenderer(nullptr);
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     // Do this before the arena is cleared, which is needed to deref the RenderStyle on TextAutoSizingKey.
     m_textAutoSizedNodes.clear();
 #endif
@@ -2751,10 +2755,6 @@ void Document::implicitClose()
 
     if (f)
         f->loader().dispatchOnloadEvents();
-#ifdef INSTRUMENT_LAYOUT_SCHEDULING
-    if (!ownerElement())
-        printf("onload fired at %lld\n", elapsedTime().count());
-#endif
 
     // An event handler may have removed the frame
     if (!frame()) {
@@ -2824,11 +2824,6 @@ void Document::setParsing(bool b)
 
     if (!m_bParsing && view() && !view()->needsLayout())
         view()->fireLayoutRelatedMilestonesIfNeeded();
-
-#ifdef INSTRUMENT_LAYOUT_SCHEDULING
-    if (!ownerElement() && !m_bParsing)
-        printf("Parsing finished at %lld\n", elapsedTime().count());
-#endif
 }
 
 bool Document::shouldScheduleLayout()
@@ -2877,11 +2872,6 @@ void Document::write(const SegmentedString& text, Document* ownerDocument)
     if (m_writeRecursionIsTooDeep)
        return;
 
-#ifdef INSTRUMENT_LAYOUT_SCHEDULING
-    if (!ownerElement())
-        printf("Beginning a document.write at %lld\n", elapsedTime().count());
-#endif
-
     bool hasInsertionPoint = m_parser && m_parser->hasInsertionPoint();
     if (!hasInsertionPoint && (m_ignoreOpensDuringUnloadCount || m_ignoreDestructiveWriteCount))
         return;
@@ -2891,11 +2881,6 @@ void Document::write(const SegmentedString& text, Document* ownerDocument)
 
     ASSERT(m_parser);
     m_parser->insert(text);
-
-#ifdef INSTRUMENT_LAYOUT_SCHEDULING
-    if (!ownerElement())
-        printf("Ending a document.write at %lld\n", elapsedTime().count());
-#endif    
 }
 
 void Document::write(const String& text, Document* ownerDocument)
@@ -3166,7 +3151,7 @@ void Document::didRemoveAllPendingStylesheet()
 {
     m_needsNotifyRemoveAllPendingStylesheet = false;
 
-    styleResolverChanged(DeferRecalcStyleIfNeeded);
+    authorStyleSheets().didChangeCandidatesForActiveSet();
 
     if (m_pendingSheetLayout == DidLayoutWithPendingSheets) {
         m_pendingSheetLayout = IgnoreLayoutWithPendingSheets;
@@ -3197,7 +3182,7 @@ bool Document::usesStyleBasedEditability() const
     ASSERT(!m_inStyleRecalc);
 
     auto& authorSheets = const_cast<AuthorStyleSheets&>(authorStyleSheets());
-    authorSheets.flushPendingUpdates();
+    authorSheets.flushPendingUpdate();
     return authorSheets.usesStyleBasedEditability();
 }
 
@@ -3241,7 +3226,7 @@ void Document::processHttpEquiv(const String& equiv, const String& content, bool
         // -dwh
         authorStyleSheets().setSelectedStylesheetSetName(content);
         authorStyleSheets().setPreferredStylesheetSetName(content);
-        styleResolverChanged(DeferRecalcStyle);
+        authorStyleSheets().didChangeContentsOrInterpretation();
         break;
 
     case HTTPHeaderName::Refresh: {
@@ -3545,7 +3530,7 @@ String Document::selectedStylesheetSet() const
 void Document::setSelectedStylesheetSet(const String& aString)
 {
     authorStyleSheets().setSelectedStylesheetSetName(aString);
-    styleResolverChanged(DeferRecalcStyle);
+    authorStyleSheets().didChangeContentsOrInterpretation();
 }
 
 void Document::evaluateMediaQueryList()
@@ -3566,19 +3551,6 @@ void Document::checkViewportDependentPictures()
     }
     for (auto* picture : changedPictures)
         picture->sourcesChanged();
-}
-
-void Document::optimizedStyleSheetUpdateTimerFired()
-{
-    styleResolverChanged(RecalcStyleIfNeeded);
-}
-
-void Document::scheduleOptimizedStyleSheetUpdate()
-{
-    if (m_optimizedStyleSheetUpdateTimer.isActive())
-        return;
-    authorStyleSheets().setPendingUpdateType(AuthorStyleSheets::OptimizedUpdate);
-    m_optimizedStyleSheetUpdateTimer.startOneShot(0);
 }
 
 void Document::updateViewportUnitsOnResize()
@@ -3643,64 +3615,6 @@ void Document::pageMutedStateDidChange()
 {
     for (auto* audioProducer : m_audioProducers)
         audioProducer->pageMutedStateDidChange();
-}
-
-void Document::styleResolverChanged(StyleResolverUpdateFlag updateFlag)
-{
-    if (m_optimizedStyleSheetUpdateTimer.isActive())
-        m_optimizedStyleSheetUpdateTimer.stop();
-
-    // Don't bother updating, since we haven't loaded all our style info yet
-    // and haven't calculated the style selector for the first time.
-    if (!hasLivingRenderTree() || (!m_didCalculateStyleResolver && !haveStylesheetsLoaded())) {
-        m_styleResolver = nullptr;
-        return;
-    }
-    m_didCalculateStyleResolver = true;
-
-#ifdef INSTRUMENT_LAYOUT_SCHEDULING
-    if (!ownerElement())
-        printf("Beginning update of style selector at time %lld.\n", elapsedTime().count());
-#endif
-
-    auto styleSheetUpdate = (updateFlag == RecalcStyleIfNeeded || updateFlag == DeferRecalcStyleIfNeeded)
-        ? AuthorStyleSheets::OptimizedUpdate
-        : AuthorStyleSheets::FullUpdate;
-    bool stylesheetChangeRequiresStyleRecalc = authorStyleSheets().updateActiveStyleSheets(styleSheetUpdate);
-
-    if (updateFlag == DeferRecalcStyle) {
-        scheduleForcedStyleRecalc();
-        return;
-    }
-
-    if (updateFlag == DeferRecalcStyleIfNeeded) {
-        if (stylesheetChangeRequiresStyleRecalc)
-            scheduleForcedStyleRecalc();
-        return;
-    }
-
-    if (!stylesheetChangeRequiresStyleRecalc)
-        return;
-
-    // This recalcStyle initiates a new recalc cycle. We need to bracket it to
-    // make sure animations get the correct update time
-    {
-        AnimationUpdateBlock animationUpdateBlock(m_frame ? &m_frame->animation() : nullptr);
-        recalcStyle(Style::Force);
-    }
-
-#ifdef INSTRUMENT_LAYOUT_SCHEDULING
-    if (!ownerElement())
-        printf("Finished update of style selector at time %lld\n", elapsedTime().count());
-#endif
-
-    if (renderView()) {
-        renderView()->setNeedsLayoutAndPrefWidthsRecalc();
-        if (view())
-            view()->scheduleRelayout();
-    }
-
-    evaluateMediaQueryList();
 }
 
 static bool isNodeInSubtree(Node* node, Node* container, bool amongChildrenOnly)
@@ -5474,7 +5388,7 @@ HTMLCanvasElement* Document::getCSSCanvasElement(const String& name)
     return element.get();
 }
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
 
 void Document::addAutoSizedNode(Text& node, float candidateSize)
 {
@@ -5497,7 +5411,7 @@ void Document::clearAutoSizedNodes()
     m_textAutoSizedNodes.clear();
 }
 
-#endif // ENABLE(IOS_TEXT_AUTOSIZING)
+#endif // ENABLE(TEXT_AUTOSIZING)
 
 void Document::initDNSPrefetch()
 {
@@ -6691,7 +6605,7 @@ static RenderElement* nearestCommonHoverAncestor(RenderElement* obj1, RenderElem
     return nullptr;
 }
 
-void Document::updateHoverActiveState(const HitTestRequest& request, Element* innerElement, StyleResolverUpdateFlag updateFlag)
+void Document::updateHoverActiveState(const HitTestRequest& request, Element* innerElement)
 {
     ASSERT(!request.readOnly());
 
@@ -6807,10 +6721,6 @@ void Document::updateHoverActiveState(const HitTestRequest& request, Element* in
             element->setHovered(true);
         }
     }
-
-    ASSERT(updateFlag == RecalcStyleIfNeeded || updateFlag == DeferRecalcStyleIfNeeded);
-    if (updateFlag == RecalcStyleIfNeeded)
-        updateStyleIfNeeded();
 }
 
 bool Document::haveStylesheetsLoaded() const

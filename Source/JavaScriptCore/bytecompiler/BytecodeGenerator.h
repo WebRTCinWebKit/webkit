@@ -286,7 +286,7 @@ namespace JSC {
         bool usesThis() const { return m_scopeNode->usesThis(); }
         ConstructorKind constructorKind() const { return m_codeBlock->constructorKind(); }
         SuperBinding superBinding() const { return m_codeBlock->superBinding(); }
-        JSParserCommentMode commentMode() const { return m_codeBlock->commentMode(); }
+        JSParserScriptMode scriptMode() const { return m_codeBlock->scriptMode(); }
 
         template<typename... Args>
         static ParserError generate(VM& vm, Args&& ...args)
@@ -511,6 +511,7 @@ namespace JSC {
         RegisterID* emitLoadGlobalObject(RegisterID* dst);
 
         RegisterID* emitUnaryOp(OpcodeID, RegisterID* dst, RegisterID* src);
+        RegisterID* emitUnaryOp(OpcodeID, RegisterID* dst, RegisterID* src, OperandTypes);
         RegisterID* emitUnaryOpProfiled(OpcodeID, RegisterID* dst, RegisterID* src);
         RegisterID* emitBinaryOp(OpcodeID, RegisterID* dst, RegisterID* src1, RegisterID* src2, OperandTypes);
         RegisterID* emitEqualityOp(OpcodeID, RegisterID* dst, RegisterID* src1, RegisterID* src2);
@@ -848,7 +849,7 @@ namespace JSC {
             else if (parseMode == SourceParseMode::MethodMode && metadata->constructorKind() == ConstructorKind::None)
                 constructAbility = ConstructAbility::CannotConstruct;
 
-            return UnlinkedFunctionExecutable::create(m_vm, m_scopeNode->source(), metadata, isBuiltinFunction() ? UnlinkedBuiltinFunction : UnlinkedNormalFunction, constructAbility, commentMode(), variablesUnderTDZ, newDerivedContextType);
+            return UnlinkedFunctionExecutable::create(m_vm, m_scopeNode->source(), metadata, isBuiltinFunction() ? UnlinkedBuiltinFunction : UnlinkedNormalFunction, constructAbility, scriptMode(), variablesUnderTDZ, newDerivedContextType);
         }
 
         void getVariablesUnderTDZ(VariableEnvironment&);

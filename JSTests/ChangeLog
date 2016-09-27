@@ -1,3 +1,103 @@
+2016-09-26  Csaba Osztrogonác  <oszi@inf.u-szeged.hu>
+
+        Skip stress/string-joining-long-strings-should-not-crash.js on memory limited devices
+        https://bugs.webkit.org/show_bug.cgi?id=162386
+
+        Unreviewed, relanding r206317 after typo fix.
+
+        * stress/string-joining-long-strings-should-not-crash.js:
+
+2016-09-24  Caitlin Potter  <caitp@igalia.com>
+
+        [JSTests] fix test262 expectations following r206333
+        https://bugs.webkit.org/show_bug.cgi?id=162533
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262.yaml:
+
+2016-09-23  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] Implement parsing of Async Functions
+        https://bugs.webkit.org/show_bug.cgi?id=161409
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/async-await-syntax.js: Added.
+        (testSyntax):
+        (testSyntaxError):
+        (testTopLevelAsyncAwaitSyntaxSloppyMode.testSyntax):
+        (testTopLevelAsyncAwaitSyntaxSloppyMode):
+        (testTopLevelAsyncAwaitSyntaxStrictMode):
+        (testTopLevelAsyncAwaitSyntaxStrictMode.testSyntax):
+        (testNestedAsyncAwaitSyntax.async):
+        (testNestedAsyncAwaitSyntax.foo):
+        (testTopLevelAsyncAwaitSyntaxSloppyMode.testSyntaxError):
+
+2016-09-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r206317.
+
+        This change caused timeouts on El Capitan Release JSC tests
+
+        Reverted changeset:
+
+        "Skip stress/string-joining-long-strings-should-not-crash.js
+        on memory limited devices"
+        https://bugs.webkit.org/show_bug.cgi?id=162386
+        http://trac.webkit.org/changeset/206317
+
+2016-09-23  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Skip mozilla-tests.yaml/js1_5/Array/regress-157652 on memory limited devices
+        https://bugs.webkit.org/show_bug.cgi?id=162381
+
+        Reviewed by Mark Lam.
+
+        * mozilla/mozilla-tests.yaml:
+
+2016-09-23  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Skip stress/string-joining-long-strings-should-not-crash.js on memory limited devices
+        https://bugs.webkit.org/show_bug.cgi?id=162386
+
+        Reviewed by Mark Lam.
+
+        * stress/string-joining-long-strings-should-not-crash.js:
+
+2016-09-22  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Use an inline cache to generate op_negate
+        https://bugs.webkit.org/show_bug.cgi?id=162371
+
+        Reviewed by Saam Barati.
+
+        * stress/op-negate-inline-cache.js: Added.
+
+2016-09-22  Mark Lam  <mark.lam@apple.com>
+
+        Array.prototype.join should do overflow checks on string joins.
+        https://bugs.webkit.org/show_bug.cgi?id=162459
+
+        Reviewed by Saam Barati.
+
+        * stress/array-join-on-strings-need-overflow-checks.js: Added.
+        (assert):
+        (catch):
+
+2016-09-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: Function length should be number of parameters before parameters with default values
+        https://bugs.webkit.org/show_bug.cgi?id=162377
+
+        Reviewed by Saam Barati.
+
+        * stress/es6-default-parameters.js:
+        Add our own tests for function lengths with default parameters.
+
+        * test262.yaml:
+        We now pass all dflt-length tests.
+
 2016-09-20  Benjamin Poulain  <bpoulain@apple.com>
 
         [JSC] Do not use EagerRun on tests counting recompilation

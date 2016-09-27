@@ -28,6 +28,7 @@
 
 #if PLATFORM(MAC)
 
+#import "HTMLMediaElement.h"
 #import "Logging.h"
 #import "MediaPlayer.h"
 #import "PlatformMediaSession.h"
@@ -52,6 +53,12 @@ PlatformMediaSessionManager* PlatformMediaSessionManager::sharedManagerIfExists(
     return platformMediaSessionManager;
 }
 
+void PlatformMediaSessionManager::updateNowPlayingInfoIfNecessary()
+{
+    if (auto existingManager = (MediaSessionManagerMac *)PlatformMediaSessionManager::sharedManagerIfExists())
+        existingManager->scheduleUpdateNowPlayingInfo();
+}
+
 MediaSessionManagerMac::MediaSessionManagerMac()
     : PlatformMediaSessionManager()
 {
@@ -62,6 +69,12 @@ MediaSessionManagerMac::~MediaSessionManagerMac()
 {
 }
 
+void MediaSessionManagerMac::scheduleUpdateNowPlayingInfo()
+{
+    if (!m_nowPlayingUpdateTaskQueue.hasPendingTasks())
+        m_nowPlayingUpdateTaskQueue.enqueueTask(std::bind(&MediaSessionManagerMac::updateNowPlayingInfo, this));
+}
+
 bool MediaSessionManagerMac::sessionWillBeginPlayback(PlatformMediaSession& session)
 {
     if (!PlatformMediaSessionManager::sessionWillBeginPlayback(session))
@@ -70,6 +83,11 @@ bool MediaSessionManagerMac::sessionWillBeginPlayback(PlatformMediaSession& sess
     LOG(Media, "MediaSessionManagerMac::sessionWillBeginPlayback");
     updateNowPlayingInfo();
     return true;
+}
+
+void MediaSessionManagerMac::sessionDidEndRemoteScrubbing(const PlatformMediaSession&)
+{
+    scheduleUpdateNowPlayingInfo();
 }
 
 void MediaSessionManagerMac::removeSession(PlatformMediaSession& session)
@@ -94,14 +112,8 @@ void MediaSessionManagerMac::clientCharacteristicsChanged(PlatformMediaSession&)
 
 PlatformMediaSession* MediaSessionManagerMac::nowPlayingEligibleSession()
 {
-    for (auto session : sessions()) {
-        PlatformMediaSession::MediaType type = session->mediaType();
-        if (type != PlatformMediaSession::Video && type != PlatformMediaSession::Audio)
-            continue;
-
-        if (session->characteristics() & PlatformMediaSession::HasAudio)
-            return session;
-    }
+    if (auto element = HTMLMediaElement::bestMediaElementForShowingPlaybackControlsManager(MediaElementSession::PlaybackControlsPurpose::NowPlaying))
+        return &element->mediaSession();
 
     return nullptr;
 }
@@ -142,15 +154,6 @@ void MediaSessionManagerMac::updateNowPlayingInfo()
     String title = currentSession->title();
     double duration = currentSession->duration();
     double rate = currentSession->state() == PlatformMediaSession::Playing ? 1 : 0;
-    if (m_reportedTitle == title && m_reportedRate == rate && m_reportedDuration == duration) {
-        LOG(Media, "MediaSessionManagerMac::updateNowPlayingInfo - nothing new to show");
-        return;
-    }
-
-    m_reportedRate = rate;
-    m_reportedDuration = duration;
-    m_reportedTitle = title;
-
     auto info = adoptCF(CFDictionaryCreateMutable(kCFAllocatorDefault, 4, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
 
     if (!title.isEmpty())

@@ -71,7 +71,8 @@ class PropertySlot {
         TypeUnset,
         TypeValue,
         TypeGetter,
-        TypeCustom
+        TypeCustom,
+        TypeCustomAccessor,
     };
 
 public:
@@ -107,6 +108,7 @@ public:
     bool isValue() const { return m_propertyType == TypeValue; }
     bool isAccessor() const { return m_propertyType == TypeGetter; }
     bool isCustom() const { return m_propertyType == TypeCustom; }
+    bool isCustomAccessor() const { return m_propertyType == TypeCustomAccessor; }
     bool isCacheableValue() const { return isCacheable() && isValue(); }
     bool isCacheableGetter() const { return isCacheable() && isAccessor(); }
     bool isCacheableCustom() const { return isCacheable() && isCustom(); }
@@ -138,6 +140,12 @@ public:
     {
         ASSERT(isCacheableCustom());
         return m_data.custom.getValue;
+    }
+
+    CustomGetterSetter* customGetterSetter() const
+    {
+        ASSERT(isCustomAccessor());
+        return m_data.customAccessor.getterSetter;
     }
 
     JSObject* slotBase() const
@@ -218,6 +226,20 @@ public:
         m_offset = !invalidOffset;
     }
 
+    void setCustomGetterSetter(JSObject* slotBase, unsigned attributes, CustomGetterSetter* getterSetter)
+    {
+        ASSERT(attributes == attributesForStructure(attributes));
+
+        ASSERT(getterSetter);
+        m_data.customAccessor.getterSetter = getterSetter;
+        m_attributes = attributes;
+
+        ASSERT(slotBase);
+        m_slotBase = slotBase;
+        m_propertyType = TypeCustomAccessor;
+        m_offset = invalidOffset;
+    }
+
     void setGetterSlot(JSObject* slotBase, unsigned attributes, GetterSetter* getterSetter)
     {
         ASSERT(attributes == attributesForStructure(attributes));
@@ -274,6 +296,7 @@ public:
 private:
     JS_EXPORT_PRIVATE JSValue functionGetter(ExecState*) const;
     JS_EXPORT_PRIVATE JSValue customGetter(ExecState*, PropertyName) const;
+    JS_EXPORT_PRIVATE JSValue customAccessorGetter(ExecState*, PropertyName) const;
 
     unsigned m_attributes;
     union {
@@ -284,6 +307,9 @@ private:
         struct {
             GetValueFunc getValue;
         } custom;
+        struct {
+            CustomGetterSetter* getterSetter;
+        } customAccessor;
     } m_data;
 
     PropertyOffset m_offset;
@@ -302,6 +328,8 @@ ALWAYS_INLINE JSValue PropertySlot::getValue(ExecState* exec, PropertyName prope
         return JSValue::decode(m_data.value);
     if (m_propertyType == TypeGetter)
         return functionGetter(exec);
+    if (m_propertyType == TypeCustomAccessor)
+        return customAccessorGetter(exec, propertyName);
     return customGetter(exec, propertyName);
 }
 

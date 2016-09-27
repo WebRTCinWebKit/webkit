@@ -47,21 +47,23 @@ DownloadManager::DownloadManager(Client& client)
 void DownloadManager::startDownload(SessionID sessionID, DownloadID downloadID, const ResourceRequest& request, const String& suggestedName)
 {
 #if USE(NETWORK_SESSION)
-    auto* networkSession = SessionTracker::networkSession(sessionID);
-    if (!networkSession)
+    if (!request.url().protocolIsBlob()) {
+        auto* networkSession = SessionTracker::networkSession(sessionID);
+        if (!networkSession)
+            return;
+        NetworkLoadParameters parameters;
+        parameters.sessionID = sessionID;
+        parameters.request = request;
+        parameters.clientCredentialPolicy = ClientCredentialPolicy::MayAskClientForCredentials;
+        m_pendingDownloads.add(downloadID, std::make_unique<PendingDownload>(WTFMove(parameters), downloadID, *networkSession, suggestedName));
         return;
-    NetworkLoadParameters parameters;
-    parameters.sessionID = sessionID;
-    parameters.request = request;
-    parameters.clientCredentialPolicy = ClientCredentialPolicy::MayAskClientForCredentials;
-    m_pendingDownloads.add(downloadID, std::make_unique<PendingDownload>(WTFMove(parameters), downloadID, *networkSession));
-#else
+    }
+#endif
     auto download = std::make_unique<Download>(*this, downloadID, request, suggestedName);
     download->start();
 
     ASSERT(!m_downloads.contains(downloadID));
     m_downloads.add(downloadID, WTFMove(download));
-#endif
 }
 
 #if USE(NETWORK_SESSION)
@@ -103,25 +105,6 @@ void DownloadManager::willDecidePendingDownloadDestination(NetworkDataTask& netw
     auto addResult = m_downloadsWaitingForDestination.set(downloadID, std::make_pair<RefPtr<NetworkDataTask>, ResponseCompletionHandler>(&networkDataTask, WTFMove(completionHandler)));
     ASSERT_UNUSED(addResult, addResult.isNewEntry);
 }
-
-void DownloadManager::continueDecidePendingDownloadDestination(DownloadID downloadID, String destination, const SandboxExtension::Handle& sandboxExtensionHandle, bool allowOverwrite)
-{
-    auto pair = m_downloadsWaitingForDestination.take(downloadID);
-    auto networkDataTask = WTFMove(pair.first);
-    auto completionHandler = WTFMove(pair.second);
-    if (!networkDataTask || !completionHandler)
-        return;
-
-    networkDataTask->setPendingDownloadLocation(destination, sandboxExtensionHandle);
-    
-    if (allowOverwrite && fileExists(destination))
-        deleteFile(destination);
-
-    completionHandler(PolicyDownload);
-    
-    ASSERT(!m_downloadsAfterDestinationDecided.contains(downloadID));
-    m_downloadsAfterDestinationDecided.set(downloadID, networkDataTask);
-}
 #else
 void DownloadManager::convertHandleToDownload(DownloadID downloadID, ResourceHandle* handle, const ResourceRequest& request, const ResourceResponse& response)
 {
@@ -132,6 +115,32 @@ void DownloadManager::convertHandleToDownload(DownloadID downloadID, ResourceHan
     m_downloads.add(downloadID, WTFMove(download));
 }
 #endif
+
+void DownloadManager::continueDecidePendingDownloadDestination(DownloadID downloadID, String destination, const SandboxExtension::Handle& sandboxExtensionHandle, bool allowOverwrite)
+{
+#if USE(NETWORK_SESSION)
+    if (m_downloadsWaitingForDestination.contains(downloadID)) {
+        auto pair = m_downloadsWaitingForDestination.take(downloadID);
+        auto networkDataTask = WTFMove(pair.first);
+        auto completionHandler = WTFMove(pair.second);
+        if (!networkDataTask || !completionHandler)
+            return;
+
+        networkDataTask->setPendingDownloadLocation(destination, sandboxExtensionHandle);
+
+        if (allowOverwrite && fileExists(destination))
+            deleteFile(destination);
+
+        completionHandler(PolicyDownload);
+
+        ASSERT(!m_downloadsAfterDestinationDecided.contains(downloadID));
+        m_downloadsAfterDestinationDecided.set(downloadID, networkDataTask);
+        return;
+    }
+#endif
+    if (auto* waitingDownload = download(downloadID))
+        waitingDownload->didDecideDownloadDestination(destination, sandboxExtensionHandle, allowOverwrite);
+}
 
 void DownloadManager::resumeDownload(SessionID, DownloadID downloadID, const IPC::DataReference& resumeData, const String& path, const SandboxExtension::Handle& sandboxExtensionHandle)
 {

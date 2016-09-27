@@ -200,9 +200,8 @@ EncodedJSValue JSC_HOST_CALL jsTestCustomNamedGetterPrototypeFunctionAnotherFunc
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
-    auto str = state->argument(0).toWTFString(state);
-    if (UNLIKELY(throwScope.exception()))
-        return JSValue::encode(jsUndefined());
+    auto str = state->uncheckedArgument(0).toWTFString(state);
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.anotherFunction(WTFMove(str));
     return JSValue::encode(jsUndefined());
 }

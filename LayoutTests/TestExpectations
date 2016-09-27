@@ -259,6 +259,7 @@ webkit.org/b/154310 [ Debug ] imported/w3c/web-platform-tests/html/dom/reflectio
 webkit.org/b/154310 [ Debug ] imported/w3c/web-platform-tests/html/dom/reflection-sections.html [ Skip ]
 webkit.org/b/154310 [ Debug ] imported/w3c/web-platform-tests/html/dom/reflection-tabular.html [ Skip ]
 webkit.org/b/154310 [ Debug ] imported/w3c/web-platform-tests/html/dom/reflection-text.html  [ Skip ]
+webkit.org/b/162517 [ Debug ] imported/w3c/web-platform-tests/html/the-xhtml-syntax/parsing-xhtml-documents/xhtml-mathml-dtd-entity-support.htm [ Skip ]
 
 # WPT tests that fail after doing full test repository reimport and need further investigation
 imported/w3c/web-platform-tests/XMLHttpRequest/send-entity-body-document.htm [ Pass Failure Timeout ]
@@ -894,9 +895,6 @@ fast/scrolling/rtl-scrollbars-alternate-body-dir-attr-does-not-update-scrollbar-
 fast/scrolling/rtl-scrollbars-alternate-iframe-body-dir-attr-does-not-update-scrollbar-placement.html [ ImageOnlyFailure ]
 fast/scrolling/rtl-scrollbars-animation-property.html [ Failure ]
 
-# <a download> does not support Blobs
-webkit.org/b/156099 http/tests/security/anchor-download-allow-blob.html [ Failure ]
-
 # <a download> does not honor cross-origin restrictions
 webkit.org/b/156100 http/tests/security/anchor-download-block-crossorigin.html [ Failure ]
 
@@ -983,3 +981,4 @@ webkit.org/b/159755 fast/text/emoji-gender.html [ ImageOnlyFailure ]
 webkit.org/b/160017 js/regress-139548.html [ Slow ]
 
 webkit.org/b/161088 imported/w3c/web-platform-tests/resource-timing/resource-timing.html [ Pass Failure ]
+webkit.org/b/162414 imported/w3c/web-platform-tests/resource-timing/idlharness.html [ Pass Failure ]

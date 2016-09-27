@@ -677,13 +677,9 @@ bool AccessibilityNodeObject::isPressed() const
     if (!node)
         return false;
 
-    // If this is an ARIA button, check the aria-pressed attribute rather than node()->active()
-    AccessibilityRole ariaRole = ariaRoleAttribute();
-    if (ariaRole == ButtonRole || ariaRole == ToggleButtonRole) {
-        if (equalLettersIgnoringASCIICase(getAttribute(aria_pressedAttr), "true"))
-            return true;
-        return false;
-    }
+    // If this is an toggle button, check the aria-pressed attribute rather than node()->active()
+    if (isToggleButton())
+        return equalLettersIgnoringASCIICase(getAttribute(aria_pressedAttr), "true");
 
     if (!is<Element>(*node))
         return false;
@@ -1242,7 +1238,7 @@ void AccessibilityNodeObject::titleElementText(Vector<AccessibilityText>& textOr
         return;
     
     bool isInputTag = is<HTMLInputElement>(*node);
-    if (isInputTag || AccessibilityObject::isARIAInput(ariaRoleAttribute()) || isControl()) {
+    if (isInputTag || AccessibilityObject::isARIAInput(ariaRoleAttribute()) || isControl() || isProgressIndicator()) {
         if (HTMLLabelElement* label = labelForElement(downcast<Element>(node))) {
             AccessibilityObject* labelObject = axObjectCache()->getOrCreate(label);
             String innerText = label->innerText();
@@ -1714,7 +1710,7 @@ String AccessibilityNodeObject::title() const
             return input.valueWithDefault();
     }
 
-    if (isInputTag || AccessibilityObject::isARIAInput(ariaRoleAttribute()) || isControl()) {
+    if (isInputTag || AccessibilityObject::isARIAInput(ariaRoleAttribute()) || isControl() || isProgressIndicator()) {
         HTMLLabelElement* label = labelForElement(downcast<Element>(node));
         // Use the label text as the title if 1) the title element is NOT an exposed element and 2) there's no ARIA override.
         if (label && !exposesTitleUIElement() && !ariaAccessibilityDescription().length())

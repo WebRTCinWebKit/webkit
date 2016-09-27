@@ -144,8 +144,6 @@ void JSTestNondeterministic::destroy(JSC::JSCell* cell)
     thisObject->JSTestNondeterministic::~JSTestNondeterministic();
 }
 
-JSValue jsTestNondeterministicNondeterministicReadonlyAttrGetter(ExecState*, JSTestNondeterministic*);
-
 EncodedJSValue jsTestNondeterministicNondeterministicReadonlyAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     VM& vm = state->vm();
@@ -157,22 +155,15 @@ EncodedJSValue jsTestNondeterministicNondeterministicReadonlyAttr(ExecState* sta
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, throwScope, "TestNondeterministic", "nondeterministicReadonlyAttr");
     }
-    return JSValue::encode(jsTestNondeterministicNondeterministicReadonlyAttrGetter(state, castedThis));
-}
-
-JSValue jsTestNondeterministicNondeterministicReadonlyAttrGetter(ExecState* state, JSTestNondeterministic* thisObject)
-{
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisObject);
 #if ENABLE(WEB_REPLAY)
     JSGlobalObject* globalObject = state->lexicalGlobalObject();
     InputCursor& cursor = globalObject->inputCursor();
     static NeverDestroyed<const AtomicString> bindingName("TestNondeterministic.nondeterministicReadonlyAttr", AtomicString::ConstructFromLiteral);
     if (cursor.isCapturing()) {
-        int32_t memoizedResult = thisObject->wrapped().nondeterministicReadonlyAttr();
+        int32_t memoizedResult = castedThis->wrapped().nondeterministicReadonlyAttr();
         cursor.appendInput<MemoizedDOMResult<int32_t>>(bindingName.get().string(), memoizedResult, 0);
         JSValue result = jsNumber(memoizedResult);
-        return result;
+        return JSValue::encode(result);
     }
 
     if (cursor.isReplaying()) {
@@ -180,17 +171,15 @@ JSValue jsTestNondeterministicNondeterministicReadonlyAttrGetter(ExecState* stat
         MemoizedDOMResultBase* input = cursor.fetchInput<MemoizedDOMResultBase>();
         if (input && input->convertTo<int32_t>(memoizedResult)) {
             JSValue result = jsNumber(memoizedResult);
-            return result;
+            return JSValue::encode(result);
         }
     }
 #endif
-    auto& impl = thisObject->wrapped();
+    auto& impl = castedThis->wrapped();
     JSValue result = jsNumber(impl.nondeterministicReadonlyAttr());
-    return result;
+    return JSValue::encode(result);
 }
 
-
-JSValue jsTestNondeterministicNondeterministicWriteableAttrGetter(ExecState*, JSTestNondeterministic*);
 
 EncodedJSValue jsTestNondeterministicNondeterministicWriteableAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
@@ -203,22 +192,15 @@ EncodedJSValue jsTestNondeterministicNondeterministicWriteableAttr(ExecState* st
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, throwScope, "TestNondeterministic", "nondeterministicWriteableAttr");
     }
-    return JSValue::encode(jsTestNondeterministicNondeterministicWriteableAttrGetter(state, castedThis));
-}
-
-JSValue jsTestNondeterministicNondeterministicWriteableAttrGetter(ExecState* state, JSTestNondeterministic* thisObject)
-{
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisObject);
 #if ENABLE(WEB_REPLAY)
     JSGlobalObject* globalObject = state->lexicalGlobalObject();
     InputCursor& cursor = globalObject->inputCursor();
     static NeverDestroyed<const AtomicString> bindingName("TestNondeterministic.nondeterministicWriteableAttr", AtomicString::ConstructFromLiteral);
     if (cursor.isCapturing()) {
-        String memoizedResult = thisObject->wrapped().nondeterministicWriteableAttr();
+        String memoizedResult = castedThis->wrapped().nondeterministicWriteableAttr();
         cursor.appendInput<MemoizedDOMResult<String>>(bindingName.get().string(), memoizedResult, 0);
         JSValue result = jsStringWithCache(state, memoizedResult);
-        return result;
+        return JSValue::encode(result);
     }
 
     if (cursor.isReplaying()) {
@@ -226,17 +208,15 @@ JSValue jsTestNondeterministicNondeterministicWriteableAttrGetter(ExecState* sta
         MemoizedDOMResultBase* input = cursor.fetchInput<MemoizedDOMResultBase>();
         if (input && input->convertTo<String>(memoizedResult)) {
             JSValue result = jsStringWithCache(state, memoizedResult);
-            return result;
+            return JSValue::encode(result);
         }
     }
 #endif
-    auto& impl = thisObject->wrapped();
+    auto& impl = castedThis->wrapped();
     JSValue result = jsStringWithCache(state, impl.nondeterministicWriteableAttr());
-    return result;
+    return JSValue::encode(result);
 }
 
-
-JSValue jsTestNondeterministicNondeterministicExceptionAttrGetter(ExecState*, JSTestNondeterministic*);
 
 EncodedJSValue jsTestNondeterministicNondeterministicExceptionAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
@@ -249,22 +229,15 @@ EncodedJSValue jsTestNondeterministicNondeterministicExceptionAttr(ExecState* st
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, throwScope, "TestNondeterministic", "nondeterministicExceptionAttr");
     }
-    return JSValue::encode(jsTestNondeterministicNondeterministicExceptionAttrGetter(state, castedThis));
-}
-
-JSValue jsTestNondeterministicNondeterministicExceptionAttrGetter(ExecState* state, JSTestNondeterministic* thisObject)
-{
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisObject);
 #if ENABLE(WEB_REPLAY)
     JSGlobalObject* globalObject = state->lexicalGlobalObject();
     InputCursor& cursor = globalObject->inputCursor();
     static NeverDestroyed<const AtomicString> bindingName("TestNondeterministic.nondeterministicExceptionAttr", AtomicString::ConstructFromLiteral);
     if (cursor.isCapturing()) {
-        String memoizedResult = thisObject->wrapped().nondeterministicExceptionAttr();
+        String memoizedResult = castedThis->wrapped().nondeterministicExceptionAttr();
         cursor.appendInput<MemoizedDOMResult<String>>(bindingName.get().string(), memoizedResult, 0);
         JSValue result = jsStringWithCache(state, memoizedResult);
-        return result;
+        return JSValue::encode(result);
     }
 
     if (cursor.isReplaying()) {
@@ -272,17 +245,15 @@ JSValue jsTestNondeterministicNondeterministicExceptionAttrGetter(ExecState* sta
         MemoizedDOMResultBase* input = cursor.fetchInput<MemoizedDOMResultBase>();
         if (input && input->convertTo<String>(memoizedResult)) {
             JSValue result = jsStringWithCache(state, memoizedResult);
-            return result;
+            return JSValue::encode(result);
         }
     }
 #endif
-    auto& impl = thisObject->wrapped();
+    auto& impl = castedThis->wrapped();
     JSValue result = jsStringWithCache(state, impl.nondeterministicExceptionAttr());
-    return result;
+    return JSValue::encode(result);
 }
 
-
-JSValue jsTestNondeterministicNondeterministicGetterExceptionAttrGetter(ExecState*, JSTestNondeterministic*);
 
 EncodedJSValue jsTestNondeterministicNondeterministicGetterExceptionAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
@@ -295,24 +266,17 @@ EncodedJSValue jsTestNondeterministicNondeterministicGetterExceptionAttr(ExecSta
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, throwScope, "TestNondeterministic", "nondeterministicGetterExceptionAttr");
     }
-    return JSValue::encode(jsTestNondeterministicNondeterministicGetterExceptionAttrGetter(state, castedThis));
-}
-
-JSValue jsTestNondeterministicNondeterministicGetterExceptionAttrGetter(ExecState* state, JSTestNondeterministic* thisObject)
-{
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisObject);
     ExceptionCode ec = 0;
 #if ENABLE(WEB_REPLAY)
     JSGlobalObject* globalObject = state->lexicalGlobalObject();
     InputCursor& cursor = globalObject->inputCursor();
     static NeverDestroyed<const AtomicString> bindingName("TestNondeterministic.nondeterministicGetterExceptionAttr", AtomicString::ConstructFromLiteral);
     if (cursor.isCapturing()) {
-        String memoizedResult = thisObject->wrapped().nondeterministicGetterExceptionAttr(ec);
+        String memoizedResult = castedThis->wrapped().nondeterministicGetterExceptionAttr(ec);
         cursor.appendInput<MemoizedDOMResult<String>>(bindingName.get().string(), memoizedResult, ec);
         JSValue result = jsStringWithCache(state, memoizedResult);
-        setDOMException(state, ec);
-        return result;
+        setDOMException(state, throwScope, ec);
+        return JSValue::encode(result);
     }
 
     if (cursor.isReplaying()) {
@@ -320,19 +284,17 @@ JSValue jsTestNondeterministicNondeterministicGetterExceptionAttrGetter(ExecStat
         MemoizedDOMResultBase* input = cursor.fetchInput<MemoizedDOMResultBase>();
         if (input && input->convertTo<String>(memoizedResult)) {
             JSValue result = jsStringWithCache(state, memoizedResult);
-            setDOMException(state, input->exceptionCode());
-            return result;
+            setDOMException(state, throwScope, input->exceptionCode());
+            return JSValue::encode(result);
         }
     }
 #endif
-    auto& impl = thisObject->wrapped();
+    auto& impl = castedThis->wrapped();
     JSValue result = jsStringWithCache(state, impl.nondeterministicGetterExceptionAttr(ec));
-    setDOMException(state, ec);
-    return result;
+    setDOMException(state, throwScope, ec);
+    return JSValue::encode(result);
 }
 
-
-JSValue jsTestNondeterministicNondeterministicSetterExceptionAttrGetter(ExecState*, JSTestNondeterministic*);
 
 EncodedJSValue jsTestNondeterministicNondeterministicSetterExceptionAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
@@ -345,22 +307,15 @@ EncodedJSValue jsTestNondeterministicNondeterministicSetterExceptionAttr(ExecSta
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, throwScope, "TestNondeterministic", "nondeterministicSetterExceptionAttr");
     }
-    return JSValue::encode(jsTestNondeterministicNondeterministicSetterExceptionAttrGetter(state, castedThis));
-}
-
-JSValue jsTestNondeterministicNondeterministicSetterExceptionAttrGetter(ExecState* state, JSTestNondeterministic* thisObject)
-{
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisObject);
 #if ENABLE(WEB_REPLAY)
     JSGlobalObject* globalObject = state->lexicalGlobalObject();
     InputCursor& cursor = globalObject->inputCursor();
     static NeverDestroyed<const AtomicString> bindingName("TestNondeterministic.nondeterministicSetterExceptionAttr", AtomicString::ConstructFromLiteral);
     if (cursor.isCapturing()) {
-        String memoizedResult = thisObject->wrapped().nondeterministicSetterExceptionAttr();
+        String memoizedResult = castedThis->wrapped().nondeterministicSetterExceptionAttr();
         cursor.appendInput<MemoizedDOMResult<String>>(bindingName.get().string(), memoizedResult, 0);
         JSValue result = jsStringWithCache(state, memoizedResult);
-        return result;
+        return JSValue::encode(result);
     }
 
     if (cursor.isReplaying()) {
@@ -368,13 +323,13 @@ JSValue jsTestNondeterministicNondeterministicSetterExceptionAttrGetter(ExecStat
         MemoizedDOMResultBase* input = cursor.fetchInput<MemoizedDOMResultBase>();
         if (input && input->convertTo<String>(memoizedResult)) {
             JSValue result = jsStringWithCache(state, memoizedResult);
-            return result;
+            return JSValue::encode(result);
         }
     }
 #endif
-    auto& impl = thisObject->wrapped();
+    auto& impl = castedThis->wrapped();
     JSValue result = jsStringWithCache(state, impl.nondeterministicSetterExceptionAttr());
-    return result;
+    return JSValue::encode(result);
 }
 
 
@@ -415,8 +370,7 @@ bool setJSTestNondeterministicNondeterministicWriteableAttr(ExecState* state, En
     }
     auto& impl = castedThis->wrapped();
     auto nativeValue = value.toWTFString(state);
-    if (UNLIKELY(throwScope.exception()))
-        return false;
+    RETURN_IF_EXCEPTION(throwScope, false);
     impl.setNondeterministicWriteableAttr(WTFMove(nativeValue));
     return true;
 }
@@ -435,8 +389,7 @@ bool setJSTestNondeterministicNondeterministicExceptionAttr(ExecState* state, En
     }
     auto& impl = castedThis->wrapped();
     auto nativeValue = value.toWTFString(state);
-    if (UNLIKELY(throwScope.exception()))
-        return false;
+    RETURN_IF_EXCEPTION(throwScope, false);
     impl.setNondeterministicExceptionAttr(WTFMove(nativeValue));
     return true;
 }
@@ -455,8 +408,7 @@ bool setJSTestNondeterministicNondeterministicGetterExceptionAttr(ExecState* sta
     }
     auto& impl = castedThis->wrapped();
     auto nativeValue = value.toWTFString(state);
-    if (UNLIKELY(throwScope.exception()))
-        return false;
+    RETURN_IF_EXCEPTION(throwScope, false);
     impl.setNondeterministicGetterExceptionAttr(WTFMove(nativeValue));
     return true;
 }
@@ -476,10 +428,9 @@ bool setJSTestNondeterministicNondeterministicSetterExceptionAttr(ExecState* sta
     auto& impl = castedThis->wrapped();
     ExceptionCode ec = 0;
     auto nativeValue = value.toWTFString(state);
-    if (UNLIKELY(throwScope.exception()))
-        return false;
+    RETURN_IF_EXCEPTION(throwScope, false);
     impl.setNondeterministicSetterExceptionAttr(WTFMove(nativeValue), ec);
-    setDOMException(state, ec);
+    setDOMException(state, throwScope, ec);
     return true;
 }
 

@@ -32,21 +32,17 @@
 #include "BytecodeGenerator.h"
 #include "CallFrame.h"
 #include "JIT.h"
+#include "JSCInlines.h"
 #include "JSFunction.h"
 #include "JSGeneratorFunction.h"
 #include "JSGlobalObject.h"
 #include "LabelScope.h"
 #include "Lexer.h"
-#include "JSCInlines.h"
-#include "JSTemplateRegistryKey.h"
 #include "Parser.h"
-#include "PropertyNameArray.h"
-#include "RegExpCache.h"
-#include "RegExpObject.h"
 #include "StackAlignment.h"
-#include "TemplateRegistryKey.h"
 #include <wtf/Assertions.h>
 #include <wtf/Threading.h>
+#include <wtf/text/StringBuilder.h>
 
 using namespace WTF;
 
@@ -1610,7 +1606,7 @@ RegisterID* UnaryOpNode::emitBytecode(BytecodeGenerator& generator, RegisterID* 
 {
     RefPtr<RegisterID> src = generator.emitNode(m_expr);
     generator.emitExpressionInfo(position(), position(), position());
-    return generator.emitUnaryOp(opcodeID(), generator.finalDestination(dst), src.get());
+    return generator.emitUnaryOp(opcodeID(), generator.finalDestination(dst), src.get(), OperandTypes(m_expr->resultDescriptor()));
 }
 
 // ------------------------------ UnaryPlusNode -----------------------------------
@@ -2685,7 +2681,7 @@ void ForInNode::emitLoopHeader(BytecodeGenerator& generator, RegisterID* propert
     RELEASE_ASSERT_NOT_REACHED();
 }
 
-void ForInNode::emitMultiLoopBytecode(BytecodeGenerator& generator, RegisterID* dst)
+void ForInNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
     if (!m_lexpr->isAssignResolveNode() && !m_lexpr->isAssignmentLocation()) {
         emitThrowReferenceError(generator, ASCIILiteral("Left side of for-in statement is not a reference."));
@@ -2833,11 +2829,6 @@ void ForInNode::emitMultiLoopBytecode(BytecodeGenerator& generator, RegisterID* 
     generator.emitLabel(end.get());
     generator.popLexicalScope(this);
     generator.emitProfileControlFlow(profilerEndOffset);
-}
-
-void ForInNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
-{
-    this->emitMultiLoopBytecode(generator, dst);
 }
 
 // ------------------------------ ForOfNode ------------------------------------
@@ -3502,6 +3493,18 @@ RegisterID* YieldExprNode::emitBytecode(BytecodeGenerator& generator, RegisterID
     RefPtr<RegisterID> arg = generator.newTemporary();
     generator.emitNode(arg.get(), argument());
     RefPtr<RegisterID> value = generator.emitDelegateYield(arg.get(), this);
+    if (dst == generator.ignoredResult())
+        return nullptr;
+    return generator.emitMove(generator.finalDestination(dst), value.get());
+}
+
+// ------------------------------ AwaitExprNode --------------------------------
+
+RegisterID* AwaitExprNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
+{
+    RefPtr<RegisterID> arg = generator.newTemporary();
+    generator.emitNode(arg.get(), argument());
+    RefPtr<RegisterID> value = generator.emitYield(arg.get());
     if (dst == generator.ignoredResult())
         return nullptr;
     return generator.emitMove(generator.finalDestination(dst), value.get());

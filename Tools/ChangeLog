@@ -1,3 +1,523 @@
+2016-09-26  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Add Sierra to the flakiness dashboard.
+        https://bugs.webkit.org/show_bug.cgi?id=162509
+
+        Reviewed by Alexey Proskuryakov.
+
+        * TestResultServer/static-dashboards/builders.jsonp:
+
+2016-09-26  Daniel Bates  <dabates@apple.com>
+
+        Rename IOS_TEXT_AUTOSIZING to TEXT_AUTOSIZING
+        https://bugs.webkit.org/show_bug.cgi?id=162365
+
+        Reviewed by Simon Fraser.
+
+        * DumpRenderTree/TestRunner.h:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2016-09-26  Tomas Popela  <tpopela@redhat.com>
+
+        [GTK] TestContextMenu is failing
+        https://bugs.webkit.org/show_bug.cgi?id=162569
+
+        We cannot use the MP3 file in the TestContextMenu, as it will not work
+        by default on most distributions (that don't have an MP3 codecs
+        installed). Change the test to use OGG file instead.
+
+        Reviewed by Michael Catanzaro.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestContextMenu.cpp:
+        (testContextMenuDefaultMenu):
+
+2016-09-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Using char16_t instead of wchar_t in TestWebKitAPI URLParser tests
+        https://bugs.webkit.org/show_bug.cgi?id=162537
+
+        Reviewed by Alex Christensen.
+
+        Some build bot (Linux ARM GTK port) fails since we cannot select
+        the specific StringBuilder::append method for wchar_t.
+
+        wchar_t implementation highly depends on platforms. sizeof(wchar_t) == 2
+        in Windows, while sizeof(wchar_t) == 4 in Linux and OS X. So, ICU
+        uses wchar_t for UChar (UTF-16) in Windows while it doesn't in other
+        platforms.
+
+        StringBuilder::append is overloaded for UChar. In Windows, we can pass
+        wchar_t since UChar is wchar_t. However, we cannot do that in other platforms.
+
+        Instead of using wchar_t, we use more platform portable UTF-16 literal for
+        testing. Use char16_t and C++11 UTF-16 literal.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::utf16String):
+        (TestWebKitAPI::TEST_F):
+        (TestWebKitAPI::wideString): Deleted.
+
+2016-09-25  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Adjust EFL indentation to EFL MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=162542
+
+        Unreviewed, EFL simple coding style fix.
+
+        Some functions wasn't applied EFL coding style in prefix fix.
+
+        * MiniBrowser/efl/main.c:
+        (_key_down_cb):
+        (view_focus_set):
+        (_mouse_down_cb):
+        (title_set):
+        (_title_changed_cb):
+        (_url_changed_cb):
+        (_back_forward_list_changed_cb):
+        (_progress_cb):
+        (_error_cb):
+        (_download_request_cb):
+        (close_file_picker):
+        (_filepicker_parent_deletion_cb):
+        (_filepicker_deletion_cb):
+        (_fileselector_done_cb):
+        (_file_chooser_request_cb):
+        (_download_finished_cb):
+        (_download_failed_cb):
+        (_color_changed_cb):
+        (_color_item_selected_cb):
+        (_color_picker_ok_clicked_cb):
+        (_color_picker_cancel_clicked_cb):
+        (_color_picker_dismiss_cb):
+        (_color_picker_request_cb):
+        (quit):
+        (has_scheme):
+        (url_from_user_input):
+        (url_load_from_user_input):
+        (_url_bar_activated_cb):
+        (_url_bar_clicked_cb):
+        (_search_field_aborted_cb):
+        (_search_field_activated_cb):
+        (_search_field_clicked_cb):
+        (_back_button_clicked_cb):
+        (_forward_button_clicked_cb):
+        (_search_backward_button_clicked_cb):
+        (_search_forward_button_clicked_cb):
+        (_search_case_option_changed):
+        (_search_word_start_option_changed_cb):
+        (_search_close_button_clicked_cb):
+        (_refresh_button_clicked_cb):
+        (_stop_button_clicked_cb):
+        (list_item_label_get):
+        (_list_item_select_cb):
+        (navigation_button_longpress_process):
+        (_forward_button_longpress_cb):
+        (_back_button_longpress_cb):
+        (quit_event_loop):
+        (_ok_clicked_cb):
+        (_file_entry_dialog_show):
+
+2016-09-24  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] anchor.download attribute value is ignored by NETWORK_SESSION code path
+        https://bugs.webkit.org/show_bug.cgi?id=162531
+
+        Reviewed by Darin Adler.
+
+        Update decideDestinationWithSuggestedFilename() to return a actual file path
+        instead of nullptr. The NETWORK_SESSION code path cancels the download when
+        decideDestinationWithSuggestedFilename() returns an empty file path, unlike
+        the !NETWORK_SESSION code path that just continue downloading without
+        explicitely setting a destination path. This lead to different test results
+        for NETWORK_SESSION and !NETWORK_SESSION code paths. Returns a valid
+        destination path makes more sense and leads to consistent results.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::decideDestinationWithSuggestedFilename):
+
+2016-09-23  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [mac-sierra] 2 WKWebViewCandidateTests API test failures
+        https://bugs.webkit.org/show_bug.cgi?id=162470
+
+        Reviewed by Tim Horton.
+
+        VideoControlsManager, WKWebViewCandidateTests and CandidateTests should not be running on 10.12.0. Guard these
+        tests with an SDK check to prevent 10.12.0 bots from building them.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/VideoControlsManager.mm:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKWebViewCandidateTests.mm:
+        * TestWebKitAPI/Tests/mac/CandidateTests.mm:
+
+2016-09-23  Alex Christensen  <achristensen@webkit.org>
+
+        Refactor URLParser
+        https://bugs.webkit.org/show_bug.cgi?id=162516
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2016-09-23  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] Implement parsing of Async Functions
+        https://bugs.webkit.org/show_bug.cgi?id=161409
+
+        Reviewed by Yusuke Suzuki.
+
+        * Scripts/build-jsc:
+        (cMakeArgsFromFeatures):
+        * Scripts/webkitperl/FeatureList.pm:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2016-09-23  Alex Christensen  <achristensen@webkit.org>
+
+        Refactor URLParser
+        https://bugs.webkit.org/show_bug.cgi?id=162511
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+        (TestWebKitAPI::checkURL):
+
+2016-09-23  Alexey Proskuryakov  <ap@apple.com>
+
+        iOS playback user action tests fail on some machines
+        https://bugs.webkit.org/show_bug.cgi?id=162504
+        rdar://problem/28013994
+
+        Reviewed by Jer Noble.
+
+        Avoid the need to have a timeout.
+
+        * TestWebKitAPI/Tests/WebKit/ios/audio-only.html:
+        * TestWebKitAPI/Tests/WebKit/ios/video-with-audio.html:
+        * TestWebKitAPI/Tests/WebKit/ios/video-without-audio.html:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/large-video-without-audio.html:
+
+2016-09-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r204163): [GTK] API test /webkit2/WebKitSecurityManager/file-xhr is failing
+        https://bugs.webkit.org/show_bug.cgi?id=161607
+
+        Reviewed by Michael Catanzaro.
+
+        Since r204163, in case of cross origin error when loading the XHR, the load fails and an error message is shown
+        in the console, but there isn't any js expcetion, which is what we were checking. Now, we check that there
+        aren't exceptions, and that the error message is sent to the console.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebContext.cpp:
+        (consoleMessageReceivedCallback):
+        (testWebContextSecurityFileXHR):
+
+2016-09-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Use correct hardware for Sierra Debug WK2 testers.
+        https://bugs.webkit.org/show_bug.cgi?id=162474
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2016-09-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Make all WebView tests have a WebKitUserContentManager
+        https://bugs.webkit.org/show_bug.cgi?id=162487
+
+        Reviewed by Michael Catanzaro.
+
+        It simplifies tests using the user content manager, and allows to use it without having to subclass WebViewTest.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestConsoleMessage.cpp:
+        (ConsoleMessageTest::ConsoleMessageTest):
+        (ConsoleMessageTest::~ConsoleMessageTest):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestUIClient.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitUserContentManager.cpp:
+        (testUserContentManagerInjectedStyleSheet):
+        (testUserContentManagerInjectedScript):
+        (UserScriptMessageTest::UserScriptMessageTest):
+        (beforeAll):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebView.cpp:
+        (testWebViewIsPlayingAudio):
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebViewTest.cpp:
+        (WebViewTest::WebViewTest):
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebViewTest.h:
+
+2016-09-23  Antoine Quint  <graouts@apple.com>
+
+        Add a new runtime flag for work on modern media controls (off by default)
+        https://bugs.webkit.org/show_bug.cgi?id=162420
+        <rdar://problem/27989489>
+
+        Reviewed by Eric Carlson.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues):
+        * Scripts/webkitperl/FeatureList.pm:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setModernMediaControlsEnabled):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2016-09-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r194387): Crash on github.com in IntlDateTimeFormat::resolvedOptions in C locale
+        https://bugs.webkit.org/show_bug.cgi?id=162139
+
+        Reviewed by Michael Catanzaro.
+
+        Add test cases to check the behavior when using the C locale and an invalid locale.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebContext.cpp:
+        (testWebContextLanguages):
+
+2016-09-22  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] alert box is not displayed 
+        https://bugs.webkit.org/show_bug.cgi?id=156395
+
+        Reviewed by Gyuyoung Kim.
+
+        Some popup objects(alert, confirm, prompt, file entry dialog) used the ecore_main_loop_begin() to make
+        the modal popup but ecore_main_loop_begin() was not executed inside an exisiting main loop. So we have
+        to use the ecore_main_loop_iterate() instead of the ecore_main_loop_begin().
+
+        * MiniBrowser/efl/main.c:
+        (_ok_clicked_cb):
+        (_file_entry_dialog_show):
+        (_javascript_alert_cb):
+        (_javascript_confirm_cb):
+        (_javascript_prompt_cb):
+        (quit_event_loop): Deleted.
+
+2016-09-22  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Add an API for getting the branch identifier from a Git or SVN checkout.
+        https://bugs.webkit.org/show_bug.cgi?id=151570
+        rdar://problem/17959831
+
+        Reviewed by David Kilzer.
+
+        This patch adds a function called svnIdentifierForPath. This function returns either "trunk",
+        the name of the tag, or the name of the branch, as appropriate. This function is necessary for
+        a VCSUtils client that is not checked in to the WebKit project.
+
+        This patch also breaks up pathRelativeToSVNRepositoryRootForPath into four functions:
+        - pathRelativeToSVNRepositoryRootForPath
+        - svnInfoForPath
+        - svnURLForPath
+        - svnRepositoryRootForPath
+
+        This allows us to reuse logic from pathRelativeToSVNRepositoryRootForPath in svnIdentifierForPath and
+        allows clients of VCSUtils to extract what arbitrary information from the `svn info` command regardless
+        of SCM.
+
+        * Scripts/VCSUtils.pm:
+        (svnInfoForPath):
+        Copied logic that previously lived in pathRelativeToSVNRepositoryRootForPath.
+        Make code safe to use for a path, and not just for the CWD.
+
+        (svnURLForPath):
+        Calls svnInfoForPath and extracts the URL.
+
+        (svnRepositoryRootForPath):
+        Calls svnInfoForPath and extracts the Repository Root.
+
+        (svnIdentifierForPath):
+        Calls pathRelativeToSVNRepositoryRootForPath and extracts the repository identifier.
+
+        (pathRelativeToSVNRepositoryRootForPath):
+        Now uses svnURLForPath and svnRepositoryRootForPath instead of being responsible for
+        determining both values.
+
+2016-09-22  Megan Gardner  <megan_gardner@apple.com>
+
+        Add long press selection test
+        https://bugs.webkit.org/show_bug.cgi?id=162367
+
+        Reviewed by Simon Fraser.
+
+        Add support to UIScriptController to synthesize long press events on iOS.
+        This required adding long-press functionality to HIDEventGenerator.
+
+        HIDEventGenerator sends the touchDown, but must then send the touchUp with
+        a dispatch_after (rather than sleeping, as we do for other events) in order
+        for the gesture recognizers to correctly detect a long press.
+
+        Use the long press synthesis in a test that detects whether a long press
+        gesture triggers text selection.
+
+        Fixed incorrect constants. NSTimeInterval is in seconds, original numbers
+        were nanoseconds and typedefed to long without regard to the type
+        differences. Redid constants to be the right value, and converted upon use.
+
+        Cleaned up unused enum types.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::longPressAtPoint):
+        (WTR::UIScriptController::forcePressAtPoint):
+        (WTR::UIScriptController::dragFromPointToPoint): Deleted.
+        * Scripts/webkitpy/common/config/contributors.json:
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::longPressAtPoint):
+        (WTR::UIScriptController::forcePressAtPoint):
+        (WTR::UIScriptController::dragFromPointToPoint): Deleted.
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/ios/HIDEventGenerator.h:
+        * WebKitTestRunner/ios/HIDEventGenerator.mm:
+        (-[HIDEventGenerator _createIOHIDEventType:]):
+        (-[HIDEventGenerator sendTaps:location:withNumberOfTouches:completionBlock:]):
+        (-[HIDEventGenerator clearTap:]):
+        (-[HIDEventGenerator longPressTimerCall:]):
+        (-[HIDEventGenerator longPressFinish:completionBlock:]):
+        (-[HIDEventGenerator longPress:completionBlock:]):
+        (-[HIDEventGenerator forcePress:completionBlock:]):
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::longPressAtPoint):
+        (WTR::UIScriptController::forcePressAtPoint):
+        (WTR::UIScriptController::dragFromPointToPoint): Deleted.
+
+2016-09-22  Jonathan Bedard  <jbedard@apple.com>
+
+        Automatic Text Replacement Testing in WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=161919
+
+        Reviewed by Ryosuke Niwa.
+
+        Implemented test hooks for text replacement for WebKit2.
+        Note that spell checking has not been implemented, so most tests which use text replacement still fail.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl: Removed setAutomaticLinkDetectionEnabled from TestRunner, moved to Internals.
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp: Ditto.
+        (WTR::InjectedBundle::beginTesting): Ditto.
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp: Ditto.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h: Ditto.
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::runTest): Place TextChecker into testing mode.
+
+2016-09-21  Dan Bernstein  <mitz@apple.com>
+
+        [macOS] Upon layout, _webView:renderingProgressDidChange: fires before the intrinsic content size is updated
+        https://bugs.webkit.org/show_bug.cgi?id=162359
+        <rdar://problem/27776454>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/AutoLayoutIntegration.mm:
+        (TEST):
+
+2016-09-21  Keith Miller  <keith_miller@apple.com>
+
+        Fix build for future versions of Clang.
+        https://bugs.webkit.org/show_bug.cgi?id=162346
+
+        Reviewed by Filip Pizlo.
+
+        * TestWebKitAPI/Counters.cpp:
+        * TestWebKitAPI/Counters.h:
+        (DeleterCounter::deleterCount):
+        (DeleterCounter::TestingScope::TestingScope):
+        (DeleterCounter::operator()):
+        * TestWebKitAPI/Tests/WTF/HashCountedSet.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/HashMap.cpp:
+        (TestWebKitAPI::TEST):
+
+2016-09-21  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r206222 and r206227.
+        https://bugs.webkit.org/show_bug.cgi?id=162361
+
+        "broke the windows build" (Requested by keith_mi_ on #webkit).
+
+        Reverted changesets:
+
+        "Fix build for future versions of Clang."
+        https://bugs.webkit.org/show_bug.cgi?id=162346
+        http://trac.webkit.org/changeset/206222
+
+        "Attempt to fix windows build after r206222."
+        http://trac.webkit.org/changeset/206227
+
+2016-09-21  Alex Christensen  <achristensen@webkit.org>
+
+        URLParser should match URL::parse when parsing data urls with slashes in them
+        https://bugs.webkit.org/show_bug.cgi?id=162352
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2016-09-21  Alex Christensen  <achristensen@webkit.org>
+
+        URLParser should fail when parsing invalid relative URLs with no schemes
+        https://bugs.webkit.org/show_bug.cgi?id=162355
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2016-09-21  Keith Miller  <keith_miller@apple.com>
+
+        Fix build for future versions of Clang.
+        https://bugs.webkit.org/show_bug.cgi?id=162346
+
+        Reviewed by Filip Pizlo.
+
+        * TestWebKitAPI/Counters.cpp:
+        * TestWebKitAPI/Counters.h:
+        (DeleterCounter::deleterCount):
+        (DeleterCounter::TestingScope::TestingScope):
+        (DeleterCounter::operator()):
+        * TestWebKitAPI/Tests/WTF/HashCountedSet.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/HashMap.cpp:
+        (TestWebKitAPI::TEST):
+
+2016-09-21  Alex Christensen  <achristensen@webkit.org>
+
+        Prepare API tests for enabling URLParser by default
+        https://bugs.webkit.org/show_bug.cgi?id=162341
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::checkURL):
+        (TestWebKitAPI::checkRelativeURL):
+        (TestWebKitAPI::checkURLDifferences):
+        (TestWebKitAPI::checkRelativeURLDifferences):
+        (TestWebKitAPI::shouldFail):
+
+2016-09-21  Alex Christensen  <achristensen@webkit.org>
+
+        URLParser: Correctly parse URLs that are just nonspecialscheme:/
+        https://bugs.webkit.org/show_bug.cgi?id=162340
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2016-09-21  Alex Christensen  <achristensen@webkit.org>
+
+        URLParser: correctly parse relative URLs that are just one character
+        https://bugs.webkit.org/show_bug.cgi?id=162344
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
 2016-09-20  Alex Christensen  <achristensen@webkit.org>
 
         Optimize URLParser

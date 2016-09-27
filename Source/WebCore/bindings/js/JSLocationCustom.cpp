@@ -52,9 +52,17 @@ bool JSLocation::getOwnPropertySlotDelegate(ExecState* exec, PropertyName proper
         return false;
 
     // We only allow access to Location.replace() cross origin.
-    // Make it read-only / non-configurable to prevent writes via defineProperty.
     if (propertyName == exec->propertyNames().replace) {
-        slot.setCustom(this, ReadOnly | DontDelete | DontEnum, nonCachingStaticFunctionGetter<jsLocationInstanceFunctionReplace, 1>);
+        slot.setCustom(this, ReadOnly | DontEnum, nonCachingStaticFunctionGetter<jsLocationInstanceFunctionReplace, 1>);
+        return true;
+    }
+
+    // Getting location.href cross origin needs to throw. However, getOwnPropertyDescriptor() needs to return
+    // a descriptor that has a setter but no getter.
+    if (slot.internalMethodType() == PropertySlot::InternalMethodType::GetOwnProperty && propertyName == exec->propertyNames().href) {
+        auto* entry = JSLocation::info()->staticPropHashTable->entry(propertyName);
+        CustomGetterSetter* customGetterSetter = CustomGetterSetter::create(vm, nullptr, entry->propertyPutter());
+        slot.setCustomGetterSetter(this, DontEnum | CustomAccessor, customGetterSetter);
         return true;
     }
 
@@ -120,7 +128,8 @@ void JSLocation::getOwnPropertyNames(JSObject* object, ExecState* exec, Property
 {
     JSLocation* thisObject = jsCast<JSLocation*>(object);
     if (!BindingSecurity::shouldAllowAccessToFrame(exec, thisObject->wrapped().frame(), DoNotReportSecurityError)) {
-        addCrossOriginLocationPropertyNames(*exec, propertyNames);
+        if (mode.includeDontEnumProperties())
+            addCrossOriginLocationPropertyNames(*exec, propertyNames);
         return;
     }
     Base::getOwnPropertyNames(thisObject, exec, propertyNames, mode);

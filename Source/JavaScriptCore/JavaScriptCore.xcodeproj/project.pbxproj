@@ -284,6 +284,7 @@
 		0F300B7818AB051100A6D72E /* DFGNodeOrigin.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F300B7718AB051100A6D72E /* DFGNodeOrigin.h */; };
 		0F300B7B18AB1B1400A6D72E /* DFGIntegerCheckCombiningPhase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0F300B7918AB1B1400A6D72E /* DFGIntegerCheckCombiningPhase.cpp */; };
 		0F300B7C18AB1B1400A6D72E /* DFGIntegerCheckCombiningPhase.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F300B7A18AB1B1400A6D72E /* DFGIntegerCheckCombiningPhase.h */; };
+		0F30D7C01D95D6320053089D /* CPU.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F30D7BF1D95D62F0053089D /* CPU.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		0F32BD101BB34F190093A57F /* HeapHelperPool.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0F32BD0E1BB34F190093A57F /* HeapHelperPool.cpp */; };
 		0F32BD111BB34F190093A57F /* HeapHelperPool.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F32BD0F1BB34F190093A57F /* HeapHelperPool.h */; };
 		0F338DF11BE93AD10013C88F /* B3StackmapValue.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0F338DEF1BE93AD10013C88F /* B3StackmapValue.cpp */; };
@@ -452,6 +453,8 @@
 		0F66E16C14DF3F1600B7B2E4 /* DFGEdge.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F66E16914DF3F1300B7B2E4 /* DFGEdge.h */; };
 		0F682FB219BCB36400FA3BAD /* DFGSSACalculator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0F682FB019BCB36400FA3BAD /* DFGSSACalculator.cpp */; };
 		0F682FB319BCB36400FA3BAD /* DFGSSACalculator.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F682FB119BCB36400FA3BAD /* DFGSSACalculator.h */; };
+		0F6971EA1D92F42400BA02A5 /* B3FenceValue.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F6971E91D92F42100BA02A5 /* B3FenceValue.h */; };
+		0F6971EB1D92F42D00BA02A5 /* B3FenceValue.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0F6971E81D92F42100BA02A5 /* B3FenceValue.cpp */; };
 		0F69CC88193AC60A0045759E /* DFGFrozenValue.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0F69CC86193AC60A0045759E /* DFGFrozenValue.cpp */; };
 		0F69CC89193AC60A0045759E /* DFGFrozenValue.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F69CC87193AC60A0045759E /* DFGFrozenValue.h */; };
 		0F6B1CB91861244C00845D97 /* ArityCheckMode.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F6B1CB71861244C00845D97 /* ArityCheckMode.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -2523,6 +2526,7 @@
 		0F300B7718AB051100A6D72E /* DFGNodeOrigin.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGNodeOrigin.h; path = dfg/DFGNodeOrigin.h; sourceTree = "<group>"; };
 		0F300B7918AB1B1400A6D72E /* DFGIntegerCheckCombiningPhase.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = DFGIntegerCheckCombiningPhase.cpp; path = dfg/DFGIntegerCheckCombiningPhase.cpp; sourceTree = "<group>"; };
 		0F300B7A18AB1B1400A6D72E /* DFGIntegerCheckCombiningPhase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGIntegerCheckCombiningPhase.h; path = dfg/DFGIntegerCheckCombiningPhase.h; sourceTree = "<group>"; };
+		0F30D7BF1D95D62F0053089D /* CPU.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CPU.h; sourceTree = "<group>"; };
 		0F32BD0E1BB34F190093A57F /* HeapHelperPool.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = HeapHelperPool.cpp; sourceTree = "<group>"; };
 		0F32BD0F1BB34F190093A57F /* HeapHelperPool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HeapHelperPool.h; sourceTree = "<group>"; };
 		0F338DEF1BE93AD10013C88F /* B3StackmapValue.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = B3StackmapValue.cpp; path = b3/B3StackmapValue.cpp; sourceTree = "<group>"; };
@@ -2691,6 +2695,8 @@
 		0F66E16914DF3F1300B7B2E4 /* DFGEdge.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGEdge.h; path = dfg/DFGEdge.h; sourceTree = "<group>"; };
 		0F682FB019BCB36400FA3BAD /* DFGSSACalculator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = DFGSSACalculator.cpp; path = dfg/DFGSSACalculator.cpp; sourceTree = "<group>"; };
 		0F682FB119BCB36400FA3BAD /* DFGSSACalculator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGSSACalculator.h; path = dfg/DFGSSACalculator.h; sourceTree = "<group>"; };
+		0F6971E81D92F42100BA02A5 /* B3FenceValue.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = B3FenceValue.cpp; path = b3/B3FenceValue.cpp; sourceTree = "<group>"; };
+		0F6971E91D92F42100BA02A5 /* B3FenceValue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = B3FenceValue.h; path = b3/B3FenceValue.h; sourceTree = "<group>"; };
 		0F69CC86193AC60A0045759E /* DFGFrozenValue.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = DFGFrozenValue.cpp; path = dfg/DFGFrozenValue.cpp; sourceTree = "<group>"; };
 		0F69CC87193AC60A0045759E /* DFGFrozenValue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGFrozenValue.h; path = dfg/DFGFrozenValue.h; sourceTree = "<group>"; };
 		0F6B1CB71861244C00845D97 /* ArityCheckMode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ArityCheckMode.h; sourceTree = "<group>"; };
@@ -4844,6 +4850,8 @@
 				0FEC85BE1BE167A00080FF74 /* B3Effects.h */,
 				0F725CA31C503DED00AD943A /* B3EliminateCommonSubexpressions.cpp */,
 				0F725CA41C503DED00AD943A /* B3EliminateCommonSubexpressions.h */,
+				0F6971E81D92F42100BA02A5 /* B3FenceValue.cpp */,
+				0F6971E91D92F42100BA02A5 /* B3FenceValue.h */,
 				0F6B8AE01C4EFE1700969052 /* B3FixSSA.cpp */,
 				0F6B8AE11C4EFE1700969052 /* B3FixSSA.h */,
 				0F725CAD1C506D3B00AD943A /* B3FoldPathConstants.cpp */,
@@ -4921,9 +4929,9 @@
 				0FEC84EF1BDACDAC0080FF74 /* B3SwitchValue.cpp */,
 				0FEC84F01BDACDAC0080FF74 /* B3SwitchValue.h */,
 				0F45703E1BE584CA0062A629 /* B3TimingScope.cpp */,
-				0FEC84F21BDACDAC0080FF74 /* B3Type.h */,
 				0F45703F1BE584CA0062A629 /* B3TimingScope.h */,
 				0FEC84F11BDACDAC0080FF74 /* B3Type.cpp */,
+				0FEC84F21BDACDAC0080FF74 /* B3Type.h */,
 				DCFDFBD81D1F5D9800FE3D72 /* B3TypeMap.h */,
 				0FEC84F31BDACDAC0080FF74 /* B3UpsilonValue.cpp */,
 				0FEC84F41BDACDAC0080FF74 /* B3UpsilonValue.h */,
@@ -6664,6 +6672,7 @@
 				86D3B2C110156BDE002865E7 /* AssemblerBufferWithConstantPool.h */,
 				43C392AA1C3BEB0000241F53 /* AssemblerCommon.h */,
 				86E116B00FE75AC800B512BC /* CodeLocation.h */,
+				0F30D7BF1D95D62F0053089D /* CPU.h */,
 				0F37308E1C0CD68500052BFA /* DisallowMacroScratchRegisterUsage.h */,
 				0FF4275615914A20004CB9FF /* LinkBuffer.cpp */,
 				86D3B3C110159D7F002865E7 /* LinkBuffer.h */,
@@ -7346,6 +7355,7 @@
 				0F21C27D14BE727A00ADC64B /* CodeSpecializationKind.h in Headers */,
 				0F0B83A714BCF50700885B4F /* CodeType.h in Headers */,
 				A53243981856A489002ED692 /* CombinedDomains.json in Headers */,
+				0F30D7C01D95D6320053089D /* CPU.h in Headers */,
 				BC18C3F30E16F5CD00B34460 /* CommonIdentifiers.h in Headers */,
 				53F6BF6D1C3F060A00F41E5D /* InternalFunctionAllocationProfile.h in Headers */,
 				0F15F15F14B7A73E005DE37D /* CommonSlowPaths.h in Headers */,
@@ -7826,6 +7836,7 @@
 				A1587D721B4DC14100D69849 /* IntlDateTimeFormatPrototype.h in Headers */,
 				A1587D761B4DC1C600D69849 /* IntlDateTimeFormatPrototype.lut.h in Headers */,
 				A55714BE1CD8049F0004D2C6 /* ConsoleObject.h in Headers */,
+				0F6971EA1D92F42400BA02A5 /* B3FenceValue.h in Headers */,
 				A1D792FD1B43864B004516F5 /* IntlNumberFormat.h in Headers */,
 				A1D792FF1B43864B004516F5 /* IntlNumberFormatConstructor.h in Headers */,
 				A125846E1B45A36000CC7F6C /* IntlNumberFormatConstructor.lut.h in Headers */,
@@ -9478,6 +9489,7 @@
 				0F4680CC14BBB17A00BFE272 /* LowLevelInterpreter.cpp in Sources */,
 				A5AB49DC1BEC8082007020FB /* PerGlobalObjectWrapperWorld.cpp in Sources */,
 				14B723B212D7DA46003BD5ED /* MachineStackMarker.cpp in Sources */,
+				0F6971EB1D92F42D00BA02A5 /* B3FenceValue.cpp in Sources */,
 				FE3A06BD1C11040D00390FDD /* JITLeftShiftGenerator.cpp in Sources */,
 				0FEB3ECF16237F6C00AB67AD /* MacroAssembler.cpp in Sources */,
 				86C568E011A213EE0007F7F0 /* MacroAssemblerARM.cpp in Sources */,

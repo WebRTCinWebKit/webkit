@@ -358,13 +358,13 @@ struct MediaElementSessionInfo {
     bool isPlayingAudio : 1;
 };
 
-static MediaElementSessionInfo mediaElementSessionInfoForSession(const MediaElementSession& session)
+static MediaElementSessionInfo mediaElementSessionInfoForSession(const MediaElementSession& session, MediaElementSession::PlaybackControlsPurpose purpose)
 {
     const HTMLMediaElement& element = session.element();
     return {
         &session,
         session.mostRecentUserInteractionTime(),
-        session.canShowControlsManager(),
+        session.canShowControlsManager(purpose),
         element.isFullscreen() || element.isVisibleInViewport(),
         session.isLargeEnoughForMainContent(MediaSessionMainContentPurpose::MediaControls),
         element.isPlaying() && element.hasAudio() && !element.muted()
@@ -381,8 +381,11 @@ static bool preferMediaControlsForCandidateSessionOverOtherCandidateSession(cons
     return session.timeOfLastUserInteraction > otherSession.timeOfLastUserInteraction;
 }
 
-static bool mediaSessionMayBeConfusedWithMainContent(const MediaElementSessionInfo& session)
+static bool mediaSessionMayBeConfusedWithMainContent(const MediaElementSessionInfo& session, MediaElementSession::PlaybackControlsPurpose purpose)
 {
+    if (purpose == MediaElementSession::PlaybackControlsPurpose::NowPlaying)
+        return session.isPlayingAudio;
+
     if (!session.isVisibleInViewportOrFullscreen)
         return false;
 
@@ -394,33 +397,6 @@ static bool mediaSessionMayBeConfusedWithMainContent(const MediaElementSessionIn
     return true;
 }
 
-static const MediaElementSession* bestMediaSessionForShowingPlaybackControlsManager()
-{
-    auto allSessions = PlatformMediaSessionManager::sharedManager().currentSessionsMatching([] (const PlatformMediaSession& session) {
-        return is<MediaElementSession>(session);
-    });
-
-    Vector<MediaElementSessionInfo> candidateSessions;
-    bool atLeastOneNonCandidateMayBeConfusedForMainContent = false;
-    for (auto& session : allSessions) {
-        auto mediaElementSessionInfo = mediaElementSessionInfoForSession(downcast<MediaElementSession>(*session));
-        if (mediaElementSessionInfo.canShowControlsManager)
-            candidateSessions.append(mediaElementSessionInfo);
-        else if (mediaSessionMayBeConfusedWithMainContent(mediaElementSessionInfo))
-            atLeastOneNonCandidateMayBeConfusedForMainContent = true;
-    }
-
-    if (!candidateSessions.size())
-        return nullptr;
-
-    std::sort(candidateSessions.begin(), candidateSessions.end(), preferMediaControlsForCandidateSessionOverOtherCandidateSession);
-    auto strongestSessionCandidate = candidateSessions.first();
-    if (!strongestSessionCandidate.isVisibleInViewportOrFullscreen && !strongestSessionCandidate.isPlayingAudio && atLeastOneNonCandidateMayBeConfusedForMainContent)
-        return nullptr;
-
-    return strongestSessionCandidate.session;
-}
-
 HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& document, bool createdByParser)
     : HTMLElement(tagName, document)
     , ActiveDOMObject(&document)
@@ -429,6 +405,7 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
     , m_playbackProgressTimer(*this, &HTMLMediaElement::playbackProgressTimerFired)
     , m_scanTimer(*this, &HTMLMediaElement::scanTimerFired)
     , m_playbackControlsManagerBehaviorRestrictionsTimer(*this, &HTMLMediaElement::playbackControlsManagerBehaviorRestrictionsTimerFired)
+    , m_seekToPlaybackPositionEndedTimer(*this, &HTMLMediaElement::seekToPlaybackPositionEndedTimerFired)
     , m_playedTimeRanges()
     , m_asyncEventQueue(*this)
     , m_requestedPlaybackRate(1)
@@ -491,6 +468,7 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
     , m_mediaControlsDependOnPageScaleFactor(false)
     , m_haveSetUpCaptionContainer(false)
 #endif
+    , m_isScrubbingRemotely(false)
 #if ENABLE(VIDEO_TRACK)
     , m_tracksAreReady(true)
     , m_haveVisibleTextTrack(false)
@@ -641,6 +619,33 @@ HTMLMediaElement::~HTMLMediaElement()
 
     m_player = nullptr;
     updatePlaybackControlsManager();
+}
+
+HTMLMediaElement* HTMLMediaElement::bestMediaElementForShowingPlaybackControlsManager(MediaElementSession::PlaybackControlsPurpose purpose)
+{
+    auto allSessions = PlatformMediaSessionManager::sharedManager().currentSessionsMatching([] (const PlatformMediaSession& session) {
+        return is<MediaElementSession>(session);
+    });
+
+    Vector<MediaElementSessionInfo> candidateSessions;
+    bool atLeastOneNonCandidateMayBeConfusedForMainContent = false;
+    for (auto& session : allSessions) {
+        auto mediaElementSessionInfo = mediaElementSessionInfoForSession(downcast<MediaElementSession>(*session), purpose);
+        if (mediaElementSessionInfo.canShowControlsManager)
+            candidateSessions.append(mediaElementSessionInfo);
+        else if (mediaSessionMayBeConfusedWithMainContent(mediaElementSessionInfo, purpose))
+            atLeastOneNonCandidateMayBeConfusedForMainContent = true;
+    }
+
+    if (!candidateSessions.size())
+        return nullptr;
+
+    std::sort(candidateSessions.begin(), candidateSessions.end(), preferMediaControlsForCandidateSessionOverOtherCandidateSession);
+    auto strongestSessionCandidate = candidateSessions.first();
+    if (!strongestSessionCandidate.isVisibleInViewportOrFullscreen && !strongestSessionCandidate.isPlayingAudio && atLeastOneNonCandidateMayBeConfusedForMainContent)
+        return nullptr;
+
+    return &strongestSessionCandidate.session->element();
 }
 
 void HTMLMediaElement::registerWithDocument(Document& document)
@@ -1025,6 +1030,7 @@ void HTMLMediaElement::scheduleNotifyAboutPlaying()
 
 void HTMLMediaElement::notifyAboutPlaying()
 {
+    m_playbackStartedTime = currentMediaTime().toDouble();
     dispatchEvent(Event::create(eventNames().playingEvent, false, true));
     resolvePendingPlayPromises();
 
@@ -1095,7 +1101,7 @@ void HTMLMediaElement::setSrcObject(ScriptExecutionContext& context, MediaStream
 
     m_mediaStreamSrcObject = mediaStream;
     if (mediaStream)
-        setSrc(DOMURL::createPublicURL(context, mediaStream));
+        setSrc(DOMURL::createPublicURL(context, *mediaStream));
 }
 #endif
 
@@ -1989,6 +1995,16 @@ void HTMLMediaElement::textTrackRemoveCue(TextTrack*, TextTrackCue& cue)
 
 #endif
 
+static inline bool isAllowedToLoadMediaURL(HTMLMediaElement& element, const URL& url, bool isInUserAgentShadowTree)
+{
+    // Elements in user agent show tree should load whatever the embedding document policy is.
+    if (isInUserAgentShadowTree)
+        return true;
+
+    ASSERT(element.document().contentSecurityPolicy());
+    return element.document().contentSecurityPolicy()->allowMediaFromSource(url);
+}
+
 bool HTMLMediaElement::isSafeToLoadURL(const URL& url, InvalidURLAction actionIfInvalid)
 {
     if (!url.isValid()) {
@@ -2004,7 +2020,7 @@ bool HTMLMediaElement::isSafeToLoadURL(const URL& url, InvalidURLAction actionIf
         return false;
     }
 
-    if (!document().contentSecurityPolicy()->allowMediaFromSource(url, isInUserAgentShadowTree())) {
+    if (!isAllowedToLoadMediaURL(*this, url, isInUserAgentShadowTree())) {
         LOG(Media, "HTMLMediaElement::isSafeToLoadURL(%p) - %s -> rejected by Content Security Policy", this, urlForLoggingMedia(url).utf8().data());
         return false;
     }
@@ -2408,6 +2424,7 @@ void HTMLMediaElement::setReadyState(MediaPlayer::ReadyState state)
         if (canTransitionFromAutoplayToPlay()) {
             m_paused = false;
             invalidateCachedTime();
+            m_playbackStartedTime = currentMediaTime().toDouble();
             scheduleEvent(eventNames().playEvent);
             scheduleNotifyAboutPlaying();
         }
@@ -3197,6 +3214,7 @@ bool HTMLMediaElement::playInternal()
     if (m_paused) {
         m_paused = false;
         invalidateCachedTime();
+        m_playbackStartedTime = currentMediaTime().toDouble();
         scheduleEvent(eventNames().playEvent);
 
         if (m_readyState <= HAVE_CURRENT_DATA)
@@ -4032,8 +4050,7 @@ static JSC::JSValue controllerJSValue(JSC::ExecState& exec, JSDOMGlobalObject& g
     
     JSC::Identifier controlsHost = JSC::Identifier::fromString(&vm, "controlsHost");
     JSC::JSValue controlsHostJSWrapper = mediaJSWrapperObject->get(&exec, controlsHost);
-    if (UNLIKELY(scope.exception()))
-        return JSC::jsNull();
+    RETURN_IF_EXCEPTION(scope, JSC::JSValue());
 
     JSC::JSObject* controlsHostJSWrapperObject = JSC::jsDynamicCast<JSC::JSObject*>(controlsHostJSWrapper);
     if (!controlsHostJSWrapperObject)
@@ -4041,8 +4058,7 @@ static JSC::JSValue controllerJSValue(JSC::ExecState& exec, JSDOMGlobalObject& g
 
     JSC::Identifier controllerID = JSC::Identifier::fromString(&vm, "controller");
     JSC::JSValue controllerJSWrapper = controlsHostJSWrapperObject->get(&exec, controllerID);
-    if (UNLIKELY(scope.exception()))
-        return JSC::jsNull();
+    RETURN_IF_EXCEPTION(scope, JSC::JSValue());
 
     return controllerJSWrapper;
 }
@@ -4557,6 +4573,37 @@ void HTMLMediaElement::addBehaviorRestrictionsOnEndIfNecessary()
     m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureToControlControlsManager);
     m_playbackControlsManagerBehaviorRestrictionsTimer.stop();
     m_playbackControlsManagerBehaviorRestrictionsTimer.startOneShot(HideMediaControlsAfterEndedDelay);
+}
+
+void HTMLMediaElement::handleSeekToPlaybackPosition(double position)
+{
+#if PLATFORM(MAC)
+    // FIXME: This should ideally use faskSeek, but this causes MediaRemote's playhead to flicker upon release.
+    // Please see <rdar://problem/28457219> for more details.
+    seek(MediaTime::createWithDouble(position));
+    m_seekToPlaybackPositionEndedTimer.stop();
+    m_seekToPlaybackPositionEndedTimer.startOneShot(0.5);
+
+    if (!m_isScrubbingRemotely) {
+        m_isScrubbingRemotely = true;
+        if (!paused())
+            pauseInternal();
+    }
+#else
+    fastSeek(position);
+#endif
+}
+
+void HTMLMediaElement::seekToPlaybackPositionEndedTimerFired()
+{
+#if PLATFORM(MAC)
+    if (!m_isScrubbingRemotely)
+        return;
+
+    PlatformMediaSessionManager::sharedManager().sessionDidEndRemoteScrubbing(*m_mediaSession);
+    m_isScrubbingRemotely = false;
+    m_seekToPlaybackPositionEndedTimer.stop();
+#endif
 }
 
 void HTMLMediaElement::mediaPlayerVolumeChanged(MediaPlayer*)
@@ -6360,8 +6407,8 @@ Vector<RefPtr<PlatformTextTrack>> HTMLMediaElement::outOfBandTrackSources()
         URL url = trackElement.getNonEmptyURLAttribute(srcAttr);
         if (url.isEmpty())
             continue;
-        
-        if (!document().contentSecurityPolicy()->allowMediaFromSource(url, trackElement.isInUserAgentShadowTree()))
+
+        if (!isAllowedToLoadMediaURL(*this, url, trackElement.isInUserAgentShadowTree()))
             continue;
 
         auto& track = *trackElement.track();
@@ -6815,8 +6862,7 @@ void HTMLMediaElement::updateMediaControlsAfterPresentationModeChange()
     JSC::JSValue controllerValue = controllerJSValue(*exec, *globalObject, *this);
     JSC::JSObject* controllerObject = controllerValue.toObject(exec);
 
-    if (UNLIKELY(scope.exception()))
-        return;
+    RETURN_IF_EXCEPTION(scope, void());
 
     JSC::JSValue functionValue = controllerObject->get(exec, JSC::Identifier::fromString(exec, "handlePresentationModeChange"));
     if (UNLIKELY(scope.exception()) || functionValue.isUndefinedOrNull())
@@ -6858,8 +6904,7 @@ String HTMLMediaElement::getCurrentMediaControlsStatus()
     JSC::JSValue controllerValue = controllerJSValue(*exec, *globalObject, *this);
     JSC::JSObject* controllerObject = controllerValue.toObject(exec);
 
-    if (UNLIKELY(scope.exception()))
-        return emptyString();
+    RETURN_IF_EXCEPTION(scope, emptyString());
 
     JSC::JSValue functionValue = controllerObject->get(exec, JSC::Identifier::fromString(exec, "getCurrentControlsStatus"));
     if (UNLIKELY(scope.exception()) || functionValue.isUndefinedOrNull())
@@ -6875,8 +6920,7 @@ String HTMLMediaElement::getCurrentMediaControlsStatus()
 
     JSC::JSValue outputValue = JSC::call(exec, function, callType, callData, controllerObject, argList);
 
-    if (UNLIKELY(scope.exception()))
-        return emptyString();
+    RETURN_IF_EXCEPTION(scope, emptyString());
 
     return outputValue.getString(exec);
 }
@@ -7000,7 +7044,7 @@ void HTMLMediaElement::didReceiveRemoteControlCommand(PlatformMediaSession::Remo
     case PlatformMediaSession::SeekToPlaybackPositionCommand:
         ASSERT(argument);
         if (argument)
-            fastSeek(argument->asDouble);
+            handleSeekToPlaybackPosition(argument->asDouble);
         break;
     default:
         { } // Do nothing
@@ -7312,8 +7356,8 @@ void HTMLMediaElement::updatePlaybackControlsManager()
         return;
 
     // FIXME: Ensure that the renderer here should be up to date.
-    if (auto bestMediaSession = bestMediaSessionForShowingPlaybackControlsManager())
-        page->chrome().client().setUpPlaybackControlsManager(bestMediaSession->element());
+    if (auto bestMediaElement = bestMediaElementForShowingPlaybackControlsManager(MediaElementSession::PlaybackControlsPurpose::ControlsManager))
+        page->chrome().client().setUpPlaybackControlsManager(*bestMediaElement);
     else
         page->chrome().client().clearPlaybackControlsManager();
 }

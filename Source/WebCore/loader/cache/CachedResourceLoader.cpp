@@ -399,30 +399,30 @@ bool CachedResourceLoader::allowedByContentSecurityPolicy(CachedResource::Type t
     case CachedResource::XSLStyleSheet:
 #endif
     case CachedResource::Script:
-        if (!m_document->contentSecurityPolicy()->allowScriptFromSource(url, false, redirectResponseReceived))
+        if (!m_document->contentSecurityPolicy()->allowScriptFromSource(url, redirectResponseReceived))
             return false;
         break;
     case CachedResource::CSSStyleSheet:
-        if (!m_document->contentSecurityPolicy()->allowStyleFromSource(url, false, redirectResponseReceived))
+        if (!m_document->contentSecurityPolicy()->allowStyleFromSource(url, redirectResponseReceived))
             return false;
         break;
     case CachedResource::SVGDocumentResource:
     case CachedResource::ImageResource:
-        if (!m_document->contentSecurityPolicy()->allowImageFromSource(url, false, redirectResponseReceived))
+        if (!m_document->contentSecurityPolicy()->allowImageFromSource(url, redirectResponseReceived))
             return false;
         break;
 #if ENABLE(SVG_FONTS)
     case CachedResource::SVGFontResource:
 #endif
     case CachedResource::FontResource:
-        if (!m_document->contentSecurityPolicy()->allowFontFromSource(url, false, redirectResponseReceived))
+        if (!m_document->contentSecurityPolicy()->allowFontFromSource(url, redirectResponseReceived))
             return false;
         break;
     case CachedResource::MediaResource:
 #if ENABLE(VIDEO_TRACK)
     case CachedResource::TextTrackResource:
 #endif
-        if (!m_document->contentSecurityPolicy()->allowMediaFromSource(url, false, redirectResponseReceived))
+        if (!m_document->contentSecurityPolicy()->allowMediaFromSource(url, redirectResponseReceived))
             return false;
         break;
     case CachedResource::RawResource:
@@ -556,7 +556,7 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::updateCachedResourceW
     }
 
     auto resourceHandle = createResource(resource.type(), WTFMove(request), sessionID());
-    resourceHandle->loadFrom(resource, *this);
+    resourceHandle->loadFrom(resource);
     return resourceHandle;
 }
 
@@ -568,6 +568,41 @@ static inline void logMemoryCacheResourceRequest(Frame* frame, const String& des
         frame->page()->diagnosticLoggingClient().logDiagnosticMessage(DiagnosticLoggingKeys::resourceRequestKey(), description, ShouldSample::Yes);
     else
         frame->page()->diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceRequestKey(), description, value, ShouldSample::Yes);
+}
+
+static inline String acceptHeaderValueFromType(CachedResource::Type type)
+{
+    switch (type) {
+    case CachedResource::Type::MainResource:
+        return ASCIILiteral("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+    case CachedResource::Type::ImageResource:
+        return ASCIILiteral("image/png,image/svg+xml,image/*;q=0.8,*/*;q=0.5");
+    case CachedResource::Type::CSSStyleSheet:
+        return ASCIILiteral("text/css,*/*;q=0.1");
+    case CachedResource::Type::SVGDocumentResource:
+        return ASCIILiteral("image/svg+xml");
+#if ENABLE(XSLT)
+    case CachedResource::Type::XSLStyleSheet:
+        // FIXME: This should accept more general xml formats */*+xml, image/svg+xml for example.
+        return ASCIILiteral("text/xml,application/xml,application/xhtml+xml,text/xsl,application/rss+xml,application/atom+xml");
+#endif
+    default:
+        return ASCIILiteral("*/*");
+    }
+}
+
+void CachedResourceLoader::prepareFetch(CachedResource::Type type, CachedResourceRequest& request)
+{
+    // Implementing step 1 to 7 of https://fetch.spec.whatwg.org/#fetching
+
+    if (!request.origin() && document())
+        request.setOrigin(document()->securityOrigin());
+
+    if (!request.resourceRequest().hasHTTPHeader(HTTPHeaderName::Accept))
+        request.mutableResourceRequest().setHTTPHeaderField(HTTPHeaderName::Accept, acceptHeaderValueFromType(type));
+
+    // Accept-Language value is handled in underlying port-specific code.
+    // FIXME: Decide whether to support client hints
 }
 
 CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(CachedResource::Type type, CachedResourceRequest&& request)
@@ -586,6 +621,8 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
         RELEASE_LOG_IF_ALLOWED("requestResource: URL is invalid (frame = %p)", frame());
         return nullptr;
     }
+
+    prepareFetch(type, request);
 
     if (!canRequest(type, url, request.options(), request.forPreload())) {
         RELEASE_LOG_IF_ALLOWED("requestResource: Not allowed to request resource (frame = %p)", frame());

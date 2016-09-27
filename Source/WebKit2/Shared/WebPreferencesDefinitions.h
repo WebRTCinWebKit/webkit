@@ -227,7 +227,7 @@
     macro(ShadowDOMEnabled, shadowDOMEnabled, Bool, bool, true, "Shadow DOM", "HTML Shadow DOM prototype") \
     macro(DOMIteratorEnabled, domIteratorEnabled, Bool, bool, true, "", "") \
     macro(FetchAPIEnabled, fetchAPIEnabled, Bool, bool, true, "", "") \
-    macro(DownloadAttributeEnabled, downloadAttributeEnabled, Bool, bool, false, "", "") \
+    macro(DownloadAttributeEnabled, downloadAttributeEnabled, Bool, bool, true, "", "") \
     macro(SelectionPaintingWithoutSelectionGapsEnabled, selectionPaintingWithoutSelectionGapsEnabled, Bool, bool, DEFAULT_SELECTION_PAINTING_WITHOUT_SELECTION_GAPS_ENABLED, "", "") \
     macro(ApplePayEnabled, applePayEnabled, Bool, bool, false, "", "") \
     macro(ApplePayCapabilityDisclosureAllowed, applePayCapabilityDisclosureAllowed, Bool, bool, true, "", "") \
@@ -289,6 +289,7 @@
     macro(CSSGridLayoutEnabled, cssGridLayoutEnabled, Bool, bool, true, "CSS Grid", "CSS Grid Layout Module support") \
     macro(CustomElementsEnabled, customElementsEnabled, Bool, bool, true, "Custom Elements", "HTML Custom Elements prototype") \
     macro(GamepadsEnabled, gamepadsEnabled, Bool, bool, false, "Gamepads", "Web Gamepad API support") \
+    macro(ModernMediaControlsEnabled, modernMediaControlsEnabled, Bool, bool, false, "Modern Media Controls", "Use modern media controls look") \
     macro(SpringTimingFunctionEnabled, springTimingFunctionEnabled, Bool, bool, true, "CSS Spring Animations", "CSS Spring Animation prototype") \
     macro(WebGL2Enabled, webGL2Enabled, Bool, bool, true, "WebGL 2.0", "WebGL 2 prototype") \
     macro(VisualViewportEnabled, visualViewportEnabled, Bool, bool, false, "Visual Viewport", "Use Visual Viewport for fixed elements when zooming") \

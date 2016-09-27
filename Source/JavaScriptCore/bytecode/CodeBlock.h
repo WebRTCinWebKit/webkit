@@ -51,7 +51,6 @@
 #include "Instruction.h"
 #include "JITCode.h"
 #include "JITMathICForwards.h"
-#include "JITWriteBarrier.h"
 #include "JSCell.h"
 #include "JSGlobalObject.h"
 #include "JumpTable.h"
@@ -62,7 +61,6 @@
 #include "Options.h"
 #include "ProfilerJettisonReason.h"
 #include "PutPropertySlot.h"
-#include "RegExpObject.h"
 #include "UnconditionalFinalizer.h"
 #include "ValueProfile.h"
 #include "VirtualRegister.h"
@@ -85,7 +83,6 @@ class LLIntOffsetsExtractor;
 class PCToCodeOriginMap;
 class RegisterAtOffsetList;
 class StructureStubInfo;
-class TypeLocation;
 
 enum class AccessType : int8_t;
 
@@ -246,9 +243,10 @@ public:
     
 #if ENABLE(JIT)
     StructureStubInfo* addStubInfo(AccessType);
-    JITAddIC* addJITAddIC();
-    JITMulIC* addJITMulIC();
-    JITSubIC* addJITSubIC();
+    JITAddIC* addJITAddIC(ArithProfile*);
+    JITMulIC* addJITMulIC(ArithProfile*);
+    JITNegIC* addJITNegIC(ArithProfile*);
+    JITSubIC* addJITSubIC(ArithProfile*);
     Bag<StructureStubInfo>::iterator stubInfoBegin() { return m_stubInfos.begin(); }
     Bag<StructureStubInfo>::iterator stubInfoEnd() { return m_stubInfos.end(); }
     
@@ -450,7 +448,7 @@ public:
     }
 
     ArithProfile* arithProfileForBytecodeOffset(int bytecodeOffset);
-    ArithProfile& arithProfileForPC(Instruction*);
+    ArithProfile* arithProfileForPC(Instruction*);
 
     bool couldTakeSpecialFastCase(int bytecodeOffset);
 
@@ -1000,6 +998,7 @@ private:
     Bag<StructureStubInfo> m_stubInfos;
     Bag<JITAddIC> m_addICs;
     Bag<JITMulIC> m_mulICs;
+    Bag<JITNegIC> m_negICs;
     Bag<JITSubIC> m_subICs;
     Bag<ByValInfo> m_byValInfos;
     Bag<CallLinkInfo> m_callLinkInfos;

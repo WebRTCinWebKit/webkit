@@ -85,8 +85,7 @@ template<> EncodedJSValue JSC_HOST_CALL JSTestEventConstructorConstructor::const
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
 
     AtomicString eventType = state->uncheckedArgument(0).toString(state)->toAtomicString(state);
-    if (UNLIKELY(throwScope.exception()))
-        return JSValue::encode(jsUndefined());
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
 
     TestEventConstructorInit eventInit;
 
@@ -179,8 +178,6 @@ void JSTestEventConstructor::destroy(JSC::JSCell* cell)
     thisObject->JSTestEventConstructor::~JSTestEventConstructor();
 }
 
-JSValue jsTestEventConstructorAttr1Getter(ExecState*, JSTestEventConstructor*);
-
 EncodedJSValue jsTestEventConstructorAttr1(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     VM& vm = state->vm();
@@ -192,20 +189,11 @@ EncodedJSValue jsTestEventConstructorAttr1(ExecState* state, EncodedJSValue this
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, throwScope, "TestEventConstructor", "attr1");
     }
-    return JSValue::encode(jsTestEventConstructorAttr1Getter(state, castedThis));
-}
-
-JSValue jsTestEventConstructorAttr1Getter(ExecState* state, JSTestEventConstructor* thisObject)
-{
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisObject);
-    auto& impl = thisObject->wrapped();
+    auto& impl = castedThis->wrapped();
     JSValue result = jsStringWithCache(state, impl.attr1());
-    return result;
+    return JSValue::encode(result);
 }
 
-
-JSValue jsTestEventConstructorAttr2Getter(ExecState*, JSTestEventConstructor*);
 
 EncodedJSValue jsTestEventConstructorAttr2(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
@@ -218,22 +206,13 @@ EncodedJSValue jsTestEventConstructorAttr2(ExecState* state, EncodedJSValue this
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, throwScope, "TestEventConstructor", "attr2");
     }
-    return JSValue::encode(jsTestEventConstructorAttr2Getter(state, castedThis));
-}
-
-JSValue jsTestEventConstructorAttr2Getter(ExecState* state, JSTestEventConstructor* thisObject)
-{
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisObject);
-    auto& impl = thisObject->wrapped();
+    auto& impl = castedThis->wrapped();
     JSValue result = jsStringWithCache(state, impl.attr2());
-    return result;
+    return JSValue::encode(result);
 }
 
 
 #if ENABLE(SPECIAL_EVENT)
-JSValue jsTestEventConstructorAttr3Getter(ExecState*, JSTestEventConstructor*);
-
 EncodedJSValue jsTestEventConstructorAttr3(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     VM& vm = state->vm();
@@ -245,16 +224,9 @@ EncodedJSValue jsTestEventConstructorAttr3(ExecState* state, EncodedJSValue this
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, throwScope, "TestEventConstructor", "attr3");
     }
-    return JSValue::encode(jsTestEventConstructorAttr3Getter(state, castedThis));
-}
-
-JSValue jsTestEventConstructorAttr3Getter(ExecState* state, JSTestEventConstructor* thisObject)
-{
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisObject);
-    auto& impl = thisObject->wrapped();
+    auto& impl = castedThis->wrapped();
     JSValue result = jsStringWithCache(state, impl.attr3());
-    return result;
+    return JSValue::encode(result);
 }
 
 #endif

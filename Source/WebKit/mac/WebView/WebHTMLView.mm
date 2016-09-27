@@ -72,6 +72,7 @@
 #import "WebTypesInternal.h"
 #import "WebUIDelegatePrivate.h"
 #import "WebViewInternal.h"
+#import <WebCore/AuthorStyleSheets.h>
 #import <WebCore/CSSStyleDeclaration.h>
 #import <WebCore/CachedImage.h>
 #import <WebCore/CachedResourceClient.h>
@@ -3610,10 +3611,12 @@ WEBCORE_COMMAND(toggleUnderline)
     double start = CFAbsoluteTimeGetCurrent();
 #endif
 
-    if (Frame* coreFrame = core([self _frame]))
-        coreFrame->document()->styleResolverChanged(RecalcStyleImmediately);
-    
-#ifdef LOG_TIMES        
+    if (Frame* coreFrame = core([self _frame])) {
+        coreFrame->document()->authorStyleSheets().didChangeContentsOrInterpretation();
+        coreFrame->document()->updateStyleIfNeeded();
+    }
+
+#ifdef LOG_TIMES
     double thisTime = CFAbsoluteTimeGetCurrent() - start;
     LOG(Timing, "%s apply style seconds = %f", [self URL], thisTime);
 #endif
@@ -5004,7 +5007,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
 
             document->setPaginatedForScreen(_private->paginateScreenContent);
             document->setPrinting(_private->printing);
-            document->styleResolverChanged(RecalcStyleImmediately);
+            document->authorStyleSheets().didChangeContentsOrInterpretation();
         }
     }
 

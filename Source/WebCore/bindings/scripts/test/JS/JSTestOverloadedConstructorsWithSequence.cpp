@@ -72,8 +72,7 @@ static inline EncodedJSValue constructJSTestOverloadedConstructorsWithSequence1(
     auto* castedThis = jsCast<JSTestOverloadedConstructorsWithSequenceConstructor*>(state->callee());
     ASSERT(castedThis);
     auto sequenceOfStrings = state->argument(0).isUndefined() ? Vector<String>() : toNativeArray<String>(*state, state->uncheckedArgument(0));
-    if (UNLIKELY(throwScope.exception()))
-        return JSValue::encode(jsUndefined());
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     auto object = TestOverloadedConstructorsWithSequence::create(WTFMove(sequenceOfStrings));
     return JSValue::encode(toJSNewlyCreated(state, castedThis->globalObject(), WTFMove(object)));
 }
@@ -87,9 +86,8 @@ static inline EncodedJSValue constructJSTestOverloadedConstructorsWithSequence2(
     ASSERT(castedThis);
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
-    auto string = state->argument(0).toWTFString(state);
-    if (UNLIKELY(throwScope.exception()))
-        return JSValue::encode(jsUndefined());
+    auto string = state->uncheckedArgument(0).toWTFString(state);
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     auto object = TestOverloadedConstructorsWithSequence::create(WTFMove(string));
     return JSValue::encode(toJSNewlyCreated(state, castedThis->globalObject(), WTFMove(object)));
 }

@@ -131,7 +131,6 @@ webkit.org/b/105616 editing/spelling/delete-into-misspelled-word.html
 webkit.org/b/105616 editing/spelling/editing-multiple-words-with-markers.html
 webkit.org/b/105616 editing/spelling/editing-word-with-marker-2.html
 webkit.org/b/105616 editing/spelling/move-cursor-around-misspelled-word.html
-webkit.org/b/105616 editing/inserting/inserting-slash-inside-url-with-smart-link.html
 webkit.org/b/105616 editing/spelling/spelling-changed-text.html
 webkit.org/b/105616 editing/spelling/spelling-backspace-between-lines.html
 webkit.org/b/105616 editing/spelling/design-mode-spellcheck-off.html
@@ -453,7 +452,7 @@ imported/blink/fast/multicol/vertical-rl/float-big-line.html [ Pass ImageOnlyFai
 imported/blink/fast/multicol/span/adjacent-spanners-with-margin.html [ Pass ImageOnlyFailure ]
 imported/blink/fast/overflow/hidden-html-auto-body.html [ Pass ImageOnlyFailure ]
 
-webkit.org/b/155757 [ ElCapitan ] media/media-document-audio-repaint.html [ Pass Failure ]
+webkit.org/b/155757 [ ElCapitan+ ] media/media-document-audio-repaint.html [ Pass Failure ]
 
 webkit.org/b/157589 fast/text-autosizing/ios/text-autosizing-after-back.html [ Pass Timeout ]
 
@@ -538,10 +537,6 @@ webkit.org/b/160309 fast/dom/Window/child-window-focus.html [ Pass Failure ]
 
 webkit.org/b/161148 gamepad/gamepad-timestamp.html [ Pass Failure ]
 
-webkit.org/b/161366 editing/pasteboard/5478250.html [ Pass Failure ]
-webkit.org/b/161366 [ Debug ] editing/mac/spelling/accept-misspelled-candidate.html [ Pass Failure ]
-webkit.org/b/161366 [ Debug ] editing/mac/spelling/autocorrection-contraction.html [ Pass Failure ]
-
 webkit.org/b/161633 [ Debug ] storage/indexeddb/objectstore-cursor.html [ Pass Timeout ]
 
 webkit.org/b/161539 [ Release ] http/tests/security/cross-origin-plugin-allowed.html [ Pass Failure ]
@@ -552,4 +547,9 @@ webkit.org/b/161547 [ Debug ] tiled-drawing/scrolling/fixed/four-bars-zoomed.htm
 
 webkit.org/b/161549 fast/scrolling/arrow-key-scroll-in-rtl-document.html [ Pass Failure ]
 
-webkit.org/b/160017 [ Debug ] js/regress-139548.html [ Pass Timeout ]
+webkit.org/b/162081 editing/inserting/typing-space-to-trigger-smart-link.html [ Failure ]
+webkit.org/b/162081 editing/inserting/smart-quote-with-all-configurations.html [ Failure ]
+
+webkit.org/b/160017 js/regress-139548.html [ Pass Timeout ]
+
+webkit.org/b/161659 [ Yosemite Debug ] media/media-controls-drag-timeline-set-controls-property.html [ Pass Timeout ]

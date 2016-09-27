@@ -140,8 +140,6 @@ void JSTestActiveDOMObject::destroy(JSC::JSCell* cell)
     thisObject->JSTestActiveDOMObject::~JSTestActiveDOMObject();
 }
 
-JSValue jsTestActiveDOMObjectExcitingAttrGetter(ExecState*, JSTestActiveDOMObject*);
-
 EncodedJSValue jsTestActiveDOMObjectExcitingAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     VM& vm = state->vm();
@@ -153,18 +151,11 @@ EncodedJSValue jsTestActiveDOMObjectExcitingAttr(ExecState* state, EncodedJSValu
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, throwScope, "TestActiveDOMObject", "excitingAttr");
     }
-    return JSValue::encode(jsTestActiveDOMObjectExcitingAttrGetter(state, castedThis));
-}
-
-JSValue jsTestActiveDOMObjectExcitingAttrGetter(ExecState* state, JSTestActiveDOMObject* thisObject)
-{
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisObject);
-    if (!BindingSecurity::shouldAllowAccessToFrame(state, thisObject->wrapped().frame(), ThrowSecurityError))
-        return jsUndefined();
-    auto& impl = thisObject->wrapped();
+    if (!BindingSecurity::shouldAllowAccessToFrame(state, castedThis->wrapped().frame(), ThrowSecurityError))
+        return JSValue::encode(jsUndefined());
+    auto& impl = castedThis->wrapped();
     JSValue result = jsNumber(impl.excitingAttr());
-    return result;
+    return JSValue::encode(result);
 }
 
 
@@ -212,7 +203,7 @@ EncodedJSValue JSC_HOST_CALL jsTestActiveDOMObjectPrototypeFunctionExcitingFunct
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
-    auto nextChild = JSNode::toWrapped(state->argument(0));
+    auto nextChild = JSNode::toWrapped(state->uncheckedArgument(0));
     if (UNLIKELY(!nextChild))
         return throwArgumentTypeError(*state, throwScope, 0, "nextChild", "TestActiveDOMObject", "excitingFunction", "Node");
     impl.excitingFunction(*nextChild);
@@ -232,9 +223,8 @@ EncodedJSValue JSC_HOST_CALL jsTestActiveDOMObjectPrototypeFunctionPostMessage(E
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
-    auto message = state->argument(0).toWTFString(state);
-    if (UNLIKELY(throwScope.exception()))
-        return JSValue::encode(jsUndefined());
+    auto message = state->uncheckedArgument(0).toWTFString(state);
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.postMessage(WTFMove(message));
     return JSValue::encode(jsUndefined());
 }

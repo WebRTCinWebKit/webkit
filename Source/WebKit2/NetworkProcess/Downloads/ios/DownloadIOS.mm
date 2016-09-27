@@ -122,7 +122,7 @@ static void setUpDownloadClient(CFURLDownloadClient& client, Download& download)
     };
 }
 
-void Download::start()
+void Download::startNetworkLoad()
 {
     notImplemented();
 }
@@ -142,7 +142,7 @@ void Download::startWithHandle(ResourceHandle* handle, const ResourceResponse& r
 #pragma clang diagnostic pop
 }
 
-void Download::cancel()
+void Download::cancelNetworkLoad()
 {
     notImplemented();
 }

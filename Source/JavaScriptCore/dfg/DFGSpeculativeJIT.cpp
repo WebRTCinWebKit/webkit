@@ -2151,7 +2151,7 @@ void SpeculativeJIT::compileValueToInt32(Node* node)
         GPRReg gpr = result.gpr();
         JITCompiler::Jump notTruncatedToInteger = m_jit.branchTruncateDoubleToInt32(fpr, gpr, JITCompiler::BranchIfTruncateFailed);
         
-        addSlowPathGenerator(slowPathCall(notTruncatedToInteger, this, operationToInt32, gpr, fpr, NeedToSpill, ExceptionCheckRequirement::CheckNotNeeded));
+        addSlowPathGenerator(slowPathCall(notTruncatedToInteger, this, operationToInt32, NeedToSpill, ExceptionCheckRequirement::CheckNotNeeded, gpr, fpr));
         
         int32Result(gpr, node);
         return;
@@ -3424,7 +3424,8 @@ void SpeculativeJIT::compileValueAdd(Node* node)
     bool needsScratchFPRReg = true;
 #endif
 
-    JITAddIC* addIC = m_jit.codeBlock()->addJITAddIC();
+    ArithProfile* arithProfile = m_jit.graph().baselineCodeBlockFor(node->origin.semantic)->arithProfileForBytecodeOffset(node->origin.semantic.bytecodeIndex);
+    JITAddIC* addIC = m_jit.codeBlock()->addJITAddIC(arithProfile);
     auto repatchingFunction = operationValueAddOptimize;
     auto nonRepatchingFunction = operationValueAdd;
     
@@ -3432,7 +3433,7 @@ void SpeculativeJIT::compileValueAdd(Node* node)
 }
 
 template <typename Generator, typename RepatchingFunction, typename NonRepatchingFunction>
-void SpeculativeJIT::compileMathIC(Node* node, JITMathIC<Generator>* mathIC, bool needsScratchGPRReg, bool needsScratchFPRReg, RepatchingFunction repatchingFunction, NonRepatchingFunction nonRepatchingFunction)
+void SpeculativeJIT::compileMathIC(Node* node, JITBinaryMathIC<Generator>* mathIC, bool needsScratchGPRReg, bool needsScratchFPRReg, RepatchingFunction repatchingFunction, NonRepatchingFunction nonRepatchingFunction)
 {
     Edge& leftChild = node->child1();
     Edge& rightChild = node->child2();
@@ -3500,8 +3501,7 @@ void SpeculativeJIT::compileMathIC(Node* node, JITMathIC<Generator>* mathIC, boo
 #endif
 
     Box<MathICGenerationState> addICGenerationState = Box<MathICGenerationState>::create();
-    ArithProfile* arithProfile = m_jit.graph().baselineCodeBlockFor(node->origin.semantic)->arithProfileForBytecodeOffset(node->origin.semantic.bytecodeIndex);
-    mathIC->m_generator = Generator(leftOperand, rightOperand, resultRegs, leftRegs, rightRegs, leftFPR, rightFPR, scratchGPR, scratchFPR, arithProfile);
+    mathIC->m_generator = Generator(leftOperand, rightOperand, resultRegs, leftRegs, rightRegs, leftFPR, rightFPR, scratchGPR, scratchFPR);
 
     bool shouldEmitProfiling = false;
     bool generatedInline = mathIC->generateInline(m_jit, *addICGenerationState, shouldEmitProfiling);
@@ -4093,7 +4093,8 @@ void SpeculativeJIT::compileArithSub(Node* node)
         bool needsScratchFPRReg = true;
 #endif
 
-        JITSubIC* subIC = m_jit.codeBlock()->addJITSubIC();
+        ArithProfile* arithProfile = m_jit.graph().baselineCodeBlockFor(node->origin.semantic)->arithProfileForBytecodeOffset(node->origin.semantic.bytecodeIndex);
+        JITSubIC* subIC = m_jit.codeBlock()->addJITSubIC(arithProfile);
         auto repatchingFunction = operationValueSubOptimize;
         auto nonRepatchingFunction = operationValueSub;
         
@@ -4355,7 +4356,9 @@ void SpeculativeJIT::compileArithMul(Node* node)
         bool needsScratchGPRReg = true;
         bool needsScratchFPRReg = true;
 #endif
-        JITMulIC* mulIC = m_jit.codeBlock()->addJITMulIC();
+
+        ArithProfile* arithProfile = m_jit.graph().baselineCodeBlockFor(node->origin.semantic)->arithProfileForBytecodeOffset(node->origin.semantic.bytecodeIndex);
+        JITMulIC* mulIC = m_jit.codeBlock()->addJITMulIC(arithProfile);
         auto repatchingFunction = operationValueMulOptimize;
         auto nonRepatchingFunction = operationValueMul;
         
@@ -6748,7 +6751,7 @@ void SpeculativeJIT::compileNotifyWrite(Node* node)
         TrustedImm32(IsInvalidated));
     
     addSlowPathGenerator(
-        slowPathCall(slowCase, this, operationNotifyWrite, NoResult, set, NeedToSpill, ExceptionCheckRequirement::CheckNotNeeded));
+        slowPathCall(slowCase, this, operationNotifyWrite, NeedToSpill, ExceptionCheckRequirement::CheckNotNeeded, NoResult, set));
     
     noResult(node);
 }

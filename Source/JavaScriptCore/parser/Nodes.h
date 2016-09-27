@@ -47,13 +47,12 @@ namespace JSC {
     class FunctionMetadataNode;
     class FunctionParameters;
     class Label;
+    class ModuleAnalyzer;
+    class ModuleScopeData;
     class PropertyListNode;
     class ReadModifyResolveNode;
     class RegisterID;
-    class JSScope;
     class ScopeNode;
-    class ModuleAnalyzer;
-    class ModuleScopeData;
 
     typedef SmallPtrSet<UniquedStringImpl*> UniquedStringImplPtrSet;
 
@@ -1475,7 +1474,6 @@ namespace JSC {
     private:
         RegisterID* tryGetBoundLocal(BytecodeGenerator&);
         void emitLoopHeader(BytecodeGenerator&, RegisterID* propertyName);
-        void emitMultiLoopBytecode(BytecodeGenerator&, RegisterID* dst);
 
         void emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
     };
@@ -1861,7 +1859,8 @@ namespace JSC {
             ParserArena&, const JSTokenLocation& start, const JSTokenLocation& end, 
             unsigned startColumn, unsigned endColumn, int functionKeywordStart, 
             int functionNameStart, int parametersStart, bool isInStrictContext, 
-            ConstructorKind, SuperBinding, unsigned, SourceParseMode, bool isArrowFunctionBodyExpression);
+            ConstructorKind, SuperBinding, unsigned parameterCount, unsigned functionLength,
+            SourceParseMode, bool isArrowFunctionBodyExpression);
 
         void finishParsing(const SourceCode&, const Identifier&, FunctionMode);
         
@@ -1880,6 +1879,7 @@ namespace JSC {
         unsigned startColumn() const { return m_startColumn; }
         unsigned endColumn() const { return m_endColumn; }
         unsigned parameterCount() const { return m_parameterCount; }
+        unsigned functionLength() const { return m_functionLength; }
         SourceParseMode parseMode() const { return m_parseMode; }
 
         void setEndPosition(JSTextPosition);
@@ -1916,6 +1916,7 @@ namespace JSC {
         SourceCode m_classSource;
         int m_startStartOffset;
         unsigned m_parameterCount;
+        unsigned m_functionLength;
         int m_lastLine;
         SourceParseMode m_parseMode;
         unsigned m_isInStrictContext : 1;
@@ -2005,6 +2006,18 @@ namespace JSC {
 
         ExpressionNode* m_argument;
         bool m_delegate;
+    };
+
+    class AwaitExprNode final : public ExpressionNode, public ThrowableExpressionData {
+    public:
+        AwaitExprNode(const JSTokenLocation&, ExpressionNode* argument);
+
+        ExpressionNode* argument() const { return m_argument; }
+
+    private:
+        RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
+
+        ExpressionNode* m_argument;
     };
 
     class ClassExprNode final : public ExpressionNode, public VariableEnvironmentNode {

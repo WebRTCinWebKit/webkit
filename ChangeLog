@@ -1,3 +1,43 @@
+2016-09-26  Daniel Bates  <dabates@apple.com>
+
+        Rename IOS_TEXT_AUTOSIZING to TEXT_AUTOSIZING
+        https://bugs.webkit.org/show_bug.cgi?id=162365
+
+        Reviewed by Simon Fraser.
+
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/WebKitFeatures.cmake: Substitute ENABLE_TEXT_AUTOSIZING for ENABLE_IOS_TEXT_AUTOSIZING,
+        update the description of this feature to better describe what it does and re-order the define in the
+        list of defines such that it is in sorted order.
+
+2016-09-26  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Added an option to disable thin archives when they are undesirable.
+        https://bugs.webkit.org/show_bug.cgi?id=162561
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsCommon.cmake: Added USE_THIN_ARCHIVES option.
+
+2016-09-23  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] Implement parsing of Async Functions
+        https://bugs.webkit.org/show_bug.cgi?id=161409
+
+        Reviewed by Yusuke Suzuki.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2016-09-22  Daniel Bates  <dabates@apple.com>
+
+        Remove more ENABLE(TEXT_AUTOSIZING) code
+        https://bugs.webkit.org/show_bug.cgi?id=162456
+
+        Reviewed by Simon Fraser.
+
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
 2016-09-20  Don Olmstead  <don.olmstead@am.sony.com>
 
         [WinCairo] Use find_package cairo in build

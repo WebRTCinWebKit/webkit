@@ -41,11 +41,11 @@
 #include "JIT.h"
 #include "JITExceptions.h"
 #include "JITWorklist.h"
-#include "JSLexicalEnvironment.h"
 #include "JSCInlines.h"
 #include "JSCJSValue.h"
 #include "JSGeneratorFunction.h"
 #include "JSGlobalObjectFunctions.h"
+#include "JSLexicalEnvironment.h"
 #include "JSString.h"
 #include "JSWithScope.h"
 #include "LLIntCommon.h"
@@ -55,6 +55,7 @@
 #include "ObjectConstructor.h"
 #include "ObjectPropertyConditionSet.h"
 #include "ProtoCallFrame.h"
+#include "RegExpObject.h"
 #include "ShadowChicken.h"
 #include "StructureRareDataInlines.h"
 #include "VMInlines.h"
@@ -810,11 +811,9 @@ static ALWAYS_INLINE JSValue getByVal(VM& vm, ExecState* exec, JSValue baseValue
     }
 
     baseValue.requireObjectCoercible(exec);
-    if (scope.exception())
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
     auto property = subscript.toPropertyKey(exec);
-    if (scope.exception())
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
     return baseValue.get(exec, property);
 }
 
@@ -882,7 +881,7 @@ LLINT_SLOW_PATH_DECL(slow_path_put_by_val_direct)
 
     // Don't put to an object if toString threw an exception.
     auto property = subscript.toPropertyKey(exec);
-    if (throwScope.exception())
+    if (UNLIKELY(throwScope.exception()))
         LLINT_END();
 
     if (Optional<uint32_t> index = parseIndex(property))

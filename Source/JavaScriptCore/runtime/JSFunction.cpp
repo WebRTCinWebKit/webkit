@@ -114,7 +114,7 @@ JSFunction* JSFunction::createBuiltinFunction(VM& vm, FunctionExecutable* execut
 {
     JSFunction* function = create(vm, executable, globalObject);
     function->putDirect(vm, vm.propertyNames->name, jsString(&vm, executable->name().string()), ReadOnly | DontEnum);
-    function->putDirect(vm, vm.propertyNames->length, jsNumber(executable->parameterCount()), ReadOnly | DontEnum);
+    function->putDirect(vm, vm.propertyNames->length, jsNumber(executable->functionLength()), ReadOnly | DontEnum);
     return function;
 }
 
@@ -122,7 +122,7 @@ JSFunction* JSFunction::createBuiltinFunction(VM& vm, FunctionExecutable* execut
 {
     JSFunction* function = create(vm, executable, globalObject);
     function->putDirect(vm, vm.propertyNames->name, jsString(&vm, name), ReadOnly | DontEnum);
-    function->putDirect(vm, vm.propertyNames->length, jsNumber(executable->parameterCount()), ReadOnly | DontEnum);
+    function->putDirect(vm, vm.propertyNames->length, jsNumber(executable->functionLength()), ReadOnly | DontEnum);
     return function;
 }
 
@@ -612,11 +612,9 @@ void JSFunction::setFunctionName(ExecState* exec, JSValue value)
             name = makeString('[', String(&uid), ']');
     } else {
         JSString* jsStr = value.toString(exec);
-        if (UNLIKELY(scope.exception()))
-            return;
+        RETURN_IF_EXCEPTION(scope, void());
         name = jsStr->value(exec);
-        if (UNLIKELY(scope.exception()))
-            return;
+        RETURN_IF_EXCEPTION(scope, void());
     }
     reifyName(vm, exec, name);
 }
@@ -627,7 +625,7 @@ void JSFunction::reifyLength(VM& vm)
 
     ASSERT(!hasReifiedLength());
     ASSERT(!isHostFunction());
-    JSValue initialValue = jsNumber(jsExecutable()->parameterCount());
+    JSValue initialValue = jsNumber(jsExecutable()->functionLength());
     unsigned initialAttributes = DontEnum | ReadOnly;
     const Identifier& identifier = vm.propertyNames->length;
     putDirect(vm, identifier, initialValue, initialAttributes);

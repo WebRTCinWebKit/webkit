@@ -30,6 +30,7 @@
 
 #include "CSSStyleSheet.h"
 #include "Element.h"
+#include "ElementChildIterator.h"
 #include "ExtensionStyleSheets.h"
 #include "HTMLIFrameElement.h"
 #include "HTMLLinkElement.h"
@@ -57,12 +58,14 @@ using namespace HTMLNames;
 
 AuthorStyleSheets::AuthorStyleSheets(Document& document)
     : m_document(document)
+    , m_pendingUpdateTimer(*this, &AuthorStyleSheets::pendingUpdateTimerFired)
 {
 }
 
 AuthorStyleSheets::AuthorStyleSheets(ShadowRoot& shadowRoot)
     : m_document(shadowRoot.documentScope())
     , m_shadowRoot(&shadowRoot)
+    , m_pendingUpdateTimer(*this, &AuthorStyleSheets::pendingUpdateTimerFired)
 {
 }
 
@@ -211,14 +214,12 @@ void AuthorStyleSheets::collectActiveStyleSheets(Vector<RefPtr<StyleSheet>>& she
     }
 }
 
-AuthorStyleSheets::StyleResolverUpdateType AuthorStyleSheets::analyzeStyleSheetChange(UpdateFlag updateFlag, const Vector<RefPtr<CSSStyleSheet>>& newStylesheets, bool& requiresFullStyleRecalc)
+AuthorStyleSheets::StyleResolverUpdateType AuthorStyleSheets::analyzeStyleSheetChange(const Vector<RefPtr<CSSStyleSheet>>& newStylesheets, bool& requiresFullStyleRecalc)
 {
     requiresFullStyleRecalc = true;
     
     unsigned newStylesheetCount = newStylesheets.size();
 
-    if (updateFlag != OptimizedUpdate)
-        return Reconstruct;
     if (!m_document.styleResolverIfExists())
         return Reconstruct;
 
@@ -280,19 +281,32 @@ static void filterEnabledNonemptyCSSStyleSheets(Vector<RefPtr<CSSStyleSheet>>& r
     }
 }
 
-bool AuthorStyleSheets::updateActiveStyleSheets(UpdateFlag updateFlag)
+void AuthorStyleSheets::updateActiveStyleSheets(UpdateType updateType)
 {
+    ASSERT(!m_pendingUpdateType);
+
     if (m_document.inStyleRecalc() || m_document.inRenderTreeUpdate()) {
         // Protect against deleting style resolver in the middle of a style resolution.
-        // Crash stacks indicate we can get here when z resource load fails synchronously (for example due to content blocking).
+        // Crash stacks indicate we can get here when a resource load fails synchronously (for example due to content blocking).
         // FIXME: These kind of cases should be eliminated and this path replaced by an assert.
-        m_pendingUpdateType = FullUpdate;
+        m_pendingUpdateType = UpdateType::ContentsOrInterpretation;
         m_document.scheduleForcedStyleRecalc();
-        return false;
-
+        return;
     }
-    if (!m_document.hasLivingRenderTree())
-        return false;
+
+    if (!m_document.hasLivingRenderTree()) {
+        m_document.clearStyleResolver();
+        return;
+    }
+
+    // Don't bother updating, since we haven't loaded all our style info yet
+    // and haven't calculated the style resolver for the first time.
+    if (!m_shadowRoot && !m_didUpdateActiveStyleSheets && m_pendingStyleSheetCount) {
+        m_document.clearStyleResolver();
+        return;
+    }
+
+    m_didUpdateActiveStyleSheets = true;
 
     Vector<RefPtr<StyleSheet>> activeStyleSheets;
     collectActiveStyleSheets(activeStyleSheets);
@@ -302,8 +316,10 @@ bool AuthorStyleSheets::updateActiveStyleSheets(UpdateFlag updateFlag)
     activeCSSStyleSheets.appendVector(m_document.extensionStyleSheets().authorStyleSheetsForTesting());
     filterEnabledNonemptyCSSStyleSheets(activeCSSStyleSheets, activeStyleSheets);
 
-    bool requiresFullStyleRecalc;
-    auto styleResolverUpdateType = analyzeStyleSheetChange(updateFlag, activeCSSStyleSheets, requiresFullStyleRecalc);
+    bool requiresFullStyleRecalc = true;
+    StyleResolverUpdateType styleResolverUpdateType = Reconstruct;
+    if (updateType == UpdateType::ActiveSet)
+        styleResolverUpdateType = analyzeStyleSheetChange(activeCSSStyleSheets, requiresFullStyleRecalc);
 
     updateStyleResolver(activeCSSStyleSheets, styleResolverUpdateType);
 
@@ -319,9 +335,14 @@ bool AuthorStyleSheets::updateActiveStyleSheets(UpdateFlag updateFlag)
         if (sheet->contents().usesStyleBasedEditability())
             m_usesStyleBasedEditability = true;
     }
-    m_pendingUpdateType = NoUpdate;
 
-    return requiresFullStyleRecalc;
+    if (requiresFullStyleRecalc) {
+        if (m_shadowRoot) {
+            for (auto& shadowChild : childrenOfType<Element>(*m_shadowRoot))
+                shadowChild.setNeedsStyleRecalc();
+        } else
+            m_document.scheduleForcedStyleRecalc();
+    }
 }
 
 void AuthorStyleSheets::updateStyleResolver(Vector<RefPtr<CSSStyleSheet>>& activeStyleSheets, StyleResolverUpdateType updateType)
@@ -382,6 +403,50 @@ bool AuthorStyleSheets::activeStyleSheetsContains(const CSSStyleSheet* sheet) co
             m_weakCopyOfActiveStyleSheetListForFastLookup->add(activeStyleSheet.get());
     }
     return m_weakCopyOfActiveStyleSheetListForFastLookup->contains(sheet);
+}
+
+void AuthorStyleSheets::flushPendingUpdate()
+{
+    if (!m_pendingUpdateType)
+        return;
+    auto updateType = *m_pendingUpdateType;
+
+    clearPendingUpdate();
+
+    updateActiveStyleSheets(updateType);
+}
+
+void AuthorStyleSheets::clearPendingUpdate()
+{
+    m_pendingUpdateTimer.stop();
+    m_pendingUpdateType = { };
+}
+
+void AuthorStyleSheets::scheduleActiveSetUpdate()
+{
+    if (m_pendingUpdateTimer.isActive())
+        return;
+    if (!m_pendingUpdateType)
+        m_pendingUpdateType = UpdateType::ActiveSet;
+    m_pendingUpdateTimer.startOneShot(0);
+}
+
+void AuthorStyleSheets::didChangeCandidatesForActiveSet()
+{
+    auto updateType = m_pendingUpdateType.valueOr(UpdateType::ActiveSet);
+    clearPendingUpdate();
+    updateActiveStyleSheets(updateType);
+}
+
+void AuthorStyleSheets::didChangeContentsOrInterpretation()
+{
+    clearPendingUpdate();
+    updateActiveStyleSheets(UpdateType::ContentsOrInterpretation);
+}
+
+void AuthorStyleSheets::pendingUpdateTimerFired()
+{
+    flushPendingUpdate();
 }
 
 }

@@ -149,7 +149,6 @@ void NetworkLoad::continueWillSendRequest(WebCore::ResourceRequest&& newRequest)
 void NetworkLoad::continueDidReceiveResponse()
 {
 #if USE(NETWORK_SESSION)
-    ASSERT(m_responseCompletionHandler);
     if (m_responseCompletionHandler) {
         m_responseCompletionHandler(PolicyUse);
         m_responseCompletionHandler = nullptr;
@@ -199,6 +198,14 @@ void NetworkLoad::setPendingDownloadID(DownloadID downloadID)
         return;
 
     m_task->setPendingDownloadID(downloadID);
+}
+
+void NetworkLoad::setSuggestedFilename(const String& suggestedName)
+{
+    if (!m_task)
+        return;
+
+    m_task->setSuggestedFilename(suggestedName);
 }
 
 void NetworkLoad::setPendingDownload(PendingDownload& pendingDownload)

@@ -132,8 +132,6 @@ void JSTestJSBuiltinConstructor::destroy(JSC::JSCell* cell)
     thisObject->JSTestJSBuiltinConstructor::~JSTestJSBuiltinConstructor();
 }
 
-JSValue jsTestJSBuiltinConstructorTestAttributeCustomGetter(ExecState*, JSTestJSBuiltinConstructor*);
-
 EncodedJSValue jsTestJSBuiltinConstructorTestAttributeCustom(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     VM& vm = state->vm();
@@ -145,18 +143,9 @@ EncodedJSValue jsTestJSBuiltinConstructorTestAttributeCustom(ExecState* state, E
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, throwScope, "TestJSBuiltinConstructor", "testAttributeCustom");
     }
-    return JSValue::encode(jsTestJSBuiltinConstructorTestAttributeCustomGetter(state, castedThis));
+    return JSValue::encode(castedThis->testAttributeCustom(*state));
 }
 
-JSValue jsTestJSBuiltinConstructorTestAttributeCustomGetter(ExecState* state, JSTestJSBuiltinConstructor* thisObject)
-{
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisObject);
-    return thisObject->testAttributeCustom(*state);
-}
-
-
-JSValue jsTestJSBuiltinConstructorTestAttributeRWCustomGetter(ExecState*, JSTestJSBuiltinConstructor*);
 
 EncodedJSValue jsTestJSBuiltinConstructorTestAttributeRWCustom(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
@@ -169,14 +158,7 @@ EncodedJSValue jsTestJSBuiltinConstructorTestAttributeRWCustom(ExecState* state,
     if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, throwScope, "TestJSBuiltinConstructor", "testAttributeRWCustom");
     }
-    return JSValue::encode(jsTestJSBuiltinConstructorTestAttributeRWCustomGetter(state, castedThis));
-}
-
-JSValue jsTestJSBuiltinConstructorTestAttributeRWCustomGetter(ExecState* state, JSTestJSBuiltinConstructor* thisObject)
-{
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisObject);
-    return thisObject->testAttributeRWCustom(*state);
+    return JSValue::encode(castedThis->testAttributeRWCustom(*state));
 }
 
 

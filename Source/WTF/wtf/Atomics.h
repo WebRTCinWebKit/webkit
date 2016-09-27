@@ -167,7 +167,7 @@ inline void memoryBarrierBeforeUnlock() { arm_dmb(); }
 
 #elif CPU(X86) || CPU(X86_64)
 
-inline void x86_mfence()
+inline void x86_ortop()
 {
 #if OS(WINDOWS)
     // I think that this does the equivalent of a dummy interlocked instruction,
@@ -175,14 +175,18 @@ inline void x86_mfence()
     // know that it is equivalent for our purposes, but it would be good to
     // investigate if that is actually better.
     MemoryBarrier();
+#elif CPU(X86_64)
+    // This has acqrel semantics and is much cheaper than mfence. For exampe, in the JSC GC, using
+    // mfence as a store-load fence was a 9% slow-down on Octane/splay while using this was neutral.
+    asm volatile("lock; orl $0, (%%rsp)" ::: "memory");
 #else
-    asm volatile("mfence" ::: "memory");
+    asm volatile("lock; orl $0, (%%esp)" ::: "memory");
 #endif
 }
 
 inline void loadLoadFence() { compilerFence(); }
 inline void loadStoreFence() { compilerFence(); }
-inline void storeLoadFence() { x86_mfence(); }
+inline void storeLoadFence() { x86_ortop(); }
 inline void storeStoreFence() { compilerFence(); }
 inline void memoryBarrierAfterLock() { compilerFence(); }
 inline void memoryBarrierBeforeUnlock() { compilerFence(); }

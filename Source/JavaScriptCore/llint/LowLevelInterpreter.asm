@@ -253,7 +253,9 @@ const IsInvalidated = 2
 const ShadowChickenTailMarker = 0x7a11
 
 # ArithProfile data
+const ArithProfileInt = 0x100000
 const ArithProfileIntInt = 0x120000
+const ArithProfileNumber = 0x200000
 const ArithProfileNumberInt = 0x220000
 const ArithProfileNumberNumber = 0x240000
 const ArithProfileIntNumber = 0x140000
@@ -406,6 +408,8 @@ const NotInitialization = 2
 
 const MarkedBlockSize = 16 * 1024
 const MarkedBlockMask = ~(MarkedBlockSize - 1)
+
+const BlackThreshold = 1
 
 # Allocation constants
 if JSVALUE64
@@ -886,9 +890,10 @@ macro arrayProfile(cellAndIndexingType, profile, scratch)
     loadb JSCell::m_indexingType[cell], indexingType
 end
 
-macro skipIfIsRememberedOrInEden(cell, scratch1, scratch2, continuation)
-    loadb JSCell::m_cellState[cell], scratch1
-    continuation(scratch1)
+macro skipIfIsRememberedOrInEden(cell, slowPath)
+    bba JSCell::m_cellState[cell], BlackThreshold, .done
+    slowPath()
+.done:
 end
 
 macro notifyWrite(set, slow)

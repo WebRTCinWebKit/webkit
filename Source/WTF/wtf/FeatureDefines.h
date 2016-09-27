@@ -98,8 +98,8 @@
 #define ENABLE_IOS_GESTURE_EVENTS 1
 #endif
 
-#if !defined(ENABLE_IOS_TEXT_AUTOSIZING)
-#define ENABLE_IOS_TEXT_AUTOSIZING 1
+#if !defined(ENABLE_TEXT_AUTOSIZING)
+#define ENABLE_TEXT_AUTOSIZING 1
 #endif
 
 #if !defined(ENABLE_IOS_TOUCH_EVENTS) && USE(APPLE_INTERNAL_SDK)
@@ -358,6 +358,10 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_ES6_MODULES)
 #define ENABLE_ES6_MODULES 0
+#endif
+
+#if !defined(ENABLE_ES2017_ASYNCFUNCTION_SYNTAX)
+#define ENABLE_ES2017_ASYNCFUNCTION_SYNTAX 0
 #endif
 
 #if !defined(ENABLE_CONTENT_EXTENSIONS)
