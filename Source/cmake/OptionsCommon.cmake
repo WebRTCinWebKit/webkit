@@ -29,13 +29,13 @@ endif ()
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 define_property(TARGET PROPERTY FOLDER INHERITED BRIEF_DOCS "folder" FULL_DOCS "IDE folder name")
 
-if (CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+if (COMPILER_IS_GCC_OR_CLANG)
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -fno-exceptions -fno-strict-aliasing")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fno-exceptions -fno-strict-aliasing -fno-rtti")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y")
 endif ()
 
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND CMAKE_GENERATOR STREQUAL "Ninja")
+if (COMPILER_IS_CLANG AND CMAKE_GENERATOR STREQUAL "Ninja")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fcolor-diagnostics")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcolor-diagnostics")
 endif ()
@@ -154,7 +154,7 @@ if (DEBUG_FISSION)
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--gdb-index")
 endif ()
 
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+if (COMPILER_IS_CLANG)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Qunused-arguments")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Qunused-arguments")
 endif ()
@@ -203,8 +203,59 @@ if (NOT APPLE)
     set(CMAKE_NINJA_FORCE_RESPONSE_FILE 1)
 endif ()
 
+# Macros for determining HAVE values.
+include(CheckIncludeFile)
+include(CheckFunctionExists)
+include(CheckSymbolExists)
+include(CheckStructHasMember)
+
+macro(_HAVE_CHECK_INCLUDE _variable _header)
+    check_include_file(${_header} ${_variable}_value)
+    SET_AND_EXPOSE_TO_BUILD(${_variable} ${_variable}_value)
+endmacro()
+
+macro(_HAVE_CHECK_FUNCTION _variable _function)
+    check_function_exists(${_function} ${_variable}_value)
+    SET_AND_EXPOSE_TO_BUILD(${_variable} ${_variable}_value)
+endmacro()
+
+macro(_HAVE_CHECK_SYMBOL _variable _symbol _header)
+    check_symbol_exists(${_symbol} ${_header} ${_variable}_value)
+    SET_AND_EXPOSE_TO_BUILD(${_variable} ${_variable}_value)
+endmacro()
+
+macro(_HAVE_CHECK_STRUCT _variable _struct _member _header)
+    check_struct_has_member(${_struct} ${_member} ${_header} ${_variable}_value)
+    SET_AND_EXPOSE_TO_BUILD(${_variable} ${_variable}_value)
+endmacro()
+
 # Check whether features.h header exists.
 # Including glibc's one defines __GLIBC__, that is used in Platform.h
-include(CheckIncludeFiles)
-check_include_files(features.h HAVE_FEATURES_H)
-SET_AND_EXPOSE_TO_BUILD(HAVE_FEATURES_H ${HAVE_FEATURES_H})
+_HAVE_CHECK_INCLUDE(HAVE_FEATURES_H features.h)
+
+# Check for headers
+_HAVE_CHECK_INCLUDE(HAVE_ERRNO_H errno.h)
+_HAVE_CHECK_INCLUDE(HAVE_LANGINFO_H langinfo.h)
+_HAVE_CHECK_INCLUDE(HAVE_MMAP sys/mman.h)
+_HAVE_CHECK_INCLUDE(HAVE_PTHREAD_NP_H pthread_np.h)
+_HAVE_CHECK_INCLUDE(HAVE_STRINGS_H strings.h)
+_HAVE_CHECK_INCLUDE(HAVE_SYS_PARAM_H sys/param.h)
+_HAVE_CHECK_INCLUDE(HAVE_SYS_TIME_H sys/time.h)
+_HAVE_CHECK_INCLUDE(HAVE_SYS_TIMEB_H sys/timeb.h)
+
+# Check for functions
+_HAVE_CHECK_FUNCTION(HAVE_ALIGNED_MALLOC _aligned_malloc)
+_HAVE_CHECK_FUNCTION(HAVE_ISDEBUGGERPRESENT IsDebuggerPresent)
+_HAVE_CHECK_FUNCTION(HAVE_LOCALTIME_R localtime_r)
+_HAVE_CHECK_FUNCTION(HAVE_STRNSTR strnstr)
+_HAVE_CHECK_FUNCTION(HAVE_TIMEGM timegm)
+_HAVE_CHECK_FUNCTION(HAVE_VASPRINTF vasprintf)
+
+# Check for symbols
+# Windows has signal.h but is missing symbols that are used in calls to signal.
+_HAVE_CHECK_SYMBOL(HAVE_SIGNAL_H SIGTRAP signal.h)
+
+# Check for struct members
+_HAVE_CHECK_STRUCT(HAVE_STAT_BIRTHTIME "struct stat" st_birthtime sys/stat.h)
+_HAVE_CHECK_STRUCT(HAVE_TM_GMTOFF "struct tm" tm_gmtoff time.h)
+_HAVE_CHECK_STRUCT(HAVE_TM_ZONE "struct tm" tm_zone time.h)

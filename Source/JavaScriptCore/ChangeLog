@@ -1,3 +1,128 @@
+2016-09-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Adopt #pragma once in JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=162664
+
+        Reviewed by Saam Barati.
+
+        * **/**.h:
+        Adopt pragma once in all but API headers and generated headers.
+        Include some namespace closing comments for consistency.
+
+2016-09-27  JF Bastien  <jfbastien@apple.com>
+
+        Missing Atomics.h include in MarkedBlock.h
+        https://bugs.webkit.org/show_bug.cgi?id=162648
+
+        Missing include from my previous patch.
+
+        Reviewed by Yusuke Suzuki.
+
+        * heap/MarkedBlock.h:
+
+2016-09-27  Mark Lam  <mark.lam@apple.com>
+
+        createError() and JSObject::calculatedClassName() should not throw any exceptions.
+        https://bugs.webkit.org/show_bug.cgi?id=162637
+
+        Reviewed by Geoffrey Garen.
+
+        * runtime/ExceptionHelpers.cpp:
+        (JSC::createError):
+        - assert that errorDescriptionForValue() did not throw an exception.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::calculatedClassName):
+        - the code already ensures that we always return a non-null String.  Just need to
+          make sure that it catches its own exceptions.
+
+2016-09-27  Filip Pizlo  <fpizlo@apple.com>
+
+        B3::lowerMacros forgets to before->updatePredecessorsAfter() when lowering ChillMod on ARM64
+        https://bugs.webkit.org/show_bug.cgi?id=162644
+
+        Reviewed by Keith Miller.
+
+        If you forget to update the predecessors of your successors, then bad things will happen if you
+        do something that requires accurate predecessors for correctness. lowerMacros() uses
+        BlockInsertionSet, which relies on accurate predecessors.
+
+        * b3/B3LowerMacros.cpp:
+
+2016-09-27  JF Bastien  <jfbastien@apple.com>
+
+        Speed up Heap::isMarkedConcurrently
+        https://bugs.webkit.org/show_bug.cgi?id=162095
+
+        Reviewed by Filip Pizlo.
+
+        Speed up isMarkedConcurrently by using WTF::consumeLoad.
+
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::areMarksStale):
+        (JSC::MarkedBlock::areMarksStaleWithDependency):
+        (JSC::MarkedBlock::isMarkedConcurrently): do away with the load-load fence
+
+2016-09-27  Mark Lam  <mark.lam@apple.com>
+
+        Add some needed CatchScopes in code that should not throw.
+        https://bugs.webkit.org/show_bug.cgi?id=162584
+
+        Reviewed by Keith Miller.
+
+        Re-landing minus the jsc.cpp and ExceptionHelpers.cpp changes.  I'll address
+        those in a subsequent patch if the need manifests again in my testing.
+
+        * API/JSObjectRef.cpp:
+        (JSObjectSetProperty):
+        - This function already handles exceptions in its own way.  We're honoring this
+          contract and catching exceptions and passing it to the handler.
+
+        * interpreter/Interpreter.cpp:
+        (JSC::notifyDebuggerOfUnwinding):
+        - The debugger should not be throwing any exceptions.
+
+        * profiler/ProfilerDatabase.cpp:
+        (JSC::Profiler::Database::save):
+        - If an exception was thrown while saving the database, there's nothing we can
+          really do about it anyway.  Just fail nicely and return false.  This is in line
+          with existing error checking code in Database::save() that returns false if
+          it's not able to open the file to save to.
+
+        * runtime/JSModuleLoader.cpp:
+        (JSC::JSModuleLoader::finishCreation):
+        - The existing code already RELEASE_ASSERT that no exception was thrown.
+          Hence, it's appropriate to use a CatchScope here.
+
+        * runtime/SamplingProfiler.cpp:
+        (JSC::SamplingProfiler::StackFrame::nameFromCallee):
+        - The sampling profiler is doing a VMInquiry get here.  It should never throw an
+          exception.  Hence, we'll just use a CatchScope and assert accordingly.
+
+2016-09-27  Jer Noble  <jer.noble@apple.com>
+
+        Remove deprecated ENCRYPTED_MEDIA implementation.
+        https://bugs.webkit.org/show_bug.cgi?id=161010
+
+        Reviewed by Eric Carlson.
+
+        Remove ENABLE_ENCRYPTED_MEDIA.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-09-27  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Install binaries to pkglibexecdir rather than bindir
+        https://bugs.webkit.org/show_bug.cgi?id=162602
+
+        Reviewed by Carlos Garcia Campos.
+
+        Install jsc shell to LIBEXEC_INSTALL_DIR rather than EXEC_INSTALL_DIR.
+
+        Note these locations are the same on non-GTK ports.
+
+        * shell/CMakeLists.txt:
+
 2016-09-26  Sam Weinig  <sam@webkit.org>
 
         Make DFGSlowPathGenerator a bit more variadic

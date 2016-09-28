@@ -111,6 +111,7 @@ struct( domIterable => {
 # Used to represent serializable interface
 struct( domSerializable => {
     attributes => '@', # List of attributes to serialize
+    functions => '@', # toJSON function
 });
 
 # Used to represent string constants
@@ -1070,6 +1071,13 @@ sub parseSerializer
         } else {
             $newDataNode = domSerializable->new();
         }
+
+        my $toJSONFunction = domFunction->new();
+        $toJSONFunction->signature(domSignature->new());
+        $toJSONFunction->signature->extendedAttributes($extendedAttributeList);
+        $toJSONFunction->signature->name("toJSON");
+        push(@{$newDataNode->functions}, $toJSONFunction);
+
         $self->assertTokenValue($self->getToken(), ";", __LINE__);
         return $newDataNode;
     }
@@ -1085,8 +1093,10 @@ sub parseSerializerRest
     if ($next->value() eq "=") {
         $self->assertTokenValue($self->getToken(), "=", __LINE__);
         my $attributes = $self->parseSerializationPattern();
+
         my $newDataNode = domSerializable->new();
         $newDataNode->attributes($attributes);
+
         return $newDataNode;
     }
     if ($next->type() == IdentifierToken || $next->value() eq "(") {

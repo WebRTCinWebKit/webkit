@@ -34,6 +34,12 @@
 #include <sys/utsname.h>
 #endif
 
+// WARNING! WARNING! WARNING!
+//
+// The user agent is ludicrously fragile. The most innocent change can
+// and will break websites. Read the git log for this file carefully
+// before changing user agent construction. You have been warned.
+
 namespace WebCore {
 
 class UserAgentQuirks {
@@ -84,16 +90,10 @@ static const char* cpuDescriptionForUAString()
 
 static const char* platformForUAString()
 {
-#if PLATFORM(X11)
-    return "X11";
-#elif OS(WINDOWS)
-    return "";
-#elif PLATFORM(MAC)
+#if OS(MAC_OS_X)
     return "Macintosh";
-#elif defined(GDK_WINDOWING_DIRECTFB)
-    return "DirectFB";
 #else
-    return "Unknown";
+    return "X11";
 #endif
 }
 
@@ -139,7 +139,7 @@ static String buildUserAgentString(const UserAgentQuirks& quirks)
     uaString.append(versionForUAString());
     // Version/X is mandatory *before* Safari/X to be a valid Safari UA. See
     // https://bugs.webkit.org/show_bug.cgi?id=133403 for details.
-    uaString.appendLiteral(" (KHTML, like Gecko) Version/8.0 Safari/");
+    uaString.appendLiteral(" (KHTML, like Gecko) Version/10.0 Safari/");
     uaString.append(versionForUAString());
 
     return uaString.toString();
@@ -158,7 +158,7 @@ String standardUserAgent(const String& applicationName, const String& applicatio
     //
     // Forming a functional user agent is really difficult. We must mention Safari, because some
     // sites check for that when detecting WebKit browsers. Additionally some sites assume that
-    // browsers that are "Safari" but not running on OS X are the Safari iOS browse. Getting this
+    // browsers that are "Safari" but not running on OS X are the Safari iOS browser. Getting this
     // wrong can cause sites to load the wrong JavaScript, CSS, or custom fonts. In some cases
     // sites won't load resources at all.
     if (applicationName.isEmpty())

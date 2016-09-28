@@ -1,3 +1,226 @@
+2016-09-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Switch to use GMenu internally in the context menu implementation
+        https://bugs.webkit.org/show_bug.cgi?id=162603
+
+        Reviewed by Michael Catanzaro.
+
+        Remove smart separators test, since that's now done automatically by GTK+.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestContextMenu.cpp:
+        (beforeAll):
+        (testContextMenuWebExtensionMenu): Deleted.
+
+2016-09-27  Alex Christensen  <achristensen@webkit.org>
+
+        Correctly parse URLs with the first tab in the fragment
+        https://bugs.webkit.org/show_bug.cgi?id=162650
+
+        Reviewed by Saam Barati.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2016-09-27  Alex Christensen  <achristensen@webkit.org>
+
+        URLParser: Handle windows drive letters after two slashes in relative URLs according to spec
+        https://bugs.webkit.org/show_bug.cgi?id=162646
+
+        Reviewed by Saam Barati.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2016-09-27  Alex Christensen  <achristensen@webkit.org>
+
+        URLs with @ in the user should only search for the last @ until the end of the authority and host
+        https://bugs.webkit.org/show_bug.cgi?id=162635
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2016-09-27  JF Bastien  <jfbastien@apple.com>
+
+        Speed up Heap::isMarkedConcurrently
+        https://bugs.webkit.org/show_bug.cgi?id=162095
+
+        Reviewed by Filip Pizlo.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/Consume.cpp: Added.
+        (testConsume):
+        (TestWebKitAPI::TEST):
+
+2016-09-26  Alex Christensen  <achristensen@webkit.org>
+
+        Implement URLParser::syntaxViolation
+        https://bugs.webkit.org/show_bug.cgi?id=162593
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2016-09-27  Anders Carlsson  <andersca@apple.com>
+
+        Turns out OptionSet.cpp wasn't added to the right target. Add it and fix the build for real.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/OptionSet.cpp:
+        (TestWebKitAPI::TEST):
+
+2016-09-27  Anders Carlsson  <andersca@apple.com>
+
+        Try to fix the GTK+ build.
+
+        * TestWebKitAPI/Tests/WTF/OptionSet.cpp:
+        (TestWebKitAPI::TEST):
+
+2016-09-27  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] REGRESSION (r182126): Selection highlight and handles aren’t visible with WKSelectionGranularityCharacter
+        https://bugs.webkit.org/show_bug.cgi?id=162577
+        <rdar://problem/28481984>
+
+        Reviewed by Simon Fraser.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::selectionRangeViewRects): Returns null.
+
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl: Declared new
+          selectionRangeViewRects attribute.
+
+        * TestRunnerShared/UIScriptContext/UIScriptContext.h:
+        (WTR::UIScriptContext::jsContext): Added this public accessor.
+
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::selectionRangeViewRects): Generic implementation that returns null.
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::updateTestOptionsFromTestHeader): Parse the new useCharacterSelectionGranularity
+          option.
+
+        * WebKitTestRunner/TestOptions.h: Added new useCharacterSelectionGranularity option.
+
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::platformCreateWebView): Set the configuration’s selectionGranularity
+          property based on the new option.
+
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        (WTR::PlatformWebView::viewSupportsOptions): Compare selection granularity option values.
+
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::selectionRangeViewRects): iOS-specific implementation that calls
+          the new -[WKWebView _uiTextSelectionRectViews] and returns an array of view frame
+          dictionaries.
+
+2016-09-27  Daniel Bates  <dabates@apple.com>
+
+        Cannot run dump-class-layout; dies with "global name 'lldb' is not defined"
+        https://bugs.webkit.org/show_bug.cgi?id=162585
+
+        Reviewed by Simon Fraser.
+
+        Import the lldb module into the global namespace.
+
+        Currently dump-class-layout imports the lldb Python module using the import statement
+        from the helper function import_lldb. The import statement imports the names of the
+        specified module into the scope of import_lldb(); => the names imported from this
+        module cannot be accessed outside the scope of import_lldb(). Other functions in
+        this script assume that the lldb module was imported into the global scope. We should
+        import the module lldb into the global scope, if it exists, so that these functions
+        can find it. Otherwise, we should emit a human readable error message that explains
+        that we failed to import the lldb module.
+
+        Also remove some unnecessary semicolon characters.
+
+        * Scripts/dump-class-layout:
+        (import_lldb):
+
+2016-09-27  Jer Noble  <jer.noble@apple.com>
+
+        Remove deprecated ENCRYPTED_MEDIA implementation.
+        https://bugs.webkit.org/show_bug.cgi?id=161010
+
+        Reviewed by Eric Carlson.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2016-09-27  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Navigating to a Blob URL does not trigger a download
+        https://bugs.webkit.org/show_bug.cgi?id=162574
+
+        Reviewed by Darin Adler.
+
+        Add API that tests navigating to a Blob URL and checks that that the load
+        properly gets converted into a download.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Download.mm:
+        (-[BlobDownloadDelegate _downloadDidStart:]):
+        (-[BlobDownloadDelegate _download:didReceiveResponse:]):
+        (-[BlobDownloadDelegate _download:didReceiveData:]):
+        (-[BlobDownloadDelegate _download:decideDestinationWithSuggestedFilename:allowOverwrite:]):
+        (-[BlobDownloadDelegate _downloadDidFinish:]):
+        (-[DownloadBlobURLNavigationDelegate webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/DownloadRequestBlobURL.html: Added.
+
+2016-09-27  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Install binaries to pkglibexecdir rather than bindir
+        https://bugs.webkit.org/show_bug.cgi?id=162602
+
+        Reviewed by Carlos Garcia Campos.
+
+        Install MiniBrowser to LIBEXEC_INSTALL_DIR rather than EXEC_INSTALL_DIR.
+
+        * MiniBrowser/gtk/CMakeLists.txt:
+
+2016-09-27  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Locate color picker popup to center of window
+        https://bugs.webkit.org/show_bug.cgi?id=162540
+
+        Reviewed by Michael Catanzaro.
+
+        Color picker popup hasn't located in a center of main window, because
+        elm_win_center() function doesn't work correctly. It looks a bug.
+
+        To fix the problem, this patch uses evas_object_geometry_set() instead.
+
+        * MiniBrowser/efl/main.c:
+        (_color_picker_request_cb):
+
+2016-09-27  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Disable ACCELERATED_2D_CANVAS when using build-webkit
+        https://bugs.webkit.org/show_bug.cgi?id=162600
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2016-09-27  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        PyGIWarnings printed by webkit-patch
+        https://bugs.webkit.org/show_bug.cgi?id=152470
+
+        Reviewed by Carlos Garcia Campos.
+
+        Update to a newer version of the keyring module, since this bug has been fixed upstream for
+        a while. But be careful not to update to the latest version, since it has some compatibility
+        breaks and requires the SecretService python module on Linux, but I couldn't figure out how
+        to autoinstall it successfully.
+
+        * Scripts/webkitpy/thirdparty/__init__.py:
+        (AutoinstallImportHook._install_keyring):
+
 2016-09-26  Ryan Haddad  <ryanhaddad@apple.com>
 
         Add Sierra to the flakiness dashboard.

@@ -1,3 +1,233 @@
+2016-09-28  Alejandro G. Castro  <alex@igalia.com>
+
+        Add WebIDL special operation support: serializer
+        https://bugs.webkit.org/show_bug.cgi?id=156293
+
+        Reviewed by Youenn Fablet.
+
+        Verify the new API of the objects and check what happens when user
+        modifies the values and types of the attributes, or adds a null value.
+
+        * fast/mediastream/RTCIceCandidate-expected.txt:
+        * fast/mediastream/RTCIceCandidate.html:
+        * fast/mediastream/RTCSessionDescription-expected.txt:
+        * fast/mediastream/RTCSessionDescription.html:
+
+2016-09-28  Khaled Hosny  <khaledhosny@eglug.org>
+
+        Use new woff2 API
+        https://bugs.webkit.org/show_bug.cgi?id=162608
+
+        Reviewed by Michael Catanzaro.
+
+        * fast/text/resources/header-totalsfntsize-001.ttf: Added.
+        * fast/text/resources/header-totalsfntsize-001.woff2: Added.
+        * fast/text/woff2-totalsfntsize-expected.html: Added.
+        * fast/text/woff2-totalsfntsize.html: Added.
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+
+2016-09-27  Nan Wang  <n_wang@apple.com>
+
+        AX: CrashTracer: com.apple.WebKit.WebContent at WebCore::AXObjectCache::localCaretRectForCharacterOffset(WebCore::RenderObject*&, WebCore::CharacterOffset const&) + 116
+        https://bugs.webkit.org/show_bug.cgi?id=162654
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/bounds-for-range-crash-expected.txt: Added.
+        * accessibility/mac/bounds-for-range-crash.html: Added.
+
+2016-09-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Toggling display: none on a parent element of a slot which shares style with its parent doesn't update the slot's visibility
+        https://bugs.webkit.org/show_bug.cgi?id=158421
+
+        Reviewed by Darin Adler.
+
+        Add a regression test now that the bug has been fixed by r206403.
+
+        * fast/shadow-dom/shadow-layout-after-toggling-display-slot-parent-expected.html: Added.
+        * fast/shadow-dom/shadow-layout-after-toggling-display-slot-parent.html: Added.
+
+2016-09-27  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Fix several Touch-related layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=162651
+
+        Reviewed by Darin Adler.
+
+        Fix several Touch-related layout tests. The first parameter to our Touch
+        constructor must be a Window but several of our tests were passing in a
+        Document.
+
+        * platform/ios-simulator/ios/touch/construct-Touch-expected.txt:
+        * platform/ios-simulator/ios/touch/resources/construct-Touch.js:
+        * platform/ios-simulator/ios/touch/resources/construct-TouchList.js:
+
+2016-09-27  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r204552): Yelp carousel animation is not smooth.
+        https://bugs.webkit.org/show_bug.cgi?id=162632
+
+        Reviewed by Simon Fraser.
+
+        * compositing/hidpi-composited-container-and-graphics-layer-gap-changes-expected.html: Added.
+        * compositing/hidpi-composited-container-and-graphics-layer-gap-changes.html: Added.
+        * compositing/hidpi-negative-composited-bounds-on-device-pixel-expected.html: Added.
+        * compositing/hidpi-negative-composited-bounds-on-device-pixel.html: Added.
+
+2016-09-27  Chris Dumez  <cdumez@apple.com>
+
+        <a download> does not honor the same-origin requirement
+        https://bugs.webkit.org/show_bug.cgi?id=156100
+
+        Reviewed by Alex Christensen.
+
+        Update existing cross origin test as it expected the suggested filename to
+        be ignored but the file to still be downloaded (Chrome behavior) instead
+        of the download attribute to be completely ignored and therefore navigate
+        (Firefox behavior).
+
+        * TestExpectations:
+        * http/tests/resources/pass-notify-done.html: Added.
+        * http/tests/security/anchor-download-block-crossorigin-expected.txt:
+        * http/tests/security/anchor-download-block-crossorigin.html:
+
+2016-09-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/xmlhttprequest/onabort-response-getters.html as failing on Sierra.
+        https://bugs.webkit.org/show_bug.cgi?id=162647
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-09-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking imported/w3c/web-platform-tests/shadow-dom/scroll-to-the-fragment-in-shadow-tree.html as failing on ios-simulator-wk2.
+        https://bugs.webkit.org/show_bug.cgi?id=162645
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-09-27  Chris Dumez  <cdumez@apple.com>
+
+        It should be possible to dispatch events on documents created using DOMParser
+        https://bugs.webkit.org/show_bug.cgi?id=26147
+
+        Reviewed by Ryosuke Niwa.
+
+        Add layout test coverage.
+
+        * fast/dom/parsed-document-dispatchEvent-expected.txt: Added.
+        * fast/dom/parsed-document-dispatchEvent.html: Added.
+
+2016-09-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/scrolling/rtl-scrollbars-alternate-iframe-body-dir-attr-does-not-update-scrollbar-placement.html as flaky on Sierra.
+        https://bugs.webkit.org/show_bug.cgi?id=162638
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-09-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Import w3c shadow DOM tests and fix one assertion
+        https://bugs.webkit.org/show_bug.cgi?id=162629
+
+        Reviewed by Chris Dumez.
+
+        Deleted the duplicated copies of tests in fast/shadow/ since this patch re-imports them via web-platform-tests.
+
+        * fast/shadow-dom/Element-interface-attachShadow-expected.txt: Removed.
+        * fast/shadow-dom/Node-prototype-cloneNode-expected.txt: Removed.
+
+2016-09-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking imported/w3c/web-platform-tests/media-source/mediasource-liveseekable.html as flaky on mac.
+        https://bugs.webkit.org/show_bug.cgi?id=162626
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-09-27  Chris Dumez  <cdumez@apple.com>
+
+        Second parameter to MutationObserver.observe() should be optional
+        https://bugs.webkit.org/show_bug.cgi?id=162627
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline existing test now that the exception messages are slightly
+        different.
+
+        * fast/dom/MutationObserver/observe-exceptions-expected.txt:
+
+2016-09-27  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] REGRESSION (r182126): Selection highlight and handles aren’t visible with WKSelectionGranularityCharacter
+        https://bugs.webkit.org/show_bug.cgi?id=162577
+        <rdar://problem/28481984>
+
+        Reviewed by Simon Fraser.
+
+        * TestExpectations:
+        * editing/selection/character-granularity-rect-expected.txt: Added.
+        * editing/selection/character-granularity-rect.html: Added.
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-09-27  Jer Noble  <jer.noble@apple.com>
+
+        Remove deprecated ENCRYPTED_MEDIA implementation.
+        https://bugs.webkit.org/show_bug.cgi?id=161010
+
+        Reviewed by Eric Carlson.
+
+        * fast/events/constructors/media-key-event-constructor-expected.txt: Removed.
+        * fast/events/constructors/media-key-event-constructor.html: Removed.
+        * media/encrypted-media/encrypted-media-can-play-type-expected.txt: Removed.
+        * media/encrypted-media/encrypted-media-can-play-type-webm-expected.txt: Removed.
+        * media/encrypted-media/encrypted-media-can-play-type-webm.html: Removed.
+        * media/encrypted-media/encrypted-media-can-play-type.html: Removed.
+        * platform/mac-wk1/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/fast/events/constructors/media-key-event-constructor-expected.txt: Removed.
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+
+2016-09-27  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Navigating to a Blob URL does not trigger a download
+        https://bugs.webkit.org/show_bug.cgi?id=162574
+
+        Reviewed by Darin Adler.
+
+        Rebaseline now that the suggested download name is "unknown" by default
+        for blob downloads as well.
+
+        * fast/dom/HTMLAnchorElement/anchor-download-expected.txt:
+        * fast/dom/HTMLAnchorElement/anchor-nodownload-set-expected.txt:
+
+2016-09-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(r205883): Letterpressed text is invisible
+        https://bugs.webkit.org/show_bug.cgi?id=162590
+
+        Reviewed by Simon Fraser.
+
+        Letterpress is only implemented on iOS, so letterpress-different.html is marked
+        as only passing on iOS. letterpress-paint.html makes sure that letterpressed paint
+        is not invisible.
+
+        * TestExpectations:
+        * fast/text/letterpress-different-expected-mismatch.html: Added.
+        * fast/text/letterpress-different.html: Added.
+        * fast/text/letterpress-paint-expected-mismatch.html: Added.
+        * fast/text/letterpress-paint.html: Added.
+        * platform/ios-simulator/TestExpectations:
+
 2017-09-26  Ryan Haddad  <ryanhaddad@apple.com>
 
         Marking css3/filters/backdrop/backdrop-filter-with-reflection* tests as flaky on Sierra WK1.

@@ -2221,6 +2221,7 @@ set(WebCore_SOURCES
     platform/graphics/Image.cpp
     platform/graphics/ImageBuffer.cpp
     platform/graphics/ImageFrame.cpp
+    platform/graphics/ImageFrameCache.cpp
     platform/graphics/ImageOrientation.cpp
     platform/graphics/ImageSource.cpp
     platform/graphics/IntPoint.cpp
@@ -2983,7 +2984,7 @@ set(WebCore_LIBRARIES
     JavaScriptCore${DEBUG_SUFFIX}
 )
 
-if (ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2)
+if (ENABLE_ENCRYPTED_MEDIA_V2)
     list(APPEND WebCore_SOURCES
         Modules/encryptedmedia/CDM.cpp
         Modules/encryptedmedia/CDMPrivateClearKey.cpp
@@ -2993,8 +2994,6 @@ if (ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2)
         Modules/encryptedmedia/MediaKeyNeededEvent.cpp
         Modules/encryptedmedia/MediaKeySession.cpp
         Modules/encryptedmedia/MediaKeys.cpp
-
-        html/MediaKeyEvent.cpp
     )
     list(APPEND WebCoreTestSupport_SOURCES
         testing/MockCDM.cpp
@@ -3006,7 +3005,6 @@ if (ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2)
         Modules/encryptedmedia/MediaKeys.idl
 
         html/MediaKeyError.idl
-        html/MediaKeyEvent.idl
     )
 endif ()
 
@@ -3839,7 +3837,7 @@ if (ENABLE_GRAPHICS_CONTEXT_3D AND NOT WIN32)
     add_library(ANGLESupport STATIC ${ANGLESupport_SOURCES})
 
     # Suppress null conversion warnings for sources in Source/ThirdParty/ANGLE
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    if (COMPILER_IS_CLANG)
         ADD_TARGET_PROPERTIES(ANGLESupport COMPILE_FLAGS "-Wno-null-conversion")
     endif ()
 

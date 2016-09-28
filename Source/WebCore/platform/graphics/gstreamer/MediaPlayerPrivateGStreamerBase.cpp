@@ -61,7 +61,9 @@
 
 #if PLATFORM(X11)
 #include "PlatformDisplayX11.h"
-#elif PLATFORM(WAYLAND)
+#endif
+
+#if PLATFORM(WAYLAND)
 #include "PlatformDisplayWayland.h"
 #endif
 
@@ -255,10 +257,21 @@ bool MediaPlayerPrivateGStreamerBase::ensureGstGLContext()
     auto& sharedDisplay = PlatformDisplay::sharedDisplayForCompositing();
     if (!m_glDisplay) {
 #if PLATFORM(X11)
-        m_glDisplay = GST_GL_DISPLAY(gst_gl_display_x11_new_with_display(downcast<PlatformDisplayX11>(sharedDisplay).native()));
-#elif PLATFORM(WAYLAND)
-        m_glDisplay = GST_GL_DISPLAY(gst_gl_display_egl_new_with_egl_display(downcast<PlatformDisplayWayland>(sharedDisplay).native()));
+#if USE(GLX)
+        if (is<PlatformDisplayX11>(sharedDisplay))
+            m_glDisplay = GST_GL_DISPLAY(gst_gl_display_x11_new_with_display(downcast<PlatformDisplayX11>(sharedDisplay).native()));
+#elif USE(EGL)
+        if (is<PlatformDisplayX11>(sharedDisplay))
+            m_glDisplay = GST_GL_DISPLAY(gst_gl_display_egl_new_with_egl_display(downcast<PlatformDisplayX11>(sharedDisplay).native()));
 #endif
+#endif
+
+#if PLATFORM(WAYLAND)
+        if (is<PlatformDisplayWayland>(sharedDisplay))
+            m_glDisplay = GST_GL_DISPLAY(gst_gl_display_egl_new_with_egl_display(downcast<PlatformDisplayWayland>(sharedDisplay).native()));
+#endif
+
+        ASSERT(m_glDisplay);
     }
 
     GLContext* webkitContext = sharedDisplay.sharingGLContext();
