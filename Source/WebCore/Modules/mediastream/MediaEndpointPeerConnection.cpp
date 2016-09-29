@@ -881,13 +881,15 @@ void MediaEndpointPeerConnection::doneGatheringCandidates(const String& mid)
     ASSERT(notifyingTransceiver);
     notifyingTransceiver->iceTransport().setGatheringState(RTCIceTransport::GatheringState::Complete);
 
-    // Determine if the script needs to be notified.
+    // Don't notify the script if there are transceivers still gathering.
     RTCRtpTransceiver* stillGatheringTransceiver = matchTransceiver(transceivers, [] (RTCRtpTransceiver& current) {
         return !current.stopped() && !current.mid().isNull()
             && current.iceTransport().gatheringState() != RTCIceTransport::GatheringState::Complete;
     });
-    if (!stillGatheringTransceiver)
+    if (!stillGatheringTransceiver) {
+        m_client->fireEvent(RTCIceCandidateEvent::create(false, false, nullptr));
         m_client->updateIceGatheringState(IceGatheringState::Complete);
+    }
 }
 
 static RTCIceTransport::TransportState deriveAggregatedIceConnectionState(Vector<RTCIceTransport::TransportState>& states)
