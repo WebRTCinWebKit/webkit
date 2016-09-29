@@ -83,6 +83,8 @@ public:
     void markAsNeedingNegotiation();
     void clearNegotiationNeededState() override { m_negotiationNeeded = false; };
 
+    void emulatePlatformEvent(const String& action) override;
+
 private:
     void runTask(Function<void ()>&&);
     void startRunningTasks();

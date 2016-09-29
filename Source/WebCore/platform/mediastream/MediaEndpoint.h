@@ -81,6 +81,8 @@ public:
     virtual void replaceMutedRemoteSourceMid(const String&, const String&) = 0;
 
     virtual void stop() = 0;
+
+    virtual void emulatePlatformEvent(const String&) { };
 };
 
 class MediaEndpointClient {

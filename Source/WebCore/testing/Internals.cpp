@@ -960,6 +960,11 @@ void Internals::setMockMediaCaptureDevicesEnabled(bool enabled)
 {
     WebCore::Settings::setMockCaptureDevicesEnabled(enabled);
 }
+
+void Internals::emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection& connection, const String& action)
+{
+    connection.emulatePlatformEvent(action);
+}
 #endif
 
 Ref<ClientRect> Internals::absoluteCaretBounds(ExceptionCode& ec)

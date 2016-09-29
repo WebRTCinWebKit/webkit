@@ -63,6 +63,7 @@ class NodeList;
 class Page;
 class Range;
 class RenderedDocumentMarker;
+class RTCPeerConnection;
 class SerializedScriptValue;
 class SourceBuffer;
 class TimeRanges;
@@ -363,6 +364,7 @@ public:
 
 #if ENABLE(MEDIA_STREAM)
     void setMockMediaCaptureDevicesEnabled(bool);
+    void emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection&, const String& action);
 #endif
 
 #if ENABLE(WEB_RTC)

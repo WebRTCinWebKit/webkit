@@ -760,6 +760,11 @@ void MediaEndpointPeerConnection::markAsNeedingNegotiation()
         m_client->scheduleNegotiationNeededEvent();
 }
 
+void MediaEndpointPeerConnection::emulatePlatformEvent(const String& action)
+{
+    m_mediaEndpoint->emulatePlatformEvent(action);
+}
+
 bool MediaEndpointPeerConnection::localDescriptionTypeValidForState(RTCSessionDescription::SdpType type) const
 {
     switch (m_client->internalSignalingState()) {

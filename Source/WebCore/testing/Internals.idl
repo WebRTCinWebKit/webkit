@@ -411,6 +411,7 @@ enum UserInterfaceLayoutDirection {
     [Conditional=WIRELESS_PLAYBACK_TARGET] void setMockMediaPlaybackTargetPickerEnabled(boolean enabled);
     [Conditional=WIRELESS_PLAYBACK_TARGET, RaisesException] void setMockMediaPlaybackTargetPickerState(DOMString deviceName, DOMString deviceState);
     [Conditional=MEDIA_STREAM] void setMockMediaCaptureDevicesEnabled(boolean enabled);
+    [Conditional=MEDIA_STREAM] void emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection connection, DOMString action);
 
     [Conditional=VIDEO] void simulateSystemSleep();
     [Conditional=VIDEO] void simulateSystemWake();
