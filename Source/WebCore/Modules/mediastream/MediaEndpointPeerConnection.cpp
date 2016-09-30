@@ -920,7 +920,7 @@ static RTCIceTransport::TransportState deriveAggregatedIceConnectionState(Vector
     }
 
     // The aggregated RTCIceConnectionState is derived from the RTCIceTransportState of all RTCIceTransports.
-    if (newCount > 0 && !checkingCount && !failedCount && !disconnectedCount)
+    if ((newCount > 0 && !checkingCount && !failedCount && !disconnectedCount) || (closedCount == states.size()))
         return RTCIceTransport::TransportState::New;
 
     if (checkingCount > 0 && !failedCount && !disconnectedCount)
@@ -937,9 +937,6 @@ static RTCIceTransport::TransportState deriveAggregatedIceConnectionState(Vector
 
     if (disconnectedCount > 0) // Any failed caught above.
         return RTCIceTransport::TransportState::Disconnected;
-
-    if (closedCount == states.size())
-        return RTCIceTransport::TransportState::Closed;
 
     ASSERT_NOT_REACHED();
     return RTCIceTransport::TransportState::New;
