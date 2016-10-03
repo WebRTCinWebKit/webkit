@@ -361,7 +361,7 @@ void MediaEndpointOwr::stop()
     m_transportAgent = nullptr;
 }
 
-unsigned MediaEndpointOwr::transceiverIndexForSession(OwrSession* session) const
+size_t MediaEndpointOwr::transceiverIndexForSession(OwrSession* session) const
 {
     for (unsigned i = 0; i < m_transceivers.size(); ++i) {
         if (m_transceivers[i]->session() == session)
@@ -374,7 +374,7 @@ unsigned MediaEndpointOwr::transceiverIndexForSession(OwrSession* session) const
 
 const String& MediaEndpointOwr::sessionMid(OwrSession* session) const
 {
-    unsigned index = transceiverIndexForSession(session);
+    size_t index = transceiverIndexForSession(session);
     return m_transceivers[index]->mid();
 }
 

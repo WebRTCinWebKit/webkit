@@ -98,7 +98,7 @@ public:
 
     void stop() override;
 
-    unsigned transceiverIndexForSession(OwrSession*) const;
+    size_t transceiverIndexForSession(OwrSession*) const;
     const String& sessionMid(OwrSession*) const;
     OwrTransceiver* matchTransceiverByMid(const String& mid) const;
 
