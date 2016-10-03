@@ -897,7 +897,7 @@ void MediaEndpointPeerConnection::doneGatheringCandidates(const String& mid)
     }
 }
 
-static RTCIceTransport::TransportState deriveAggregatedIceConnectionState(Vector<RTCIceTransport::TransportState>& states)
+static RTCIceTransport::TransportState deriveAggregatedIceConnectionState(const Vector<RTCIceTransport::TransportState>& states)
 {
     unsigned newCount = 0;
     unsigned checkingCount = 0;
