@@ -364,12 +364,12 @@ public:
 
 #if ENABLE(MEDIA_STREAM)
     void setMockMediaCaptureDevicesEnabled(bool);
-    void emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection&, const String& action);
 #endif
 
 #if ENABLE(WEB_RTC)
     void enableMockMediaEndpoint();
     void enableMockRTCPeerConnectionHandler();
+    void emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection&, const String& action);
 #endif
 
     String getImageSourceURL(Element&);

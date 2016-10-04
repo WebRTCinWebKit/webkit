@@ -953,17 +953,17 @@ void Internals::enableMockRTCPeerConnectionHandler()
 {
     RTCPeerConnectionHandler::create = RTCPeerConnectionHandlerMock::create;
 }
+
+void Internals::emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection& connection, const String& action)
+{
+    connection.emulatePlatformEvent(action);
+}
 #endif
 
 #if ENABLE(MEDIA_STREAM)
 void Internals::setMockMediaCaptureDevicesEnabled(bool enabled)
 {
     WebCore::Settings::setMockCaptureDevicesEnabled(enabled);
-}
-
-void Internals::emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection& connection, const String& action)
-{
-    connection.emulatePlatformEvent(action);
 }
 #endif
 
