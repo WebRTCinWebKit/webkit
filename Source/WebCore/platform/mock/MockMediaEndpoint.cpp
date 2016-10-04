@@ -34,8 +34,8 @@
 #include "MockMediaEndpoint.h"
 
 #include "IceCandidate.h"
-#include "MediaPayload.h"
 #include "MediaEndpointSessionConfiguration.h"
+#include "MediaPayload.h"
 #include "MockRealtimeAudioSource.h"
 #include "MockRealtimeVideoSource.h"
 #include "RealtimeMediaSource.h"
@@ -266,7 +266,7 @@ void MockMediaEndpoint::dispatchFakeIceCandidates()
 
 void MockMediaEndpoint::iceCandidateTimerFired()
 {
-    if (!m_mids.size())
+    if (m_mids.isEmpty())
         return;
 
     if (!m_fakeIceCandidates.isEmpty()) {

@@ -881,9 +881,9 @@ void MediaEndpointPeerConnection::doneGatheringCandidates(const String& mid)
     ASSERT(isMainThread());
 
     RtpTransceiverVector transceivers = RtpTransceiverVector(m_client->getTransceivers());
-
     RTCRtpTransceiver* notifyingTransceiver = matchTransceiverByMid(transceivers, mid);
     ASSERT(notifyingTransceiver);
+
     notifyingTransceiver->iceTransport().setGatheringState(RTCIceTransport::GatheringState::Complete);
 
     // Don't notify the script if there are transceivers still gathering.
