@@ -213,9 +213,13 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case PutGetterSetterById:
     case PutGetterByVal:
     case PutSetterByVal:
+    case DefineDataProperty:
+    case DefineAccessorProperty:
     case CheckStructure:
     case GetExecutable:
     case GetButterfly:
+    case CallDOM:
+    case CheckDOM:
     case CheckArray:
     case Arrayify:
     case ArrayifyToStructure:
@@ -300,7 +304,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case TailCallVarargs:
     case TailCallForwardVarargs:
     case Throw:
-    case ThrowReferenceError:
+    case ThrowStaticError:
     case CountExecution:
     case ForceOSRExit:
     case CheckWatchdogTimer:
@@ -314,7 +318,6 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case CheckTierUpAtReturn:
     case CheckTierUpAndOSREnter:
     case LoopHint:
-    case StoreBarrier:
     case InvalidationPoint:
     case NotifyWrite:
     case CheckInBounds:
@@ -360,6 +363,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case PutDynamicVar:
     case ResolveScope:
     case MapHash:
+    case ToLowerCase:
     case GetMapBucket:
     case LoadFromJSMapBucket:
     case IsNonEmptyMapBucket:
@@ -368,6 +372,14 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case BottomValue:
         // If in doubt, assume that this isn't safe to execute, just because we have no way of
         // compiling this node.
+        return false;
+
+    case StoreBarrier:
+    case FencedStoreBarrier:
+        // We conservatively assume that these cannot be put anywhere, which forces the compiler to
+        // keep them exactly where they were. This is sort of overkill since the clobberize effects
+        // already force these things to be ordered precisely. I'm just not confident enough in my
+        // effect based memory model to rely solely on that right now.
         return false;
 
     case GetByVal:

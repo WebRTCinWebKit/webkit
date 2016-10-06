@@ -47,6 +47,7 @@
 #include "HTMLImageElement.h"
 #include "HTMLSlotElement.h"
 #include "HTMLStyleElement.h"
+#include "InputEvent.h"
 #include "InspectorController.h"
 #include "KeyboardEvent.h"
 #include "Logging.h"
@@ -61,6 +62,7 @@
 #include "RenderTextControl.h"
 #include "RenderView.h"
 #include "ScopedEventQueue.h"
+#include "Settings.h"
 #include "StorageEvent.h"
 #include "StyleResolver.h"
 #include "StyleSheetContents.h"
@@ -1842,7 +1844,7 @@ void Node::getSubresourceURLs(ListHashSet<URL>& urls) const
 
 Element* Node::enclosingLinkEventParentOrSelf()
 {
-    for (Node* node = this; node; node = node->parentOrShadowHostNode()) {
+    for (Node* node = this; node; node = node->parentInComposedTree()) {
         // For imagemaps, the enclosing link element is the associated area element not the image itself.
         // So we don't let images be the enclosing link element, even though isLink sometimes returns
         // true for them.
@@ -2200,9 +2202,12 @@ bool Node::dispatchBeforeLoadEvent(const String& sourceURL)
     return !beforeLoadEvent->defaultPrevented();
 }
 
-void Node::dispatchInputEvent()
+void Node::dispatchInputEvent(const AtomicString& inputType)
 {
-    dispatchScopedEvent(Event::create(eventNames().inputEvent, true, false));
+    if (document().settings()->inputEventsEnabled())
+        dispatchScopedEvent(InputEvent::create(eventNames().inputEvent, inputType, true, false, document().defaultView(), 0));
+    else
+        dispatchScopedEvent(Event::create(eventNames().inputEvent, true, false));
 }
 
 void Node::defaultEventHandler(Event& event)
@@ -2268,7 +2273,7 @@ void Node::defaultEventHandler(Event& event)
         }
 #endif
     } else if (event.type() == eventNames().webkitEditableContentChangedEvent) {
-        dispatchInputEvent();
+        dispatchInputEvent(emptyString());
     }
 }
 

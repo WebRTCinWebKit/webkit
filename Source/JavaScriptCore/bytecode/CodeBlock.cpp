@@ -299,15 +299,17 @@ static CString regexpName(int re, RegExp* regexp)
     return toCString(regexpToSourceString(regexp), "(@re", re, ")");
 }
 
-NEVER_INLINE static const char* debugHookName(int debugHookID)
+NEVER_INLINE static const char* debugHookName(int debugHookType)
 {
-    switch (static_cast<DebugHookID>(debugHookID)) {
+    switch (static_cast<DebugHookType>(debugHookType)) {
         case DidEnterCallFrame:
             return "didEnterCallFrame";
         case WillLeaveCallFrame:
             return "willLeaveCallFrame";
         case WillExecuteStatement:
             return "willExecuteStatement";
+        case WillExecuteExpression:
+            return "willExecuteExpression";
         case WillExecuteProgram:
             return "willExecuteProgram";
         case DidExecuteProgram:
@@ -1233,6 +1235,25 @@ void CodeBlock::dumpBytecode(
             out.printf("%s, %s, %d, %s", registerName(r0).data(), registerName(r1).data(), n0, registerName(r2).data());
             break;
         }
+        case op_define_data_property: {
+            int r0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
+            int r2 = (++it)->u.operand;
+            int r3 = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "define_data_property");
+            out.printf("%s, %s, %s, %s", registerName(r0).data(), registerName(r1).data(), registerName(r2).data(), registerName(r3).data());
+            break;
+        }
+        case op_define_accessor_property: {
+            int r0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
+            int r2 = (++it)->u.operand;
+            int r3 = (++it)->u.operand;
+            int r4 = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "define_accessor_property");
+            out.printf("%s, %s, %s, %s, %s", registerName(r0).data(), registerName(r1).data(), registerName(r2).data(), registerName(r3).data(), registerName(r4).data());
+            break;
+        }
         case op_del_by_id: {
             int r0 = (++it)->u.operand;
             int r1 = (++it)->u.operand;
@@ -1653,16 +1674,17 @@ void CodeBlock::dumpBytecode(
         }
         case op_throw_static_error: {
             int k0 = (++it)->u.operand;
-            int k1 = (++it)->u.operand;
+            ErrorType k1 = static_cast<ErrorType>((++it)->u.unsignedValue);
             printLocationAndOp(out, exec, location, it, "throw_static_error");
-            out.printf("%s, %s", constantName(k0).data(), k1 ? "true" : "false");
+            out.printf("%s, ", constantName(k0).data());
+            out.print(k1);
             break;
         }
         case op_debug: {
-            int debugHookID = (++it)->u.operand;
+            int debugHookType = (++it)->u.operand;
             int hasBreakpointFlag = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "debug");
-            out.printf("%s, %d", debugHookName(debugHookID), hasBreakpointFlag);
+            out.printf("%s, %d", debugHookName(debugHookType), hasBreakpointFlag);
             break;
         }
         case op_assert: {

@@ -36,6 +36,11 @@ class MediaSessionManagerMac : public PlatformMediaSessionManager {
 public:
     virtual ~MediaSessionManagerMac();
 
+    bool hasActiveNowPlayingSession() const override { return m_nowPlayingActive; }
+    String lastUpdatedNowPlayingTitle() const override { return m_lastUpdatedNowPlayingTitle; }
+    double lastUpdatedNowPlayingDuration() const override { return m_lastUpdatedNowPlayingDuration; }
+    double lastUpdatedNowPlayingElapsedTime() const override { return m_lastUpdatedNowPlayingElapsedTime; }
+
 private:
     friend class PlatformMediaSessionManager;
 
@@ -55,6 +60,12 @@ private:
 
     bool m_nowPlayingActive { false };
     bool m_isInBackground { false };
+
+    // For testing purposes only.
+    String m_lastUpdatedNowPlayingTitle;
+    double m_lastUpdatedNowPlayingDuration { NAN };
+    double m_lastUpdatedNowPlayingElapsedTime { NAN };
+
     GenericTaskQueue<Timer> m_nowPlayingUpdateTaskQueue;
 };
 

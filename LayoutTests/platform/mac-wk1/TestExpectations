@@ -191,6 +191,8 @@ webkit.org/b/156084 accessibility/mac/video-tag-hit-test.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-nodownload-set.html [ Failure ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download.html [ Failure ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download-synthetic-click.html [ Skip ]
+webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download-user-triggered-synthetic-click.html [ Skip ]
+webkit.org/b/156069 http/tests/download/area-download.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-blob.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-data.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-sameorigin.html [ Skip ]
@@ -256,3 +258,7 @@ webkit.org/b/161191 imported/w3c/web-platform-tests/url/url-setters.html [ Skip 
 webkit.org/b/162592 [ Sierra+ ] css3/filters/backdrop/backdrop-filter-with-reflection.html [ Pass ImageOnlyFailure ]
 webkit.org/b/162591 [ Sierra+ ] css3/filters/backdrop/backdrop-filter-with-reflection-add-backdrop.html [ Pass ImageOnlyFailure ]
 webkit.org/b/162591 [ Sierra+ ] css3/filters/backdrop/backdrop-filter-with-reflection-value-change.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/162507 http/tests/media/hls/hls-video-resize.html [ Pass Failure ]
+
+webkit.org/b/162986 inspector/formatting/formatting-javascript.html [ Pass Crash ]

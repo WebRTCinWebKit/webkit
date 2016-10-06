@@ -1474,18 +1474,6 @@ LLINT_SLOW_PATH_DECL(slow_path_throw)
     LLINT_THROW(LLINT_OP_C(1).jsValue());
 }
 
-LLINT_SLOW_PATH_DECL(slow_path_throw_static_error)
-{
-    LLINT_BEGIN();
-    JSValue errorMessageValue = LLINT_OP_C(1).jsValue();
-    RELEASE_ASSERT(errorMessageValue.isString());
-    String errorMessage = asString(errorMessageValue)->value(exec);
-    if (pc[2].u.operand)
-        LLINT_THROW(createReferenceError(exec, errorMessage));
-    else
-        LLINT_THROW(createTypeError(exec, errorMessage));
-}
-
 LLINT_SLOW_PATH_DECL(slow_path_handle_watchdog_timer)
 {
     LLINT_BEGIN_NO_SET_PC();
@@ -1498,8 +1486,8 @@ LLINT_SLOW_PATH_DECL(slow_path_handle_watchdog_timer)
 LLINT_SLOW_PATH_DECL(slow_path_debug)
 {
     LLINT_BEGIN();
-    int debugHookID = pc[1].u.operand;
-    vm.interpreter->debug(exec, static_cast<DebugHookID>(debugHookID));
+    int debugHookType = pc[1].u.operand;
+    vm.interpreter->debug(exec, static_cast<DebugHookType>(debugHookType));
     
     LLINT_END();
 }

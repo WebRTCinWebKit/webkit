@@ -53,7 +53,7 @@ CrossOriginPreflightChecker::CrossOriginPreflightChecker(DocumentThreadableLoade
 CrossOriginPreflightChecker::~CrossOriginPreflightChecker()
 {
     if (m_resource)
-        m_resource->removeClient(this);
+        m_resource->removeClient(*this);
 }
 
 void CrossOriginPreflightChecker::validatePreflightResponse(DocumentThreadableLoader& loader, ResourceRequest&& request, unsigned long identifier, const ResourceResponse& response)
@@ -91,7 +91,11 @@ void CrossOriginPreflightChecker::notifyFinished(CachedResource* resource)
     ASSERT_UNUSED(resource, resource == m_resource);
     if (m_resource->loadFailedOrCanceled()) {
         ResourceError preflightError = m_resource->resourceError();
-        preflightError.setType(ResourceError::Type::AccessControl);
+        // If the preflight was cancelled by underlying code, it probably means the request was blocked due to some access control policy.
+        // FIXME:: According fetch, we should just pass the error to the layer above. But this may impact some clients like XHR or EventSource.
+        if (preflightError.isNull() || preflightError.isCancellation() || preflightError.isGeneral())
+            preflightError.setType(ResourceError::Type::AccessControl);
+
         m_loader.preflightFailure(m_resource->identifier(), preflightError);
         return;
     }
@@ -115,7 +119,7 @@ void CrossOriginPreflightChecker::startPreflight()
     ASSERT(!m_resource);
     m_resource = m_loader.document().cachedResourceLoader().requestRawResource(WTFMove(preflightRequest));
     if (m_resource)
-        m_resource->addClient(this);
+        m_resource->addClient(*this);
 }
 
 void CrossOriginPreflightChecker::doPreflight(DocumentThreadableLoader& loader, ResourceRequest&& request)
@@ -133,9 +137,11 @@ void CrossOriginPreflightChecker::doPreflight(DocumentThreadableLoader& loader, 
 
     unsigned identifier = loader.document().frame()->loader().loadResourceSynchronously(preflightRequest, DoNotAllowStoredCredentials, ClientCredentialPolicy::CannotAskClientForCredentials, error, response, data);
 
-    // FIXME: Investigate why checking for response httpStatusCode here. In particular, can we have a not-null error and a 2XX response.
-    if (!error.isNull() && response.httpStatusCode() <= 0) {
-        error.setType(ResourceError::Type::AccessControl);
+    if (!error.isNull()) {
+        // If the preflight was cancelled by underlying code, it probably means the request was blocked due to some access control policy.
+        // FIXME:: According fetch, we should just pass the error to the layer above. But this may impact some clients like XHR or EventSource.
+        if (error.isCancellation() || error.isGeneral())
+            error.setType(ResourceError::Type::AccessControl);
         loader.preflightFailure(identifier, error);
         return;
     }

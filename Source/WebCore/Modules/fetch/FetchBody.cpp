@@ -41,116 +41,63 @@
 #include "JSBlob.h"
 #include "JSDOMFormData.h"
 #include "JSReadableStream.h"
+#include "JSURLSearchParams.h"
 #include "ReadableStreamSource.h"
 #include <runtime/ArrayBufferView.h>
 
 namespace WebCore {
 
-FetchBody::FetchBody(Ref<const Blob>&& blob)
-    : m_type(Type::Blob)
-    , m_data(WTFMove(blob))
-    , m_contentType(this->blobBody().type())
+Optional<FetchBody> FetchBody::extract(ScriptExecutionContext& context, JSC::ExecState& state, JSC::JSValue value, String& contentType)
 {
-}
-
-FetchBody::FetchBody(DOMFormData& formData, Document& document)
-    : m_type(Type::FormData)
-    , m_data(FormData::createMultiPart(formData, formData.encoding(), &document))
-    , m_contentType(makeString("multipart/form-data;boundary=", this->formDataBody().boundary().data()))
-{
-}
-
-FetchBody::FetchBody(String&& text)
-    : m_type(Type::Text)
-    , m_data(WTFMove(text))
-    , m_contentType(ASCIILiteral("text/plain;charset=UTF-8"))
-{
-}
-
-FetchBody::FetchBody(Ref<const ArrayBuffer>&& data)
-    : m_type(Type::ArrayBuffer)
-    , m_data(WTFMove(data))
-{
-}
-
-FetchBody::FetchBody(Ref<const ArrayBufferView>&& dataView)
-    : m_type(Type::ArrayBufferView)
-    , m_data(WTFMove(dataView))
-{
-}
-
-FetchBody::FetchBody(Type type, const String& contentType, const FetchBodyConsumer& consumer)
-    : m_type(type)
-    , m_contentType(contentType)
-    , m_consumer(consumer)
-{
-}
-
-FetchBody FetchBody::extract(ScriptExecutionContext& context, JSC::ExecState& state, JSC::JSValue value)
-{
-    if (value.inherits(JSBlob::info()))
-        return FetchBody(*JSBlob::toWrapped(value));
+    if (value.inherits(JSBlob::info())) {
+        auto& blob = *JSBlob::toWrapped(value);
+        contentType = blob.type();
+        return FetchBody(blob);
+    }
     if (value.inherits(JSDOMFormData::info())) {
         ASSERT(!context.isWorkerGlobalScope());
-        return FetchBody(*JSDOMFormData::toWrapped(value), static_cast<Document&>(context));
+        auto& domFormData = *JSDOMFormData::toWrapped(value);
+        auto formData = FormData::createMultiPart(domFormData, domFormData.encoding(), &static_cast<Document&>(context));
+        contentType = makeString("multipart/form-data;boundary=", formData->boundary().data());
+        return FetchBody(WTFMove(formData));
     }
-    if (value.isString())
+    if (value.isString()) {
+        contentType = ASCIILiteral("text/plain;charset=UTF-8");
         return FetchBody(value.toWTFString(&state));
+    }
+    if (value.inherits(JSURLSearchParams::info())) {
+        contentType = ASCIILiteral("application/x-www-form-urlencoded;charset=UTF-8");
+        return FetchBody(*JSURLSearchParams::toWrapped(value));
+    }
     if (value.inherits(JSReadableStream::info()))
-        return { Type::ReadableStream };
+        return FetchBody();
     if (value.inherits(JSC::JSArrayBuffer::info())) {
         ArrayBuffer* data = toArrayBuffer(value);
         ASSERT(data);
-        return { *data };
+        return FetchBody(*data);
     }
-    if (value.inherits(JSC::JSArrayBufferView::info())) {
-        auto data = toArrayBufferView(value);
-        ASSERT(data);
-        // FIXME: We should be able to efficiently get a Ref<const T> from a RefPtr<T>.
-        return { *data };
-    }
-    return { };
-}
+    if (value.inherits(JSC::JSArrayBufferView::info()))
+        return FetchBody(toArrayBufferView(value).releaseConstNonNull());
 
-FetchBody FetchBody::extractFromBody(FetchBody* body)
-{
-    if (!body)
-        return { };
-
-    return FetchBody(WTFMove(*body));
-}
-
-void FetchBody::updateContentType(FetchHeaders& headers)
-{
-    String contentType = headers.fastGet(HTTPHeaderName::ContentType);
-    if (!contentType.isNull()) {
-        m_contentType = contentType;
-        return;
-    }
-    if (!m_contentType.isNull())
-        headers.fastSet(HTTPHeaderName::ContentType, m_contentType);
+    return Nullopt;
 }
 
 void FetchBody::arrayBuffer(FetchBodyOwner& owner, Ref<DeferredPromise>&& promise)
 {
-    ASSERT(m_type != Type::None);
     m_consumer.setType(FetchBodyConsumer::Type::ArrayBuffer);
     consume(owner, WTFMove(promise));
 }
 
-void FetchBody::blob(FetchBodyOwner& owner, Ref<DeferredPromise>&& promise)
+void FetchBody::blob(FetchBodyOwner& owner, Ref<DeferredPromise>&& promise, const String& contentType)
 {
-    ASSERT(m_type != Type::None);
     m_consumer.setType(FetchBodyConsumer::Type::Blob);
-    m_consumer.setContentType(Blob::normalizedContentType(extractMIMETypeFromMediaType(m_contentType)));
+    m_consumer.setContentType(Blob::normalizedContentType(extractMIMETypeFromMediaType(contentType)));
     consume(owner, WTFMove(promise));
 }
 
 void FetchBody::json(FetchBodyOwner& owner, Ref<DeferredPromise>&& promise)
 {
-    ASSERT(m_type != Type::None);
-
-    if (m_type == Type::Text) {
+    if (isText()) {
         fulfillPromiseWithJSON(WTFMove(promise), textBody());
         return;
     }
@@ -160,9 +107,7 @@ void FetchBody::json(FetchBodyOwner& owner, Ref<DeferredPromise>&& promise)
 
 void FetchBody::text(FetchBodyOwner& owner, Ref<DeferredPromise>&& promise)
 {
-    ASSERT(m_type != Type::None);
-
-    if (m_type == Type::Text) {
+    if (isText()) {
         promise->resolve(textBody());
         return;
     }
@@ -170,80 +115,69 @@ void FetchBody::text(FetchBodyOwner& owner, Ref<DeferredPromise>&& promise)
     consume(owner, WTFMove(promise));
 }
 
+void FetchBody::consumeOnceLoadingFinished(FetchBodyConsumer::Type type, Ref<DeferredPromise>&& promise)
+{
+    m_consumer.setType(type);
+    m_consumePromise = WTFMove(promise);
+}
+
 void FetchBody::consume(FetchBodyOwner& owner, Ref<DeferredPromise>&& promise)
 {
-    // This should be handled by FetchBodyOwner
-    ASSERT(m_type != Type::None);
-    // This should be handled by JS built-ins
-    ASSERT(m_type != Type::ReadableStream);
-
-    switch (m_type) {
-    case Type::ArrayBuffer:
+    if (isArrayBuffer()) {
         consumeArrayBuffer(WTFMove(promise));
         return;
-    case Type::ArrayBufferView:
+    }
+    if (isArrayBufferView()) {
         consumeArrayBufferView(WTFMove(promise));
         return;
-    case Type::Text:
-        consumeText(WTFMove(promise));
+    }
+    if (isText()) {
+        consumeText(WTFMove(promise), textBody());
         return;
-    case Type::Blob:
+    }
+    if (isURLSearchParams()) {
+        consumeText(WTFMove(promise), urlSearchParamsBody().toString());
+        return;
+    }
+    if (isBlob()) {
         consumeBlob(owner, WTFMove(promise));
         return;
-    case Type::Loading:
-        m_consumePromise = WTFMove(promise);
-        return;
-    case Type::Loaded:
-        m_consumer.resolve(WTFMove(promise));
-        return;
-    case Type::FormData:
+    }
+    if (isFormData()) {
         // FIXME: Support consuming FormData.
         promise->reject(0);
         return;
-    default:
-        ASSERT_NOT_REACHED();
     }
+    m_consumer.resolve(WTFMove(promise));
 }
 
 #if ENABLE(READABLE_STREAM_API)
 void FetchBody::consumeAsStream(FetchBodyOwner& owner, FetchResponseSource& source)
 {
-    // This should be handled by FetchResponse
-    ASSERT(m_type != Type::Loading);
-    // This should be handled by JS built-ins
-    ASSERT(m_type != Type::ReadableStream);
-
     bool closeStream = false;
-    switch (m_type) {
-    case Type::ArrayBuffer:
+    if (isArrayBuffer()) {
         closeStream = source.enqueue(ArrayBuffer::tryCreate(arrayBufferBody().data(), arrayBufferBody().byteLength()));
         m_data = nullptr;
-        break;
-    case Type::ArrayBufferView: {
+    } else if (isArrayBufferView()) {
         closeStream = source.enqueue(ArrayBuffer::tryCreate(arrayBufferViewBody().baseAddress(), arrayBufferViewBody().byteLength()));
         m_data = nullptr;
-        break;
-    }
-    case Type::Text: {
-        Vector<uint8_t> data = extractFromText();
-        closeStream = source.enqueue(ArrayBuffer::tryCreate(data.data(), data.size()));
+    } else if (isText()) {
+        auto data = UTF8Encoding().encode(textBody(), EntitiesForUnencodables);
+        closeStream = source.enqueue(ArrayBuffer::tryCreate(data.data(), data.length()));
         m_data = nullptr;
-        break;
-    }
-    case Type::Blob:
+    } else if (isURLSearchParams()) {
+        auto data = UTF8Encoding().encode(urlSearchParamsBody().toString(), EntitiesForUnencodables);
+        closeStream = source.enqueue(ArrayBuffer::tryCreate(data.data(), data.length()));
+        m_data = nullptr;
+    } else if (isBlob()) {
         owner.loadBlob(blobBody(), nullptr);
         m_data = nullptr;
-        break;
-    case Type::None:
-        closeStream = true;
-        break;
-    case Type::Loaded: {
-        closeStream = source.enqueue(m_consumer.takeAsArrayBuffer());
-        break;
-    }
-    default:
+    } else if (isFormData())
         source.error(ASCIILiteral("not implemented"));
-    }
+    else if (m_consumer.hasData())
+        closeStream = source.enqueue(m_consumer.takeAsArrayBuffer());
+    else
+        closeStream = true;
 
     if (closeStream)
         source.close();
@@ -262,10 +196,10 @@ void FetchBody::consumeArrayBufferView(Ref<DeferredPromise>&& promise)
     m_data = nullptr;
 }
 
-void FetchBody::consumeText(Ref<DeferredPromise>&& promise)
+void FetchBody::consumeText(Ref<DeferredPromise>&& promise, const String& text)
 {
-    Vector<uint8_t> data = extractFromText();
-    m_consumer.resolveWithData(WTFMove(promise), data.data(), data.size());
+    auto data = UTF8Encoding().encode(text, EntitiesForUnencodables);
+    m_consumer.resolveWithData(WTFMove(promise), reinterpret_cast<const uint8_t*>(data.data()), data.length());
     m_data = nullptr;
 }
 
@@ -274,16 +208,6 @@ void FetchBody::consumeBlob(FetchBodyOwner& owner, Ref<DeferredPromise>&& promis
     m_consumePromise = WTFMove(promise);
     owner.loadBlob(blobBody(), &m_consumer);
     m_data = nullptr;
-}
-
-Vector<uint8_t> FetchBody::extractFromText() const
-{
-    ASSERT(m_type == Type::Text);
-    // FIXME: This double allocation is not efficient. Might want to fix that at WTFString level.
-    CString data = textBody().utf8();
-    Vector<uint8_t> value(data.length());
-    memcpy(value.data(), data.data(), data.length());
-    return value;
 }
 
 void FetchBody::loadingFailed()
@@ -296,66 +220,52 @@ void FetchBody::loadingFailed()
 
 void FetchBody::loadingSucceeded()
 {
-    m_type = m_consumer.hasData() ? Type::Loaded : Type::None;
     if (m_consumePromise)
         m_consumer.resolve(m_consumePromise.releaseNonNull());
 }
 
 RefPtr<FormData> FetchBody::bodyForInternalRequest(ScriptExecutionContext& context) const
 {
-    switch (m_type) {
-    case Type::None:
-        return nullptr;
-    case Type::Text:
+    if (isText())
         return FormData::create(UTF8Encoding().encode(textBody(), EntitiesForUnencodables));
-    case Type::Blob: {
+    if (isURLSearchParams())
+        return FormData::create(UTF8Encoding().encode(urlSearchParamsBody().toString(), EntitiesForUnencodables));
+    if (isBlob()) {
         RefPtr<FormData> body = FormData::create();
         body->appendBlob(blobBody().url());
         return body;
     }
-    case Type::ArrayBuffer:
+    if (isArrayBuffer())
         return FormData::create(arrayBufferBody().data(), arrayBufferBody().byteLength());
-    case Type::ArrayBufferView:
+    if (isArrayBufferView())
         return FormData::create(arrayBufferViewBody().baseAddress(), arrayBufferViewBody().byteLength());
-    case Type::FormData: {
+    if (isFormData()) {
         ASSERT(!context.isWorkerGlobalScope());
         RefPtr<FormData> body = const_cast<FormData*>(&formDataBody());
         body->generateFiles(static_cast<Document*>(&context));
         return body;
     }
-    default:
-        ASSERT_NOT_REACHED();
-        return nullptr;
-    }
+    ASSERT_NOT_REACHED();
+    return nullptr;
 }
 
 FetchBody FetchBody::clone() const
 {
     ASSERT(!m_consumePromise);
-    FetchBody clone(m_type, m_contentType, m_consumer);
+    FetchBody clone(m_consumer);
 
-    switch (m_type) {
-    case Type::ArrayBuffer:
+    if (isArrayBuffer())
         clone.m_data = arrayBufferBody();
-        break;
-    case Type::ArrayBufferView:
+    else if (isArrayBufferView())
         clone.m_data = arrayBufferViewBody();
-        break;
-    case Type::Blob:
+    else if (isBlob())
         clone.m_data = blobBody();
-        break;
-    case Type::FormData:
+    else if (isFormData())
         clone.m_data = const_cast<FormData&>(formDataBody());
-        break;
-    case Type::Text:
+    else if (isText())
         clone.m_data = textBody();
-        break;
-    case Type::Loaded:
-    case Type::None:
-    case Type::Loading:
-    case Type::ReadableStream:
-        break;
-    }
+    else if (isURLSearchParams())
+        clone.m_data = urlSearchParamsBody();
     return clone;
 }
 

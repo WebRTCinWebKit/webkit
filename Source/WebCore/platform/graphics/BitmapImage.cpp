@@ -141,6 +141,10 @@ void BitmapImage::draw(GraphicsContext& context, const FloatRect& destRect, cons
     if (destRect.isEmpty() || srcRect.isEmpty())
         return;
 
+#if USE(DIRECT2D)
+    setRenderTarget(context);
+#endif
+
 #if PLATFORM(IOS)
     startAnimation(DoNotCatchUp);
 #else
@@ -171,13 +175,13 @@ void BitmapImage::draw(GraphicsContext& context, const FloatRect& destRect, cons
         imageObserver()->didDraw(this);
 }
 
-void BitmapImage::drawPattern(GraphicsContext& ctxt, const FloatRect& tileRect, const AffineTransform& transform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, const FloatRect& destRect, BlendMode blendMode)
+void BitmapImage::drawPattern(GraphicsContext& ctxt, const FloatRect& destRect, const FloatRect& tileRect, const AffineTransform& transform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, BlendMode blendMode)
 {
     if (tileRect.isEmpty())
         return;
 
     if (!ctxt.drawLuminanceMask()) {
-        Image::drawPattern(ctxt, tileRect, transform, phase, spacing, op, destRect, blendMode);
+        Image::drawPattern(ctxt, destRect, tileRect, transform, phase, spacing, op, blendMode);
         return;
     }
 
@@ -202,7 +206,7 @@ void BitmapImage::drawPattern(GraphicsContext& ctxt, const FloatRect& tileRect, 
     }
 
     ctxt.setDrawLuminanceMask(false);
-    m_cachedImage->drawPattern(ctxt, tileRect, transform, phase, spacing, op, destRect, blendMode);
+    m_cachedImage->drawPattern(ctxt, destRect, tileRect, transform, phase, spacing, op, blendMode);
 }
 
 bool BitmapImage::shouldAnimate()

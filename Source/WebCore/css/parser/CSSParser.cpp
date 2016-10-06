@@ -43,6 +43,7 @@
 #include "CSSFontFaceSrcValue.h"
 #include "CSSFontFeatureValue.h"
 #include "CSSFontValue.h"
+#include "CSSFontVariationValue.h"
 #include "CSSFunctionValue.h"
 #include "CSSGradientValue.h"
 #include "CSSImageSetValue.h"
@@ -271,6 +272,10 @@ CSSParserContext::CSSParserContext(Document& document, const URL& baseURL, const
 #endif
         springTimingFunctionEnabled = settings->springTimingFunctionEnabled();
         useNewParser = settings->newCSSParserEnabled();
+
+#if ENABLE(VARIATION_FONTS)
+        variationFontsEnabled = settings->variationFontsEnabled();
+#endif
     }
 
 #if PLATFORM(IOS)
@@ -293,6 +298,9 @@ bool operator==(const CSSParserContext& a, const CSSParserContext& b)
         && a.needsSiteSpecificQuirks == b.needsSiteSpecificQuirks
         && a.enforcesCSSMIMETypeInNoQuirksMode == b.enforcesCSSMIMETypeInNoQuirksMode
         && a.useLegacyBackgroundSizeShorthandBehavior == b.useLegacyBackgroundSizeShorthandBehavior
+#if ENABLE(VARIATION_FONTS)
+        && a.variationFontsEnabled == b.variationFontsEnabled
+#endif
         && a.springTimingFunctionEnabled == b.springTimingFunctionEnabled;
 }
 
@@ -1309,22 +1317,16 @@ RefPtr<CSSValueList> CSSParser::parseFontFaceValue(const AtomicString& string)
     return WTFMove(valueList);
 }
 
-CSSParser::ParseResult CSSParser::parseValue(MutableStyleProperties& declaration, CSSPropertyID propertyID, const String& string, bool important, CSSParserMode cssParserMode, StyleSheetContents* contextStyleSheet)
+CSSParser::ParseResult CSSParser::parseValue(MutableStyleProperties& declaration, CSSPropertyID propertyID, const String& string, bool important, const CSSParserContext& context, StyleSheetContents* contextStyleSheet)
 {
     ASSERT(!string.isEmpty());
-    CSSParser::ParseResult result = parseSimpleLengthValue(declaration, propertyID, string, important, cssParserMode);
+    CSSParser::ParseResult result = parseSimpleLengthValue(declaration, propertyID, string, important, context.mode);
     if (result != ParseResult::Error)
         return result;
 
-    result = parseColorValue(declaration, propertyID, string, important, cssParserMode);
+    result = parseColorValue(declaration, propertyID, string, important,  context.mode);
     if (result != ParseResult::Error)
         return result;
-
-    CSSParserContext context(cssParserMode);
-    if (contextStyleSheet) {
-        context = contextStyleSheet->parserContext();
-        context.mode = cssParserMode;
-    }
 
     result = parseKeywordValue(declaration, propertyID, string, important, context, contextStyleSheet);
     if (result != ParseResult::Error)
@@ -1338,14 +1340,8 @@ CSSParser::ParseResult CSSParser::parseValue(MutableStyleProperties& declaration
     return parser.parseValue(declaration, propertyID, string, important, contextStyleSheet);
 }
 
-CSSParser::ParseResult CSSParser::parseCustomPropertyValue(MutableStyleProperties& declaration, const AtomicString& propertyName, const String& string, bool important, CSSParserMode cssParserMode, StyleSheetContents* contextStyleSheet)
+CSSParser::ParseResult CSSParser::parseCustomPropertyValue(MutableStyleProperties& declaration, const AtomicString& propertyName, const String& string, bool important, const CSSParserContext& context, StyleSheetContents* contextStyleSheet)
 {
-    CSSParserContext context(cssParserMode);
-    if (contextStyleSheet) {
-        context = contextStyleSheet->parserContext();
-        context.mode = cssParserMode;
-    }
-
     CSSParser parser(context);
     parser.setCustomPropertyName(propertyName);
     return parser.parseValue(declaration, CSSPropertyCustom, string, important, contextStyleSheet);
@@ -1444,9 +1440,9 @@ void CSSParser::parseSelector(const String& string, CSSSelectorList& selectorLis
 
 Ref<ImmutableStyleProperties> CSSParser::parseInlineStyleDeclaration(const String& string, Element* element)
 {
-    CSSParserContext context = element->document().elementSheet().contents().parserContext();
+    CSSParserContext context(element->document());
     context.mode = strictToCSSParserMode(element->isHTMLElement() && !element->document().inQuirksMode());
-    return CSSParser(context).parseDeclaration(string, &element->document().elementSheet().contents());
+    return CSSParser(context).parseDeclaration(string, nullptr);
 }
 
 Ref<ImmutableStyleProperties> CSSParser::parseDeclaration(const String& string, StyleSheetContents* contextStyleSheet)
@@ -2971,6 +2967,16 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         else
             return parseFontFeatureSettings(important);
         break;
+#if ENABLE(VARIATION_FONTS)
+    case CSSPropertyFontVariationSettings:
+        if (m_context.variationFontsEnabled) {
+            if (id == CSSValueNormal)
+                validPrimitive = true;
+            else
+                return parseFontVariationSettings(important);
+        }
+        break;
+#endif
     case CSSPropertyFontVariantLigatures:
         if (id == CSSValueNormal || id == CSSValueNone)
             validPrimitive = true;
@@ -10570,7 +10576,7 @@ bool CSSParser::parseFontFeatureTag(CSSValueList& settings)
     // Feature tag name comes first
     if (value->unit != CSSPrimitiveValue::CSS_STRING)
         return false;
-    FontFeatureTag tag;
+    FontTag tag;
     if (value->string.length() != tag.size())
         return false;
     for (unsigned i = 0; i < tag.size(); ++i) {
@@ -10624,6 +10630,62 @@ bool CSSParser::parseFontFeatureSettings(bool important)
     }
     return false;
 }
+
+#if ENABLE(VARIATION_FONTS)
+bool CSSParser::parseFontVariationTag(CSSValueList& settings)
+{
+    CSSParserValue* value = m_valueList->current();
+    // Feature tag name comes first
+    if (value->unit != CSSPrimitiveValue::CSS_STRING)
+        return false;
+    FontTag tag;
+    if (value->string.length() != tag.size())
+        return false;
+    for (unsigned i = 0; i < tag.size(); ++i) {
+        // Limits the range of characters to 0x20-0x7E, following the tag name rules defiend in the OpenType specification.
+        UChar character = value->string[i];
+        if (character < 0x20 || character > 0x7E)
+            return false;
+        tag[i] = toASCIILower(character);
+    }
+
+    value = m_valueList->next();
+    if (!value || value->unit != CSSPrimitiveValue::CSS_NUMBER)
+        return false;
+
+    float tagValue = value->fValue;
+    m_valueList->next();
+
+    settings.append(CSSFontVariationValue::create(tag, tagValue));
+    return true;
+}
+
+bool CSSParser::parseFontVariationSettings(bool important)
+{
+    if (m_valueList->size() == 1 && m_valueList->current()->id == CSSValueNormal) {
+        auto normalValue = CSSValuePool::singleton().createIdentifierValue(CSSValueNormal);
+        m_valueList->next();
+        addProperty(CSSPropertyFontVariationSettings, WTFMove(normalValue), important);
+        return true;
+    }
+
+    auto settings = CSSValueList::createCommaSeparated();
+    for (CSSParserValue* value = m_valueList->current(); value; value = m_valueList->next()) {
+        if (!parseFontVariationTag(settings))
+            return false;
+
+        // If the list isn't parsed fully, the current value should be comma.
+        value = m_valueList->current();
+        if (value && !isComma(value))
+            return false;
+    }
+    if (settings->length()) {
+        addProperty(CSSPropertyFontVariationSettings, WTFMove(settings), important);
+        return true;
+    }
+    return false;
+}
+#endif // ENABLE(VARIATION_FONTS)
 
 bool CSSParser::parseFontVariantLigatures(bool important, bool unknownIsFailure, bool implicit)
 {
@@ -11671,7 +11733,7 @@ inline bool CSSParser::parseURIInternal(SrcCharacterType*& src, DestCharacterTyp
             *dest++ = *src++;
         else {
             unsigned unicode = parseEscape<SrcCharacterType>(src);
-            if (unicode > 0xff && sizeof(SrcCharacterType) == 1)
+            if (unicode > 0xff && sizeof(DestCharacterType) == 1)
                 return false;
             UnicodeToChars(dest, unicode);
         }

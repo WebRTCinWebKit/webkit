@@ -39,6 +39,11 @@ typedef struct CGImage* CGImageRef;
 #include "SharedBitmap.h"
 #endif
 
+#if USE(DIRECT2D)
+#include "COMPtr.h"
+#include <d2d1.h>
+#endif
+
 namespace WebCore {
 
 class Color;
@@ -48,6 +53,8 @@ class GraphicsContext;
 
 #if USE(CG)
 typedef RetainPtr<CGImageRef> NativeImagePtr;
+#elif USE(DIRECT2D)
+typedef COMPtr<ID2D1Bitmap> NativeImagePtr;
 #elif USE(CAIRO)
 typedef RefPtr<cairo_surface_t> NativeImagePtr;
 #elif USE(WINGDI)

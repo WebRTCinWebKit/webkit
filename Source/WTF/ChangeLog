@@ -1,3 +1,280 @@
+2016-10-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DOMJIT] Add initial CheckDOM and CallDOM implementations
+        https://bugs.webkit.org/show_bug.cgi?id=162941
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/Box.h:
+        (WTF::Box::Box):
+
+2016-10-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        Rename ENABLE_ENCRYPTED_MEDIA_V2 to ENABLE_LEGACY_ENCRYPTED_MEDIA
+        https://bugs.webkit.org/show_bug.cgi?id=162903
+
+        Reviewed by Alex Christensen.
+
+        Rename build guards for the remaining implementation of the legacy EME API
+        to ENABLE_LEGACY_ENCRYPTED_MEDIA. This will allow for the future implementation
+        of the near-finished API to be guarded with the simple ENABLE_ENCRYPTED_MEDIA guards.
+
+        * wtf/FeatureDefines.h:
+
+2016-10-04  Saam Barati  <sbarati@apple.com>
+
+        String.prototype.toLowerCase should be a DFG/FTL intrinsic
+        https://bugs.webkit.org/show_bug.cgi?id=162887
+
+        Reviewed by Filip Pizlo and Yusuke Suzuki.
+
+        This patch exposes a new StringImpl function called convertToLowercaseWithoutLocaleStartingAtFailingIndex8Bit
+        which extracts slow path for the 8-bit part of convertToLowercaseWithoutLocale
+        into a helper function. I decided to extract this into its own function because
+        it may be the case that JSCs JITs will want to continue the operation
+        after it has already ensured that part of an 8-bit string is lower case.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::convertToLowercaseWithoutLocale):
+        (WTF::StringImpl::convertToLowercaseWithoutLocaleStartingAtFailingIndex8Bit):
+        * wtf/text/StringImpl.h:
+        * wtf/text/WTFString.cpp:
+        (WTF::String::convertToLowercaseWithoutLocaleStartingAtFailingIndex8Bit):
+        * wtf/text/WTFString.h:
+
+2016-10-04  Chris Dumez  <cdumez@apple.com>
+
+        Implement KeyboardEvent.code from the UI Event spec
+        https://bugs.webkit.org/show_bug.cgi?id=149584
+
+        Reviewed by Darin Adler.
+
+        Add build time flag to toggle support for the code attribute on
+        KeyboardEvent and only enable it on Mac for now, given that the
+        implementation is missing on other platforms.
+
+        * wtf/FeatureDefines.h:
+
+2016-10-03  Chris Dumez  <cdumez@apple.com>
+
+        Add support for KeyboardEvent.key attribute
+        https://bugs.webkit.org/show_bug.cgi?id=36267
+
+        Reviewed by Darin Adler.
+
+        Add compile time flag for the key attribute on KeyboardEvent and enable
+        it on Cocoa only.
+
+        * wtf/FeatureDefines.h:
+
+2016-09-29  Sam Weinig  <sam@webkit.org>
+
+        Add initial support for IDL union conversion
+        https://bugs.webkit.org/show_bug.cgi?id=161576
+
+        Reviewed by Chris Dumez.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        Add Brigand.h
+
+        * wtf/Brigand.h: Added.
+        Import a standalone copy of Edouard Alligand and Joel Falcou's 
+        Brigand library for help with for help with list based meta programming
+
+        * wtf/StdLibExtras.h:
+        Add a new three new type traits, IsTemplate, IsBaseOfTemplate and RemoveCVAndReference.
+        - IsTemplate acts like std::is_class, but works with a generic base.
+        - IsBaseOfTemplate acts like std::is_base_of, but works with a generic base.
+        - RemoveCVAndReference combines std::remove_cv and std::remove_reference.
+
+2016-09-30  Filip Pizlo  <fpizlo@apple.com>
+
+        B3::moveConstants should be able to edit code to minimize the number of constants
+        https://bugs.webkit.org/show_bug.cgi?id=162764
+
+        Reviewed by Saam Barati.
+        
+        I thought it would be a good idea to document the fact that dominator traversal happens in a
+        particular order for a reason.
+
+        * wtf/Dominators.h:
+
+2016-09-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Air should have a way of expressing additional instruction flags
+        https://bugs.webkit.org/show_bug.cgi?id=162699
+
+        Reviewed by Mark Lam.
+
+        * wtf/CommaPrinter.h:
+        (WTF::CommaPrinter::CommaPrinter):
+        (WTF::CommaPrinter::dump):
+        (WTF::CommaPrinter::didPrint):
+
+2016-09-30  Youenn Fablet  <youenn@apple.com>
+
+        Add a way to go from a RefPtr<T> to Ref<const T>
+        https://bugs.webkit.org/show_bug.cgi?id=162683
+
+        Reviewed by Alex Christensen.
+
+        * wtf/RefPtr.h:
+        (WTF::RefPtr::releaseConstNonNull): Added.
+
+2016-09-29  Mark Lam  <mark.lam@apple.com>
+
+        Re-enable StringView life-cycle checking.
+        https://bugs.webkit.org/show_bug.cgi?id=160384
+        <rdar://problem/28479434>
+
+        Reviewed by Saam Barati.
+
+        Re-landing after slow running tests have been resolved.
+
+        * wtf/text/StringView.h:
+
+2016-09-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r206563.
+        https://bugs.webkit.org/show_bug.cgi?id=162732
+
+        Caused stress/op_*.js.ftl-no-cjit tests to time out (Requested
+        by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "Re-enable StringView life-cycle checking."
+        https://bugs.webkit.org/show_bug.cgi?id=160384
+        http://trac.webkit.org/changeset/206563
+
+2016-09-29  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Clang 3.9 reports a compilation warning about ENABLE_EXCEPTION_SCOPE_VERIFICATION
+        https://bugs.webkit.org/show_bug.cgi?id=162718
+
+        Reviewed by Alex Christensen.
+
+        Clang 3.9 reports a following compilation warning:
+          Source/JavaScriptCore/runtime/VM.h:656:5: warning: macro expansion producing 'defined' has undefined behavior [-Wexpansion-to-defined]
+
+        * wtf/Platform.h: Changed the definition of ENABLE_EXCEPTION_SCOPE_VERIFICATION not to use 'defined'.
+
+2016-09-28  Mark Lam  <mark.lam@apple.com>
+
+        Re-enable StringView life-cycle checking.
+        https://bugs.webkit.org/show_bug.cgi?id=160384
+        <rdar://problem/28479434>
+
+        Reviewed by Saam Barati.
+
+        * wtf/text/StringView.h:
+
+2016-09-28  Filip Pizlo  <fpizlo@apple.com>
+
+        The write barrier should be down with TSO
+        https://bugs.webkit.org/show_bug.cgi?id=162316
+
+        Reviewed by Geoffrey Garen.
+        
+        Added clearRange(), which quickly clears a range of bits. This turned out to be useful for
+        a DFG optimization pass.
+
+        * wtf/FastBitVector.cpp:
+        (WTF::FastBitVector::clearRange):
+        * wtf/FastBitVector.h:
+
+2016-09-28  Mark Lam  <mark.lam@apple.com>
+
+        Fix race condition in StringView's UnderlyingString lifecycle management.
+        https://bugs.webkit.org/show_bug.cgi?id=162702
+
+        Reviewed by Geoffrey Garen.
+
+        There 2 relevant functions at play:
+
+        void StringView::setUnderlyingString(const StringImpl* string)
+        {
+            UnderlyingString* underlyingString;
+            if (!string)
+                underlyingString = nullptr;
+            else {
+                std::lock_guard<StaticLock> lock(underlyingStringsMutex);
+                auto result = underlyingStrings().add(string, nullptr);
+                if (result.isNewEntry)
+                    result.iterator->value = new UnderlyingString(*string);
+                else
+                    ++result.iterator->value->refCount;
+                underlyingString = result.iterator->value; // Point P2.
+            }
+            adoptUnderlyingString(underlyingString); // Point P5.
+        }
+
+        ... and ...
+
+        void StringView::adoptUnderlyingString(UnderlyingString* underlyingString)
+        {
+            if (m_underlyingString) {
+                // Point P0.
+                if (!--m_underlyingString->refCount) {
+                    if (m_underlyingString->isValid) { // Point P1.
+                        std::lock_guard<StaticLock> lock(underlyingStringsMutex);
+                        underlyingStrings().remove(&m_underlyingString->string); // Point P3.
+                    }
+                    delete m_underlyingString; // Point P4.
+                }
+            }
+            m_underlyingString = underlyingString;
+        }
+
+        Imagine the following scenario:
+
+        1. Thread T1 has been using an UnderlyingString U1, and is now done with it.
+           T1 runs up to point P1 in adoptUnderlyingString(), and is blocked waiting for
+           the underlyingStringsMutex (which is currently being held by Thread T2).
+        2. Context switch to Thread T2.
+           T2 wants to use UnderlyingString U1, and runs up to point P2 in setUnderlyingString()
+           and releases the underlyingStringsMutex.
+           Note: T2 thinks it has successfully refCounted U1, and therefore U1 is safe to use.
+        3. Context switch to Thread T1.
+           T1 acquires the underlyingStringsMutex, and proceeds to remove it from the
+           underlyingStrings() map (see Point P3).  It thinks it has successfully done so
+           and proceeds to delete U1 (see Point P4).
+        4. Context switch to Thread T2.
+           T2 proceeds to use U1 (see Point P5 in setUnderlyingString()).
+           Note: U1 has already been freed.  This is a use after free.
+
+        The fix is to acquire the underlyingStringsMutex at Point P0 in adoptUnderlyingString()
+        instead of after P1.  This ensures that the decrementing of the UnderlyingString
+        refCount and its removal from the underlyingStrings() map is done as an atomic unit.
+
+        Note: If you look in StringView.cpp, you see another setUnderlyingString() which
+        takes a StringView otherString.  This version of setUnderlyingString() can only
+        be called from within the same thread that created the other StringView.  As a
+        result, here, we are guaranteed that the UnderlyingString refCount is never zero,
+        and there's no other threat of another thread trying to delete the UnderlyingString
+        while we adopt it.  Hence, we don't need to acquire the underlyingStringsMutex
+        here.
+
+        This race condition was found when running layout tests fetch/fetch-worker-crash.html
+        and storage/indexeddb/modern/opendatabase-versions.html when CHECK_STRINGVIEW_LIFETIME
+        is enabled.  This issue resulted in those tests crashing due to a use-after-free.
+
+        * wtf/text/StringView.cpp:
+        (WTF::StringView::adoptUnderlyingString):
+        (WTF::StringView::setUnderlyingString):
+
+2016-09-28  Brent Fulgham  <bfulgham@apple.com>
+
+        Correct 'safeCast' implementation
+        https://bugs.webkit.org/show_bug.cgi?id=162679
+        <rdar://problem/28518189>
+
+        Reviewed by Zalan Bujtas.
+
+        * wtf/StdLibExtras.h:
+        (WTF::safeCast): Use a RELEASE_ASSERT.
+
 2016-09-27  Don Olmstead  <don.olmstead@am.sony.com>
 
         [CMake] Add HAVE_LOCALTIME_R definition

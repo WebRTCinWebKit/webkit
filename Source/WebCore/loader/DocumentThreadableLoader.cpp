@@ -167,7 +167,7 @@ void DocumentThreadableLoader::makeCrossOriginAccessRequestWithPreflight(Resourc
 DocumentThreadableLoader::~DocumentThreadableLoader()
 {
     if (m_resource)
-        m_resource->removeClient(this);
+        m_resource->removeClient(*this);
 }
 
 void DocumentThreadableLoader::cancel()
@@ -200,7 +200,7 @@ void DocumentThreadableLoader::clearResource()
     // prevent the reentrancy.
     if (CachedResourceHandle<CachedRawResource> resource = m_resource) {
         m_resource = nullptr;
-        resource->removeClient(this);
+        resource->removeClient(*this);
     }
     if (m_preflightChecker)
         m_preflightChecker = Nullopt;
@@ -216,12 +216,27 @@ static inline void reportCrossOriginResourceSharingError(ThreadableLoaderClient&
     client.didFail(ResourceError(errorDomainWebKitInternal, 0, url, "Cross-origin redirection denied by Cross-Origin Resource Sharing policy.", ResourceError::Type::AccessControl));
 }
 
+static inline void reportRedirectionWithBadScheme(ThreadableLoaderClient& client, const URL& url)
+{
+    client.didFail(ResourceError(errorDomainWebKitInternal, 0, url, "Redirection to URL with a scheme that is not HTTP(S).", ResourceError::Type::AccessControl));
+}
+
 void DocumentThreadableLoader::redirectReceived(CachedResource* resource, ResourceRequest& request, const ResourceResponse& redirectResponse)
 {
     ASSERT(m_client);
     ASSERT_UNUSED(resource, resource == m_resource);
 
     Ref<DocumentThreadableLoader> protectedThis(*this);
+
+    // FIXME: We restrict this check to Fetch API for the moment, as this might disrupt WorkerScriptLoader.
+    // Reassess this check based on https://github.com/whatwg/fetch/issues/393 discussions.
+    // We should also disable that check in navigation mode.
+    if (!request.url().protocolIsInHTTPFamily() && m_options.initiator == cachedResourceRequestInitiators().fetch) {
+        reportRedirectionWithBadScheme(*m_client, request.url());
+        clearResource();
+        return;
+    }
+
     if (!isAllowedByContentSecurityPolicy(request.url(), redirectResponse.isNull() ? ContentSecurityPolicy::RedirectResponseReceived::No : ContentSecurityPolicy::RedirectResponseReceived::Yes)) {
         reportContentSecurityPolicyError(*m_client, redirectResponse.url());
         clearResource();
@@ -341,7 +356,6 @@ void DocumentThreadableLoader::preflightSuccess(ResourceRequest&& request)
 
 void DocumentThreadableLoader::preflightFailure(unsigned long identifier, const ResourceError& error)
 {
-    ASSERT(error.isAccessControl());
     m_preflightChecker = Nullopt;
 
     InspectorInstrumentation::didFailLoading(m_document.frame(), m_document.frame()->loader().documentLoader(), identifier, error);
@@ -377,7 +391,7 @@ void DocumentThreadableLoader::loadRequest(ResourceRequest&& request, SecurityCh
         URL requestUrl = newRequest.resourceRequest().url();
         m_resource = m_document.cachedResourceLoader().requestRawResource(WTFMove(newRequest));
         if (m_resource)
-            m_resource->addClient(this);
+            m_resource->addClient(*this);
         else {
             // FIXME: Since we receive a synchronous error, this is probably due to some AccessControl checks. We should try to retrieve the actual error.
             m_client->didFail(ResourceError(String(), 0, requestUrl, String(), ResourceError::Type::AccessControl));

@@ -1,3 +1,46 @@
+2016-10-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        Rename ENABLE_ENCRYPTED_MEDIA_V2 to ENABLE_LEGACY_ENCRYPTED_MEDIA
+        https://bugs.webkit.org/show_bug.cgi?id=162903
+
+        Reviewed by Alex Christensen.
+
+        Rename build guards for the remaining implementation of the legacy EME API
+        to ENABLE_LEGACY_ENCRYPTED_MEDIA. This will allow for the future implementation
+        of the near-finished API to be guarded with the simple ENABLE_ENCRYPTED_MEDIA guards.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2016-10-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Cleanup persistent credential storage code
+        https://bugs.webkit.org/show_bug.cgi?id=162777
+
+        Reviewed by Alex Christensen.
+
+        Remove ENABLE(CREDENTIAL_STORAGE) build flag and replace it by USE(LIBSECRET).
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2016-09-29  Aaron Chu  <aaron_chu@apple.com>
+
+        Web Inspector: AXI: linkified refs to #document and #text are not usually navigable nodes; consider delinkifying them
+        https://bugs.webkit.org/show_bug.cgi?id=130600
+        <rdar://problem/16391333>
+
+        Reviewed by Brian Burg.
+
+        Added a manual test to test the node links in the Accessibility Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=130600
+
+        * ManualTests/accessibility/delinkified-non-navigable-links.html: Added.
+
 2016-09-28  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         [GTK] Remove obsolete comment from OptionsGTK.cmake

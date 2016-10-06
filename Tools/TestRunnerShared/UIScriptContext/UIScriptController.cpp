@@ -180,6 +180,10 @@ void UIScriptController::stylusTapAtPoint(long x, long y, float azimuthAngle, fl
 {
 }
 
+void UIScriptController::sendEventStream(JSStringRef eventsJSON, JSValueRef callback)
+{
+}
+
 void UIScriptController::typeCharacterUsingHardwareKeyboard(JSStringRef, JSValueRef)
 {
 }
@@ -198,6 +202,11 @@ void UIScriptController::dismissFormAccessoryView()
 
 void UIScriptController::selectFormAccessoryPickerRow(long)
 {
+}
+    
+JSObjectRef UIScriptController::contentsOfUserInterfaceItem(JSStringRef interfaceItem) const
+{
+    return nullptr;
 }
 
 void UIScriptController::scrollToOffset(long x, long y)

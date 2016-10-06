@@ -34,10 +34,11 @@
 #include "JSBlob.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
-#include "JSDOMConvert.h"
 #include "JSDOMIterator.h"
 #include "JSDOMPromise.h"
 #include "JSDOMStringList.h"
+#include "JSDOMWindow.h"
+#include "JSDOMWindowShell.h"
 #include "JSDocument.h"
 #include "JSElement.h"
 #include "JSEventListener.h"
@@ -58,7 +59,6 @@
 #include "SVGStaticPropertyTearOff.h"
 #include "SerializedScriptValue.h"
 #include "Settings.h"
-#include "TestObj.h"
 #include "URL.h"
 #include "WebCoreJSClientData.h"
 #include <inspector/ScriptArguments.h>
@@ -91,11 +91,6 @@ using namespace JSC;
 
 namespace WebCore {
 
-template<typename T> Optional<T> parse(ExecState&, JSValue);
-template<typename T> const char* expectedEnumerationValues();
-
-JSString* jsStringWithCache(ExecState*, TestObj::EnumType);
-
 JSString* jsStringWithCache(ExecState* state, TestObj::EnumType enumerationValue)
 {
     static NeverDestroyed<const String> values[] = {
@@ -111,10 +106,6 @@ JSString* jsStringWithCache(ExecState* state, TestObj::EnumType enumerationValue
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
     return jsStringWithCache(state, values[static_cast<size_t>(enumerationValue)]);
 }
-
-template<> struct JSValueTraits<TestObj::EnumType> {
-    static JSString* arrayJSValue(ExecState* state, JSDOMGlobalObject*, TestObj::EnumType value) { return jsStringWithCache(state, value); }
-};
 
 template<> Optional<TestObj::EnumType> parse<TestObj::EnumType>(ExecState& state, JSValue value)
 {
@@ -142,12 +133,10 @@ template<> TestObj::EnumType convert<TestObj::EnumType>(ExecState& state, JSValu
     return result.value();
 }
 
-template<> inline const char* expectedEnumerationValues<TestObj::EnumType>()
+template<> const char* expectedEnumerationValues<TestObj::EnumType>()
 {
     return "\"\", \"enumValue1\", \"EnumValue2\", \"EnumValue3\"";
 }
-
-JSString* jsStringWithCache(ExecState*, TestObj::Optional);
 
 JSString* jsStringWithCache(ExecState* state, TestObj::Optional enumerationValue)
 {
@@ -164,10 +153,6 @@ JSString* jsStringWithCache(ExecState* state, TestObj::Optional enumerationValue
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
     return jsStringWithCache(state, values[static_cast<size_t>(enumerationValue)]);
 }
-
-template<> struct JSValueTraits<TestObj::Optional> {
-    static JSString* arrayJSValue(ExecState* state, JSDOMGlobalObject*, TestObj::Optional value) { return jsStringWithCache(state, value); }
-};
 
 template<> Optional<TestObj::Optional> parse<TestObj::Optional>(ExecState& state, JSValue value)
 {
@@ -195,12 +180,10 @@ template<> TestObj::Optional convert<TestObj::Optional>(ExecState& state, JSValu
     return result.value();
 }
 
-template<> inline const char* expectedEnumerationValues<TestObj::Optional>()
+template<> const char* expectedEnumerationValues<TestObj::Optional>()
 {
     return "\"\", \"OptionalValue1\", \"OptionalValue2\", \"OptionalValue3\"";
 }
-
-JSString* jsStringWithCache(ExecState*, AlternateEnumName);
 
 JSString* jsStringWithCache(ExecState* state, AlternateEnumName enumerationValue)
 {
@@ -213,10 +196,6 @@ JSString* jsStringWithCache(ExecState* state, AlternateEnumName enumerationValue
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
     return jsStringWithCache(state, values[static_cast<size_t>(enumerationValue)]);
 }
-
-template<> struct JSValueTraits<AlternateEnumName> {
-    static JSString* arrayJSValue(ExecState* state, JSDOMGlobalObject*, AlternateEnumName value) { return jsStringWithCache(state, value); }
-};
 
 template<> Optional<AlternateEnumName> parse<AlternateEnumName>(ExecState& state, JSValue value)
 {
@@ -240,14 +219,12 @@ template<> AlternateEnumName convert<AlternateEnumName>(ExecState& state, JSValu
     return result.value();
 }
 
-template<> inline const char* expectedEnumerationValues<AlternateEnumName>()
+template<> const char* expectedEnumerationValues<AlternateEnumName>()
 {
     return "\"enumValue1\", \"EnumValue2\"";
 }
 
 #if ENABLE(Condition1)
-
-JSString* jsStringWithCache(ExecState*, TestObj::EnumA);
 
 JSString* jsStringWithCache(ExecState* state, TestObj::EnumA enumerationValue)
 {
@@ -258,10 +235,6 @@ JSString* jsStringWithCache(ExecState* state, TestObj::EnumA enumerationValue)
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
     return jsStringWithCache(state, values[static_cast<size_t>(enumerationValue)]);
 }
-
-template<> struct JSValueTraits<TestObj::EnumA> {
-    static JSString* arrayJSValue(ExecState* state, JSDOMGlobalObject*, TestObj::EnumA value) { return jsStringWithCache(state, value); }
-};
 
 template<> Optional<TestObj::EnumA> parse<TestObj::EnumA>(ExecState& state, JSValue value)
 {
@@ -283,7 +256,7 @@ template<> TestObj::EnumA convert<TestObj::EnumA>(ExecState& state, JSValue valu
     return result.value();
 }
 
-template<> inline const char* expectedEnumerationValues<TestObj::EnumA>()
+template<> const char* expectedEnumerationValues<TestObj::EnumA>()
 {
     return "\"A\"";
 }
@@ -291,8 +264,6 @@ template<> inline const char* expectedEnumerationValues<TestObj::EnumA>()
 #endif
 
 #if ENABLE(Condition1) && ENABLE(Condition2)
-
-JSString* jsStringWithCache(ExecState*, TestObj::EnumB);
 
 JSString* jsStringWithCache(ExecState* state, TestObj::EnumB enumerationValue)
 {
@@ -303,10 +274,6 @@ JSString* jsStringWithCache(ExecState* state, TestObj::EnumB enumerationValue)
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
     return jsStringWithCache(state, values[static_cast<size_t>(enumerationValue)]);
 }
-
-template<> struct JSValueTraits<TestObj::EnumB> {
-    static JSString* arrayJSValue(ExecState* state, JSDOMGlobalObject*, TestObj::EnumB value) { return jsStringWithCache(state, value); }
-};
 
 template<> Optional<TestObj::EnumB> parse<TestObj::EnumB>(ExecState& state, JSValue value)
 {
@@ -328,7 +295,7 @@ template<> TestObj::EnumB convert<TestObj::EnumB>(ExecState& state, JSValue valu
     return result.value();
 }
 
-template<> inline const char* expectedEnumerationValues<TestObj::EnumB>()
+template<> const char* expectedEnumerationValues<TestObj::EnumB>()
 {
     return "\"B\"";
 }
@@ -336,8 +303,6 @@ template<> inline const char* expectedEnumerationValues<TestObj::EnumB>()
 #endif
 
 #if ENABLE(Condition1) || ENABLE(Condition2)
-
-JSString* jsStringWithCache(ExecState*, TestObj::EnumC);
 
 JSString* jsStringWithCache(ExecState* state, TestObj::EnumC enumerationValue)
 {
@@ -348,10 +313,6 @@ JSString* jsStringWithCache(ExecState* state, TestObj::EnumC enumerationValue)
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
     return jsStringWithCache(state, values[static_cast<size_t>(enumerationValue)]);
 }
-
-template<> struct JSValueTraits<TestObj::EnumC> {
-    static JSString* arrayJSValue(ExecState* state, JSDOMGlobalObject*, TestObj::EnumC value) { return jsStringWithCache(state, value); }
-};
 
 template<> Optional<TestObj::EnumC> parse<TestObj::EnumC>(ExecState& state, JSValue value)
 {
@@ -373,14 +334,12 @@ template<> TestObj::EnumC convert<TestObj::EnumC>(ExecState& state, JSValue valu
     return result.value();
 }
 
-template<> inline const char* expectedEnumerationValues<TestObj::EnumC>()
+template<> const char* expectedEnumerationValues<TestObj::EnumC>()
 {
     return "\"C\"";
 }
 
 #endif
-
-JSString* jsStringWithCache(ExecState*, TestObj::Kind);
 
 JSString* jsStringWithCache(ExecState* state, TestObj::Kind enumerationValue)
 {
@@ -393,10 +352,6 @@ JSString* jsStringWithCache(ExecState* state, TestObj::Kind enumerationValue)
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
     return jsStringWithCache(state, values[static_cast<size_t>(enumerationValue)]);
 }
-
-template<> struct JSValueTraits<TestObj::Kind> {
-    static JSString* arrayJSValue(ExecState* state, JSDOMGlobalObject*, TestObj::Kind value) { return jsStringWithCache(state, value); }
-};
 
 template<> Optional<TestObj::Kind> parse<TestObj::Kind>(ExecState& state, JSValue value)
 {
@@ -420,12 +375,10 @@ template<> TestObj::Kind convert<TestObj::Kind>(ExecState& state, JSValue value)
     return result.value();
 }
 
-template<> inline const char* expectedEnumerationValues<TestObj::Kind>()
+template<> const char* expectedEnumerationValues<TestObj::Kind>()
 {
     return "\"quick\", \"dead\"";
 }
-
-JSString* jsStringWithCache(ExecState*, TestObj::Size);
 
 JSString* jsStringWithCache(ExecState* state, TestObj::Size enumerationValue)
 {
@@ -438,10 +391,6 @@ JSString* jsStringWithCache(ExecState* state, TestObj::Size enumerationValue)
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
     return jsStringWithCache(state, values[static_cast<size_t>(enumerationValue)]);
 }
-
-template<> struct JSValueTraits<TestObj::Size> {
-    static JSString* arrayJSValue(ExecState* state, JSDOMGlobalObject*, TestObj::Size value) { return jsStringWithCache(state, value); }
-};
 
 template<> Optional<TestObj::Size> parse<TestObj::Size>(ExecState& state, JSValue value)
 {
@@ -465,12 +414,10 @@ template<> TestObj::Size convert<TestObj::Size>(ExecState& state, JSValue value)
     return result.value();
 }
 
-template<> inline const char* expectedEnumerationValues<TestObj::Size>()
+template<> const char* expectedEnumerationValues<TestObj::Size>()
 {
     return "\"small\", \"much-much-larger\"";
 }
-
-JSString* jsStringWithCache(ExecState*, TestObj::Confidence);
 
 JSString* jsStringWithCache(ExecState* state, TestObj::Confidence enumerationValue)
 {
@@ -483,10 +430,6 @@ JSString* jsStringWithCache(ExecState* state, TestObj::Confidence enumerationVal
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
     return jsStringWithCache(state, values[static_cast<size_t>(enumerationValue)]);
 }
-
-template<> struct JSValueTraits<TestObj::Confidence> {
-    static JSString* arrayJSValue(ExecState* state, JSDOMGlobalObject*, TestObj::Confidence value) { return jsStringWithCache(state, value); }
-};
 
 template<> Optional<TestObj::Confidence> parse<TestObj::Confidence>(ExecState& state, JSValue value)
 {
@@ -510,7 +453,7 @@ template<> TestObj::Confidence convert<TestObj::Confidence>(ExecState& state, JS
     return result.value();
 }
 
-template<> inline const char* expectedEnumerationValues<TestObj::Confidence>()
+template<> const char* expectedEnumerationValues<TestObj::Confidence>()
 {
     return "\"high\", \"kinda-low\"";
 }
@@ -519,76 +462,224 @@ template<> Optional<TestObj::Dictionary> convertDictionary<TestObj::Dictionary>(
 {
     VM& vm = state.vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    if (value.isUndefinedOrNull())
-        return TestObj::Dictionary { { }, TestObj::EnumType::EnumValue1, TestObj::EnumType::EmptyString, "defaultString", { }, false, { }, { }, { }, { }, 0, 0, { }, { }, 0, 0, { }, { }, { }, 0, { }, 0, { }, 0, { }, 0, { }, 0, nullptr, jsUndefined(), jsUndefined(), { } };
-    auto* object = value.getObject();
-    if (UNLIKELY(!object || object->type() == RegExpObjectType)) {
+    bool isNullOrUndefined = value.isUndefinedOrNull();
+    auto* object = isNullOrUndefined ? nullptr : value.getObject();
+    if (UNLIKELY(!isNullOrUndefined && !object)) {
         throwTypeError(&state, throwScope);
         return Nullopt;
     }
-    auto enumerationValueWithoutDefault = convertOptional<TestObj::EnumType>(state, object->get(&state, Identifier::fromString(&state, "enumerationValueWithoutDefault")));
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto enumerationValueWithDefault = convertOptional<TestObj::EnumType>(state, object->get(&state, Identifier::fromString(&state, "enumerationValueWithDefault")), TestObj::EnumType::EnumValue1);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto enumerationValueWithEmptyStringDefault = convertOptional<TestObj::EnumType>(state, object->get(&state, Identifier::fromString(&state, "enumerationValueWithEmptyStringDefault")), TestObj::EnumType::EmptyString);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto stringWithDefault = convertOptional<String>(state, object->get(&state, Identifier::fromString(&state, "stringWithDefault")), "defaultString");
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto stringWithoutDefault = convertOptional<String>(state, object->get(&state, Identifier::fromString(&state, "stringWithoutDefault")));
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto booleanWithDefault = convertOptional<bool>(state, object->get(&state, Identifier::fromString(&state, "booleanWithDefault")), false);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto booleanWithoutDefault = convertOptional<bool>(state, object->get(&state, Identifier::fromString(&state, "booleanWithoutDefault")));
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto sequenceOfStrings = convertOptional<Vector<String>>(state, object->get(&state, Identifier::fromString(&state, "sequenceOfStrings")));
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto restrictedDouble = convertOptional<double>(state, object->get(&state, Identifier::fromString(&state, "restrictedDouble")), ShouldAllowNonFinite::No);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto unrestrictedDouble = convertOptional<double>(state, object->get(&state, Identifier::fromString(&state, "unrestrictedDouble")), ShouldAllowNonFinite::Yes);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto restrictedDoubleWithDefault = convertOptional<double>(state, object->get(&state, Identifier::fromString(&state, "restrictedDoubleWithDefault")), ShouldAllowNonFinite::No, 0);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto unrestrictedDoubleWithDefault = convertOptional<double>(state, object->get(&state, Identifier::fromString(&state, "unrestrictedDoubleWithDefault")), ShouldAllowNonFinite::Yes, 0);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto restrictedFloat = convertOptional<float>(state, object->get(&state, Identifier::fromString(&state, "restrictedFloat")), ShouldAllowNonFinite::No);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto unrestrictedFloat = convertOptional<float>(state, object->get(&state, Identifier::fromString(&state, "unrestrictedFloat")), ShouldAllowNonFinite::Yes);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto restrictedFloatWithDefault = convertOptional<float>(state, object->get(&state, Identifier::fromString(&state, "restrictedFloatWithDefault")), ShouldAllowNonFinite::No, 0);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto unrestrictedFloatWithDefault = convertOptional<float>(state, object->get(&state, Identifier::fromString(&state, "unrestrictedFloatWithDefault")), ShouldAllowNonFinite::Yes, 0);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto smallIntegerClamped = convertOptional<int8_t>(state, object->get(&state, Identifier::fromString(&state, "smallIntegerClamped")), Clamp);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto smallIntegerWithDefault = convertOptional<int8_t>(state, object->get(&state, Identifier::fromString(&state, "smallIntegerWithDefault")), NormalConversion);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto smallUnsignedIntegerEnforcedRange = convertOptional<uint8_t>(state, object->get(&state, Identifier::fromString(&state, "smallUnsignedIntegerEnforcedRange")), EnforceRange);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto smallUnsignedIntegerWithDefault = convertOptional<uint8_t>(state, object->get(&state, Identifier::fromString(&state, "smallUnsignedIntegerWithDefault")), NormalConversion, 0);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto integer = convertOptional<int32_t>(state, object->get(&state, Identifier::fromString(&state, "integer")), NormalConversion);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto integerWithDefault = convertOptional<int32_t>(state, object->get(&state, Identifier::fromString(&state, "integerWithDefault")), NormalConversion, 0);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto unsignedInteger = convertOptional<uint32_t>(state, object->get(&state, Identifier::fromString(&state, "unsignedInteger")), NormalConversion);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto unsignedIntegerWithDefault = convertOptional<uint32_t>(state, object->get(&state, Identifier::fromString(&state, "unsignedIntegerWithDefault")), NormalConversion, 0);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto largeInteger = convertOptional<int64_t>(state, object->get(&state, Identifier::fromString(&state, "largeInteger")), NormalConversion);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto largeIntegerWithDefault = convertOptional<int64_t>(state, object->get(&state, Identifier::fromString(&state, "largeIntegerWithDefault")), NormalConversion, 0);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto unsignedLargeInteger = convertOptional<uint64_t>(state, object->get(&state, Identifier::fromString(&state, "unsignedLargeInteger")), NormalConversion);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto unsignedLargeIntegerWithDefault = convertOptional<uint64_t>(state, object->get(&state, Identifier::fromString(&state, "unsignedLargeIntegerWithDefault")), NormalConversion, 0);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto* nullableNode = convertWrapperType<Node, JSNode>(state, object->get(&state, Identifier::fromString(&state, "nullableNode")), IsNullable::Yes);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto anyValue = convertOptional<JSC::JSValue>(state, object->get(&state, Identifier::fromString(&state, "anyValue")), jsUndefined());
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto anyTypedefValue = convertOptional<JSC::JSValue>(state, object->get(&state, Identifier::fromString(&state, "anyTypedefValue")), jsUndefined());
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto dictionaryMember = convertDictionary<TestObj::DictionaryThatShouldTolerateNull>(state, object->get(&state, Identifier::fromString(&state, "dictionaryMember")));
+    if (UNLIKELY(object && object->type() == RegExpObjectType)) {
+        throwTypeError(&state, throwScope);
+        return Nullopt;
+    }
+    JSValue anyTypedefValueValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "anyTypedefValue"));
+    JSC::JSValue anyTypedefValue;
+    if (!anyTypedefValueValue.isUndefined()) {
+        anyTypedefValue = convert<JSC::JSValue>(state, anyTypedefValueValue);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    } else
+        anyTypedefValue = jsUndefined();
+    JSValue anyValueValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "anyValue"));
+    JSC::JSValue anyValue;
+    if (!anyValueValue.isUndefined()) {
+        anyValue = convert<JSC::JSValue>(state, anyValueValue);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    } else
+        anyValue = jsUndefined();
+    JSValue booleanWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "booleanWithDefault"));
+    bool booleanWithDefault;
+    if (!booleanWithDefaultValue.isUndefined()) {
+        booleanWithDefault = convert<bool>(state, booleanWithDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    } else
+        booleanWithDefault = false;
+    JSValue booleanWithoutDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "booleanWithoutDefault"));
+    Converter<bool>::OptionalValue booleanWithoutDefault;
+    if (!booleanWithoutDefaultValue.isUndefined()) {
+        booleanWithoutDefault = convert<bool>(state, booleanWithoutDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue dictionaryMemberValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "dictionaryMember"));
+    Converter<TestObj::DictionaryThatShouldTolerateNull>::OptionalValue dictionaryMember;
+    if (!dictionaryMemberValue.isUndefined()) {
+        dictionaryMember = convertDictionary<TestObj::DictionaryThatShouldTolerateNull>(state, dictionaryMemberValue);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue enumerationValueWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "enumerationValueWithDefault"));
+    TestObj::EnumType enumerationValueWithDefault;
+    if (!enumerationValueWithDefaultValue.isUndefined()) {
+        enumerationValueWithDefault = convert<TestObj::EnumType>(state, enumerationValueWithDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    } else
+        enumerationValueWithDefault = TestObj::EnumType::EnumValue1;
+    JSValue enumerationValueWithEmptyStringDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "enumerationValueWithEmptyStringDefault"));
+    TestObj::EnumType enumerationValueWithEmptyStringDefault;
+    if (!enumerationValueWithEmptyStringDefaultValue.isUndefined()) {
+        enumerationValueWithEmptyStringDefault = convert<TestObj::EnumType>(state, enumerationValueWithEmptyStringDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    } else
+        enumerationValueWithEmptyStringDefault = TestObj::EnumType::EmptyString;
+    JSValue enumerationValueWithoutDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "enumerationValueWithoutDefault"));
+    Converter<TestObj::EnumType>::OptionalValue enumerationValueWithoutDefault;
+    if (!enumerationValueWithoutDefaultValue.isUndefined()) {
+        enumerationValueWithoutDefault = convert<TestObj::EnumType>(state, enumerationValueWithoutDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue integerValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "integer"));
+    Converter<int32_t>::OptionalValue integer;
+    if (!integerValue.isUndefined()) {
+        integer = convert<int32_t>(state, integerValue, NormalConversion);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue integerWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "integerWithDefault"));
+    int32_t integerWithDefault;
+    if (!integerWithDefaultValue.isUndefined()) {
+        integerWithDefault = convert<int32_t>(state, integerWithDefaultValue, NormalConversion);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    } else
+        integerWithDefault = 0;
+    JSValue largeIntegerValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "largeInteger"));
+    Converter<int64_t>::OptionalValue largeInteger;
+    if (!largeIntegerValue.isUndefined()) {
+        largeInteger = convert<int64_t>(state, largeIntegerValue, NormalConversion);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue largeIntegerWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "largeIntegerWithDefault"));
+    int64_t largeIntegerWithDefault;
+    if (!largeIntegerWithDefaultValue.isUndefined()) {
+        largeIntegerWithDefault = convert<int64_t>(state, largeIntegerWithDefaultValue, NormalConversion);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    } else
+        largeIntegerWithDefault = 0;
+    JSValue nullableNodeValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "nullableNode"));
+    Node* nullableNode;
+    if (!nullableNodeValue.isUndefined()) {
+        nullableNode = convertWrapperType<Node, JSNode>(state, nullableNodeValue, IsNullable::Yes);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    } else
+        nullableNode = nullptr;
+    JSValue restrictedDoubleValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "restrictedDouble"));
+    Converter<double>::OptionalValue restrictedDouble;
+    if (!restrictedDoubleValue.isUndefined()) {
+        restrictedDouble = convert<double>(state, restrictedDoubleValue, ShouldAllowNonFinite::No);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue restrictedDoubleWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "restrictedDoubleWithDefault"));
+    double restrictedDoubleWithDefault;
+    if (!restrictedDoubleWithDefaultValue.isUndefined()) {
+        restrictedDoubleWithDefault = convert<double>(state, restrictedDoubleWithDefaultValue, ShouldAllowNonFinite::No);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    } else
+        restrictedDoubleWithDefault = 0;
+    JSValue restrictedFloatValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "restrictedFloat"));
+    Converter<float>::OptionalValue restrictedFloat;
+    if (!restrictedFloatValue.isUndefined()) {
+        restrictedFloat = convert<float>(state, restrictedFloatValue, ShouldAllowNonFinite::No);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue restrictedFloatWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "restrictedFloatWithDefault"));
+    float restrictedFloatWithDefault;
+    if (!restrictedFloatWithDefaultValue.isUndefined()) {
+        restrictedFloatWithDefault = convert<float>(state, restrictedFloatWithDefaultValue, ShouldAllowNonFinite::No);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    } else
+        restrictedFloatWithDefault = 0;
+    JSValue sequenceOfStringsValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "sequenceOfStrings"));
+    Converter<Vector<String>>::OptionalValue sequenceOfStrings;
+    if (!sequenceOfStringsValue.isUndefined()) {
+        sequenceOfStrings = convert<Vector<String>>(state, sequenceOfStringsValue);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue smallIntegerClampedValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "smallIntegerClamped"));
+    Converter<int8_t>::OptionalValue smallIntegerClamped;
+    if (!smallIntegerClampedValue.isUndefined()) {
+        smallIntegerClamped = convert<int8_t>(state, smallIntegerClampedValue, Clamp);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue smallIntegerWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "smallIntegerWithDefault"));
+    Converter<int8_t>::OptionalValue smallIntegerWithDefault;
+    if (!smallIntegerWithDefaultValue.isUndefined()) {
+        smallIntegerWithDefault = convert<int8_t>(state, smallIntegerWithDefaultValue, NormalConversion);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue smallUnsignedIntegerEnforcedRangeValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "smallUnsignedIntegerEnforcedRange"));
+    Converter<uint8_t>::OptionalValue smallUnsignedIntegerEnforcedRange;
+    if (!smallUnsignedIntegerEnforcedRangeValue.isUndefined()) {
+        smallUnsignedIntegerEnforcedRange = convert<uint8_t>(state, smallUnsignedIntegerEnforcedRangeValue, EnforceRange);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue smallUnsignedIntegerWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "smallUnsignedIntegerWithDefault"));
+    uint8_t smallUnsignedIntegerWithDefault;
+    if (!smallUnsignedIntegerWithDefaultValue.isUndefined()) {
+        smallUnsignedIntegerWithDefault = convert<uint8_t>(state, smallUnsignedIntegerWithDefaultValue, NormalConversion);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    } else
+        smallUnsignedIntegerWithDefault = 0;
+    JSValue stringWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "stringWithDefault"));
+    String stringWithDefault;
+    if (!stringWithDefaultValue.isUndefined()) {
+        stringWithDefault = convert<String>(state, stringWithDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    } else
+        stringWithDefault = "defaultString";
+    JSValue stringWithoutDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "stringWithoutDefault"));
+    Converter<String>::OptionalValue stringWithoutDefault;
+    if (!stringWithoutDefaultValue.isUndefined()) {
+        stringWithoutDefault = convert<String>(state, stringWithoutDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue unrestrictedDoubleValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unrestrictedDouble"));
+    Converter<double>::OptionalValue unrestrictedDouble;
+    if (!unrestrictedDoubleValue.isUndefined()) {
+        unrestrictedDouble = convert<double>(state, unrestrictedDoubleValue, ShouldAllowNonFinite::Yes);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue unrestrictedDoubleWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unrestrictedDoubleWithDefault"));
+    double unrestrictedDoubleWithDefault;
+    if (!unrestrictedDoubleWithDefaultValue.isUndefined()) {
+        unrestrictedDoubleWithDefault = convert<double>(state, unrestrictedDoubleWithDefaultValue, ShouldAllowNonFinite::Yes);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    } else
+        unrestrictedDoubleWithDefault = 0;
+    JSValue unrestrictedFloatValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unrestrictedFloat"));
+    Converter<float>::OptionalValue unrestrictedFloat;
+    if (!unrestrictedFloatValue.isUndefined()) {
+        unrestrictedFloat = convert<float>(state, unrestrictedFloatValue, ShouldAllowNonFinite::Yes);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue unrestrictedFloatWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unrestrictedFloatWithDefault"));
+    float unrestrictedFloatWithDefault;
+    if (!unrestrictedFloatWithDefaultValue.isUndefined()) {
+        unrestrictedFloatWithDefault = convert<float>(state, unrestrictedFloatWithDefaultValue, ShouldAllowNonFinite::Yes);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    } else
+        unrestrictedFloatWithDefault = 0;
+    JSValue unsignedIntegerValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unsignedInteger"));
+    Converter<uint32_t>::OptionalValue unsignedInteger;
+    if (!unsignedIntegerValue.isUndefined()) {
+        unsignedInteger = convert<uint32_t>(state, unsignedIntegerValue, NormalConversion);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue unsignedIntegerWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unsignedIntegerWithDefault"));
+    uint32_t unsignedIntegerWithDefault;
+    if (!unsignedIntegerWithDefaultValue.isUndefined()) {
+        unsignedIntegerWithDefault = convert<uint32_t>(state, unsignedIntegerWithDefaultValue, NormalConversion);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    } else
+        unsignedIntegerWithDefault = 0;
+    JSValue unsignedLargeIntegerValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unsignedLargeInteger"));
+    Converter<uint64_t>::OptionalValue unsignedLargeInteger;
+    if (!unsignedLargeIntegerValue.isUndefined()) {
+        unsignedLargeInteger = convert<uint64_t>(state, unsignedLargeIntegerValue, NormalConversion);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue unsignedLargeIntegerWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unsignedLargeIntegerWithDefault"));
+    uint64_t unsignedLargeIntegerWithDefault;
+    if (!unsignedLargeIntegerWithDefaultValue.isUndefined()) {
+        unsignedLargeIntegerWithDefault = convert<uint64_t>(state, unsignedLargeIntegerWithDefaultValue, NormalConversion);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    } else
+        unsignedLargeIntegerWithDefault = 0;
     return TestObj::Dictionary { WTFMove(enumerationValueWithoutDefault), WTFMove(enumerationValueWithDefault), WTFMove(enumerationValueWithEmptyStringDefault), WTFMove(stringWithDefault), WTFMove(stringWithoutDefault), WTFMove(booleanWithDefault), WTFMove(booleanWithoutDefault), WTFMove(sequenceOfStrings), WTFMove(restrictedDouble), WTFMove(unrestrictedDouble), WTFMove(restrictedDoubleWithDefault), WTFMove(unrestrictedDoubleWithDefault), WTFMove(restrictedFloat), WTFMove(unrestrictedFloat), WTFMove(restrictedFloatWithDefault), WTFMove(unrestrictedFloatWithDefault), WTFMove(smallIntegerClamped), WTFMove(smallIntegerWithDefault), WTFMove(smallUnsignedIntegerEnforcedRange), WTFMove(smallUnsignedIntegerWithDefault), WTFMove(integer), WTFMove(integerWithDefault), WTFMove(unsignedInteger), WTFMove(unsignedIntegerWithDefault), WTFMove(largeInteger), WTFMove(largeIntegerWithDefault), WTFMove(unsignedLargeInteger), WTFMove(unsignedLargeIntegerWithDefault), WTFMove(nullableNode), WTFMove(anyValue), WTFMove(anyTypedefValue), dictionaryMember.value() };
 }
 
@@ -596,18 +687,49 @@ template<> Optional<TestObj::DictionaryThatShouldNotTolerateNull> convertDiction
 {
     VM& vm = state.vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    auto* object = value.getObject();
-    if (UNLIKELY(!object || object->type() == RegExpObjectType)) {
+    bool isNullOrUndefined = value.isUndefinedOrNull();
+    auto* object = isNullOrUndefined ? nullptr : value.getObject();
+    if (UNLIKELY(!isNullOrUndefined && !object)) {
         throwTypeError(&state, throwScope);
         return Nullopt;
     }
-    auto requiredEnumerationValue = convert<TestObj::EnumType>(state, object->get(&state, Identifier::fromString(&state, "requiredEnumerationValue")));
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto booleanWithoutDefault = convertOptional<bool>(state, object->get(&state, Identifier::fromString(&state, "booleanWithoutDefault")));
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto* nonNullableNode = convertWrapperType<Node, JSNode>(state, object->get(&state, Identifier::fromString(&state, "nonNullableNode")), IsNullable::No);
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto requiredDictionaryMember = convertDictionary<TestObj::Dictionary>(state, object->get(&state, Identifier::fromString(&state, "requiredDictionaryMember")));
+    if (UNLIKELY(object && object->type() == RegExpObjectType)) {
+        throwTypeError(&state, throwScope);
+        return Nullopt;
+    }
+    JSValue booleanWithoutDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "booleanWithoutDefault"));
+    Converter<bool>::OptionalValue booleanWithoutDefault;
+    if (!booleanWithoutDefaultValue.isUndefined()) {
+        booleanWithoutDefault = convert<bool>(state, booleanWithoutDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue nonNullableNodeValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "nonNullableNode"));
+    Node* nonNullableNode;
+    if (!nonNullableNodeValue.isUndefined()) {
+        nonNullableNode = convertWrapperType<Node, JSNode>(state, nonNullableNodeValue, IsNullable::No);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    } else {
+        throwTypeError(&state, throwScope);
+        return Nullopt;
+    }
+    JSValue requiredDictionaryMemberValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "requiredDictionaryMember"));
+    TestObj::Dictionary requiredDictionaryMember;
+    if (!requiredDictionaryMemberValue.isUndefined()) {
+        requiredDictionaryMember = convertDictionary<TestObj::Dictionary>(state, requiredDictionaryMemberValue);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    } else {
+        throwTypeError(&state, throwScope);
+        return Nullopt;
+    }
+    JSValue requiredEnumerationValueValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "requiredEnumerationValue"));
+    TestObj::EnumType requiredEnumerationValue;
+    if (!requiredEnumerationValueValue.isUndefined()) {
+        requiredEnumerationValue = convert<TestObj::EnumType>(state, requiredEnumerationValueValue);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    } else {
+        throwTypeError(&state, throwScope);
+        return Nullopt;
+    }
     return TestObj::DictionaryThatShouldNotTolerateNull { WTFMove(requiredEnumerationValue), WTFMove(booleanWithoutDefault), *nonNullableNode, requiredDictionaryMember.value() };
 }
 
@@ -615,16 +737,28 @@ template<> Optional<TestObj::DictionaryThatShouldTolerateNull> convertDictionary
 {
     VM& vm = state.vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    if (value.isUndefinedOrNull())
-        return TestObj::DictionaryThatShouldTolerateNull { { }, { } };
-    auto* object = value.getObject();
-    if (UNLIKELY(!object || object->type() == RegExpObjectType)) {
+    bool isNullOrUndefined = value.isUndefinedOrNull();
+    auto* object = isNullOrUndefined ? nullptr : value.getObject();
+    if (UNLIKELY(!isNullOrUndefined && !object)) {
         throwTypeError(&state, throwScope);
         return Nullopt;
     }
-    auto enumerationValue = convertOptional<TestObj::EnumType>(state, object->get(&state, Identifier::fromString(&state, "enumerationValue")));
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto booleanWithoutDefault = convertOptional<bool>(state, object->get(&state, Identifier::fromString(&state, "booleanWithoutDefault")));
+    if (UNLIKELY(object && object->type() == RegExpObjectType)) {
+        throwTypeError(&state, throwScope);
+        return Nullopt;
+    }
+    JSValue booleanWithoutDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "booleanWithoutDefault"));
+    Converter<bool>::OptionalValue booleanWithoutDefault;
+    if (!booleanWithoutDefaultValue.isUndefined()) {
+        booleanWithoutDefault = convert<bool>(state, booleanWithoutDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue enumerationValueValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "enumerationValue"));
+    Converter<TestObj::EnumType>::OptionalValue enumerationValue;
+    if (!enumerationValueValue.isUndefined()) {
+        enumerationValue = convert<TestObj::EnumType>(state, enumerationValueValue);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
     return TestObj::DictionaryThatShouldTolerateNull { WTFMove(enumerationValue), WTFMove(booleanWithoutDefault) };
 }
 
@@ -632,17 +766,99 @@ template<> Optional<AlternateDictionaryName> convertDictionary<AlternateDictiona
 {
     VM& vm = state.vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    if (value.isUndefinedOrNull())
-        return AlternateDictionaryName { { }, { } };
-    auto* object = value.getObject();
-    if (UNLIKELY(!object || object->type() == RegExpObjectType)) {
+    bool isNullOrUndefined = value.isUndefinedOrNull();
+    auto* object = isNullOrUndefined ? nullptr : value.getObject();
+    if (UNLIKELY(!isNullOrUndefined && !object)) {
         throwTypeError(&state, throwScope);
         return Nullopt;
     }
-    auto enumerationValue = convertOptional<TestObj::EnumType>(state, object->get(&state, Identifier::fromString(&state, "enumerationValue")));
-    RETURN_IF_EXCEPTION(throwScope, Nullopt);
-    auto booleanWithoutDefault = convertOptional<bool>(state, object->get(&state, Identifier::fromString(&state, "booleanWithoutDefault")));
+    if (UNLIKELY(object && object->type() == RegExpObjectType)) {
+        throwTypeError(&state, throwScope);
+        return Nullopt;
+    }
+    JSValue booleanWithoutDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "booleanWithoutDefault"));
+    Converter<bool>::OptionalValue booleanWithoutDefault;
+    if (!booleanWithoutDefaultValue.isUndefined()) {
+        booleanWithoutDefault = convert<bool>(state, booleanWithoutDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue enumerationValueValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "enumerationValue"));
+    Converter<TestObj::EnumType>::OptionalValue enumerationValue;
+    if (!enumerationValueValue.isUndefined()) {
+        enumerationValue = convert<TestObj::EnumType>(state, enumerationValueValue);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
     return AlternateDictionaryName { WTFMove(enumerationValue), WTFMove(booleanWithoutDefault) };
+}
+
+template<> Optional<TestObj::ParentDictionary> convertDictionary<TestObj::ParentDictionary>(ExecState& state, JSValue value)
+{
+    VM& vm = state.vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    bool isNullOrUndefined = value.isUndefinedOrNull();
+    auto* object = isNullOrUndefined ? nullptr : value.getObject();
+    if (UNLIKELY(!isNullOrUndefined && !object)) {
+        throwTypeError(&state, throwScope);
+        return Nullopt;
+    }
+    if (UNLIKELY(object && object->type() == RegExpObjectType)) {
+        throwTypeError(&state, throwScope);
+        return Nullopt;
+    }
+    JSValue parentMember1Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "parentMember1"));
+    Converter<bool>::OptionalValue parentMember1;
+    if (!parentMember1Value.isUndefined()) {
+        parentMember1 = convert<bool>(state, parentMember1Value);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue parentMember2Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "parentMember2"));
+    Converter<bool>::OptionalValue parentMember2;
+    if (!parentMember2Value.isUndefined()) {
+        parentMember2 = convert<bool>(state, parentMember2Value);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    return TestObj::ParentDictionary { WTFMove(parentMember2), WTFMove(parentMember1) };
+}
+
+template<> Optional<TestObj::ChildDictionary> convertDictionary<TestObj::ChildDictionary>(ExecState& state, JSValue value)
+{
+    VM& vm = state.vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    bool isNullOrUndefined = value.isUndefinedOrNull();
+    auto* object = isNullOrUndefined ? nullptr : value.getObject();
+    if (UNLIKELY(!isNullOrUndefined && !object)) {
+        throwTypeError(&state, throwScope);
+        return Nullopt;
+    }
+    if (UNLIKELY(object && object->type() == RegExpObjectType)) {
+        throwTypeError(&state, throwScope);
+        return Nullopt;
+    }
+    JSValue parentMember1Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "parentMember1"));
+    Converter<bool>::OptionalValue parentMember1;
+    if (!parentMember1Value.isUndefined()) {
+        parentMember1 = convert<bool>(state, parentMember1Value);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue parentMember2Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "parentMember2"));
+    Converter<bool>::OptionalValue parentMember2;
+    if (!parentMember2Value.isUndefined()) {
+        parentMember2 = convert<bool>(state, parentMember2Value);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue childMember1Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "childMember1"));
+    Converter<bool>::OptionalValue childMember1;
+    if (!childMember1Value.isUndefined()) {
+        childMember1 = convert<bool>(state, childMember1Value);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    JSValue childMember2Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "childMember2"));
+    Converter<bool>::OptionalValue childMember2;
+    if (!childMember2Value.isUndefined()) {
+        childMember2 = convert<bool>(state, childMember2Value);
+        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+    }
+    return TestObj::ChildDictionary { WTFMove(parentMember2), WTFMove(parentMember1), WTFMove(childMember2), WTFMove(childMember1) };
 }
 
 // Functions
@@ -968,7 +1184,7 @@ bool setJSTestObjConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJ
 
 class JSTestObjPrototype : public JSC::JSNonFinalObject {
 public:
-    typedef JSC::JSNonFinalObject Base;
+    using Base = JSC::JSNonFinalObject;
     static JSTestObjPrototype* create(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::Structure* structure)
     {
         JSTestObjPrototype* ptr = new (NotNull, JSC::allocateCell<JSTestObjPrototype>(vm.heap)) JSTestObjPrototype(vm, globalObject, structure);
@@ -991,7 +1207,7 @@ private:
     void finishCreation(JSC::VM&);
 };
 
-typedef JSDOMConstructor<JSTestObj> JSTestObjConstructor;
+using JSTestObjConstructor = JSDOMConstructor<JSTestObj>;
 
 /* Hash table */
 
@@ -6340,9 +6556,10 @@ static inline EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethod9(ExecSta
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
-    auto arrayArg = toNativeArray<String>(*state, state->uncheckedArgument(0));
-    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    impl.overloadedMethod(WTFMove(arrayArg));
+    auto window = JSDOMWindow::toWrapped(state->uncheckedArgument(0));
+    if (UNLIKELY(!window))
+        return throwArgumentTypeError(*state, throwScope, 0, "window", "TestObject", "overloadedMethod", "DOMWindow");
+    impl.overloadedMethod(*window);
     return JSValue::encode(jsUndefined());
 }
 
@@ -6359,7 +6576,7 @@ static inline EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethod10(ExecSt
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
-    auto arrayArg = toNativeArray<uint32_t>(*state, state->uncheckedArgument(0));
+    auto arrayArg = toNativeArray<String>(*state, state->uncheckedArgument(0));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.overloadedMethod(WTFMove(arrayArg));
     return JSValue::encode(jsUndefined());
@@ -6378,13 +6595,32 @@ static inline EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethod11(ExecSt
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto arrayArg = toNativeArray<uint32_t>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethod(WTFMove(arrayArg));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethod12(ExecState* state)
+{
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    UNUSED_PARAM(throwScope);
+    JSValue thisValue = state->thisValue();
+    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
+    if (UNLIKELY(!castedThis))
+        return throwThisTypeError(*state, throwScope, "TestObject", "overloadedMethod");
+    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
     auto strArg = state->uncheckedArgument(0).toWTFString(state);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.overloadedMethod(WTFMove(strArg));
     return JSValue::encode(jsUndefined());
 }
 
-static inline EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethod12(ExecState* state)
+static inline EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethod13(ExecState* state)
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
@@ -6409,7 +6645,7 @@ EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethod(ExecStat
     UNUSED_PARAM(throwScope);
     size_t argsCount = std::min<size_t>(2, state->argumentCount());
     if (argsCount == 0) {
-        return jsTestObjPrototypeFunctionOverloadedMethod12(state);
+        return jsTestObjPrototypeFunctionOverloadedMethod13(state);
     }
     if (argsCount == 1) {
         JSValue distinguishingArg = state->uncheckedArgument(0);
@@ -6423,8 +6659,10 @@ EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethod(ExecStat
             return jsTestObjPrototypeFunctionOverloadedMethod6(state);
         if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(JSTestObj::info()))
             return jsTestObjPrototypeFunctionOverloadedMethod8(state);
+        if (distinguishingArg.isObject() && (asObject(distinguishingArg)->inherits(JSDOMWindowShell::info()) || asObject(distinguishingArg)->inherits(JSDOMWindow::info())))
+            return jsTestObjPrototypeFunctionOverloadedMethod9(state);
         if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(JSBlob::info()))
-            return jsTestObjPrototypeFunctionOverloadedMethod12(state);
+            return jsTestObjPrototypeFunctionOverloadedMethod13(state);
         if (hasIteratorMethod(*state, distinguishingArg))
             return jsTestObjPrototypeFunctionOverloadedMethod7(state);
         if (distinguishingArg.isObject() && asObject(distinguishingArg)->type() != RegExpObjectType)
@@ -6438,7 +6676,7 @@ EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethod(ExecStat
         if (distinguishingArg.isUndefined())
             return jsTestObjPrototypeFunctionOverloadedMethod2(state);
         if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(JSBlob::info()))
-            return jsTestObjPrototypeFunctionOverloadedMethod12(state);
+            return jsTestObjPrototypeFunctionOverloadedMethod13(state);
         if (distinguishingArg.isNumber())
             return jsTestObjPrototypeFunctionOverloadedMethod2(state);
         return jsTestObjPrototypeFunctionOverloadedMethod1(state);

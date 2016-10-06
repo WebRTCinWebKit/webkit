@@ -36,6 +36,11 @@ namespace WebCore {
 
 struct SameSizeAsFontCascadeDescription {
     Vector<void*> vector;
+#if ENABLE(VARIATION_FONTS)
+    Vector<void*> vector2;
+#else
+    char c;
+#endif
     AtomicString string;
     float size;
     unsigned bitfields1;

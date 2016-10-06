@@ -142,7 +142,7 @@ void StringPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject, JSStr
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("slice", stringProtoFuncSlice, DontEnum, 2);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("substr", stringProtoFuncSubstr, DontEnum, 2);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("substring", stringProtoFuncSubstring, DontEnum, 2);
-    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("toLowerCase", stringProtoFuncToLowerCase, DontEnum, 0);
+    JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION("toLowerCase", stringProtoFuncToLowerCase, DontEnum, 0, ToLowerCaseIntrinsic);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("toUpperCase", stringProtoFuncToUpperCase, DontEnum, 0);
 #if ENABLE(INTL)
     JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("localeCompare", stringPrototypeLocaleCompareCodeGenerator, DontEnum);
@@ -780,11 +780,19 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncRepeatCharacter(ExecState* exec)
     JSString* string = jsCast<JSString*>(exec->uncheckedArgument(0));
     ASSERT(string->length() == 1);
 
-    if (!exec->uncheckedArgument(1).isInt32())
-        return JSValue::encode(jsNull());
-
-    int32_t repeatCount = exec->uncheckedArgument(1).asInt32();
+    JSValue repeatCountValue = exec->uncheckedArgument(1);
+    RELEASE_ASSERT(repeatCountValue.isNumber());
+    int32_t repeatCount;
+    {
+        VM& vm = exec->vm();
+        auto scope = DECLARE_THROW_SCOPE(vm);
+        double value = repeatCountValue.asNumber();
+        if (value > JSString::MaxLength)
+            return JSValue::encode(throwOutOfMemoryError(exec, scope));
+        repeatCount = static_cast<int32_t>(value);
+    }
     ASSERT(repeatCount >= 0);
+    ASSERT(!repeatCountValue.isDouble() || repeatCountValue.asDouble() == repeatCount);
 
     UChar character = string->view(exec)[0];
     if (!(character & ~0xff))

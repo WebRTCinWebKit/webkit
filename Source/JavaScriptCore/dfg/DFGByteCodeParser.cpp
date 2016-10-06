@@ -219,6 +219,7 @@ private:
     bool handleConstantInternalFunction(Node* callTargetNode, int resultOperand, InternalFunction*, int registerOffset, int argumentCountIncludingThis, CodeSpecializationKind, SpeculatedType, const ChecksFunctor& insertChecks);
     Node* handlePutByOffset(Node* base, unsigned identifier, PropertyOffset, const InferredType::Descriptor&, Node* value);
     Node* handleGetByOffset(SpeculatedType, Node* base, unsigned identifierNumber, PropertyOffset, const InferredType::Descriptor&, NodeType = GetByOffset);
+    bool handleDOMJITGetter(int resultOperand, const GetByIdVariant&, Node* thisNode, SpeculatedType prediction);
 
     // Create a presence ObjectPropertyCondition based on some known offset and structure set. Does not
     // check the validity of the condition, but it may return a null one if it encounters a contradiction.
@@ -2580,6 +2581,20 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         return true;
     }
 
+    case ToLowerCaseIntrinsic: {
+        if (argumentCountIncludingThis != 1)
+            return false;
+
+        if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
+            return false;
+
+        insertChecks();
+        Node* thisString = get(virtualRegisterForArgument(0, registerOffset));
+        Node* result = addToGraph(ToLowerCase, thisString);
+        set(VirtualRegister(resultOperand), result);
+        return true;
+    }
+
     default:
         return false;
     }
@@ -2657,6 +2672,28 @@ bool ByteCodeParser::handleIntrinsicGetter(int resultOperand, const GetByIdVaria
         return false;
     }
     RELEASE_ASSERT_NOT_REACHED();
+}
+
+bool ByteCodeParser::handleDOMJITGetter(int resultOperand, const GetByIdVariant& variant, Node* thisNode, SpeculatedType prediction)
+{
+    if (!variant.domJIT())
+        return false;
+
+    DOMJIT::GetterSetter* domJIT = variant.domJIT();
+
+    // We do not need to actually look up CustomGetterSetter here. Checking Structures or registering watchpoints are enough,
+    // since replacement of CustomGetterSetter always incurs Structure transition.
+    if (!check(variant.conditionSet()))
+        return false;
+    addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(variant.structureSet())), thisNode);
+
+    // We do not need to emit CheckCell thingy here. When the custom accessor is replaced to different one, Structure transition occurs.
+    addToGraph(CheckDOM, OpInfo(domJIT), OpInfo(domJIT->thisClassInfo()), thisNode);
+    Node* globalObject = addToGraph(GetGlobalObject, thisNode);
+    addVarArgChild(globalObject); // GlobalObject of thisNode is always used to create a DOMWrapper.
+    addVarArgChild(thisNode);
+    set(VirtualRegister(resultOperand), addToGraph(Node::VarArg, CallDOM, OpInfo(domJIT), OpInfo(prediction)));
+    return true;
 }
 
 template<typename ChecksFunctor>
@@ -3252,6 +3289,20 @@ void ByteCodeParser::handleGetById(
         getById = getByIdStatus.makesCalls() ? GetByIdFlush : GetById;
     else
         getById = TryGetById;
+
+    // Special path for custom accessors since custom's offset does not have any meanings.
+    // So, this is completely different from Simple one. But we have a chance to optimize it when we use DOMJIT.
+    if (getByIdStatus.isCustom()) {
+        ASSERT(getByIdStatus.numVariants() == 1);
+        ASSERT(!getByIdStatus.makesCalls());
+        GetByIdVariant variant = getByIdStatus[0];
+        ASSERT(variant.domJIT());
+        if (handleDOMJITGetter(destinationOperand, variant, base, prediction)) {
+            if (m_graph.compilation())
+                m_graph.compilation()->noticeInlinedGetById();
+            return;
+        }
+    }
 
     ASSERT(type == AccessType::Get || !getByIdStatus.makesCalls());
     if (!getByIdStatus.isSimple() || !getByIdStatus.numVariants() || !Options::useAccessInlining()) {
@@ -4238,6 +4289,38 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             NEXT_OPCODE(op_put_by_val_with_this);
         }
 
+        case op_define_data_property: {
+            Node* base = get(VirtualRegister(currentInstruction[1].u.operand));
+            Node* property = get(VirtualRegister(currentInstruction[2].u.operand));
+            Node* value = get(VirtualRegister(currentInstruction[3].u.operand));
+            Node* attributes = get(VirtualRegister(currentInstruction[4].u.operand));
+
+            addVarArgChild(base);
+            addVarArgChild(property);
+            addVarArgChild(value);
+            addVarArgChild(attributes);
+            addToGraph(Node::VarArg, DefineDataProperty, OpInfo(0), OpInfo(0));
+
+            NEXT_OPCODE(op_define_data_property);
+        }
+
+        case op_define_accessor_property: {
+            Node* base = get(VirtualRegister(currentInstruction[1].u.operand));
+            Node* property = get(VirtualRegister(currentInstruction[2].u.operand));
+            Node* getter = get(VirtualRegister(currentInstruction[3].u.operand));
+            Node* setter = get(VirtualRegister(currentInstruction[4].u.operand));
+            Node* attributes = get(VirtualRegister(currentInstruction[5].u.operand));
+
+            addVarArgChild(base);
+            addVarArgChild(property);
+            addVarArgChild(getter);
+            addVarArgChild(setter);
+            addVarArgChild(attributes);
+            addToGraph(Node::VarArg, DefineAccessorProperty, OpInfo(0), OpInfo(0));
+
+            NEXT_OPCODE(op_define_accessor_property);
+        }
+
         case op_try_get_by_id:
         case op_get_by_id:
         case op_get_by_id_proto_load:
@@ -4577,7 +4660,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             LAST_OPCODE(op_throw);
             
         case op_throw_static_error:
-            addToGraph(ThrowReferenceError);
+            addToGraph(ThrowStaticError);
             flushForTerminal();
             addToGraph(Unreachable);
             LAST_OPCODE(op_throw_static_error);

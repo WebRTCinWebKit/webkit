@@ -24,6 +24,7 @@
 #include "Breakpoint.h"
 #include "CallData.h"
 #include "DebuggerCallFrame.h"
+#include "DebuggerParseData.h"
 #include "DebuggerPrimitives.h"
 #include "JSCJSValue.h"
 #include <wtf/HashMap.h>
@@ -72,9 +73,11 @@ public:
     void detach(JSGlobalObject*, ReasonForDetach);
     bool isAttached(JSGlobalObject*);
 
-    BreakpointID setBreakpoint(Breakpoint, unsigned& actualLine, unsigned& actualColumn);
+    void resolveBreakpoint(Breakpoint&, SourceProvider*);
+    BreakpointID setBreakpoint(Breakpoint&, bool& existing);
     void removeBreakpoint(BreakpointID);
     void clearBreakpoints();
+
     void activateBreakpoints() { setBreakpointsActivated(true); }
     void deactivateBreakpoints() { setBreakpointsActivated(false); }
     bool breakpointsActive() const { return m_breakpointsActivated; }
@@ -91,9 +94,8 @@ public:
         NotPaused,
         PausedForException,
         PausedAtStatement,
-        PausedAfterCall,
+        PausedAtExpression,
         PausedBeforeReturn,
-        PausedAtStartOfProgram,
         PausedAtEndOfProgram,
         PausedForBreakpoint,
         PausedForDebuggerStatement,
@@ -118,8 +120,10 @@ public:
 
     void exception(CallFrame*, JSValue exceptionValue, bool hasCatchHandler);
     void atStatement(CallFrame*);
+    void atExpression(CallFrame*);
     void callEvent(CallFrame*);
     void returnEvent(CallFrame*);
+    void unwindEvent(CallFrame*);
     void willExecuteProgram(CallFrame*);
     void didExecuteProgram(CallFrame*);
     void didReachBreakpoint(CallFrame*);
@@ -177,6 +181,8 @@ private:
 
     bool hasBreakpoint(SourceID, const TextPosition&, Breakpoint* hitBreakpoint);
 
+    DebuggerParseData& debuggerParseData(SourceID, SourceProvider*);
+
     void updateNeedForOpDebugCallbacks();
 
     // These update functions are only needed because our current breakpoints are
@@ -184,9 +190,11 @@ private:
     // that we don't break on the same line more than once. Once we switch to a
     // bytecode PC key'ed breakpoint, we will not need these anymore and should
     // be able to remove them.
-    void updateCallFrame(JSC::CallFrame*);
-    void updateCallFrameAndPauseIfNeeded(JSC::CallFrame*);
+    enum CallFrameUpdateAction { AttemptPause, NoPause };
+    void updateCallFrame(JSC::CallFrame*, CallFrameUpdateAction);
+    void updateCallFrameInternal(JSC::CallFrame*);
     void pauseIfNeeded(JSC::CallFrame*);
+    void clearNextPauseState();
 
     enum SteppingMode {
         SteppingModeDisabled,
@@ -204,12 +212,16 @@ private:
     void toggleBreakpoint(Breakpoint&, BreakpointState);
 
     void clearDebuggerRequests(JSGlobalObject*);
+    void clearParsedData();
 
     VM& m_vm;
     HashSet<JSGlobalObject*> m_globalObjects;
+    HashMap<SourceID, DebuggerParseData> m_parseDataMap;
 
     PauseOnExceptionsState m_pauseOnExceptionsState;
-    bool m_pauseOnNextStatement : 1;
+    bool m_pauseAtNextOpportunity : 1;
+    bool m_pauseOnStepOut : 1;
+    bool m_pastFirstExpressionInStatement : 1;
     bool m_isPaused : 1;
     bool m_breakpointsActivated : 1;
     bool m_hasHandlerForExceptionCallback : 1;

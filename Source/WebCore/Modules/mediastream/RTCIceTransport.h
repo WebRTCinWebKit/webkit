@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RTCIceTransport_h
-#define RTCIceTransport_h
+#pragma once
 
 #if ENABLE(WEB_RTC)
 
@@ -68,5 +67,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(WEB_RTC)
-
-#endif // RTCIceTransport_h

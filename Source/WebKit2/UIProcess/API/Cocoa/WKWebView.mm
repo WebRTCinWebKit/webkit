@@ -4519,6 +4519,11 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     [_contentView selectFormAccessoryPickerRow:rowIndex];
 }
 
+- (NSDictionary *)_contentsOfUserInterfaceItem:(NSString *)userInterfaceItem
+{
+    return [_contentView _contentsOfUserInterfaceItem:(NSString *)userInterfaceItem];
+}
+
 - (void)didStartFormControlInteraction
 {
     // For subclasses to override.
@@ -4579,6 +4584,17 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 {
     return _impl->shouldRequestCandidates();
 }
+
+- (void)_requestActiveNowPlayingSessionInfo
+{
+    if (_page)
+        _page->requestActiveNowPlayingSessionInfo();
+}
+
+- (void)_handleActiveNowPlayingSessionInfoResponse:(BOOL)hasActiveSession title:(NSString *)title duration:(double)duration elapsedTime:(double)elapsedTime
+{
+    // Overridden by subclasses.
+}
 #endif // PLATFORM(MAC)
 
 // Execute the supplied block after the next transaction from the WebProcess.
@@ -4594,6 +4610,11 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
             Block_release(updateBlockCopy);
         }
     });
+}
+
+- (void)_disableBackForwardSnapshotVolatilityForTesting
+{
+    WebKit::ViewSnapshotStore::singleton().setDisableSnapshotVolatilityForTesting(true);
 }
 
 @end

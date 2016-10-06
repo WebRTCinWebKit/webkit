@@ -391,6 +391,7 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/DeviceOrientationEvent.idl
     dom/Document.idl
     dom/DocumentFragment.idl
+    dom/DocumentOrShadowRoot.idl
     dom/DocumentType.idl
     dom/Element.idl
     dom/ErrorEvent.idl
@@ -399,6 +400,7 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/FocusEvent.idl
     dom/GlobalEventHandlers.idl
     dom/HashChangeEvent.idl
+    dom/InputEvent.idl
     dom/KeyboardEvent.idl
     dom/MessageChannel.idl
     dom/MessageEvent.idl
@@ -1266,6 +1268,7 @@ set(WebCore_SOURCES
     css/CSSFontFeatureValue.cpp
     css/CSSFontSelector.cpp
     css/CSSFontValue.cpp
+    css/CSSFontVariationValue.cpp
     css/CSSFunctionValue.cpp
     css/CSSGradientValue.cpp
     css/CSSGridAutoRepeatValue.cpp
@@ -1443,6 +1446,7 @@ set(WebCore_SOURCES
     dom/IdTargetObserver.cpp
     dom/IdTargetObserverRegistry.cpp
     dom/InlineStyleSheetOwner.cpp
+    dom/InputEvent.cpp
     dom/KeyboardEvent.cpp
     dom/LiveNodeList.cpp
     dom/LoadableClassicScript.cpp
@@ -2204,7 +2208,7 @@ set(WebCore_SOURCES
     platform/graphics/FontCascade.cpp
     platform/graphics/FontCascadeFonts.cpp
     platform/graphics/FontDescription.cpp
-    platform/graphics/FontFeatureSettings.cpp
+    platform/graphics/FontTaggedSettings.cpp
     platform/graphics/FontGenericFamilies.cpp
     platform/graphics/FontPlatformData.cpp
     platform/graphics/FontRanges.cpp
@@ -2984,7 +2988,7 @@ set(WebCore_LIBRARIES
     JavaScriptCore${DEBUG_SUFFIX}
 )
 
-if (ENABLE_ENCRYPTED_MEDIA_V2)
+if (ENABLE_LEGACY_ENCRYPTED_MEDIA)
     list(APPEND WebCore_SOURCES
         Modules/encryptedmedia/CDM.cpp
         Modules/encryptedmedia/CDMPrivateClearKey.cpp

@@ -27,6 +27,8 @@
 #include "config.h"
 #include "GraphicsContextCG.h"
 
+#if USE(CG)
+
 #include "AffineTransform.h"
 #include "CoreGraphicsSPI.h"
 #include "DisplayListRecorder.h"
@@ -300,13 +302,13 @@ static void patternReleaseCallback(void* info)
     });
 }
 
-void GraphicsContext::drawPattern(Image& image, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, const FloatRect& destRect, BlendMode blendMode)
+void GraphicsContext::drawPattern(Image& image, const FloatRect& destRect, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, BlendMode blendMode)
 {
     if (paintingDisabled() || !patternTransform.isInvertible())
         return;
 
     if (isRecording()) {
-        m_displayListRecorder->drawPattern(image, tileRect, patternTransform, phase, spacing, op, destRect, blendMode);
+        m_displayListRecorder->drawPattern(image, destRect, tileRect, patternTransform, phase, spacing, op, blendMode);
         return;
     }
 
@@ -935,7 +937,7 @@ void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const Float
 
     WindRule oldFillRule = fillRule();
     Color oldFillColor = fillColor();
-    
+
     setFillRule(RULE_EVENODD);
     setFillColor(color);
 
@@ -1047,7 +1049,6 @@ IntRect GraphicsContext::clipBounds() const
         WTFLogAlways("Getting the clip bounds not yet supported with display lists");
         return IntRect(-2048, -2048, 4096, 4096); // FIXME: display lists.
     }
-
 
     return enclosingIntRect(CGContextGetClipBoundingBox(platformContext()));
 }
@@ -1905,3 +1906,5 @@ void GraphicsContext::platformStrokeEllipse(const FloatRect& ellipse)
 }
 
 }
+
+#endif

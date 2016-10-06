@@ -232,6 +232,8 @@ webkit.org/b/124476 platform/mac-wk2/plugins/slow/asynchronous-plugin-initializa
 # uiElementForSearchPredicate() is not returning an undefined object when the search returns no results
 webkit.org/b/125996 accessibility/mac/search-when-element-starts-in-table.html [ Failure ]
 
+webkit.org/b/162999 accessibility/mac/wk1-set-selected-text-marker-range-input-element.html [ Skip ]
+
 webkit.org/b/134550 http/tests/cache/iframe-304-crash.html [ Pass Failure ]
 
 # testRunner.setUseDeferredFrameLoading is not implemented.
@@ -280,7 +282,9 @@ webkit.org/b/151326 [ Yosemite+ ] webarchive/loading/missing-data.html [ Pass Cr
 
 webkit.org/b/151455 [ Release ] http/tests/xmlhttprequest/workers/methods-async.html [ Pass Timeout ]
 
-webkit.org/b/151661 http/tests/cache/disk-cache/disk-cache-request-max-stale.html [ Pass Timeout ]
+webkit.org/b/162945 http/tests/cache/disk-cache/disk-cache-request-max-stale.html [ Pass Failure ]
+
+webkit.org/b/162946 http/tests/cache/disk-cache/disk-cache-media.html [ Pass Failure ]
 
 webkit.org/b/150542 fast/forms/state-restore-per-form.html [ Pass Timeout ]
 
@@ -472,8 +476,7 @@ webkit.org/b/158639 [ Release Yosemite ] imported/blink/storage/indexeddb/blob-d
 [ Sierra+ ] media/video-contained-in-fullscreen-element-going-into-pip.html [ Pass ]
 
 # rdar://problem/26885345
-[ Release Sierra+ ] media/click-placeholder-not-pausing.html [ Pass ]
-[ Debug Sierra+ ] media/click-placeholder-not-pausing.html [ Skip ]
+[ Sierra+ ] media/click-placeholder-not-pausing.html [ Pass ]
 
 # RTL Scrollbars are enabled on Sierra WebKit2.
 [ Sierra+ ] fast/scrolling/rtl-scrollbars.html [ Pass ]
@@ -553,3 +556,15 @@ webkit.org/b/162081 editing/inserting/smart-quote-with-all-configurations.html [
 webkit.org/b/160017 js/regress-139548.html [ Pass Timeout ]
 
 webkit.org/b/161659 [ Yosemite Debug ] media/media-controls-drag-timeline-set-controls-property.html [ Pass Timeout ]
+
+webkit.org/b/162524 [ Sierra Release ] http/tests/cache/disk-cache/disk-cache-redirect.html [ Pass Timeout ]
+
+webkit.org/b/162510 [ Debug ] fast/images/animated-gif-restored-from-bfcache.html [ Pass Failure ]
+
+webkit.org/b/161745 http/tests/security/anchor-download-allow-data.html [ Pass Failure ]
+
+webkit.org/b/161926 storage/indexeddb/index-cursor.html [ Pass Timeout ]
+
+webkit.org/b/162685 http/tests/cache/disk-cache/disk-cache-204-status-code.html [ Pass Failure ]
+
+webkit.org/b/161649 http/tests/cache/disk-cache/resource-becomes-uncacheable.html [ Pass Failure ]

@@ -789,10 +789,10 @@ const float _WebHTMLViewPrintingMaximumShrinkFactor = PrintContext::maximumShrin
 
 #if !PLATFORM(IOS)
 // We need this to be able to safely reference the CachedImage for the promised drag data
-static CachedImageClient* promisedDataClient()
+static CachedImageClient& promisedDataClient()
 {
     static CachedImageClient* staticCachedResourceClient = new CachedImageClient;
-    return staticCachedResourceClient;
+    return *staticCachedResourceClient;
 }
 #endif
 
@@ -2210,7 +2210,7 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
         [archive release];
     } else if ([type isEqual:NSTIFFPboardType] && [self promisedDragTIFFDataSource]) {
         if (Image* image = [self promisedDragTIFFDataSource]->image())
-            [pasteboard setData:(NSData *)image->getTIFFRepresentation() forType:NSTIFFPboardType];
+            [pasteboard setData:(NSData *)image->tiffRepresentation() forType:NSTIFFPboardType];
         [self setPromisedDragTIFFDataSource:0];
     }
 }

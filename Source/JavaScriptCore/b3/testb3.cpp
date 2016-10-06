@@ -42,6 +42,7 @@
 #include "B3LowerToAir.h"
 #include "B3MathExtras.h"
 #include "B3MemoryValue.h"
+#include "B3MoveConstants.h"
 #include "B3Procedure.h"
 #include "B3ReduceStrength.h"
 #include "B3SlotBaseValue.h"
@@ -49,6 +50,7 @@
 #include "B3StackmapGenerationParams.h"
 #include "B3SwitchValue.h"
 #include "B3UpsilonValue.h"
+#include "B3UseCounts.h"
 #include "B3Validate.h"
 #include "B3ValueInlines.h"
 #include "B3VariableValue.h"
@@ -2217,7 +2219,7 @@ void testTernarySubInstructionSelection(B3::Opcode valueModifier, Type valueType
     auto block = proc.code()[0];
     unsigned numberOfSubInstructions = 0;
     for (auto instruction : *block) {
-        if (instruction.opcode == expectedOpcode) {
+        if (instruction.kind.opcode == expectedOpcode) {
             CHECK_EQ(instruction.args.size(), 3ul);
             CHECK_EQ(instruction.args[0].kind(), Air::Arg::Tmp);
             CHECK_EQ(instruction.args[1].kind(), Air::Arg::Tmp);
@@ -9976,7 +9978,7 @@ void testChillDiv(int num, int den, int res)
         root->appendNewControlValue(
             proc, Return, Origin(),
             root->appendNew<Value>(
-                proc, ChillDiv, Origin(),
+                proc, chill(Div), Origin(),
                 root->appendNew<Value>(
                     proc, Trunc, Origin(),
                     root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0)),
@@ -9995,7 +9997,7 @@ void testChillDiv(int num, int den, int res)
         root->appendNewControlValue(
             proc, Return, Origin(),
             root->appendNew<Value>(
-                proc, ChillDiv, Origin(),
+                proc, chill(Div), Origin(),
                 root->appendNew<Const32Value>(proc, Origin(), num),
                 root->appendNew<Const32Value>(proc, Origin(), den)));
         
@@ -10013,7 +10015,7 @@ void testChillDivTwice(int num1, int den1, int num2, int den2, int res)
         root->appendNew<Value>(
             proc, Add, Origin(),
             root->appendNew<Value>(
-                proc, ChillDiv, Origin(),
+                proc, chill(Div), Origin(),
                 root->appendNew<Value>(
                     proc, Trunc, Origin(),
                     root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0)),
@@ -10021,7 +10023,7 @@ void testChillDivTwice(int num1, int den1, int num2, int den2, int res)
                     proc, Trunc, Origin(),
                     root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1))),
             root->appendNew<Value>(
-                proc, ChillDiv, Origin(),
+                proc, chill(Div), Origin(),
                 root->appendNew<Value>(
                     proc, Trunc, Origin(),
                     root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR2)),
@@ -10045,7 +10047,7 @@ void testChillDiv64(int64_t num, int64_t den, int64_t res)
         root->appendNewControlValue(
             proc, Return, Origin(),
             root->appendNew<Value>(
-                proc, ChillDiv, Origin(),
+                proc, chill(Div), Origin(),
                 root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0),
                 root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1)));
         
@@ -10060,7 +10062,7 @@ void testChillDiv64(int64_t num, int64_t den, int64_t res)
         root->appendNewControlValue(
             proc, Return, Origin(),
             root->appendNew<Value>(
-                proc, ChillDiv, Origin(),
+                proc, chill(Div), Origin(),
                 root->appendNew<Const64Value>(proc, Origin(), num),
                 root->appendNew<Const64Value>(proc, Origin(), den)));
         
@@ -10179,7 +10181,7 @@ void testChillModArg(int64_t value)
     BasicBlock* root = proc.addBlock();
 
     Value* argument = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
-    Value* result = root->appendNew<Value>(proc, ChillMod, Origin(), argument, argument);
+    Value* result = root->appendNew<Value>(proc, chill(Mod), Origin(), argument, argument);
     root->appendNewControlValue(proc, Return, Origin(), result);
 
     CHECK(!compileAndRun<int64_t>(proc, value));
@@ -10192,7 +10194,7 @@ void testChillModArgs(int64_t numerator, int64_t denominator)
 
     Value* argument1 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
     Value* argument2 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
-    Value* result = root->appendNew<Value>(proc, ChillMod, Origin(), argument1, argument2);
+    Value* result = root->appendNew<Value>(proc, chill(Mod), Origin(), argument1, argument2);
     root->appendNewControlValue(proc, Return, Origin(), result);
 
     CHECK(compileAndRun<int64_t>(proc, numerator, denominator) == chillMod(numerator, denominator));
@@ -10205,7 +10207,7 @@ void testChillModImms(int64_t numerator, int64_t denominator)
 
     Value* argument1 = root->appendNew<Const64Value>(proc, Origin(), numerator);
     Value* argument2 = root->appendNew<Const64Value>(proc, Origin(), denominator);
-    Value* result = root->appendNew<Value>(proc, ChillMod, Origin(), argument1, argument2);
+    Value* result = root->appendNew<Value>(proc, chill(Mod), Origin(), argument1, argument2);
     root->appendNewControlValue(proc, Return, Origin(), result);
 
     CHECK(compileAndRun<int64_t>(proc, numerator, denominator) == chillMod(numerator, denominator));
@@ -10218,7 +10220,7 @@ void testChillModArg32(int32_t value)
 
     Value* argument = root->appendNew<Value>(proc, Trunc, Origin(),
         root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
-    Value* result = root->appendNew<Value>(proc, ChillMod, Origin(), argument, argument);
+    Value* result = root->appendNew<Value>(proc, chill(Mod), Origin(), argument, argument);
     root->appendNewControlValue(proc, Return, Origin(), result);
 
     CHECK(!compileAndRun<int32_t>(proc, value));
@@ -10233,7 +10235,7 @@ void testChillModArgs32(int32_t numerator, int32_t denominator)
         root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
     Value* argument2 = root->appendNew<Value>(proc, Trunc, Origin(),
         root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1));
-    Value* result = root->appendNew<Value>(proc, ChillMod, Origin(), argument1, argument2);
+    Value* result = root->appendNew<Value>(proc, chill(Mod), Origin(), argument1, argument2);
     root->appendNewControlValue(proc, Return, Origin(), result);
 
     CHECK(compileAndRun<int32_t>(proc, numerator, denominator) == chillMod(numerator, denominator));
@@ -10246,7 +10248,7 @@ void testChillModImms32(int32_t numerator, int32_t denominator)
 
     Value* argument1 = root->appendNew<Const32Value>(proc, Origin(), numerator);
     Value* argument2 = root->appendNew<Const32Value>(proc, Origin(), denominator);
-    Value* result = root->appendNew<Value>(proc, ChillMod, Origin(), argument1, argument2);
+    Value* result = root->appendNew<Value>(proc, chill(Mod), Origin(), argument1, argument2);
     root->appendNewControlValue(proc, Return, Origin(), result);
 
     CHECK(compileAndRun<int32_t>(proc, numerator, denominator) == chillMod(numerator, denominator));
@@ -10313,7 +10315,7 @@ void testSwitchChillDiv(unsigned degree, unsigned gap = 1)
         newBlock->appendNewControlValue(
             proc, Return, Origin(),
             newBlock->appendNew<Value>(
-                proc, ChillDiv, Origin(), (i & 1) ? right : left, (i & 1) ? left : right));
+                proc, chill(Div), Origin(), (i & 1) ? right : left, (i & 1) ? left : right));
         
         switchValue->appendCase(SwitchCase(gap * i, FrequentedBlock(newBlock)));
     }
@@ -12674,7 +12676,7 @@ void testEntrySwitchWithCommonPaths()
     end->appendNew<Value>(
         proc, Return, Origin(),
         end->appendNew<Value>(
-            proc, ChillMod, Origin(),
+            proc, chill(Mod), Origin(),
             phi, end->appendNew<Value>(
                 proc, Trunc, Origin(),
                 end->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR2))));
@@ -12791,7 +12793,7 @@ void testEntrySwitchWithCommonPathsAndNonTrivialEntrypoint()
     end->appendNew<Value>(
         proc, Return, Origin(),
         end->appendNew<Value>(
-            proc, ChillMod, Origin(),
+            proc, chill(Mod), Origin(),
             phi, end->appendNew<Value>(
                 proc, Trunc, Origin(),
                 end->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR2))));
@@ -12972,7 +12974,7 @@ void testBranchBitAndImmFusion(
 
     // The first basic block must end in a BranchTest64(resCond, tmp, bitImm).
     Air::Inst terminal = proc.code()[0]->last();
-    CHECK_EQ(terminal.opcode, expectedOpcode);
+    CHECK_EQ(terminal.kind.opcode, expectedOpcode);
     CHECK_EQ(terminal.args[0].kind(), Air::Arg::ResCond);
     CHECK_EQ(terminal.args[1].kind(), firstKind);
     CHECK(terminal.args[2].kind() == Air::Arg::BitImm || terminal.args[2].kind() == Air::Arg::BitImm64);
@@ -13052,32 +13054,277 @@ void testPatchpointTerminalReturnValue(bool successIsRare)
     CHECK_EQ(invoke<int>(*code, -1), 666);
 }
 
-void testX86MFence()
+void testMemoryFence()
 {
     Procedure proc;
     
     BasicBlock* root = proc.addBlock();
     
     root->appendNew<FenceValue>(proc, Origin());
-    root->appendNew<Value>(proc, Return, Origin());
+    root->appendNew<Value>(proc, Return, Origin(), root->appendIntConstant(proc, Origin(), Int32, 42));
     
     auto code = compile(proc);
-    checkUsesInstruction(*code, "lock or $0x0, (%rsp)");
+    CHECK_EQ(invoke<int>(*code), 42);
+    if (isX86())
+        checkUsesInstruction(*code, "lock or $0x0, (%rsp)");
+    if (isARM64())
+        checkUsesInstruction(*code, "dmb    ish");
     checkDoesNotUseInstruction(*code, "mfence");
+    checkDoesNotUseInstruction(*code, "dmb    ishst");
 }
 
-void testX86CompilerFence()
+void testStoreFence()
 {
     Procedure proc;
     
     BasicBlock* root = proc.addBlock();
     
     root->appendNew<FenceValue>(proc, Origin(), HeapRange::top(), HeapRange());
-    root->appendNew<Value>(proc, Return, Origin());
+    root->appendNew<Value>(proc, Return, Origin(), root->appendIntConstant(proc, Origin(), Int32, 42));
     
     auto code = compile(proc);
+    CHECK_EQ(invoke<int>(*code), 42);
     checkDoesNotUseInstruction(*code, "lock");
     checkDoesNotUseInstruction(*code, "mfence");
+    if (isARM64())
+        checkUsesInstruction(*code, "dmb    ishst");
+}
+
+void testLoadFence()
+{
+    Procedure proc;
+    
+    BasicBlock* root = proc.addBlock();
+    
+    root->appendNew<FenceValue>(proc, Origin(), HeapRange(), HeapRange::top());
+    root->appendNew<Value>(proc, Return, Origin(), root->appendIntConstant(proc, Origin(), Int32, 42));
+    
+    auto code = compile(proc);
+    CHECK_EQ(invoke<int>(*code), 42);
+    checkDoesNotUseInstruction(*code, "lock");
+    checkDoesNotUseInstruction(*code, "mfence");
+    if (isARM64())
+        checkUsesInstruction(*code, "dmb    ish");
+    checkDoesNotUseInstruction(*code, "dmb    ishst");
+}
+
+void testTrappingLoad()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    int x = 42;
+    MemoryValue* value = root->appendNew<MemoryValue>(
+        proc, trapping(Load), Int32, Origin(),
+        root->appendNew<ConstPtrValue>(proc, Origin(), &x));
+    Effects expectedEffects;
+    expectedEffects.exitsSideways = true;
+    expectedEffects.controlDependent= true;
+    expectedEffects.reads = HeapRange::top();
+    CHECK_EQ(value->range(), HeapRange::top());
+    CHECK_EQ(value->effects(), expectedEffects);
+    value->setRange(HeapRange(0));
+    CHECK_EQ(value->range(), HeapRange(0));
+    CHECK_EQ(value->effects(), expectedEffects); // We still reads top!
+    root->appendNew<Value>(proc, Return, Origin(), value);
+    CHECK_EQ(compileAndRun<int>(proc), 42);
+    unsigned trapsCount = 0;
+    for (Air::BasicBlock* block : proc.code()) {
+        for (Air::Inst& inst : *block) {
+            if (inst.kind.traps)
+                trapsCount++;
+        }
+    }
+    CHECK_EQ(trapsCount, 1u);
+}
+
+void testTrappingStore()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    int x = 42;
+    MemoryValue* value = root->appendNew<MemoryValue>(
+        proc, trapping(Store), Origin(),
+        root->appendNew<Const32Value>(proc, Origin(), 111),
+        root->appendNew<ConstPtrValue>(proc, Origin(), &x));
+    Effects expectedEffects;
+    expectedEffects.exitsSideways = true;
+    expectedEffects.controlDependent= true;
+    expectedEffects.reads = HeapRange::top();
+    expectedEffects.writes = HeapRange::top();
+    CHECK_EQ(value->range(), HeapRange::top());
+    CHECK_EQ(value->effects(), expectedEffects);
+    value->setRange(HeapRange(0));
+    CHECK_EQ(value->range(), HeapRange(0));
+    expectedEffects.writes = HeapRange(0);
+    CHECK_EQ(value->effects(), expectedEffects); // We still reads top!
+    root->appendNew<Value>(proc, Return, Origin());
+    compileAndRun<int>(proc);
+    CHECK_EQ(x, 111);
+    unsigned trapsCount = 0;
+    for (Air::BasicBlock* block : proc.code()) {
+        for (Air::Inst& inst : *block) {
+            if (inst.kind.traps)
+                trapsCount++;
+        }
+    }
+    CHECK_EQ(trapsCount, 1u);
+}
+
+void testTrappingLoadAddStore()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    int x = 42;
+    ConstPtrValue* ptr = root->appendNew<ConstPtrValue>(proc, Origin(), &x);
+    root->appendNew<MemoryValue>(
+        proc, trapping(Store), Origin(),
+        root->appendNew<Value>(
+            proc, Add, Origin(),
+            root->appendNew<MemoryValue>(proc, trapping(Load), Int32, Origin(), ptr),
+            root->appendNew<Const32Value>(proc, Origin(), 3)),
+        ptr);
+    root->appendNew<Value>(proc, Return, Origin());
+    compileAndRun<int>(proc);
+    CHECK_EQ(x, 45);
+    bool traps = false;
+    for (Air::BasicBlock* block : proc.code()) {
+        for (Air::Inst& inst : *block) {
+            if (inst.kind.traps)
+                traps = true;
+        }
+    }
+    CHECK(traps);
+}
+
+void testTrappingLoadDCE()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    int x = 42;
+    root->appendNew<MemoryValue>(
+        proc, trapping(Load), Int32, Origin(),
+        root->appendNew<ConstPtrValue>(proc, Origin(), &x));
+    root->appendNew<Value>(proc, Return, Origin());
+    compileAndRun<int>(proc);
+    unsigned trapsCount = 0;
+    for (Air::BasicBlock* block : proc.code()) {
+        for (Air::Inst& inst : *block) {
+            if (inst.kind.traps)
+                trapsCount++;
+        }
+    }
+    CHECK_EQ(trapsCount, 1u);
+}
+
+void testTrappingStoreElimination()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    int x = 42;
+    Value* ptr = root->appendNew<ConstPtrValue>(proc, Origin(), &x);
+    root->appendNew<MemoryValue>(
+        proc, trapping(Store), Origin(),
+        root->appendNew<Const32Value>(proc, Origin(), 43),
+        ptr);
+    root->appendNew<MemoryValue>(
+        proc, trapping(Store), Origin(),
+        root->appendNew<Const32Value>(proc, Origin(), 44),
+        ptr);
+    root->appendNew<Value>(proc, Return, Origin());
+    compileAndRun<int>(proc);
+    unsigned storeCount = 0;
+    for (Value* value : proc.values()) {
+        if (MemoryValue::isStore(value->opcode()))
+            storeCount++;
+    }
+    CHECK_EQ(storeCount, 2u);
+}
+
+void testMoveConstants()
+{
+    auto check = [] (Procedure& proc) {
+        proc.resetReachability();
+        
+        if (shouldBeVerbose()) {
+            dataLog("IR before:\n");
+            dataLog(proc);
+        }
+        
+        moveConstants(proc);
+        
+        if (shouldBeVerbose()) {
+            dataLog("IR after:\n");
+            dataLog(proc);
+        }
+        
+        UseCounts useCounts(proc);
+        unsigned count = 0;
+        for (Value* value : proc.values()) {
+            if (useCounts.numUses(value) && value->hasInt64())
+                count++;
+        }
+        
+        if (count == 1)
+            return;
+        
+        crashLock.lock();
+        dataLog("Fail in testMoveConstants: got more than one Const64:\n");
+        dataLog(proc);
+        CRASH();
+    };
+
+    {
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+        Value* a = root->appendNew<MemoryValue>(
+            proc, Load, pointerType(), Origin(), 
+            root->appendNew<ConstPtrValue>(proc, Origin(), 0x123412341234));
+        Value* b = root->appendNew<MemoryValue>(
+            proc, Load, pointerType(), Origin(),
+            root->appendNew<ConstPtrValue>(proc, Origin(), 0x123412341334));
+        root->appendNew<CCallValue>(proc, Void, Origin(), a, b);
+        root->appendNew<Value>(proc, Return, Origin());
+        check(proc);
+    }
+    
+    {
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+        Value* x = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+        Value* a = root->appendNew<Value>(
+            proc, Add, Origin(), x, root->appendNew<ConstPtrValue>(proc, Origin(), 0x123412341234));
+        Value* b = root->appendNew<Value>(
+            proc, Add, Origin(), x, root->appendNew<ConstPtrValue>(proc, Origin(), -0x123412341234));
+        root->appendNew<CCallValue>(proc, Void, Origin(), a, b);
+        root->appendNew<Value>(proc, Return, Origin());
+        check(proc);
+    }
+}
+
+void testPCOriginMapDoesntInsertNops()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+
+    CCallHelpers::Label watchpointLabel;
+
+    PatchpointValue* patchpoint = root->appendNew<PatchpointValue>(proc, Void, Origin());
+    patchpoint->setGenerator(
+        [&] (CCallHelpers& jit, const StackmapGenerationParams&) {
+            watchpointLabel = jit.watchpointLabel();
+        });
+
+    patchpoint = root->appendNew<PatchpointValue>(proc, Void, Origin());
+    patchpoint->setGenerator(
+        [&] (CCallHelpers& jit, const StackmapGenerationParams&) {
+            CCallHelpers::Label labelIgnoringWatchpoints = jit.labelIgnoringWatchpoints();
+
+            CHECK(watchpointLabel == labelIgnoringWatchpoints);
+        });
+
+    root->appendNew<Value>(proc, Return, Origin());
+
+    compile(proc);
 }
 
 // Make sure the compiler does not try to optimize anything out.
@@ -14510,8 +14757,6 @@ void run(const char* filter)
         RUN(testBranchBitAndImmFusion(Load, Int32, 1, Air::BranchTest32, Air::Arg::Addr));
         RUN(testBranchBitAndImmFusion(Load, Int64, 1, Air::BranchTest32, Air::Arg::Addr));
         
-        RUN(testX86MFence());
-        RUN(testX86CompilerFence());
     }
 
     if (isARM64()) {
@@ -14519,6 +14764,17 @@ void run(const char* filter)
         RUN(testTernarySubInstructionSelection(Trunc, Int32, Air::Sub32));
     }
 
+    RUN(testMemoryFence());
+    RUN(testStoreFence());
+    RUN(testLoadFence());
+    RUN(testTrappingLoad());
+    RUN(testTrappingStore());
+    RUN(testTrappingLoadAddStore());
+    RUN(testTrappingLoadDCE());
+    RUN(testTrappingStoreElimination());
+    RUN(testMoveConstants());
+    RUN(testPCOriginMapDoesntInsertNops());
+    
     if (tasks.isEmpty())
         usage();
 

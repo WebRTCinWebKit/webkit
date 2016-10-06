@@ -397,9 +397,6 @@ public:
 
     NamedFlowCollection& namedFlows();
 
-    Element* elementFromPoint(int x, int y) { return elementFromPoint(LayoutPoint(x, y)); }
-    WEBCORE_EXPORT Element* elementFromPoint(const LayoutPoint& clientPoint);
-
     WEBCORE_EXPORT RefPtr<Range> caretRangeFromPoint(int x, int y);
     RefPtr<Range> caretRangeFromPoint(const LayoutPoint& clientPoint);
 
@@ -648,8 +645,8 @@ public:
     bool canNavigate(Frame* targetFrame);
     Frame* findUnsafeParentScrollPropagationBoundary();
 
-    CSSStyleSheet& elementSheet();
     bool usesStyleBasedEditability() const;
+    void setHasElementUsingStyleBasedEditability();
     
     virtual Ref<DocumentParser> createParser();
     DocumentParser* parser() const { return m_parser.get(); }
@@ -688,7 +685,7 @@ public:
     std::chrono::milliseconds elapsedTime() const;
     
     void setTextColor(const Color& color) { m_textColor = color; }
-    Color textColor() const { return m_textColor; }
+    const Color& textColor() const { return m_textColor; }
 
     const Color& linkColor() const { return m_linkColor; }
     const Color& visitedLinkColor() const { return m_visitedLinkColor; }
@@ -1363,8 +1360,6 @@ private:
 
     PageVisibilityState pageVisibilityState() const;
 
-    Node* nodeFromPoint(const LayoutPoint& clientPoint, LayoutPoint* localPoint = nullptr);
-
     template <CollectionType collectionType>
     Ref<HTMLCollection> ensureCachedCollection();
 
@@ -1446,7 +1441,7 @@ private:
 
     std::unique_ptr<DOMImplementation> m_implementation;
 
-    RefPtr<CSSStyleSheet> m_elementSheet;
+    bool m_hasElementUsingStyleBasedEditability { false };
 
     bool m_printing;
     bool m_paginatedForScreen;

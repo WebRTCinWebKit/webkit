@@ -43,6 +43,7 @@ struct OpInfo {
     explicit OpInfo(uintptr_t value) : m_value(static_cast<uint64_t>(value)) { }
 #endif
     explicit OpInfo(void* value) : m_value(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(value))) { }
+    explicit OpInfo(const void* value) : m_value(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(value))) { }
     uint64_t m_value;
 };
 

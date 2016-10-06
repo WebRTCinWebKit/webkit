@@ -54,7 +54,9 @@
 #if USE(GLX)
 #include "GLContextGLX.h"
 #include <gst/gl/x11/gstgldisplay_x11.h>
-#elif USE(EGL)
+#endif
+
+#if USE(EGL)
 #include "GLContextEGL.h"
 #include <gst/gl/egl/gstgldisplay_egl.h>
 #endif
@@ -72,6 +74,7 @@
 #if PLATFORM(X11) && GST_GL_HAVE_PLATFORM_EGL
 #undef None
 #endif // PLATFORM(X11) && GST_GL_HAVE_PLATFORM_EGL
+#include "VideoTextureCopierGStreamer.h"
 #endif // USE(GSTREAMER_GL)
 
 #if USE(TEXTURE_MAPPER_GL)
@@ -224,23 +227,12 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
     const gchar* contextType;
     gst_message_parse_context_type(message, &contextType);
 
-    if (!ensureGstGLContext())
+    GRefPtr<GstContext> elementContext = adoptGRef(requestGLContext(contextType, this));
+    if (!elementContext)
         return false;
 
-    if (!g_strcmp0(contextType, GST_GL_DISPLAY_CONTEXT_TYPE)) {
-        GRefPtr<GstContext> displayContext = adoptGRef(gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE));
-        gst_context_set_gl_display(displayContext.get(), m_glDisplay.get());
-        gst_element_set_context(GST_ELEMENT(message->src), displayContext.get());
-        return true;
-    }
-
-    if (!g_strcmp0(contextType, "gst.gl.app_context")) {
-        GRefPtr<GstContext> appContext = adoptGRef(gst_context_new("gst.gl.app_context", TRUE));
-        GstStructure* structure = gst_context_writable_structure(appContext.get());
-        gst_structure_set(structure, "context", GST_GL_TYPE_CONTEXT, m_glContext.get(), nullptr);
-        gst_element_set_context(GST_ELEMENT(message->src), appContext.get());
-        return true;
-    }
+    gst_element_set_context(GST_ELEMENT(message->src), elementContext.get());
+    return true;
 #else
     UNUSED_PARAM(message);
 #endif // USE(GSTREAMER_GL)
@@ -249,6 +241,27 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
 }
 
 #if USE(GSTREAMER_GL)
+GstContext* MediaPlayerPrivateGStreamerBase::requestGLContext(const gchar* contextType, MediaPlayerPrivateGStreamerBase* player)
+{
+    if (!player->ensureGstGLContext())
+        return nullptr;
+
+    if (!g_strcmp0(contextType, GST_GL_DISPLAY_CONTEXT_TYPE)) {
+        GstContext* displayContext = gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE);
+        gst_context_set_gl_display(displayContext, player->gstGLDisplay());
+        return displayContext;
+    }
+
+    if (!g_strcmp0(contextType, "gst.gl.app_context")) {
+        GstContext* appContext = gst_context_new("gst.gl.app_context", TRUE);
+        GstStructure* structure = gst_context_writable_structure(appContext);
+        gst_structure_set(structure, "context", GST_GL_TYPE_CONTEXT, player->gstGLContext(), nullptr);
+        return appContext;
+    }
+
+    return nullptr;
+}
+
 bool MediaPlayerPrivateGStreamerBase::ensureGstGLContext()
 {
     if (m_glContext)
@@ -262,13 +275,13 @@ bool MediaPlayerPrivateGStreamerBase::ensureGstGLContext()
             m_glDisplay = GST_GL_DISPLAY(gst_gl_display_x11_new_with_display(downcast<PlatformDisplayX11>(sharedDisplay).native()));
 #elif USE(EGL)
         if (is<PlatformDisplayX11>(sharedDisplay))
-            m_glDisplay = GST_GL_DISPLAY(gst_gl_display_egl_new_with_egl_display(downcast<PlatformDisplayX11>(sharedDisplay).native()));
+            m_glDisplay = GST_GL_DISPLAY(gst_gl_display_egl_new_with_egl_display(downcast<PlatformDisplayX11>(sharedDisplay).eglDisplay()));
 #endif
 #endif
 
 #if PLATFORM(WAYLAND)
         if (is<PlatformDisplayWayland>(sharedDisplay))
-            m_glDisplay = GST_GL_DISPLAY(gst_gl_display_egl_new_with_egl_display(downcast<PlatformDisplayWayland>(sharedDisplay).native()));
+            m_glDisplay = GST_GL_DISPLAY(gst_gl_display_egl_new_with_egl_display(downcast<PlatformDisplayWayland>(sharedDisplay).eglDisplay()));
 #endif
 
         ASSERT(m_glDisplay);
@@ -710,6 +723,7 @@ void MediaPlayerPrivateGStreamerBase::paintToTextureMapper(TextureMapper& textur
 #endif
 
 #if USE(GSTREAMER_GL)
+#if USE(CAIRO) && ENABLE(ACCELERATED_2D_CANVAS)
 // This should be called with the sample mutex locked.
 GLContext* MediaPlayerPrivateGStreamerBase::prepareContextForCairoPaint(GstVideoInfo& videoInfo, IntSize& size, IntSize& rotatedSize)
 {
@@ -776,12 +790,12 @@ bool MediaPlayerPrivateGStreamerBase::paintToCairoSurface(cairo_surface_t* outpu
 
     return true;
 }
+#endif // USE(CAIRO) && ENABLE(ACCELERATED_2D_CANVAS)
 
 bool MediaPlayerPrivateGStreamerBase::copyVideoTextureToPlatformTexture(GraphicsContext3D* context, Platform3DObject outputTexture, GC3Denum outputTarget, GC3Dint level, GC3Denum internalFormat, GC3Denum format, GC3Denum type, bool premultiplyAlpha, bool flipY)
 {
-#if !USE(CAIRO)
-    return false;
-#endif
+#if USE(GSTREAMER_GL)
+    UNUSED_PARAM(context);
 
     if (m_usingFallbackVideoSink)
         return false;
@@ -789,31 +803,33 @@ bool MediaPlayerPrivateGStreamerBase::copyVideoTextureToPlatformTexture(Graphics
     if (premultiplyAlpha)
         return false;
 
-    GstVideoInfo videoInfo;
-    IntSize size, rotatedSize;
     WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
-    GLContext* glContext = prepareContextForCairoPaint(videoInfo, size, rotatedSize);
-    if (!glContext)
+
+    GstVideoInfo videoInfo;
+    if (!getSampleVideoInfo(m_sample.get(), videoInfo))
         return false;
 
-    // Allocate uninitialized memory for the output texture.
-    context->bindTexture(outputTarget, outputTexture);
-    context->texImage2DDirect(outputTarget, level, internalFormat, rotatedSize.width(), rotatedSize.height(), 0, format, type, nullptr);
-
-    // cairo_gl_surface_create_for_texture sets these parameters to GL_NEAREST, so we need to backup them.
-    GC3Dint minFilter, magFilter;
-    context->getTexParameteriv(outputTarget, GL_TEXTURE_MIN_FILTER, &minFilter);
-    context->getTexParameteriv(outputTarget, GL_TEXTURE_MAG_FILTER, &magFilter);
-
-    RefPtr<cairo_surface_t> outputSurface = adoptRef(cairo_gl_surface_create_for_texture(glContext->cairoDevice(), CAIRO_CONTENT_COLOR_ALPHA, outputTexture, rotatedSize.width(), rotatedSize.height()));
-    if (!paintToCairoSurface(outputSurface.get(), glContext->cairoDevice(), videoInfo, size, rotatedSize, flipY))
+    GstBuffer* buffer = gst_sample_get_buffer(m_sample.get());
+    GstVideoFrame videoFrame;
+    if (!gst_video_frame_map(&videoFrame, &videoInfo, buffer, static_cast<GstMapFlags>(GST_MAP_READ | GST_MAP_GL)))
         return false;
 
-    context->bindTexture(outputTarget, outputTexture);
-    context->texParameteri(outputTarget, GraphicsContext3D::TEXTURE_MIN_FILTER, minFilter);
-    context->texParameteri(outputTarget, GraphicsContext3D::TEXTURE_MAG_FILTER, magFilter);
+    IntSize size(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
+    if (m_videoSourceOrientation.usesWidthAsHeight())
+        size = size.transposedSize();
+    unsigned textureID = *reinterpret_cast<unsigned*>(videoFrame.data[0]);
 
-    return true;
+    if (!m_videoTextureCopier)
+        m_videoTextureCopier = std::make_unique<VideoTextureCopierGStreamer>();
+
+    bool copied = m_videoTextureCopier->copyVideoTextureToPlatformTexture(textureID, size, outputTexture, outputTarget, level, internalFormat, format, type, flipY, m_videoSourceOrientation);
+
+    gst_video_frame_unmap(&videoFrame);
+
+    return copied;
+#else
+    return false;
+#endif
 }
 
 NativeImagePtr MediaPlayerPrivateGStreamerBase::nativeImageForCurrentTime()

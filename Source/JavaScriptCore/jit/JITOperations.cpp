@@ -1164,27 +1164,12 @@ UnusedPtr JIT_OPERATION operationHandleWatchdogTimer(ExecState* exec)
     return nullptr;
 }
 
-void JIT_OPERATION operationThrowStaticError(ExecState* exec, EncodedJSValue encodedValue, int32_t referenceErrorFlag)
-{
-    VM& vm = exec->vm();
-    NativeCallFrameTracer tracer(&vm, exec);
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    JSValue errorMessageValue = JSValue::decode(encodedValue);
-    RELEASE_ASSERT(errorMessageValue.isString());
-    String errorMessage = asString(errorMessageValue)->value(exec);
-    if (referenceErrorFlag)
-        throwException(exec, scope, createReferenceError(exec, errorMessage));
-    else
-        throwTypeError(exec, scope, errorMessage);
-}
-
-void JIT_OPERATION operationDebug(ExecState* exec, int32_t debugHookID)
+void JIT_OPERATION operationDebug(ExecState* exec, int32_t debugHookType)
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    vm.interpreter->debug(exec, static_cast<DebugHookID>(debugHookID));
+    vm.interpreter->debug(exec, static_cast<DebugHookType>(debugHookType));
 }
 
 #if ENABLE(DFG_JIT)
@@ -2165,14 +2150,11 @@ void JIT_OPERATION operationOSRWriteBarrier(ExecState* exec, JSCell* cell)
     vm->heap.writeBarrier(cell);
 }
 
-// NB: We don't include the value as part of the barrier because the write barrier elision
-// phase in the DFG only tracks whether the object being stored to has been barriered. It 
-// would be much more complicated to try to model the value being stored as well.
-void JIT_OPERATION operationUnconditionalWriteBarrier(ExecState* exec, JSCell* cell)
+void JIT_OPERATION operationWriteBarrierSlowPath(ExecState* exec, JSCell* cell)
 {
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
-    vm->heap.writeBarrier(cell);
+    vm->heap.writeBarrierSlowPath(cell);
 }
 
 void JIT_OPERATION lookupExceptionHandler(VM* vm, ExecState* exec)

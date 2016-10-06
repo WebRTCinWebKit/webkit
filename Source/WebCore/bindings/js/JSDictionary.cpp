@@ -44,7 +44,7 @@
 #include <wtf/MathExtras.h>
 #include <wtf/text/AtomicString.h>
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #include "JSMediaKeyError.h"
 #endif
 
@@ -69,6 +69,7 @@
 #endif
 
 #if ENABLE(IOS_TOUCH_EVENTS) || ENABLE(TOUCH_EVENTS)
+#include "JSTouch.h"
 #include "JSTouchList.h"
 #endif
 
@@ -184,7 +185,7 @@ void JSDictionary::convertValue(ExecState* state, JSValue value, RefPtr<DOMWindo
     VM& vm = state->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    auto* window = JSDOMWindow::toWrapped(*state, value);
+    auto* window = JSDOMWindow::toWrapped(value);
     if (UNLIKELY(!window) && !value.isUndefinedOrNull()) {
         throwVMTypeError(state, scope, "Dictionary member is not of type Window");
         return;
@@ -192,9 +193,9 @@ void JSDictionary::convertValue(ExecState* state, JSValue value, RefPtr<DOMWindo
     result = window;
 }
 
-void JSDictionary::convertValue(ExecState* state, JSValue value, RefPtr<EventTarget>& result)
+void JSDictionary::convertValue(ExecState*, JSValue value, RefPtr<EventTarget>& result)
 {
-    result = JSEventTarget::toWrapped(*state, value);
+    result = JSEventTarget::toWrapped(value);
 }
 
 void JSDictionary::convertValue(ExecState*, JSValue value, RefPtr<Node>& result)
@@ -255,7 +256,7 @@ void JSDictionary::convertValue(JSC::ExecState*, JSC::JSValue value, RefPtr<Uint
     result = toUint8Array(value);
 }
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 void JSDictionary::convertValue(JSC::ExecState*, JSC::JSValue value, RefPtr<MediaKeyError>& result)
 {
     result = JSMediaKeyError::toWrapped(value);
@@ -351,10 +352,35 @@ void JSDictionary::convertValue(JSC::ExecState*, JSC::JSValue value, RefPtr<Game
 }
 #endif
 
-#if ENABLE(IOS_TOUCH_EVENTS) || ENABLE(TOUCH_EVENTS)
+#if ENABLE(TOUCH_EVENTS) && !ENABLE(IOS_TOUCH_EVENTS)
 void JSDictionary::convertValue(JSC::ExecState*, JSC::JSValue value, RefPtr<TouchList>& result)
 {
     result = JSTouchList::toWrapped(value);
+}
+#endif
+
+#if ENABLE(IOS_TOUCH_EVENTS)
+void JSDictionary::convertValue(JSC::ExecState* exec, JSC::JSValue value, RefPtr<TouchList>& result)
+{
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    JSObject* object = value.getObject();
+    if (!object) {
+        result = nullptr;
+        return;
+    }
+
+    // Allow both TouchList and sequence<Touch> as input.
+    const ClassInfo* classInfo = object->classInfo();
+    if (classInfo == JSTouchList::info()) {
+        result = JSTouchList::toWrapped(value);
+        return;
+    }
+
+    auto touches = toRefNativeArray<Touch, JSTouch>(*exec, value);
+    RETURN_IF_EXCEPTION(scope, void());
+    result = TouchList::create(WTFMove(touches));
 }
 #endif
 

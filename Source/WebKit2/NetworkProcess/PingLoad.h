@@ -35,6 +35,7 @@ class PingLoad final : private NetworkDataTaskClient {
 public:
     PingLoad(const NetworkResourceLoadParameters& parameters)
         : m_timeoutTimer(*this, &PingLoad::timeoutTimerFired)
+        , m_shouldFollowRedirects(parameters.shouldFollowRedirects)
     {
         if (auto* networkSession = SessionTracker::networkSession(parameters.sessionID)) {
             m_task = NetworkDataTask::create(*networkSession, *this, parameters.request, parameters.allowStoredCredentials, parameters.contentSniffingPolicy, parameters.shouldClearReferrerOnHTTPSToHTTPRedirect);
@@ -48,10 +49,9 @@ public:
     }
     
 private:
-    void willPerformHTTPRedirection(WebCore::ResourceResponse&&, WebCore::ResourceRequest&&, RedirectCompletionHandler&& completionHandler) final
+    void willPerformHTTPRedirection(WebCore::ResourceResponse&&, WebCore::ResourceRequest&& request, RedirectCompletionHandler&& completionHandler) final
     {
-        completionHandler({ });
-        delete this;
+        completionHandler(m_shouldFollowRedirects ? request : WebCore::ResourceRequest());
     }
     void didReceiveChallenge(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler&& completionHandler) final
     {
@@ -83,6 +83,7 @@ private:
     
     RefPtr<NetworkDataTask> m_task;
     WebCore::Timer m_timeoutTimer;
+    bool m_shouldFollowRedirects;
 };
 
 }

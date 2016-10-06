@@ -36,6 +36,7 @@
 #include "CSSCustomPropertyValue.h"
 #include "CSSFontFeatureValue.h"
 #include "CSSFontValue.h"
+#include "CSSFontVariationValue.h"
 #include "CSSFunctionValue.h"
 #include "CSSLineBoxContainValue.h"
 #include "CSSParser.h"
@@ -53,7 +54,7 @@
 #include "CursorList.h"
 #include "Document.h"
 #include "ExceptionCode.h"
-#include "FontFeatureSettings.h"
+#include "FontTaggedSettings.h"
 #include "HTMLFrameOwnerElement.h"
 #include "Pair.h"
 #include "PseudoElement.h"
@@ -62,6 +63,7 @@
 #include "RenderBox.h"
 #include "RenderStyle.h"
 #include "SVGElement.h"
+#include "Settings.h"
 #include "ShapeValue.h"
 #include "StyleInheritedData.h"
 #include "StyleProperties.h"
@@ -2876,9 +2878,23 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
                 return cssValuePool.createIdentifierValue(CSSValueNormal);
             RefPtr<CSSValueList> list = CSSValueList::createCommaSeparated();
             for (auto& feature : featureSettings)
-                list->append(CSSFontFeatureValue::create(FontFeatureTag(feature.tag()), feature.value()));
+                list->append(CSSFontFeatureValue::create(FontTag(feature.tag()), feature.value()));
             return list;
         }
+#if ENABLE(VARIATION_FONTS)
+        case CSSPropertyFontVariationSettings: {
+            if (styledNode->document().settings() && styledNode->document().settings()->variationFontsEnabled()) {
+                const FontVariationSettings& variationSettings = style->fontDescription().variationSettings();
+                if (variationSettings.isEmpty())
+                    return cssValuePool.createIdentifierValue(CSSValueNormal);
+                RefPtr<CSSValueList> list = CSSValueList::createCommaSeparated();
+                for (auto& feature : variationSettings)
+                    list->append(CSSFontVariationValue::create(feature.tag(), feature.value()));
+                return list;
+            }
+            break;
+        }
+#endif
 #if ENABLE(CSS_GRID_LAYOUT)
         case CSSPropertyGridAutoFlow: {
             RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();

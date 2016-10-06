@@ -198,6 +198,8 @@ namespace JSC { namespace DFG {
     macro(PutGetterSetterById, NodeMustGenerate) \
     macro(PutGetterByVal, NodeMustGenerate) \
     macro(PutSetterByVal, NodeMustGenerate) \
+    macro(DefineDataProperty, NodeMustGenerate | NodeHasVarArgs) \
+    macro(DefineAccessorProperty, NodeMustGenerate | NodeHasVarArgs) \
     macro(DeleteById, NodeResultBoolean | NodeMustGenerate) \
     macro(DeleteByVal, NodeResultBoolean | NodeMustGenerate) \
     macro(CheckStructure, NodeMustGenerate) \
@@ -348,7 +350,7 @@ namespace JSC { namespace DFG {
     \
     /* These aren't terminals but always exit */ \
     macro(Throw, NodeMustGenerate) \
-    macro(ThrowReferenceError, NodeMustGenerate) \
+    macro(ThrowStaticError, NodeMustGenerate) \
     \
     /* Block terminals. */\
     macro(Jump, NodeMustGenerate) \
@@ -375,8 +377,9 @@ namespace JSC { namespace DFG {
     \
     /* Checks the watchdog timer. If the timer has fired, we call operation operationHandleWatchdogTimer*/ \
     macro(CheckWatchdogTimer, NodeMustGenerate) \
-    /* Write barriers ! */\
+    /* Write barriers */\
     macro(StoreBarrier, NodeMustGenerate) \
+    macro(FencedStoreBarrier, NodeMustGenerate) \
     \
     /* For-in enumeration opcodes */\
     macro(GetEnumerableLength, NodeMustGenerate | NodeResultJS) \
@@ -393,6 +396,11 @@ namespace JSC { namespace DFG {
     macro(GetMapBucket, NodeResultJS) \
     macro(LoadFromJSMapBucket, NodeResultJS) \
     macro(IsNonEmptyMapBucket, NodeResultBoolean) \
+    \
+    macro(ToLowerCase, NodeResultJS) \
+    /* Nodes for DOM JIT */\
+    macro(CheckDOM, NodeMustGenerate) \
+    macro(CallDOM, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
 
 // This enum generates a monotonically increasing id for all Node types,
 // and is used by the subsequent enum to fill out the id (as accessed via the NodeIdMask).

@@ -1660,7 +1660,7 @@ void Editor::setBaseWritingDirection(WritingDirection direction)
         if (direction == NaturalWritingDirection)
             return;
         downcast<HTMLTextFormControlElement>(*focusedElement).setAttributeWithoutSynchronization(dirAttr, direction == LeftToRightWritingDirection ? "ltr" : "rtl");
-        focusedElement->dispatchInputEvent();
+        focusedElement->dispatchInputEvent(emptyString());
         document().updateStyleIfNeeded();
         return;
     }
@@ -3149,18 +3149,6 @@ bool Editor::findString(const String& target, FindOptions options)
         m_frame.selection().revealSelection();
 
     return true;
-}
-
-RefPtr<Range> Editor::findStringAndScrollToVisible(const String& target, Range* previousMatch, FindOptions options)
-{
-    RefPtr<Range> nextMatch = rangeOfString(target, previousMatch, options);
-    if (!nextMatch)
-        return nullptr;
-
-    nextMatch->firstNode()->renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, nextMatch->absoluteBoundingBox(),
-        ScrollAlignment::alignCenterIfNeeded, ScrollAlignment::alignCenterIfNeeded);
-
-    return nextMatch;
 }
 
 RefPtr<Range> Editor::rangeOfString(const String& target, Range* referenceRange, FindOptions options)

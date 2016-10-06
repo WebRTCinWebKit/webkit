@@ -181,6 +181,8 @@ typedef const char* optionString;
     v(bool, testTheFTL, false, Normal, nullptr) \
     v(bool, verboseSanitizeStack, false, Normal, nullptr) \
     v(bool, useGenerationalGC, true, Normal, nullptr) \
+    v(bool, useConcurrentBarriers, true, Normal, nullptr) \
+    v(bool, forceFencedBarrier, false, Normal, nullptr) \
     v(bool, scribbleFreeCells, false, Normal, nullptr) \
     v(double, sizeClassProgression, 1.4, Normal, nullptr) \
     v(unsigned, largeAllocationCutoff, 100000, Normal, nullptr) \
@@ -387,7 +389,7 @@ typedef const char* optionString;
     v(optionString, llintStatsFile, nullptr, Configurable, "File to collect LLInt statistics in") \
     \
     v(bool, useSourceProviderCache, true, Normal, "If false, the parser will not use the source provider cache. It's good to verify everything works when this is false. Because the cache is so successful, it can mask bugs.") \
-    v(bool, useCodeCache, true, Normal, "If false, the parser will not use the code cache.") \
+    v(bool, useCodeCache, true, Normal, "If false, the unlinked byte code cache will not be used.") \
 
 enum OptionEquivalence {
     SameOption,

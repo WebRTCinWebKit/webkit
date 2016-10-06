@@ -64,6 +64,7 @@ plugins/reloadplugins-and-pages.html
 
 # These tests require touch support
 fast/events/touch [ Skip ]
+imported/w3c/web-platform-tests/touch-events [ Skip ]
 
 # No button tracked
 fast/events/mouseover-button.html
@@ -205,6 +206,8 @@ fast/mediastream/RTCPeerConnection-media-setup-single-dialog.html
 fast/mediastream/RTCPeerConnection-media-setup-two-dialogs.html
 fast/mediastream/RTCPeerConnection-media-setup-callbacks-single-dialog.html
 fast/mediastream/RTCPeerConnection-legacy-stream-based-api.html
+fast/mediastream/RTCPeerConnection-icecandidate-event.html
+fast/mediastream/RTCPeerConnection-iceconnectionstatechange-event.html
 
 # Asserts in debug.
 [ Debug ] fast/images/large-size-image-crash.html [ Skip ]
@@ -1398,7 +1401,7 @@ webkit.org/b/158889 media/video-controls-show-on-kb-or-ax-event.html [ Pass Fail
 
 webkit.org/b/159379 fast/history/page-cache-webdatabase-pending-transaction.html [ Pass Failure ]
 
-webkit.org/b/158747 [ ElCapitan ] media/restore-from-page-cache.html [ Pass Failure ]
+webkit.org/b/158747 media/restore-from-page-cache.html [ Pass Failure ]
 
 # See also https://bugs.webkit.org/show_bug.cgi?id=162494
 webkit.org/b/151287 [ ElCapitan+ ] media/controls/inline-elements-dropoff-order.html [ Failure ]
@@ -1456,3 +1459,11 @@ webkit.org/b/162523 [ Sierra+ ] imported/w3c/web-platform-tests/media-source/med
 webkit.org/b/162626 imported/w3c/web-platform-tests/media-source/mediasource-liveseekable.html [ Pass Failure ]
 
 webkit.org/b/162647 [ Sierra+ ] http/tests/xmlhttprequest/onabort-response-getters.html [ Pass Failure ]
+
+webkit.org/b/162830 [ Debug ] fast/events/tabindex-focus-blur-all.html [ Pass Timeout ]
+
+webkit.org/b/127116 [ Debug ] svg/custom/animate-initial-pause-unpause.html [ Pass Failure ]
+
+# rdar://problem/28586837
+fast/text/variations/order.html [ Crash ]
+animations/font-variation-settings-order.html [ Crash ]

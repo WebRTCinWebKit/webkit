@@ -76,6 +76,8 @@ public:
             m_modifiers |= Modifier::AltKey;
         if (webEvent.metaKey())
             m_modifiers |= Modifier::MetaKey;
+        if (webEvent.capsLockKey())
+            m_modifiers |= Modifier::CapsLockKey;
 
         m_timestamp = webEvent.timestamp();
 
@@ -127,6 +129,8 @@ public:
             m_modifiers |= Modifier::AltKey;
         if (webEvent.metaKey())
             m_modifiers |= Modifier::MetaKey;
+        if (webEvent.capsLockKey())
+            m_modifiers |= Modifier::CapsLockKey;
 
         m_timestamp = webEvent.timestamp();
 
@@ -185,16 +189,22 @@ public:
             m_modifiers |= Modifier::AltKey;
         if (webEvent.metaKey())
             m_modifiers |= Modifier::MetaKey;
+        if (webEvent.capsLockKey())
+            m_modifiers |= Modifier::CapsLockKey;
 
         m_timestamp = webEvent.timestamp();
 
         // PlatformKeyboardEvent
         m_text = webEvent.text();
         m_unmodifiedText = webEvent.unmodifiedText();
+#if ENABLE(KEYBOARD_KEY_ATTRIBUTE)
+        m_key = webEvent.key();
+#endif
+#if ENABLE(KEYBOARD_CODE_ATTRIBUTE)
+        m_code = webEvent.code();
+#endif
         m_keyIdentifier = webEvent.keyIdentifier();
         m_windowsVirtualKeyCode = webEvent.windowsVirtualKeyCode();
-        m_nativeVirtualKeyCode = webEvent.nativeVirtualKeyCode();
-        m_macCharCode = webEvent.macCharCode();
 #if USE(APPKIT) || PLATFORM(GTK)
         m_handledByInputMethod = webEvent.handledByInputMethod();
         m_commands = webEvent.commands();
@@ -245,7 +255,7 @@ public:
 WebKit2PlatformTouchPoint(const WebPlatformTouchPoint& webTouchPoint)
     : PlatformTouchPoint(webTouchPoint.identifier(), webTouchPoint.location(), touchEventType(webTouchPoint)
 #if ENABLE(IOS_TOUCH_EVENTS)
-        , webTouchPoint.force(), webTouchPoint.altitudeAngle(), webTouchPoint.azimuthAngle(), webPlatformTouchTypeToPlatform(webTouchPoint.touchType())
+        , webTouchPoint.radiusX(), webTouchPoint.radiusY(), webTouchPoint.rotationAngle(), webTouchPoint.force(), webTouchPoint.altitudeAngle(), webTouchPoint.azimuthAngle(), webPlatformTouchTypeToPlatform(webTouchPoint.touchType())
 #endif
     )
 {
@@ -320,6 +330,8 @@ public:
             m_modifiers |= Modifier::AltKey;
         if (webEvent.metaKey())
             m_modifiers |= Modifier::MetaKey;
+        if (webEvent.capsLockKey())
+            m_modifiers |= Modifier::CapsLockKey;
 
         m_timestamp = webEvent.timestamp();
 
@@ -377,6 +389,8 @@ public:
             m_modifiers |= Modifier::AltKey;
         if (webEvent.metaKey())
             m_modifiers |= Modifier::MetaKey;
+        if (webEvent.capsLockKey())
+            m_modifiers |= Modifier::CapsLockKey;
 
         m_timestamp = webEvent.timestamp();
 

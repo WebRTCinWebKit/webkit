@@ -24,7 +24,7 @@
      */
 
 [
-    Conditional=ENCRYPTED_MEDIA_V2,
+    Conditional=LEGACY_ENCRYPTED_MEDIA,
     InterfaceName=WebKitMediaKeySession,
     ActiveDOMObject,
 ] interface MediaKeySession : EventTarget {
@@ -36,7 +36,7 @@
     readonly attribute DOMString sessionId;
 
     // session operations
-    [RaisesException] void update(Uint8Array key);
+    [MayThrowLegacyException] void update(Uint8Array key);
     void close();
     
     attribute EventHandler onwebkitkeyadded;

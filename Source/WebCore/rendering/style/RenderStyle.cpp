@@ -1189,10 +1189,25 @@ void RenderStyle::setListStyleImage(PassRefPtr<StyleImage> v)
         rareInheritedData.access()->listStyleImage = v;
 }
 
-Color RenderStyle::color() const { return inherited->color; }
-Color RenderStyle::visitedLinkColor() const { return inherited->visitedLinkColor; }
-void RenderStyle::setColor(const Color& v) { SET_VAR(inherited, color, v); }
-void RenderStyle::setVisitedLinkColor(const Color& v) { SET_VAR(inherited, visitedLinkColor, v); }
+const Color& RenderStyle::color() const
+{
+    return inherited->color;
+}
+
+const Color& RenderStyle::visitedLinkColor() const
+{
+    return inherited->visitedLinkColor;
+}
+
+void RenderStyle::setColor(const Color& v)
+{
+    SET_VAR(inherited, color, v);
+}
+
+void RenderStyle::setVisitedLinkColor(const Color& v)
+{
+    SET_VAR(inherited, visitedLinkColor, v);
+}
 
 float RenderStyle::horizontalBorderSpacing() const { return inherited->horizontal_border_spacing; }
 float RenderStyle::verticalBorderSpacing() const { return inherited->vertical_border_spacing; }
@@ -1534,6 +1549,18 @@ void RenderStyle::setFontSize(float size)
     setFontDescription(description);
     fontCascade().update(currentFontSelector);
 }
+
+#if ENABLE(VARIATION_FONTS)
+void RenderStyle::setFontVariationSettings(FontVariationSettings settings)
+{
+    FontSelector* currentFontSelector = fontCascade().fontSelector();
+    auto description = fontDescription();
+    description.setVariationSettings(WTFMove(settings));
+
+    setFontDescription(description);
+    fontCascade().update(currentFontSelector);
+}
+#endif
 
 void RenderStyle::getShadowExtent(const ShadowData* shadow, LayoutUnit &top, LayoutUnit &right, LayoutUnit &bottom, LayoutUnit &left) const
 {

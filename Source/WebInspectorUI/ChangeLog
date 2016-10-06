@@ -1,3 +1,150 @@
+2016-10-02  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Clicking twice on the color swatch square should hide the color picker
+        https://bugs.webkit.org/show_bug.cgi?id=162759
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/InlineSwatch.js:
+        (WebInspector.InlineSwatch):
+        (WebInspector.InlineSwatch.prototype.didDismissPopover):
+        (WebInspector.InlineSwatch.prototype._swatchElementClicked):
+        Remove the "click" event listener when a popover is presented to prevent improper
+        interaction.  Add the event listener back when the popover is dismissed.
+
+2016-10-02  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Exception thrown when hovering network waterfall graphs during reload
+        https://bugs.webkit.org/show_bug.cgi?id=162850
+        <rdar://problem/28579653>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode.prototype._mouseoverRecordBar):
+        Check that the node's data grid reference is valid before use.
+        (WebInspector.ResourceTimelineDataGridNode):
+
+2016-10-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Selection does not show up over execution highlight ranges
+        https://bugs.webkit.org/show_bug.cgi?id=162844
+        <rdar://problem/28579121>
+
+        Reviewed by Matt Baker.
+
+        * Scripts/update-codemirror-resources.rb:
+        * UserInterface/External/CodeMirror/mark-selection.js: Added.
+        * UserInterface/Main.html:
+        New add-on that makes selection a text marker so it can be styled
+        at the same level as other text markers.
+
+        * UserInterface/Views/TextEditor.css:
+        (.text-editor > .CodeMirror .execution-range-highlight:not(.CodeMirror-selectedtext)):
+        Don't use execution-range-highlight styles if the text is selected.
+
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor):
+        Enable the text selection as text markers addon.
+
+2016-09-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Make debugger stepping highlights work in inline <script>s
+        https://bugs.webkit.org/show_bug.cgi?id=162753
+        <rdar://problem/28551332>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/TextRange.js:
+        (WebInspector.TextRange.prototype.contains):
+        Check if a given line/column falls within this range.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._getAssociatedScript):
+        If we are in a Document resource find the associated script at a given position.
+
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorExecutionHighlightRange):
+        When comparing offsets to SyntaxTree offsets, the SyntaxTree's offset of 0 is the
+        first character of the Script, which differs from the current SourceCode's offset.
+        Adjust the offset by the Script's startOffset.
+
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor.prototype.currentPositionToOriginalPosition):
+        (WebInspector.TextEditor.prototype._updateExecutionRangeHighlight):
+        Pass both the original offset and original position to the delegate.
+
+2016-09-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Stepping through `a(); b(); c();` it is unclear where we are and what is about to execute
+        https://bugs.webkit.org/show_bug.cgi?id=161658
+        <rdar://problem/28181254>
+
+        Reviewed by Geoffrey Garen.
+
+        * UserInterface/Models/Script.js:
+        (WebInspector.Script.prototype.requestScriptSyntaxTree):
+        Fix first calls to requestScriptSyntaxTree. They were getting an uncaught
+        exception because the content argument was missing.
+
+        * UserInterface/Models/ScriptSyntaxTree.js:
+        (WebInspector.ScriptSyntaxTree.prototype.containersOfOffset):
+        Find all AST nodes that contain a particular offset.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor):
+        (WebInspector.SourceCodeTextEditor.prototype.close):
+        (WebInspector.SourceCodeTextEditor.prototype._activeCallFrameDidChange):
+        (WebInspector.SourceCodeTextEditor.prototype._activeCallFrameSourceCodeLocationChanged):
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorExecutionHighlightRange):
+        Provide a good highlight range for a given offset. This is normally the start
+        of a statement/expression, inside a statement/expression, or the closing brace
+        of a function (leaving a function). Provide good ranges for each of these.
+
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor):
+        (WebInspector.TextEditor.set string.update):
+        (WebInspector.TextEditor.prototype.set string):
+        (WebInspector.TextEditor.prototype.setExecutionLineAndColumn):
+        (WebInspector.TextEditor.prototype.revealPosition.revealAndHighlightLine):
+        (WebInspector.TextEditor.prototype.revealPosition):
+        (WebInspector.TextEditor.prototype.currentPositionToOriginalOffset):
+        (WebInspector.TextEditor.prototype._updateAfterFormatting):
+        (WebInspector.TextEditor.prototype.set executionLineNumber): Deleted.
+        (WebInspector.TextEditor.prototype.set executionColumnNumber): Deleted.
+        (WebInspector.TextEditor.prototype._updateExecutionLine.update): Deleted.
+        Always set the execution line and column together, to simplify how we update highlights.
+
+        (WebInspector.TextEditor.prototype._clearMultilineExecutionLineHighlights):
+        (WebInspector.TextEditor.prototype._updateExecutionLine):
+        When updating the main highlight clear any multi-line highlights.
+
+        (WebInspector.TextEditor.prototype._updateExecutionRangeHighlight):
+        Ask the delegate for a specific highlight range. If provided use that range,
+        otherwise just highlight the end of the line. Once we know the range, if it
+        is multiple lines, give the extra lines the full line highlight as well.
+        Also make adjustments, such as not highlighting trailing whitespace.
+
+        * UserInterface/Views/TextEditor.css:
+        (.text-editor > .CodeMirror .execution-line.primary .CodeMirror-linenumber::after):
+        (.text-editor > .CodeMirror .execution-line):
+        (.text-editor > .CodeMirror .execution-line .CodeMirror-matchingbracket):
+        (.text-editor > .CodeMirror .execution-range-highlight):
+        Styles for execution lines and execution range highlights.
+
+2016-09-29  Aaron Chu  <aaron_chu@apple.com>
+
+        Web Inspector: AXI: linkified refs to #document and #text are not usually navigable nodes; consider delinkifying them
+        https://bugs.webkit.org/show_bug.cgi?id=130600
+        <rdar://problem/16391333>
+
+        Reviewed by Brian Burg.
+
+        Removing link style for non-navigable nodes by first
+        checking nodeType of the node.
+
+        * UserInterface/Base/DOMUtilities.js:
+        (WebInspector.linkifyNodeReference):
+
 2016-09-27  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: Refreshing while in Timelines-tab causes negative timestamps in Network-tab

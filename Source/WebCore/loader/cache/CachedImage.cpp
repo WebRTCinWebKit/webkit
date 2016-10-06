@@ -102,29 +102,28 @@ void CachedImage::setBodyDataFrom(const CachedResource& resource)
         m_svgImageCache = std::make_unique<SVGImageCache>(&downcast<SVGImage>(*m_image));
 }
 
-void CachedImage::didAddClient(CachedResourceClient* client)
+void CachedImage::didAddClient(CachedResourceClient& client)
 {
     if (m_data && !m_image && !errorOccurred()) {
         createImage();
         m_image->setData(m_data.copyRef(), true);
     }
 
-    ASSERT(client->resourceClientType() == CachedImageClient::expectedType());
+    ASSERT(client.resourceClientType() == CachedImageClient::expectedType());
     if (m_image && !m_image->isNull())
-        static_cast<CachedImageClient*>(client)->imageChanged(this);
+        static_cast<CachedImageClient&>(client).imageChanged(this);
 
     CachedResource::didAddClient(client);
 }
 
-void CachedImage::didRemoveClient(CachedResourceClient* client)
+void CachedImage::didRemoveClient(CachedResourceClient& client)
 {
-    ASSERT(client);
-    ASSERT(client->resourceClientType() == CachedImageClient::expectedType());
+    ASSERT(client.resourceClientType() == CachedImageClient::expectedType());
 
-    m_pendingContainerSizeRequests.remove(static_cast<CachedImageClient*>(client));
+    m_pendingContainerSizeRequests.remove(&static_cast<CachedImageClient&>(client));
 
     if (m_svgImageCache)
-        m_svgImageCache->removeClientFromCache(static_cast<CachedImageClient*>(client));
+        m_svgImageCache->removeClientFromCache(&static_cast<CachedImageClient&>(client));
 
     CachedResource::didRemoveClient(client);
 }
@@ -450,12 +449,13 @@ void CachedImage::destroyDecodedData()
         m_image->destroyDecodedData();
 }
 
-void CachedImage::decodedSizeChanged(const Image* image, int delta)
+void CachedImage::decodedSizeChanged(const Image* image, long long delta)
 {
     if (!image || image != m_image)
         return;
-    
-    setDecodedSize(decodedSize() + delta);
+
+    ASSERT(delta >= 0 || decodedSize() + delta >= 0);
+    setDecodedSize(static_cast<unsigned>(decodedSize() + delta));
 }
 
 void CachedImage::didDraw(const Image* image)

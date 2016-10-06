@@ -38,6 +38,7 @@
 #include "DFGToFTLDeferredCompilationCallback.h"
 #include "DFGToFTLForOSREntryDeferredCompilationCallback.h"
 #include "DFGWorklist.h"
+#include "DefinePropertyAttributes.h"
 #include "DirectArguments.h"
 #include "FTLForOSREntryJITCode.h"
 #include "FTLOSREntry.h"
@@ -994,6 +995,98 @@ void JIT_OPERATION operationPutByValWithThis(ExecState* exec, EncodedJSValue enc
     putWithThis<false>(exec, encodedBase, encodedThis, encodedValue, property);
 }
 
+ALWAYS_INLINE static void defineDataProperty(ExecState* exec, VM& vm, JSObject* base, const Identifier& propertyName, JSValue value, int32_t attributes)
+{
+    PropertyDescriptor descriptor = toPropertyDescriptor(value, jsUndefined(), jsUndefined(), DefinePropertyAttributes(attributes));
+    ASSERT((descriptor.attributes() & Accessor) || (!descriptor.isAccessorDescriptor()));
+    if (base->methodTable(vm)->defineOwnProperty == JSObject::defineOwnProperty)
+        JSObject::defineOwnProperty(base, exec, propertyName, descriptor, true);
+    else
+        base->methodTable(vm)->defineOwnProperty(base, exec, propertyName, descriptor, true);
+}
+
+void JIT_OPERATION operationDefineDataProperty(ExecState* exec, JSObject* base, EncodedJSValue encodedProperty, EncodedJSValue encodedValue, int32_t attributes)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    Identifier propertyName = JSValue::decode(encodedProperty).toPropertyKey(exec);
+    RETURN_IF_EXCEPTION(scope, void());
+    defineDataProperty(exec, vm, base, propertyName, JSValue::decode(encodedValue), attributes);
+}
+
+void JIT_OPERATION operationDefineDataPropertyString(ExecState* exec, JSObject* base, JSString* property, EncodedJSValue encodedValue, int32_t attributes)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    Identifier propertyName = property->toIdentifier(exec);
+    RETURN_IF_EXCEPTION(scope, void());
+    defineDataProperty(exec, vm, base, propertyName, JSValue::decode(encodedValue), attributes);
+}
+
+void JIT_OPERATION operationDefineDataPropertyStringIdent(ExecState* exec, JSObject* base, UniquedStringImpl* property, EncodedJSValue encodedValue, int32_t attributes)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    defineDataProperty(exec, vm, base, Identifier::fromUid(&vm, property), JSValue::decode(encodedValue), attributes);
+}
+
+void JIT_OPERATION operationDefineDataPropertySymbol(ExecState* exec, JSObject* base, Symbol* property, EncodedJSValue encodedValue, int32_t attributes)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    defineDataProperty(exec, vm, base, Identifier::fromUid(property->privateName()), JSValue::decode(encodedValue), attributes);
+}
+
+ALWAYS_INLINE static void defineAccessorProperty(ExecState* exec, VM& vm, JSObject* base, const Identifier& propertyName, JSObject* getter, JSObject* setter, int32_t attributes)
+{
+    PropertyDescriptor descriptor = toPropertyDescriptor(jsUndefined(), getter, setter, DefinePropertyAttributes(attributes));
+    ASSERT((descriptor.attributes() & Accessor) || (!descriptor.isAccessorDescriptor()));
+    if (base->methodTable(vm)->defineOwnProperty == JSObject::defineOwnProperty)
+        JSObject::defineOwnProperty(base, exec, propertyName, descriptor, true);
+    else
+        base->methodTable(vm)->defineOwnProperty(base, exec, propertyName, descriptor, true);
+}
+
+void JIT_OPERATION operationDefineAccessorProperty(ExecState* exec, JSObject* base, EncodedJSValue encodedProperty, JSObject* getter, JSObject* setter, int32_t attributes)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    Identifier propertyName = JSValue::decode(encodedProperty).toPropertyKey(exec);
+    RETURN_IF_EXCEPTION(scope, void());
+    defineAccessorProperty(exec, vm, base, propertyName, getter, setter, attributes);
+}
+
+void JIT_OPERATION operationDefineAccessorPropertyString(ExecState* exec, JSObject* base, JSString* property, JSObject* getter, JSObject* setter, int32_t attributes)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    Identifier propertyName = property->toIdentifier(exec);
+    RETURN_IF_EXCEPTION(scope, void());
+    defineAccessorProperty(exec, vm, base, propertyName, getter, setter, attributes);
+}
+
+void JIT_OPERATION operationDefineAccessorPropertyStringIdent(ExecState* exec, JSObject* base, UniquedStringImpl* property, JSObject* getter, JSObject* setter, int32_t attributes)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    defineAccessorProperty(exec, vm, base, Identifier::fromUid(&vm, property), getter, setter, attributes);
+}
+
+void JIT_OPERATION operationDefineAccessorPropertySymbol(ExecState* exec, JSObject* base, Symbol* property, JSObject* getter, JSObject* setter, int32_t attributes)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    defineAccessorProperty(exec, vm, base, Identifier::fromUid(property->privateName()), getter, setter, attributes);
+}
+
 char* JIT_OPERATION operationNewArray(ExecState* exec, Structure* arrayStructure, void* buffer, size_t size)
 {
     VM* vm = &exec->vm();
@@ -1021,7 +1114,7 @@ char* JIT_OPERATION operationNewArrayWithSize(ExecState* exec, Structure* arrayS
 
     JSArray* result;
     if (butterfly)
-        result = JSArray::createWithButterfly(vm, arrayStructure, butterfly);
+        result = JSArray::createWithButterfly(vm, nullptr, arrayStructure, butterfly);
     else
         result = JSArray::create(vm, arrayStructure, size);
     return bitwise_cast<char*>(result);
@@ -1419,6 +1512,22 @@ StringImpl* JIT_OPERATION operationResolveRope(ExecState* exec, JSString* string
     NativeCallFrameTracer tracer(&vm, exec);
 
     return string->value(exec).impl();
+}
+
+JSString* JIT_OPERATION operationToLowerCase(ExecState* exec, JSString* string, uint32_t failingIndex)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    const String& inputString = string->value(exec);
+    RETURN_IF_EXCEPTION(scope, nullptr);
+    String lowercasedString = inputString.is8Bit() ? inputString.convertToLowercaseWithoutLocaleStartingAtFailingIndex8Bit(failingIndex) : inputString.convertToLowercaseWithoutLocale();
+    if (lowercasedString.impl() == inputString.impl())
+        return string;
+    scope.release();
+    return jsString(exec, lowercasedString);
 }
 
 JSString* JIT_OPERATION operationSingleCharacterString(ExecState* exec, int32_t character)

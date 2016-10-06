@@ -108,6 +108,10 @@ InternalSettings::Backup::Backup(Settings& settings)
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
     , m_indexedDBWorkersEnabled(RuntimeEnabledFeatures::sharedFeatures().indexedDBWorkersEnabled())
 #endif
+#if ENABLE(VARIATION_FONTS)
+    , m_variationFontsEnabled(settings.variationFontsEnabled())
+#endif
+    , m_inputEventsEnabled(settings.inputEventsEnabled())
     , m_userInterfaceDirectionPolicy(settings.userInterfaceDirectionPolicy())
     , m_systemLayoutDirection(settings.systemLayoutDirection())
     , m_pdfImageCachingPolicy(settings.pdfImageCachingPolicy())
@@ -183,6 +187,10 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
     RuntimeEnabledFeatures::sharedFeatures().setIndexedDBWorkersEnabled(m_indexedDBWorkersEnabled);
 #endif
+#if ENABLE(VARIATION_FONTS)
+    settings.setVariationFontsEnabled(m_variationFontsEnabled);
+#endif
+    settings.setInputEventsEnabled(m_inputEventsEnabled);
     settings.setUserInterfaceDirectionPolicy(m_userInterfaceDirectionPolicy);
     settings.setSystemLayoutDirection(m_systemLayoutDirection);
     settings.setPdfImageCachingPolicy(m_pdfImageCachingPolicy);
@@ -647,6 +655,28 @@ void InternalSettings::setSystemLayoutDirection(const String& direction, Excepti
 void InternalSettings::setAllowsAnySSLCertificate(bool allowsAnyCertificate)
 {
     Settings::setAllowsAnySSLCertificate(allowsAnyCertificate);
+}
+
+bool InternalSettings::variationFontsEnabled(ExceptionCode& ec)
+{
+#if ENABLE(VARIATION_FONTS)
+    InternalSettingsGuardForSettingsReturn(true);
+    return settings()->variationFontsEnabled();
+#else
+    UNUSED_PARAM(ec);
+    return false;
+#endif
+}
+
+void InternalSettings::setVariationFontsEnabled(bool enabled, ExceptionCode& ec)
+{
+#if ENABLE(VARIATION_FONTS)
+    InternalSettingsGuardForSettings();
+    settings()->setVariationFontsEnabled(enabled);
+#else
+    UNUSED_PARAM(enabled);
+    UNUSED_PARAM(ec);
+#endif
 }
 
 // If you add to this list, make sure that you update the Backup class for test reproducability!

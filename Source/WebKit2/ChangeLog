@@ -1,3 +1,885 @@
+2016-10-06  John Wilander  <wilander@apple.com>
+
+        Update Resource Load Statistics
+        https://bugs.webkit.org/show_bug.cgi?id=162811
+
+        Reviewed by Alex Christensen.
+
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::hasPrevalentResourceCharacteristics):
+            Switched to vector-based classification.
+        (WebKit::WebResourceLoadStatisticsStore::classifyResource):
+            Simplified logic and moved the split between has and has
+            no user interaction into ResourceLoadStatisticsStore.
+        (WebKit::WebResourceLoadStatisticsStore::clearDataRecords):
+            Added.
+        (WebKit::WebResourceLoadStatisticsStore::resourceLoadStatisticsUpdated):
+            Updated to make use of the new functions.
+        (WebKit::WebResourceLoadStatisticsStore::persistentStoragePath):
+            Removed stray whitespace.
+        (WebKit::WebResourceLoadStatisticsStore::writeEncoderToDisk):
+            Removed stray whitespace.
+        (WebKit::WebResourceLoadStatisticsStore::createDecoderFromDisk):
+            Removed stray whitespace.
+        (WebKit::hasPrevalentResourceCharacteristics): Deleted.
+        (WebKit::classifyPrevalentResources): Deleted.
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+            Added member variables for clearing of data records.
+
+2016-10-06  Youenn Fablet  <youenn@apple.com>
+
+        [WK2] 304 revalidation on the network process does not update the validated response
+        https://bugs.webkit.org/show_bug.cgi?id=162973
+
+        Reviewed by Darin Adler.
+
+        * NetworkProcess/NetworkResourceLoader.cpp: Updating cache entry with the revalidated one.
+
+2016-10-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Introduce InputEvent bindings in preparation for the input events spec
+        https://bugs.webkit.org/show_bug.cgi?id=162954
+
+        Reviewed by Ryosuke Niwa.
+
+        Adds a new runtime switch for enabling InputEvents.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2016-10-05  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Put variation fonts work behind a compile-time flag
+        https://bugs.webkit.org/show_bug.cgi?id=162949
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-10-05  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the build.
+
+        * UIProcess/Cocoa/WebViewImpl.mm:
+
+2016-10-05  Tim Horton  <timothy_horton@apple.com>
+
+        Avoid automatically re-taking snapshots for back-forward items that were never loaded into the view
+        https://bugs.webkit.org/show_bug.cgi?id=162955
+        <rdar://problem/27659173>
+
+        Reviewed by Simon Fraser.
+
+        Make it possible for clients to control the snapshot for back-forward
+        items that are restored from session state without navigating to them,
+        by ensuring that we won't stomp on the snapshot that they explicitly take,
+        until a load occurs.
+
+        * UIProcess/WebBackForwardList.cpp:
+        (WebKit::WebBackForwardList::addItem):
+        (WebKit::WebBackForwardList::goToItem):
+        * UIProcess/ios/ViewGestureControllerIOS.mm:
+        (WebKit::ViewGestureController::beginSwipeGesture):
+        * UIProcess/mac/ViewGestureControllerMac.mm:
+        (WebKit::ViewGestureController::trackSwipeGesture):
+        Disambiguate explicit API-driven snapshot recording from automatic,
+        navigation-driven snapshot recording.
+
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::saveBackForwardSnapshotForCurrentItem):
+        Get rid of the version of recordNavigationSnapshot() that doesn't take a
+        back-forward list item, and grab the current item at the one remaining caller.
+        
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::recordAutomaticNavigationSnapshot):
+        (WebKit::WebPageProxy::recordNavigationSnapshot):
+        (WebKit::WebPageProxy::restoreFromSessionState):
+        (WebKit::WebPageProxy::didCommitLoadForFrame):
+        * UIProcess/WebPageProxy.h:
+        Rename m_suppressNavigationSnapshotting to m_suppressAutomaticNavigationSnapshotting,
+        and make it be only about automatic (navigation-driven) snapshots; it won't have
+        any impact on explicit snapshots forced by clients.
+        
+        Set m_suppressAutomaticNavigationSnapshotting unconditionally when restoring
+        from session state, so that we won't start automatically snapshotting until
+        something has loaded in the view.
+
+2016-10-05  Tim Horton  <timothy_horton@apple.com>
+
+        Make it possible to test ViewSnapshotStore behaviors
+        https://bugs.webkit.org/show_bug.cgi?id=162983
+
+        Reviewed by Simon Fraser.
+
+        Add two pieces of SPI to make it easier to test ViewSnapshotStore:
+
+        - [WKWebView _disableBackForwardSnapshotVolatilityForTesting]
+            This makes it so that we don't make snapshots volatile after we
+            take them, so that they won't get purged while the test is running
+            and cause the test to be flaky.
+
+        - [WKBackForwardListItem _copySnapshotForTesting]
+            This returns a CGImage with the content of the given back-forward
+            item's current snapshot, if there is one.
+
+        * UIProcess/API/Cocoa/WKBackForwardListItem.mm:
+        (-[WKBackForwardListItem _copySnapshotForTesting]):
+        * UIProcess/API/Cocoa/WKBackForwardListItemInternal.h:
+        * UIProcess/API/Cocoa/WKBackForwardListItemPrivate.h: Added.
+        Add WKBackForwardListItem SPI to retrieve the snapshot for a given back-forward list item.
+
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _disableBackForwardSnapshotVolatilityForTesting]):
+        Add WKWebView SPI to disable volatility of snapshots, for testing purposes.
+        
+        * UIProcess/Cocoa/WebViewImpl.h:
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::takeViewSnapshot):
+        Adopt ViewSnapshot::setVolatile instead of reaching into the surface.
+
+        * UIProcess/mac/ViewGestureControllerMac.mm:
+        (WebKit::ViewGestureController::removeSwipeSnapshot):
+        Adopt ViewSnapshot::setVolatile instead of reaching into the surface.
+
+        * UIProcess/mac/ViewSnapshotStore.h:
+        (WebKit::ViewSnapshotStore::setDisableSnapshotVolatilityForTesting):
+        (WebKit::ViewSnapshotStore::disableSnapshotVolatilityForTesting):
+        * UIProcess/mac/ViewSnapshotStore.mm:
+        (WebKit::ViewSnapshotStore::ViewSnapshotStore):
+        (WebKit::ViewSnapshot::setVolatile):
+        (WebKit::ViewSnapshot::asLayerContents):
+        Move all touching of snapshot volatility into the new setVolatile,
+        and short-circuit if the testing-only m_disableSnapshotVolatility bit is set
+
+        (WebKit::ViewSnapshot::asImageForTesting):
+        Make a CGImageRef for the aforementioned WKBackForwardListItem SPI.
+        This is currently not implemented for the iOS Simulator, because we
+        don't have access to the bits of the image in that case.
+
+2016-10-05  Chris Dumez  <cdumez@apple.com>
+
+        KeyboardEvent.getModifierState() should support "CapsLock" modifier
+        https://bugs.webkit.org/show_bug.cgi?id=162861
+
+        Reviewed by Darin Adler.
+
+        Add support for CapsLock modifier on events.
+
+        * Shared/API/c/WKEvent.h:
+        * Shared/API/c/WKSharedAPICast.h:
+        (WebKit::toAPI):
+        * Shared/WebEventConversion.cpp:
+        (WebKit::WebKit2PlatformMouseEvent::WebKit2PlatformMouseEvent):
+        (WebKit::WebKit2PlatformWheelEvent::WebKit2PlatformWheelEvent):
+        (WebKit::WebKit2PlatformKeyboardEvent::WebKit2PlatformKeyboardEvent):
+        (WebKit::WebKit2PlatformTouchEvent::WebKit2PlatformTouchEvent):
+        (WebKit::WebKit2PlatformGestureEvent::WebKit2PlatformGestureEvent):
+        * Shared/efl/WebEventFactory.cpp:
+        (WebKit::toWebEventModifiers):
+        * Shared/ios/WebIOSEventFactory.mm:
+        (modifiersForEvent):
+        * Shared/mac/WebEventFactory.mm:
+        (WebKit::modifiersForEvent):
+        * UIProcess/API/Cocoa/WKNavigationAction.mm:
+        (toNSEventModifierFlags):
+        * UIProcess/Cocoa/WebAutomationSessionCocoa.mm:
+        (WebKit::WebAutomationSession::platformSimulateMouseInteraction):
+
+2016-10-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        Rename ENABLE_ENCRYPTED_MEDIA_V2 to ENABLE_LEGACY_ENCRYPTED_MEDIA
+        https://bugs.webkit.org/show_bug.cgi?id=162903
+
+        Reviewed by Alex Christensen.
+
+        Rename build guards for the remaining implementation of the legacy EME API
+        to ENABLE_LEGACY_ENCRYPTED_MEDIA. This will allow for the future implementation
+        of the near-finished API to be guarded with the simple ENABLE_ENCRYPTED_MEDIA guards.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::m_userInterfaceLayoutDirection):
+        * WebProcess/WebProcess.cpp:
+        (WebKit::m_resourceLoadStatisticsStorage):
+
+2016-10-05  Daniel Bates  <dabates@apple.com>
+
+        [WK2][NetworkSession] Ping requests should follow redirects if applicable
+        https://bugs.webkit.org/show_bug.cgi?id=162580
+        <rdar://problem/28631274>
+
+        Reviewed by Alex Christensen.
+
+        Implement support for following redirects, if applicable, of a ping request when using the
+        Network Session (ENABLE(NETWORK_SESSION)) code path in WebKit2. For ping requests that are
+        in response to hyperlink auditing (e.g. <a ping>) we should follow redirect responses.
+        For Content Security Policy and XSS Auditor violation reports we should not follow redirect
+        responses.
+
+        Currently we always ignore redirects for ping requests that are sent using the Network Session
+        code path in WebKit2. This behavior disagrees with the behavior described in section
+        "Hyperlink auditing" of the HTML standard, <https://html.spec.whatwg.org/multipage/semantics.html#hyperlink-auditing> (27 September 2016),
+        as well as the behavior in Legacy WebKit and WebKit2 with Network Session disabled. We should
+        follow redirects for ping requests initiated as part of hyperlink auditing to more closely
+        conform to the HTML standard and match the behavior in Legacy WebKit and WebKit2 with Network
+        Session disabled.
+
+        * NetworkProcess/PingLoad.h:
+
+2016-10-05  Daniel Bates  <dabates@apple.com>
+
+        Do not follow redirects when sending violation report
+        https://bugs.webkit.org/show_bug.cgi?id=162520
+        <rdar://problem/27957639>
+
+        Reviewed by Alex Christensen.
+
+        Update the non-Network Session WebKit2 implementation to follow redirect responses for a ping
+        request, if applicable. I did not update the Network Session implementation at this time. I
+        will fix it in <https://bugs.webkit.org/show_bug.cgi?id=162580>.
+
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::loadPing): Tell PingHandle whether to follow redirects.
+        * NetworkProcess/NetworkLoadParameters.h:
+        * NetworkProcess/NetworkResourceLoadParameters.cpp:
+        (WebKit::NetworkResourceLoadParameters::encode): Encode NetworkResourceLoadParameters::shouldFollowRedirects.
+        (WebKit::NetworkResourceLoadParameters::decode): Decode NetworkResourceLoadParameters::shouldFollowRedirects.
+        * NetworkProcess/PingLoad.h: Added FIXME comment to implement support for following redirects,
+        if applicable (for hyperlink auditing). See <https://bugs.webkit.org/show_bug.cgi?id=162580>
+        for more details.
+        * WebProcess/Network/WebLoaderStrategy.cpp:
+        (WebKit::WebLoaderStrategy::createPingHandle): Modified to take a boolean whether to follow
+        redirects responses and set NetworkResourceLoadParameters::shouldFollowRedirects as appropriate.
+        * WebProcess/Network/WebLoaderStrategy.h:
+
+2016-10-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Move global TLS errors handling from ResourceHandle to SoupNetworkSession
+        https://bugs.webkit.org/show_bug.cgi?id=162910
+
+        Reviewed by Alex Christensen.
+
+        Use SoupNetworkSession instead of ResourceHandle.
+
+        * NetworkProcess/soup/NetworkProcessSoup.cpp:
+        (WebKit::NetworkProcess::setIgnoreTLSErrors):
+        (WebKit::NetworkProcess::allowSpecificHTTPSCertificateForHost):
+
+2016-10-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ build with USE_REDIRECTED_XCOMPOSITE_WINDOW disabled.
+
+        * UIProcess/AcceleratedDrawingAreaProxy.cpp:
+        (WebKit::AcceleratedDrawingAreaProxy::setNativeSurfaceHandleForCompositing):
+
+2016-10-04  Chris Dumez  <cdumez@apple.com>
+
+        Implement KeyboardEvent.code from the UI Event spec
+        https://bugs.webkit.org/show_bug.cgi?id=149584
+
+        Reviewed by Darin Adler.
+
+        Add support for Keyboard.code attribute:
+        - https://w3c.github.io/uievents/#dom-keyboardevent-code
+        - https://w3c.github.io/uievents-code/
+
+        * Shared/WebEvent.h:
+        (WebKit::WebKeyboardEvent::code):
+        * Shared/WebEventConversion.cpp:
+        (WebKit::WebKit2PlatformKeyboardEvent::WebKit2PlatformKeyboardEvent):
+        * Shared/WebKeyboardEvent.cpp:
+        (WebKit::WebKeyboardEvent::WebKeyboardEvent):
+        (WebKit::WebKeyboardEvent::encode):
+        (WebKit::WebKeyboardEvent::decode):
+        * Shared/mac/WebEventFactory.mm:
+        (WebKit::WebEventFactory::createWebKeyboardEvent):
+
+2016-10-04  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        The dragged image should be the current frame only of the animated image
+        https://bugs.webkit.org/show_bug.cgi?id=162109
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::provideDataForPasteboard): Call the Image function with its new name.
+
+2016-10-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Revert a change erroneously committed in r206795.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2016-10-04  Anders Carlsson  <andersca@apple.com>
+
+        Properly kill web processes in the launching state
+        https://bugs.webkit.org/show_bug.cgi?id=162938
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/Launcher/ProcessLauncher.h:
+        Add m_xpcConnection member.
+
+        * UIProcess/Launcher/mac/ProcessLauncherMac.mm:
+        (WebKit::ProcessLauncher::launchProcess):
+        Store the XPC connection in the m_xpcConnection member variable.
+        In the reply handler, handle m_xpcConnection being null.
+
+        (WebKit::ProcessLauncher::platformInvalidate):
+        Cancel and kill the connection.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::terminateProcess):
+        Get rid of an assertion.
+
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::requestTermination):
+        Handle the launching state.
+
+2016-10-04  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the build.
+
+        * Shared/WebBackForwardListItem.cpp:
+        (WebKit::WebBackForwardListItem::WebBackForwardListItem):
+        (WebKit::WebBackForwardListItem::highestUsedItemID):
+
+2016-10-04  Tim Horton  <timothy_horton@apple.com>
+
+        Fix a typo in WebBackForwardListItem (highed->highest)
+        https://bugs.webkit.org/show_bug.cgi?id=162935
+
+        Reviewed by Anders Carlsson.
+
+        * Shared/WebBackForwardListItem.cpp:
+        (WebKit::WebBackForwardListItem::highestUsedItemID):
+        (WebKit::WebBackForwardListItem::highedUsedItemID): Deleted.
+        * Shared/WebBackForwardListItem.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::creationParameters):
+
+2016-10-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DOMJIT] Introduce DOMJIT::GetterSetter to tell JIT information
+        https://bugs.webkit.org/show_bug.cgi?id=162916
+
+        Reviewed by Filip Pizlo.
+
+        * CMakeLists.txt:
+
+2016-10-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Remove SSLPolicyFlags from SoupNetworkSession
+        https://bugs.webkit.org/show_bug.cgi?id=162906
+
+        Reviewed by Michael Catanzaro.
+
+        * NetworkProcess/soup/NetworkProcessMainSoup.cpp:
+        (WebKit::NetworkProcessMainUnix):
+
+2016-10-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Media controls are displayed in the incorrect state momentarily after switching between tabs playing media
+        https://bugs.webkit.org/show_bug.cgi?id=162766
+        <rdar://problem/28533523>
+
+        Reviewed by Jer Noble.
+
+        Plumbs some more Now Playing information from the web process to the UI process for testing purposes. See
+        WebCore ChangeLog for more details.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _handleActiveNowPlayingSessionInfoResponse:title:duration:elapsedTime:]):
+        (-[WKWebView _handleActiveNowPlayingSessionInfoResponse:]): Deleted.
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::handleActiveNowPlayingSessionInfoResponse):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::handleActiveNowPlayingSessionInfoResponse):
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::requestActiveNowPlayingSessionInfo):
+
+2016-10-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK+ build fix.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageNavigationClient): Guard the call to getDefaultWebCryptoMasterKey()
+        with ENABLE(SUBTLE_CRYPTO), since the same guard is used for the definition. Fixes
+        GTK+ production builds where the feature is disabled.
+
+2016-10-03  Keith Rollin  <krollin@apple.com>
+
+        More logging to diagnose "WebKit encountered an internal error" messages
+        https://bugs.webkit.org/show_bug.cgi?id=162754
+
+        Reviewed by Antti Koivisto.
+
+        Add more logging around calls to internalError, as well as some
+        low-level logging around SharedMemory, and mach_vm_map in particular.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::startNetworkLoad):
+        * Platform/Logging.h:
+        * Platform/mac/SharedMemoryMac.cpp:
+        (WebKit::SharedMemory::allocate):
+        (WebKit::makeMemoryEntry):
+        (WebKit::SharedMemory::map):
+        (WebKit::SharedMemory::~SharedMemory):
+        * WebProcess/Network/WebLoaderStrategy.cpp:
+        (WebKit::WebLoaderStrategy::networkProcessCrashed):
+        (WebKit::WebLoaderStrategy::loadResourceSynchronously):
+        * WebProcess/Network/WebResourceLoader.cpp:
+        (WebKit::WebResourceLoader::didReceiveResource):
+
+2016-10-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r206754.
+
+        This change broke the El Capitan and Yosemite debug builds.
+
+        Reverted changeset:
+
+        "More logging to diagnose "WebKit encountered an internal
+        error" messages"
+        https://bugs.webkit.org/show_bug.cgi?id=162754
+        http://trac.webkit.org/changeset/206754
+
+2016-10-03  Keith Rollin  <krollin@apple.com>
+
+        More logging to diagnose "WebKit encountered an internal error" messages
+        https://bugs.webkit.org/show_bug.cgi?id=162754
+
+        Reviewed by Antti Koivisto.
+
+        Add more logging around calls to internalError, as well as some
+        low-level logging around SharedMemory, and mach_vm_map in particular.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::startNetworkLoad):
+        * Platform/Logging.h:
+        * Platform/mac/SharedMemoryMac.cpp:
+        (WebKit::SharedMemory::allocate):
+        (WebKit::makeMemoryEntry):
+        (WebKit::SharedMemory::map):
+        (WebKit::SharedMemory::~SharedMemory):
+        * WebProcess/Network/WebLoaderStrategy.cpp:
+        (WebKit::WebLoaderStrategy::networkProcessCrashed):
+        (WebKit::WebLoaderStrategy::loadResourceSynchronously):
+        * WebProcess/Network/WebResourceLoader.cpp:
+        (WebKit::WebResourceLoader::didReceiveResource):
+
+2016-10-03  Chris Dumez  <cdumez@apple.com>
+
+        Add support for KeyboardEvent.key attribute
+        https://bugs.webkit.org/show_bug.cgi?id=36267
+
+        Reviewed by Darin Adler.
+
+        Add support for KeyboardEvent.key attribute.
+
+        * Shared/WebEvent.h:
+        (WebKit::WebKeyboardEvent::key):
+        (WebKit::WebKeyboardEvent::unmodifiedText): Deleted.
+        * Shared/WebEventConversion.cpp:
+        (WebKit::WebKit2PlatformKeyboardEvent::WebKit2PlatformKeyboardEvent):
+        * Shared/WebKeyboardEvent.cpp:
+        (WebKit::WebKeyboardEvent::WebKeyboardEvent):
+        (WebKit::WebKeyboardEvent::encode):
+        (WebKit::WebKeyboardEvent::decode):
+        * Shared/mac/WebEventFactory.mm:
+        (WebKit::WebEventFactory::createWebKeyboardEvent):
+
+2016-10-03  Chris Dumez  <cdumez@apple.com>
+
+        Add support for KeyboardEvent.key attribute
+        https://bugs.webkit.org/show_bug.cgi?id=36267
+
+        Reviewed by Darin Adler.
+
+        Add support for KeyboardEvent.key attribute.
+
+        * Shared/WebEvent.h:
+        (WebKit::WebKeyboardEvent::key):
+        (WebKit::WebKeyboardEvent::unmodifiedText): Deleted.
+        * Shared/WebEventConversion.cpp:
+        (WebKit::WebKit2PlatformKeyboardEvent::WebKit2PlatformKeyboardEvent):
+        * Shared/WebKeyboardEvent.cpp:
+        (WebKit::WebKeyboardEvent::WebKeyboardEvent):
+        (WebKit::WebKeyboardEvent::encode):
+        (WebKit::WebKeyboardEvent::decode):
+        * Shared/mac/WebEventFactory.mm:
+        (WebKit::WebEventFactory::createWebKeyboardEvent):
+
+2016-10-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Cleanup persistent credential storage code
+        https://bugs.webkit.org/show_bug.cgi?id=162777
+
+        Reviewed by Alex Christensen.
+
+        Use USE(LIBSECRET) instead of ENABLE(CREDENTIAL_STORAGE).
+
+        * UIProcess/API/gtk/WebKitAuthenticationRequest.cpp:
+        (webkit_authentication_request_can_save_credentials):
+
+2016-10-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r206683.
+
+        This change caused API test WebKit2.FindMatches to fail on
+        Mac.
+
+        Reverted changeset:
+
+        "The dragged image should be the current frame only of the
+        animated image"
+        https://bugs.webkit.org/show_bug.cgi?id=162109
+        http://trac.webkit.org/changeset/206683
+
+2016-09-30  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Follow-up patch after r206701
+        https://bugs.webkit.org/show_bug.cgi?id=162818
+
+        Unreviewed.
+
+        I missed one place required to enable an experimental feature by default.
+
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::registerUserDefaultsIfNeeded):
+
+2016-09-30  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] Editing menu omits the Share command if the selected text is longer than 200 characters
+        https://bugs.webkit.org/show_bug.cgi?id=162821
+        <rdar://problem/28409828>
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView canPerformAction:withSender:]): Changed to return YES for the _share:
+          action even if the selection is longer than 200 characters. While Define should not have
+          been available for longer selections, Share does not have such a limitation.
+
+2016-09-30  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Turn variation fonts on by default
+        https://bugs.webkit.org/show_bug.cgi?id=162818
+
+        Reviewed by Simon Fraser.
+
+        * Shared/WebPreferencesDefinitions.h:
+
+2016-09-30  Brady Eidson  <beidson@apple.com>
+
+        REGRESSION (Safari 10 combined with WK changes): Unable to store WebCrypto keys in IndexedDB database.
+        <rdar://problem/28334440> and https://bugs.webkit.org/show_bug.cgi?id=162554
+
+        Reviewed by Alexey Proskuryakov.
+
+        Safari 10 has a WKPageNavigation client but does not implement the "copyWebCryptoMasterKey" callback.
+
+        WebKit just fails in this case, instead of falling back to "getDefaultWebCryptoMasterKey".
+        It should fall back.
+
+        Additionally there's a WKContextClient callback to get the crypto key, also, but it is completely unused.
+        So it should be pulled.
+
+        * UIProcess/API/APILoaderClient.h:
+        (API::LoaderClient::webCryptoMasterKey): Deleted.
+        * UIProcess/API/C/WKContext.h:
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageLoaderClient):
+        (WKPageSetPageNavigationClient): If the client doesn't implement this method, fallback to getDefaultWebCryptoMasterKey.
+
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::NavigationClient::webCryptoMasterKey): If the client doesn't implement this method,
+          fallback to getDefaultWebCryptoMasterKey.
+
+        * UIProcess/WebContextClient.cpp:
+        (WebKit::WebContextClient::copyWebCryptoMasterKey): Deleted.
+        * UIProcess/WebContextClient.h:
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::wrapCryptoKey): Only ask the NavigationClient before falling back. Don't ask the loader client.
+        (WebKit::WebPageProxy::unwrapCryptoKey): Ditto.
+
+2016-09-30  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        The dragged image should be the current frame only of the animated image
+        https://bugs.webkit.org/show_bug.cgi?id=162109
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::provideDataForPasteboard): Call the Image function with its new name.
+
+2016-09-30  Anders Carlsson  <andersca@apple.com>
+
+        Second time going into fullscreen using silverlight, will hide the menu bar and dock for Safari
+        https://bugs.webkit.org/show_bug.cgi?id=162805
+        rdar://problem/28208495
+
+        Reviewed by Dan Bernstein.
+
+        Turns out that the WindowRef wrappers for full screen NSWindows can end up in the m_windows HashSet,
+        and never go away. 
+        
+        Fix this by storing the canonical CGWindowIDs in the hash map instead.
+
+        * PluginProcess/mac/PluginProcessMac.mm:
+        (WebKit::cgWindowID):
+        (WebKit::windowCoversAnyScreen):
+        (WebKit::FullscreenWindowTracker::windowShown):
+        (WebKit::FullscreenWindowTracker::windowHidden):
+
+2016-09-30  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Create runtime flag for variation font work
+        https://bugs.webkit.org/show_bug.cgi?id=162780
+
+        Reviewed by Alex Christensen.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2016-09-30  Chris Dumez  <cdumez@apple.com>
+
+        [WK2][iOS] Add radiusX / radiusY / rotationAngle to WebPlatformTouchPoint
+        https://bugs.webkit.org/show_bug.cgi?id=162787
+        <rdar://problem/28554292>
+
+        Reviewed by Benjamin Poulain.
+
+        Add radiusX / radiusY / rotationAngle to WebPlatformTouchPoint.
+
+        * Platform/spi/ios/UIKitSPI.h:
+        * Shared/WebEvent.h:
+        (WebKit::WebPlatformTouchPoint::setRadiusX):
+        (WebKit::WebPlatformTouchPoint::radiusX):
+        (WebKit::WebPlatformTouchPoint::setRadiusY):
+        (WebKit::WebPlatformTouchPoint::radiusY):
+        (WebKit::WebPlatformTouchPoint::setRotationAngle):
+        (WebKit::WebPlatformTouchPoint::rotationAngle):
+        * Shared/WebEventConversion.cpp:
+        (WebKit::WebKit2PlatformTouchPoint::WebKit2PlatformTouchPoint):
+        * Shared/ios/NativeWebTouchEventIOS.mm:
+        (WebKit::NativeWebTouchEvent::extractWebTouchPoint):
+        * Shared/ios/WebPlatformTouchPointIOS.cpp:
+        (WebKit::WebPlatformTouchPoint::encode):
+        (WebKit::WebPlatformTouchPoint::decode):
+
+2016-09-30  Megan Gardner  <megan_gardner@apple.com>
+
+        Make it possible to test web-related user-interface features
+        https://bugs.webkit.org/show_bug.cgi?id=162657
+
+        Reviewed by Simon Fraser.
+
+        Added the ability to pull the strings from an Action Sheet and pass them to
+        test scripts to make sure we are giving the correct available actions for
+        the item we are interacting with.
+        Added a test for long press on an image, and used the sheet scraping functionality
+        to make sure that the correct actions were being displayed.
+        Test for previous patch, Changeset 205915; Bug 161761
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _contentsOfUserInterfaceItem:]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/ios/WKActionSheetAssistant.h:
+        * UIProcess/ios/WKActionSheetAssistant.mm:
+        (-[WKActionSheetAssistant currentAvailableActionStrings]):
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _contentsOfUserInterfaceItem:]):
+
+2016-09-27  Anders Carlsson  <andersca@apple.com>
+
+        Remove a couple of unused members from PlatformKeyboardEvent
+        https://bugs.webkit.org/show_bug.cgi?id=162641
+
+        Reviewed by Tim Horton.
+
+        * Shared/WebEventConversion.cpp:
+        (WebKit::WebKit2PlatformKeyboardEvent::WebKit2PlatformKeyboardEvent):
+
+2016-09-29  Nan Wang  <n_wang@apple.com>
+
+        AX: iOS: Tapping <input> in Safari zooms in a bit when page has max scale = 1
+        https://bugs.webkit.org/show_bug.cgi?id=162471
+
+        Reviewed by Simon Fraser.
+
+        * Shared/AssistedNodeInformation.cpp:
+        (WebKit::AssistedNodeInformation::encode):
+        (WebKit::AssistedNodeInformation::decode):
+        * Shared/AssistedNodeInformation.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _displayFormNodeInputView]):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::maximumPageScaleFactorIgnoringAlwaysScalable):
+        (WebKit::WebPage::getAssistedNodeInformation):
+
+2016-09-29  Daniel Bates  <dabates@apple.com>
+
+        Mark NetworkLoad as final
+        https://bugs.webkit.org/show_bug.cgi?id=162681
+
+        Reviewed by Alex Christensen.
+
+        Mark class NetworkLoad as final as we do not have any derived classes at the moment and it
+        is unclear if it would make sense to subclass it. We can always unmark the class if it turns
+        out that it makes sense to subclass it.
+
+        * NetworkProcess/NetworkLoad.h:
+
+2016-09-29  Sam Weinig  <sam@webkit.org>
+
+        Allow overriding some NSURLSessionConfiguration properties on a per-NetworkProcess basis
+        <rdar://problem/27648683>
+        https://bugs.webkit.org/show_bug.cgi?id=162735
+
+        Reviewed by Dan Bernstein.
+
+        Add SPI for overriding the following NSURLSessionConfigurations properties:
+            - _sourceApplicationBundleIdentifier
+            - _sourceApplicationSecondaryIdentifier
+            - _CTDataConnectionServiceType
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::initializeNetworkProcess):
+        * NetworkProcess/NetworkProcessCreationParameters.cpp:
+        (WebKit::NetworkProcessCreationParameters::encode):
+        (WebKit::NetworkProcessCreationParameters::decode):
+        * NetworkProcess/NetworkProcessCreationParameters.h:
+        * NetworkProcess/NetworkSession.h:
+        * NetworkProcess/cocoa/NetworkProcessCocoa.mm:
+        (WebKit::NetworkProcess::platformInitializeNetworkProcessCocoa):
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (WebKit::globalSourceApplicationBundleIdentifier):
+        (WebKit::globalSourceApplicationSecondaryIdentifier):
+        (WebKit::globalCTDataConnectionServiceType):
+        (WebKit::NetworkSession::setCustomProtocolManager):
+        (WebKit::NetworkSession::setSourceApplicationAuditTokenData):
+        (WebKit::NetworkSession::setSourceApplicationBundleIdentifier):
+        (WebKit::NetworkSession::setSourceApplicationSecondaryIdentifier):
+        (WebKit::NetworkSession::setCTDataConnectionServiceType):
+        (WebKit::NetworkSession::NetworkSession):
+        * UIProcess/API/APIProcessPoolConfiguration.cpp:
+        (API::ProcessPoolConfiguration::copy):
+        * UIProcess/API/APIProcessPoolConfiguration.h:
+        * UIProcess/API/Cocoa/_WKProcessPoolConfiguration.h:
+        * UIProcess/API/Cocoa/_WKProcessPoolConfiguration.mm:
+        (-[_WKProcessPoolConfiguration sourceApplicationBundleIdentifier]):
+        (-[_WKProcessPoolConfiguration setSourceApplicationBundleIdentifier:]):
+        (-[_WKProcessPoolConfiguration sourceApplicationSecondaryIdentifier]):
+        (-[_WKProcessPoolConfiguration setSourceApplicationSecondaryIdentifier:]):
+        (-[_WKProcessPoolConfiguration CTDataConnectionServiceType]):
+        (-[_WKProcessPoolConfiguration setCTDataConnectionServiceType:]):
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::WebProcessPool::platformInitializeNetworkProcess):
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeWebProcess):
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::platformInitializeWebProcess):
+
+2016-09-29  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        NetworkSession: HTTP authentication doesn't work if PROTECTION_SPACE_AUTH_CALLBACK is not enabled
+        https://bugs.webkit.org/show_bug.cgi?id=162724
+
+        Reviewed by Alex Christensen.
+
+        NetworkLoad always expects continueCanAuthenticateAgainstProtectionSpace() to be called to complete the
+        authentication challenge, which is only defined when PROTECTION_SPACE_AUTH_CALLBACK is enabled.
+        I've added missing #ifdefs for PROTECTION_SPACE_AUTH_CALLBACK.
+
+        * NetworkProcess/Downloads/DownloadManager.cpp:
+        (WebKit::DownloadManager::continueCanAuthenticateAgainstProtectionSpace):
+        * NetworkProcess/Downloads/DownloadManager.h:
+        * NetworkProcess/Downloads/PendingDownload.cpp:
+        (WebKit::PendingDownload::continueCanAuthenticateAgainstProtectionSpace):
+        * NetworkProcess/Downloads/PendingDownload.h:
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::~NetworkLoad):
+        (WebKit::NetworkLoad::didReceiveChallenge): Call completeAuthenticationChallenge() instead of
+        canAuthenticateAgainstProtectionSpaceAsync() when PROTECTION_SPACE_AUTH_CALLBACK is not enabled.
+        (WebKit::NetworkLoad::completeAuthenticationChallenge): Moved common code to complete the authentication
+        challenge from continueCanAuthenticateAgainstProtectionSpace().
+        (WebKit::NetworkLoad::continueCanAuthenticateAgainstProtectionSpace): Call completeAuthenticationChallenge().
+        (WebKit::NetworkLoad::canAuthenticateAgainstProtectionSpaceAsync):
+        * NetworkProcess/NetworkLoad.h:
+        * NetworkProcess/NetworkLoadClient.h:
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::continueCanAuthenticateAgainstProtectionSpaceDownload):
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/NetworkProcess.messages.in:
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::canAuthenticateAgainstProtectionSpaceAsync):
+        (WebKit::NetworkResourceLoader::continueCanAuthenticateAgainstProtectionSpace):
+        * NetworkProcess/NetworkResourceLoader.h:
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoad.h:
+        * Shared/Authentication/AuthenticationManager.h:
+        * UIProcess/Downloads/DownloadProxy.cpp:
+        (WebKit::DownloadProxy::canAuthenticateAgainstProtectionSpace):
+        * UIProcess/Downloads/DownloadProxy.h:
+        * UIProcess/Downloads/DownloadProxy.messages.in:
+
+2016-09-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        WKSharedAPICast should not warn about acceptable custom context menu tag values
+        https://bugs.webkit.org/show_bug.cgi?id=162597
+        <rdar://problem/28487627>
+
+        Reviewed by Tim Horton.
+
+        * Shared/API/c/WKSharedAPICast.h:
+        (WebKit::toAPI):
+        (WebKit::toImpl):
+        Don't log an error when casting ContextMenu types if it is within
+        the Custom ContextMenu tag range.
+
+2016-09-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Adopt MediaRemote SPI to achieve desired Now Playing behavior
+        https://bugs.webkit.org/show_bug.cgi?id=162658
+        <rdar://problem/28499358>
+
+        Reviewed by Jer Noble.
+
+        Plumbs Now Playing session information (for now, this is just a flag indicating whether or not there is an
+        active session) across from the web process to the UI process for testing in the form of asynchronous request/
+        handle-response messages on the WebPage and its proxy in the UI process.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _requestActiveNowPlayingSessionInfo]):
+        (-[WKWebView _handleActiveNowPlayingSessionInfoResponse:]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::requestActiveNowPlayingSessionInfo):
+        (WebKit::WebPageProxy::handleActiveNowPlayingSessionInfoResponse):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::handleActiveNowPlayingSessionInfoResponse):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::requestActiveNowPlayingSessionInfo):
+
 2016-09-28  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] Switch to use GMenu internally in the context menu implementation

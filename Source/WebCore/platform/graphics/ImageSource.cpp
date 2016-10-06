@@ -31,6 +31,9 @@
 
 #if USE(CG)
 #include "ImageDecoderCG.h"
+#elif USE(DIRECT2D)
+#include "ImageDecoderDirect2D.h"
+#include <WinCodec.h>
 #else
 #include "ImageDecoder.h"
 #endif
@@ -80,7 +83,6 @@ void ImageSource::clear(bool destroyAll, size_t count, SharedBuffer* data)
 
 void ImageSource::destroyDecodedData(SharedBuffer* data, bool destroyAll, size_t count)
 {
-    ASSERT(isDecoderAvailable());
     m_frameCache.destroyDecodedData(destroyAll, count);
     clear(destroyAll, count, data);
 }

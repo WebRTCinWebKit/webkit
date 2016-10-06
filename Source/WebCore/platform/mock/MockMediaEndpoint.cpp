@@ -33,7 +33,6 @@
 #if ENABLE(WEB_RTC)
 #include "MockMediaEndpoint.h"
 
-#include "IceCandidate.h"
 #include "MediaEndpointSessionConfiguration.h"
 #include "MediaPayload.h"
 #include "MockRealtimeAudioSource.h"
@@ -315,7 +314,7 @@ void MockMediaEndpoint::stepIceTransportStates()
 
 void MockMediaEndpoint::iceTransportTimerFired()
 {
-    if (m_iceTransportStateChanges.isEmpty())
+    if (m_iceTransportStateChanges.isEmpty() || m_mids.size() != 3)
         return;
 
     auto stateChange = m_iceTransportStateChanges.takeLast();

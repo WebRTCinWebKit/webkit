@@ -31,9 +31,10 @@
 
 namespace JSC {
 
-SourceProvider::SourceProvider(const String& url, const TextPosition& startPosition)
+SourceProvider::SourceProvider(const String& url, const TextPosition& startPosition, SourceProviderSourceType sourceType)
     : m_url(url)
     , m_startPosition(startPosition)
+    , m_sourceType(sourceType)
     , m_validated(false)
     , m_id(0)
 {

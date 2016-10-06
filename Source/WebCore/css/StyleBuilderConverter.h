@@ -31,6 +31,7 @@
 #include "CSSCalculationValue.h"
 #include "CSSContentDistributionValue.h"
 #include "CSSFontFeatureValue.h"
+#include "CSSFontVariationValue.h"
 #include "CSSFunctionValue.h"
 #include "CSSGridAutoRepeatValue.h"
 #include "CSSGridLineNamesValue.h"
@@ -120,6 +121,9 @@ public:
     static bool convertOverflowScrolling(StyleResolver&, CSSValue&);
 #endif
     static FontFeatureSettings convertFontFeatureSettings(StyleResolver&, CSSValue&);
+#if ENABLE(VARIATION_FONTS)
+    static FontVariationSettings convertFontVariationSettings(StyleResolver&, CSSValue&);
+#endif
     static SVGLength convertSVGLength(StyleResolver&, CSSValue&);
     static Vector<SVGLength> convertSVGLengthVector(StyleResolver&, CSSValue&);
     static Vector<SVGLength> convertStrokeDashArray(StyleResolver&, CSSValue&);
@@ -155,7 +159,6 @@ private:
     static Length parseSnapCoordinate(StyleResolver&, const CSSValue&);
 #endif
 
-    static Length convertTo100PercentMinusLength(const Length&);
     static Length convertPositionComponent(StyleResolver&, const CSSPrimitiveValue&);
 
 #if ENABLE(CSS_GRID_LAYOUT)
@@ -307,18 +310,6 @@ inline LengthSize StyleBuilderConverter::convertRadius(StyleResolver& styleResol
         return LengthSize(Length(0, Fixed), Length(0, Fixed));
 
     return LengthSize(radiusWidth, radiusHeight);
-}
-
-inline Length StyleBuilderConverter::convertTo100PercentMinusLength(const Length& length)
-{
-    if (length.isPercent())
-        return Length(100 - length.value(), Percent);
-    
-    // Turn this into a calc expression: calc(100% - length)
-    auto lhs = std::make_unique<CalcExpressionLength>(Length(100, Percent));
-    auto rhs = std::make_unique<CalcExpressionLength>(length);
-    auto op = std::make_unique<CalcExpressionBinaryOperation>(WTFMove(lhs), WTFMove(rhs), CalcSubtract);
-    return Length(CalculationValue::create(WTFMove(op), ValueRangeAll));
 }
 
 inline Length StyleBuilderConverter::convertPositionComponent(StyleResolver& styleResolver, const CSSPrimitiveValue& value)
@@ -1143,6 +1134,23 @@ inline FontFeatureSettings StyleBuilderConverter::convertFontFeatureSettings(Sty
     }
     return settings;
 }
+
+#if ENABLE(VARIATION_FONTS)
+inline FontVariationSettings StyleBuilderConverter::convertFontVariationSettings(StyleResolver&, CSSValue& value)
+{
+    if (is<CSSPrimitiveValue>(value)) {
+        ASSERT(downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueNormal);
+        return { };
+    }
+
+    FontVariationSettings settings;
+    for (auto& item : downcast<CSSValueList>(value)) {
+        auto& feature = downcast<CSSFontVariationValue>(item.get());
+        settings.insert({ feature.tag(), feature.value() });
+    }
+    return settings;
+}
+#endif
 
 #if PLATFORM(IOS)
 inline bool StyleBuilderConverter::convertTouchCallout(StyleResolver&, CSSValue& value)

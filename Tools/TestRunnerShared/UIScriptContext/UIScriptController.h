@@ -63,7 +63,9 @@ public:
     void stylusTapAtPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef callback);
 
     void longPressAtPoint(long x, long y, JSValueRef callback);
-    
+
+    void sendEventStream(JSStringRef eventsJSON, JSValueRef callback);
+
     void typeCharacterUsingHardwareKeyboard(JSStringRef character, JSValueRef callback);
     void keyDownUsingHardwareKeyboard(JSStringRef character, JSValueRef callback);
     void keyUpUsingHardwareKeyboard(JSStringRef character, JSValueRef callback);
@@ -73,6 +75,8 @@ public:
     
     void dismissFormAccessoryView();
     void selectFormAccessoryPickerRow(long);
+    
+    JSObjectRef contentsOfUserInterfaceItem(JSStringRef) const;
     
     void scrollToOffset(long x, long y);
 

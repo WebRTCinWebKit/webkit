@@ -587,7 +587,7 @@ ALWAYS_INLINE static void notifyDebuggerOfUnwinding(CallFrame* callFrame)
     if (Debugger* debugger = callFrame->vmEntryGlobalObject()->debugger()) {
         SuspendExceptionScope scope(&vm);
         if (jsDynamicCast<JSFunction*>(callFrame->callee()))
-            debugger->returnEvent(callFrame);
+            debugger->unwindEvent(callFrame);
         else
             debugger->didExecuteProgram(callFrame);
         ASSERT_UNUSED(catchScope, !catchScope.exception());
@@ -1220,7 +1220,7 @@ JSValue Interpreter::execute(ModuleProgramExecutable* executable, CallFrame* cal
     return checkedReturn(result);
 }
 
-NEVER_INLINE void Interpreter::debug(CallFrame* callFrame, DebugHookID debugHookID)
+NEVER_INLINE void Interpreter::debug(CallFrame* callFrame, DebugHookType debugHookType)
 {
     VM& vm = callFrame->vm();
     auto scope = DECLARE_CATCH_SCOPE(vm);
@@ -1231,7 +1231,7 @@ NEVER_INLINE void Interpreter::debug(CallFrame* callFrame, DebugHookID debugHook
     ASSERT(callFrame->codeBlock()->hasDebuggerRequests());
     ASSERT_UNUSED(scope, !scope.exception());
 
-    switch (debugHookID) {
+    switch (debugHookType) {
         case DidEnterCallFrame:
             debugger->callEvent(callFrame);
             break;
@@ -1240,6 +1240,9 @@ NEVER_INLINE void Interpreter::debug(CallFrame* callFrame, DebugHookID debugHook
             break;
         case WillExecuteStatement:
             debugger->atStatement(callFrame);
+            break;
+        case WillExecuteExpression:
+            debugger->atExpression(callFrame);
             break;
         case WillExecuteProgram:
             debugger->willExecuteProgram(callFrame);

@@ -31,7 +31,6 @@
 #if ENABLE(FETCH_API)
 
 #include "FetchBodyOwner.h"
-#include "FetchHeaders.h"
 #include "ResourceResponse.h"
 #include <runtime/TypedArrays.h>
 
@@ -53,7 +52,7 @@ class FetchResponse final : public FetchBodyOwner {
 public:
     using Type = ResourceResponse::Type;
 
-    static Ref<FetchResponse> create(ScriptExecutionContext& context) { return adoptRef(*new FetchResponse(context, { }, FetchHeaders::create(FetchHeaders::Guard::Response), ResourceResponse())); }
+    static Ref<FetchResponse> create(ScriptExecutionContext& context) { return adoptRef(*new FetchResponse(context, Nullopt, FetchHeaders::create(FetchHeaders::Guard::Response), ResourceResponse())); }
     static Ref<FetchResponse> error(ScriptExecutionContext&);
     static RefPtr<FetchResponse> redirect(ScriptExecutionContext&, const String&, int, ExceptionCode&);
 
@@ -83,12 +82,13 @@ public:
 #if ENABLE(READABLE_STREAM_API)
     ReadableStreamSource* createReadableStreamSource();
     void consumeBodyAsStream();
+    void feedStream();
     void cancel();
 #endif
-    bool isLoading() const { return body().type() == FetchBody::Type::Loading; }
+    bool isLoading() const { return !!m_bodyLoader; }
 
 private:
-    FetchResponse(ScriptExecutionContext&, FetchBody&&, Ref<FetchHeaders>&&, ResourceResponse&&);
+    FetchResponse(ScriptExecutionContext&, Optional<FetchBody>&&, Ref<FetchHeaders>&&, ResourceResponse&&);
 
     static void startFetching(ScriptExecutionContext&, const FetchRequest&, FetchPromise&&);
 
@@ -96,6 +96,10 @@ private:
     void stop() final;
     const char* activeDOMObjectName() const final;
     bool canSuspendForDocumentSuspension() const final;
+
+#if ENABLE(READABLE_STREAM_API)
+    void closeStream();
+#endif
 
     class BodyLoader final : public FetchLoaderClient {
     public:
@@ -121,7 +125,6 @@ private:
     };
 
     ResourceResponse m_response;
-    Ref<FetchHeaders> m_headers;
     Optional<BodyLoader> m_bodyLoader;
     mutable String m_responseURL;
 

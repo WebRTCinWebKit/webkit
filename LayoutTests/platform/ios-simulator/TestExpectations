@@ -134,12 +134,15 @@ http/tests/media
 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements
 
 # No touch events
+fast/events/touch [ Skip ]
 fast/shadow-dom/touch-event-ios.html [ Skip ]
+imported/w3c/web-platform-tests/touch-events [ Skip ]
 platform/ios-simulator/ios/fast/forms/range-input-container-touches.html [ Skip ]
 platform/ios-simulator/ios/fast/forms/range-input-readonly-and-disabled.html [ Skip ]
 platform/ios-simulator/ios/fast/forms/range-input-touches.html [ Skip ]
 platform/ios-simulator/ios/fast/text/data-detectors/phone-disabled.html [ Skip ]
 platform/ios-simulator/ios/fast/text/data-detectors/phone.html [ Skip ]
+platform/ios-simulator/ios/touch [ Skip ]
 
 # WebKitDataCue is supported, not DataCue
 media/track/track-datacue.html
@@ -285,8 +288,6 @@ fast/events/mouse-force-up.html [ Skip ]
 # AutoFill button is not supported
 fast/forms/auto-fill-button/mouse-down-input-mouse-release-auto-fill-button.html
 
-fast/events/touch [ Skip ]
-
 # Mouse events are not supported on iOS
 fast/scrolling/arrow-key-scroll-in-rtl-document.html [ Skip ]
 fast/scrolling/overflow-scroll-past-max.html [ Skip ]
@@ -335,6 +336,8 @@ fast/text/all-small-caps-whitespace.html [ Skip ]
 webkit.org/b/155233 fast/events/max-tabindex-focus.html [ Skip ]
 fast/shadow-dom/shadow-host-removal-crash.html [ Skip ]
 fast/shadow-dom/input-element-in-shadow.html [ Skip ]
+fast/events/keyboardevent-key.html [ Skip ]
+fast/events/keyboardevent-code.html [ Skip ]
 
 # The file-wrapper part of <attachment> is not yet working on iOS
 fast/attachment/attachment-type-attribute.html [ Skip ]
@@ -1194,6 +1197,7 @@ fast/events/frame-scroll-fake-mouse-move.html [ Failure ]
 fast/events/frame-tab-focus.html [ Failure ]
 fast/events/ime-composition-events-001.html [ Failure ]
 fast/events/inputText-never-fired-on-keydown-cancel.html [ Failure ]
+fast/events/input-events-fired-when-typing.html [ Failure ]
 fast/events/key-events-in-input-button.html [ Failure ]
 fast/events/keydown-1.html [ Failure ]
 fast/events/keydown-leftright-keys.html [ Failure ]
@@ -2053,7 +2057,6 @@ platform/ios-simulator/ios/fixed/absolute-inside-fixed.html [ Failure ]
 platform/ios-simulator/ios/fixed/four-bars.html [ Failure ]
 platform/ios-simulator/ios/fixed/nested-fixed.html [ Failure ]
 platform/ios-simulator/ios/fixed/percentage-inside-fixed.html [ Failure ]
-platform/ios-simulator/ios/touch [ Skip ]
 
 # image inputs get rounded corners on iOS
 fast/css/object-position/object-position-input-image.html [ ImageOnlyFailure ]
@@ -2665,3 +2668,7 @@ webkit.org/b/130972 transitions/3d/interrupted-transition.html [ Pass Timeout ]
 
 # Only iOS has implemented lettepress.
 fast/text/letterpress-different.html [ Pass ]
+
+webkit.org/b/162739 fast/images/gif-loop-count.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/163009 media/modern-media-controls/icon-button/icon-button-active-state.html [ Failure ]

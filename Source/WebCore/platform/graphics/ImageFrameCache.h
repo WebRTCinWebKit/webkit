@@ -33,6 +33,7 @@
 
 namespace WebCore {
 
+class GraphicsContext;
 class Image;
 class ImageDecoder;
 
@@ -43,6 +44,8 @@ public:
     ImageFrameCache(NativeImagePtr&&);
 
     void setDecoder(ImageDecoder* decoder) { m_decoder = decoder; }
+    ImageDecoder* decoder() const { return m_decoder; }
+
     unsigned decodedSize() const { return m_decodedSize; }
     void destroyDecodedData(bool destroyAll = true, size_t count = 0);
     bool destroyDecodedDataIfNecessary(bool destroyAll = true, size_t count = 0);
@@ -79,6 +82,10 @@ public:
     ImageOrientation frameOrientationAtIndex(size_t);
     NativeImagePtr frameImageAtIndex(size_t, SubsamplingLevel = SubsamplingLevel::Default);
 
+#if USE(DIRECT2D)
+    void setRenderTarget(GraphicsContext&);
+#endif
+
 private:
     template<typename T, T (ImageDecoder::*functor)() const>
     T metadata(const T& defaultValue, Optional<T>* cachedValue = nullptr);
@@ -87,10 +94,10 @@ private:
     T frameMetadataAtIndex(size_t index, SubsamplingLevel = SubsamplingLevel::Undefinded, ImageFrame::Caching = ImageFrame::Caching::Empty, Optional<T>* = nullptr);
 
     bool isDecoderAvailable() const { return m_decoder; }
-    void decodedSizeChanged(int decodedSize);
+    void decodedSizeChanged(long long decodedSize);
     void didDecodeProperties(unsigned decodedPropertiesSize);
-    void decodedSizeIncremented(unsigned decodedSize);
-    void decodedSizeDecremented(unsigned decodedSize);
+    void decodedSizeIncreased(unsigned decodedSize);
+    void decodedSizeDecreased(unsigned decodedSize);
     void decodedSizeReset(unsigned decodedSize);
 
     void setNativeImage(NativeImagePtr&&);

@@ -629,8 +629,6 @@ Document::~Document()
     if (m_styleSheetList)
         m_styleSheetList->detachFromDocument();
 
-    if (m_elementSheet)
-        m_elementSheet->detachFromDocument();
     extensionStyleSheets().detachFromDocument();
 
     clearStyleResolver(); // We need to destroy CSSFontSelector before destroying m_cachedResourceLoader.
@@ -1427,52 +1425,6 @@ String Document::contentType() const
     return ASCIILiteral("application/xml");
 }
 
-Node* Document::nodeFromPoint(const LayoutPoint& clientPoint, LayoutPoint* localPoint)
-{
-    if (!frame() || !view())
-        return nullptr;
-    
-    Frame& frame = *this->frame();
-    
-    float scaleFactor = frame.pageZoomFactor() * frame.frameScaleFactor();
-
-    LayoutPoint contentsPoint = clientPoint;
-    contentsPoint.scale(scaleFactor, scaleFactor);
-    contentsPoint.moveBy(view()->contentsScrollPosition());
-
-    LayoutRect visibleRect;
-#if PLATFORM(IOS)
-    visibleRect = view()->unobscuredContentRect();
-#else
-    visibleRect = view()->visibleContentRect();
-#endif
-    if (!visibleRect.contains(contentsPoint))
-        return nullptr;
-
-    HitTestResult result(contentsPoint);
-    renderView()->hitTest(HitTestRequest(), result);
-
-    if (localPoint)
-        *localPoint = result.localPoint();
-
-    return result.innerNode();
-}
-
-Element* Document::elementFromPoint(const LayoutPoint& clientPoint)
-{
-    if (!hasLivingRenderTree())
-        return nullptr;
-
-    Node* node = nodeFromPoint(clientPoint);
-    while (node && !is<Element>(*node))
-        node = node->parentNode();
-
-    if (node)
-        node = ancestorInThisScope(node);
-
-    return downcast<Element>(node);
-}
-
 RefPtr<Range> Document::caretRangeFromPoint(int x, int y)
 {
     return caretRangeFromPoint(LayoutPoint(x, y));
@@ -1865,12 +1817,6 @@ void Document::recalcStyle(Style::Change change)
     frameView.willRecalcStyle();
 
     InspectorInstrumentationCookie cookie = InspectorInstrumentation::willRecalculateStyle(*this);
-
-    // FIXME: We never reset this flags.
-    if (m_elementSheet && m_elementSheet->contents().usesRemUnits())
-        authorStyleSheets().setUsesRemUnit(true);
-    // We don't call setUsesStyleBasedEditability here because the whole point of the flag is to avoid style recalc.
-    // i.e. updating the flag here would be too late.
 
     m_inStyleRecalc = true;
     bool updatedCompositingLayers = false;
@@ -2969,19 +2915,6 @@ void Document::updateBaseURL()
     if (!m_baseURL.isValid())
         m_baseURL = URL();
 
-    if (m_elementSheet) {
-        // Element sheet is silly. It never contains anything.
-        ASSERT(!m_elementSheet->contents().ruleCount());
-        bool usesRemUnits = m_elementSheet->contents().usesRemUnits();
-        bool usesStyleBasedEditability = m_elementSheet->contents().usesStyleBasedEditability();
-        m_elementSheet = CSSStyleSheet::createInline(*this, m_baseURL);
-        // FIXME: So we are not really the parser. The right fix is to eliminate the element sheet completely.
-        if (usesRemUnits)
-            m_elementSheet->contents().parserSetUsesRemUnits();
-        if (usesStyleBasedEditability)
-            m_elementSheet->contents().parserSetUsesStyleBasedEditability();
-    }
-
     if (!equalIgnoringFragmentIdentifier(oldBaseURL, m_baseURL)) {
         // Base URL change changes any relative visited links.
         // FIXME: There are other URLs in the tree that would need to be re-evaluated on dynamic base URL change. Style should be invalidated too.
@@ -3167,16 +3100,9 @@ void Document::didRemoveAllPendingStylesheet()
         view()->scrollToFragment(m_url);
 }
 
-CSSStyleSheet& Document::elementSheet()
-{
-    if (!m_elementSheet)
-        m_elementSheet = CSSStyleSheet::createInline(*this, m_baseURL);
-    return *m_elementSheet;
-}
-
 bool Document::usesStyleBasedEditability() const
 {
-    if (m_elementSheet && m_elementSheet->contents().usesStyleBasedEditability())
+    if (m_hasElementUsingStyleBasedEditability)
         return true;
 
     ASSERT(!m_renderView || !m_renderView->frameView().isPainting());
@@ -3185,6 +3111,11 @@ bool Document::usesStyleBasedEditability() const
     auto& authorSheets = const_cast<AuthorStyleSheets&>(authorStyleSheets());
     authorSheets.flushPendingUpdate();
     return authorSheets.usesStyleBasedEditability();
+}
+
+void Document::setHasElementUsingStyleBasedEditability()
+{
+    m_hasElementUsingStyleBasedEditability = true;
 }
 
 void Document::processHttpEquiv(const String& equiv, const String& content, bool isInDocumentHead)
@@ -6758,6 +6689,7 @@ Document& Document::ensureTemplateDocument()
     else
         m_templateDocument = Document::create(nullptr, blankURL());
 
+    m_templateDocument->setContextDocument(contextDocument());
     m_templateDocument->setTemplateDocumentHost(this); // balanced in dtor.
 
     return *m_templateDocument;

@@ -78,6 +78,15 @@ struct Effects {
         return result;
     }
 
+    static Effects forCheck()
+    {
+        Effects result;
+        result.exitsSideways = true;
+        // The program could read anything after exiting, and it's on us to declare this.
+        result.reads = HeapRange::top();
+        return result;
+    }
+
     bool mustExecute() const
     {
         return terminal || exitsSideways || writesLocalState || writes;
@@ -86,8 +95,11 @@ struct Effects {
     // Returns true if reordering instructions with these respective effects would change program
     // behavior in an observable way.
     bool interferes(const Effects&) const;
+    
+    JS_EXPORT_PRIVATE bool operator==(const Effects&) const;
+    JS_EXPORT_PRIVATE bool operator!=(const Effects&) const;
 
-    void dump(PrintStream& out) const;
+    JS_EXPORT_PRIVATE void dump(PrintStream& out) const;
 };
 
 } } // namespace JSC::B3

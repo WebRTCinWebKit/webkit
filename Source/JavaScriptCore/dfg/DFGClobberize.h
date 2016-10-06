@@ -404,11 +404,20 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case LoopHint:
     case ProfileType:
     case ProfileControlFlow:
-    case StoreBarrier:
     case PutHint:
         write(SideState);
         return;
         
+    case StoreBarrier:
+        read(JSCell_cellState);
+        write(JSCell_cellState);
+        return;
+        
+    case FencedStoreBarrier:
+        read(Heap);
+        write(JSCell_cellState);
+        return;
+
     case InvalidationPoint:
         write(SideState);
         def(HeapLocation(InvalidationPointLoc, Watchpoint_fire), LazyNode(node));
@@ -485,6 +494,8 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case PutGetterSetterById:
     case PutGetterByVal:
     case PutSetterByVal:
+    case DefineDataProperty:
+    case DefineAccessorProperty:
     case DeleteById:
     case DeleteByVal:
     case ArrayPush:
@@ -874,6 +885,15 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         def(HeapLocation(ButterflyLoc, JSObject_butterfly, node->child1()), LazyNode(node));
         return;
 
+    case CheckDOM:
+        def(PureValue(node, node->classInfo()));
+        return;
+
+    case CallDOM:
+        read(World);
+        write(Heap);
+        return;
+
     case Arrayify:
     case ArrayifyToStructure:
         read(JSCell_structureID);
@@ -1245,7 +1265,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             return;
         }
         
-    case ThrowReferenceError:
+    case ThrowStaticError:
         write(SideState);
         return;
         
@@ -1279,6 +1299,10 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case IsNonEmptyMapBucket:
         read(MiscFields);
         def(HeapLocation(MapHasLoc, MiscFields, node->child1()), LazyNode(node));
+        return;
+
+    case ToLowerCase:
+        def(PureValue(node));
         return;
         
     case LastNodeType:

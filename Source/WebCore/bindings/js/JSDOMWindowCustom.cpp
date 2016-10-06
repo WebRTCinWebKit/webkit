@@ -433,7 +433,7 @@ JSValue JSDOMWindow::open(ExecState& state)
 
     RefPtr<DOMWindow> openedWindow = wrapped().open(urlString, target, windowFeaturesString, activeDOMWindow(&state), firstDOMWindow(&state));
     if (!openedWindow)
-        return jsUndefined();
+        return jsNull();
     return toJS(&state, openedWindow.get());
 }
 
@@ -591,7 +591,7 @@ JSValue JSDOMWindow::setInterval(ExecState& state)
     return jsNumber(result);
 }
 
-DOMWindow* JSDOMWindow::toWrapped(ExecState&, JSValue value)
+DOMWindow* JSDOMWindow::toWrapped(JSValue value)
 {
     if (!value.isObject())
         return nullptr;
