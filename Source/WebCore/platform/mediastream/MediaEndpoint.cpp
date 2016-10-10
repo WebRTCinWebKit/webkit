@@ -53,7 +53,6 @@ private:
     RealtimeMediaSourceSettings m_sourceSettings;
 };
 
-#if !USE(OPENWEBRTC)
 class EmptyMediaEndpoint : public MediaEndpoint {
 public:
     EmptyMediaEndpoint(MediaEndpointClient&) { }
@@ -83,7 +82,6 @@ static std::unique_ptr<MediaEndpoint> createMediaEndpoint(MediaEndpointClient& c
 }
 
 CreateMediaEndpoint MediaEndpoint::create = createMediaEndpoint;
-#endif //USE(OPENWEBRTC)
 
 } // namespace WebCore
 
