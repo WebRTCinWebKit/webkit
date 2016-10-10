@@ -500,9 +500,8 @@ void MediaEndpointPeerConnection::setRemoteDescriptionTask(RefPtr<RTCSessionDesc
                 });
 
                 if (transceiver) {
-                    // The matched transceiver might have been created locally in which case the receivers muted source
-                    // was created with a provisional mid. Since this transceiver will get its mid from the remote description
-                    // we need to update the mid of the muted source to preserve the association with this transceiver.
+                    // This transceiver was created locally with a provisional mid. Its real mid will now be set by the remote
+                    // description so we need to update the mid of the transceiver's muted source to preserve the association.
                     transceiver->setMid(mediaDescription->mid());
                     m_mediaEndpoint->replaceMutedRemoteSourceMid(transceiver->provisionalMid(), mediaDescription->mid());
                 } else
