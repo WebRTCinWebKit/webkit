@@ -33,6 +33,7 @@ Conditional=*
 Constructor
 ConstructorCallWith=Document|ScriptExecutionContext|ScriptState
 ConstructorConditional=*
+ConstructorMayThrowException
 ConstructorMayThrowLegacyException
 ConstructorTemplate=Event|TypedArray
 Custom
@@ -54,6 +55,7 @@ CustomReturn
 CustomSetPrototype
 CustomSetter
 CustomToJSObject
+DOMJIT
 Deletable
 DoNotCheckConstants
 DoNotCheckSecurity
@@ -68,8 +70,8 @@ ExportToWrappedFunction
 Exposed=*
 ForwardDeclareInHeader
 GenerateIsReachable=|Impl|ImplWebGLRenderingContext|ImplDocument|ImplElementRoot|ImplFrame|ImplOwnerNodeRoot|ImplScriptExecutionContext
+GetterMayThrowException
 GetterMayThrowLegacyException
-GetterMayThrowLegacyExceptionWithMessage
 Immutable
 ImplementedAs=*
 ImplementationLacksVTable
@@ -95,8 +97,8 @@ JSGenerateToNativeObject
 JSLegacyParent=*
 LenientThis
 MasqueradesAsUndefined
+MayThrowException
 MayThrowLegacyException
-MayThrowLegacyExceptionWithMessage
 NamedConstructor=*
 NewImpurePropertyFiresWatchpoints
 NewObject
@@ -114,8 +116,8 @@ ReportExtraMemoryCost
 ReportExternalMemoryCost
 RequiresExistingAtomicString
 SetterCallWith=ScriptExecutionContext|ScriptState|ScriptArguments|CallStack|ActiveWindow|FirstWindow
+SetterMayThrowException
 SetterMayThrowLegacyException
-SetterMayThrowLegacyExceptionWithMessage
 SkipVTableValidation
 SuppressToJSObject
 TreatNullAs=EmptyString

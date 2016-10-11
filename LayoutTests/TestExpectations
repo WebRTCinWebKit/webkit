@@ -119,8 +119,6 @@ webkit.org/b/126166 [ Debug ] js/dfg-int32array-overflow-values.html [ Skip ]
 webkit.org/b/126166 [ Debug ] js/dfg-uint32array.html [ Skip ]
 webkit.org/b/126166 [ Debug ] js/dfg-uint32array-overflow-values.html [ Skip ]
 
-webkit.org/b/127860 [ Debug ] js/function-apply-aliased.html [ Skip ]
-
 # This test verifies that a mismatch reftest will fail as intended if both results are same. (introduced in r93187)
 fast/harness/sample-fail-mismatch-reftest.html [ WontFix ImageOnlyFailure ]
 
@@ -137,7 +135,7 @@ webkit.org/b/148036 http/tests/inspector/replay/ [ Skip ]
 
 # Debugger stepping tests can timeout if they run slowly due to a short timer scheduled in the frontend:
 webkit.org/b/161951 [ Debug ] inspector/debugger/stepping [ Skip ]
-webkit.org/b/161951 [ Release ] inspector/debugger/stepping [ Slow ]
+webkit.org/b/161951 [ Release ] inspector/debugger/stepping [ Slow Pass Failure ]
 
 [ Debug ] inspector/debugger/breakpoints [ Skip ]
 [ Release ] inspector/debugger/breakpoints [ Slow ]
@@ -990,4 +988,5 @@ webkit.org/b/162414 imported/w3c/web-platform-tests/resource-timing/idlharness.h
 # Only iOS has implemented lettepress.
 fast/text/letterpress-different.html [ ImageOnlyFailure ]
 
-webkit.org/b/162881 transitions/background-position-transitions.html [ Pass Failure ]
+webkit.org/b/163248 media/modern-media-controls/airplay-button/airplay-button.html [ Failure ]
+webkit.org/b/163249 media/modern-media-controls/play-pause-button/play-pause-button.html [ Failure ]

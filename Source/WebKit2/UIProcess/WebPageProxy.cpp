@@ -450,6 +450,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_configurationPreferenceValues(m_configuration->preferenceValues())
     , m_potentiallyChangedViewStateFlags(ViewState::NoFlags)
     , m_viewStateChangeWantsSynchronousReply(false)
+    , m_weakPtrFactory(this)
 {
     m_webProcessLifetimeTracker.addObserver(m_visitedLinkStore);
     m_webProcessLifetimeTracker.addObserver(m_websiteDataStore);
@@ -774,18 +775,6 @@ RefPtr<API::Navigation> WebPageProxy::reattachToWebProcessWithItem(WebBackForwar
     m_process->responsivenessTimer().start();
 
     return WTFMove(navigation);
-}
-
-void WebPageProxy::setSessionID(SessionID sessionID)
-{
-    if (!isValid())
-        return;
-
-    m_sessionID = sessionID;
-    m_process->send(Messages::WebPage::SetSessionID(sessionID), m_pageID);
-
-    if (sessionID.isEphemeral())
-        m_process->processPool().sendToNetworkingProcess(Messages::NetworkProcess::EnsurePrivateBrowsingSession(sessionID));
 }
 
 void WebPageProxy::initializeWebPage()

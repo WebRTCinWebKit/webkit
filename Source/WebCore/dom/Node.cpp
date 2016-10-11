@@ -435,12 +435,12 @@ bool Node::appendChild(Node& newChild, ExceptionCode& ec)
     return downcast<ContainerNode>(*this).appendChild(newChild, ec);
 }
 
-static HashSet<RefPtr<Node>> nodeSetPreTransformedFromNodeOrStringVector(const Vector<std::experimental::variant<Ref<Node>, String>>& vector)
+static HashSet<RefPtr<Node>> nodeSetPreTransformedFromNodeOrStringVector(const Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>& vector)
 {
     HashSet<RefPtr<Node>> nodeSet;
 
     auto visitor = WTF::makeVisitor(
-        [&](const Ref<Node>& node) { nodeSet.add(const_cast<Node*>(node.ptr())); },
+        [&](const std::reference_wrapper<Node>& node) { nodeSet.add(const_cast<Node*>(&node.get())); },
         [](const String&) { }
     );
 
@@ -468,7 +468,7 @@ static RefPtr<Node> firstFollowingSiblingNotInNodeSet(Node& context, const HashS
     return nullptr;
 }
 
-RefPtr<Node> Node::convertNodesOrStringsIntoNode(Vector<std::experimental::variant<Ref<Node>, String>>&& nodeOrStringVector, ExceptionCode& ec)
+RefPtr<Node> Node::convertNodesOrStringsIntoNode(Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>&& nodeOrStringVector, ExceptionCode& ec)
 {
     if (nodeOrStringVector.isEmpty())
         return nullptr;
@@ -477,7 +477,7 @@ RefPtr<Node> Node::convertNodesOrStringsIntoNode(Vector<std::experimental::varia
     nodes.reserveInitialCapacity(nodeOrStringVector.size());
 
     auto visitor = WTF::makeVisitor(
-        [&](Ref<Node>& node) { nodes.uncheckedAppend(node.copyRef()); },
+        [&](std::reference_wrapper<Node>& node) { nodes.uncheckedAppend(node); },
         [&](String& string) { nodes.uncheckedAppend(Text::create(document(), string)); }
     );
 
@@ -495,7 +495,7 @@ RefPtr<Node> Node::convertNodesOrStringsIntoNode(Vector<std::experimental::varia
     return WTFMove(nodeToReturn);
 }
 
-void Node::before(Vector<std::experimental::variant<Ref<Node>, String>>&& nodeOrStringVector, ExceptionCode& ec)
+void Node::before(Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>&& nodeOrStringVector, ExceptionCode& ec)
 {
     RefPtr<ContainerNode> parent = parentNode();
     if (!parent)
@@ -516,7 +516,7 @@ void Node::before(Vector<std::experimental::variant<Ref<Node>, String>>&& nodeOr
     parent->insertBefore(*node, viablePreviousSibling.get(), ec);
 }
 
-void Node::after(Vector<std::experimental::variant<Ref<Node>, String>>&& nodeOrStringVector, ExceptionCode& ec)
+void Node::after(Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>&& nodeOrStringVector, ExceptionCode& ec)
 {
     RefPtr<ContainerNode> parent = parentNode();
     if (!parent)
@@ -532,7 +532,7 @@ void Node::after(Vector<std::experimental::variant<Ref<Node>, String>>&& nodeOrS
     parent->insertBefore(*node, viableNextSibling.get(), ec);
 }
 
-void Node::replaceWith(Vector<std::experimental::variant<Ref<Node>, String>>&& nodeOrStringVector, ExceptionCode& ec)
+void Node::replaceWith(Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>&& nodeOrStringVector, ExceptionCode& ec)
 {
     RefPtr<ContainerNode> parent = parentNode();
     if (!parent)
@@ -837,19 +837,15 @@ bool Document::shouldInvalidateNodeListAndCollectionCaches(const QualifiedName* 
 
 void Document::invalidateNodeListAndCollectionCaches(const QualifiedName* attrName)
 {
-#if !ASSERT_DISABLED
-    m_inInvalidateNodeListAndCollectionCaches = true;
-#endif
-    HashSet<LiveNodeList*> lists = WTFMove(m_listsInvalidatedAtDocument);
-    m_listsInvalidatedAtDocument.clear();
+    Vector<LiveNodeList*, 8> lists;
+    copyToVector(m_listsInvalidatedAtDocument, lists);
     for (auto* list : lists)
         list->invalidateCacheForAttribute(attrName);
-    HashSet<HTMLCollection*> collections = WTFMove(m_collectionsInvalidatedAtDocument);
+
+    Vector<HTMLCollection*, 8> collections;
+    copyToVector(m_collectionsInvalidatedAtDocument, collections);
     for (auto* collection : collections)
         collection->invalidateCacheForAttribute(attrName);
-#if !ASSERT_DISABLED
-    m_inInvalidateNodeListAndCollectionCaches = false;
-#endif
 }
 
 void Node::invalidateNodeListAndCollectionCachesInAncestors(const QualifiedName* attrName, Element* attributeOwnerElement)
@@ -2202,12 +2198,9 @@ bool Node::dispatchBeforeLoadEvent(const String& sourceURL)
     return !beforeLoadEvent->defaultPrevented();
 }
 
-void Node::dispatchInputEvent(const AtomicString& inputType)
+void Node::dispatchInputEvent()
 {
-    if (document().settings()->inputEventsEnabled())
-        dispatchScopedEvent(InputEvent::create(eventNames().inputEvent, inputType, true, false, document().defaultView(), 0));
-    else
-        dispatchScopedEvent(Event::create(eventNames().inputEvent, true, false));
+    dispatchScopedEvent(Event::create(eventNames().inputEvent, true, false));
 }
 
 void Node::defaultEventHandler(Event& event)
@@ -2272,8 +2265,6 @@ void Node::defaultEventHandler(Event& event)
                 frame->eventHandler().defaultTouchEventHandler(renderer->node(), &downcast<TouchEvent>(event));
         }
 #endif
-    } else if (event.type() == eventNames().webkitEditableContentChangedEvent) {
-        dispatchInputEvent(emptyString());
     }
 }
 

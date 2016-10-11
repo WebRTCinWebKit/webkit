@@ -26,7 +26,6 @@
 #include "config.h"
 #include "StyleTreeResolver.h"
 
-#include "AuthorStyleSheets.h"
 #include "CSSFontSelector.h"
 #include "ComposedTreeAncestorIterator.h"
 #include "ComposedTreeIterator.h"
@@ -45,6 +44,7 @@
 #include "ShadowRoot.h"
 #include "StyleFontSizeFunctions.h"
 #include "StyleResolver.h"
+#include "StyleScope.h"
 #include "Text.h"
 
 namespace WebCore {
@@ -83,13 +83,13 @@ TreeResolver::~TreeResolver()
 }
 
 TreeResolver::Scope::Scope(Document& document)
-    : styleResolver(document.ensureStyleResolver())
+    : styleResolver(document.styleScope().resolver())
     , sharingResolver(document, styleResolver.ruleSets(), selectorFilter)
 {
 }
 
 TreeResolver::Scope::Scope(ShadowRoot& shadowRoot, Scope& enclosingScope)
-    : styleResolver(shadowRoot.styleResolver())
+    : styleResolver(shadowRoot.styleScope().resolver())
     , sharingResolver(shadowRoot.documentScope(), styleResolver.ruleSets(), selectorFilter)
     , shadowRoot(&shadowRoot)
     , enclosingScope(&enclosingScope)
@@ -440,7 +440,7 @@ std::unique_ptr<Update> TreeResolver::resolve(Change change)
 
     Element* documentElement = m_document.documentElement();
     if (!documentElement) {
-        m_document.ensureStyleResolver();
+        m_document.styleScope().resolver();
         return nullptr;
     }
     if (change != Force && !documentElement->childNeedsStyleRecalc() && !documentElement->needsStyleRecalc())

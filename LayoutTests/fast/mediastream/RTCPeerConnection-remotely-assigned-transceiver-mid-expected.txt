@@ -1,4 +1,4 @@
-Test the case where an RTCTransceiver gets a remotely assigned mid and also unmute the associated source
+Test the case where an RTCRtpTransceiver gets a remotely assigned mid and also unmute the associated source
 
 On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
 

@@ -16,7 +16,7 @@ window.jsTestIsAsync = true;
 
 iconService.directoryPath = "../../../../Source/WebCore/Modules/modern-media-controls/images";
 
-const iconButton = new IconButton({ layoutTraits: LayoutTraits.macOS });
+const iconButton = new IconButton({ layoutDelegate: { layoutTraits: LayoutTraits.macOS } });
 iconButton.iconName = Icons.Pause;
 document.body.appendChild(iconButton.element);
 

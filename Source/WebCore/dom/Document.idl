@@ -32,7 +32,7 @@
     readonly attribute Element? documentElement;
 
     [NewObject, MayThrowLegacyException, ImplementedAs=createElementForBindings] Element createElement(DOMString tagName);
-    [NewObject] DocumentFragment   createDocumentFragment();
+    [NewObject] DocumentFragment createDocumentFragment();
 
     [NewObject] Text createTextNode(DOMString data);
     [NewObject] Comment createComment(DOMString data);
@@ -63,12 +63,8 @@
 
     [NewObject] Range createRange();
 
-    [NewObject] NodeIterator createNodeIterator(Node root,
-        optional unsigned long whatToShow = 0xFFFFFFFF,
-        optional NodeFilter? filter = null);
-    [NewObject] TreeWalker createTreeWalker(Node root,
-        optional unsigned long whatToShow = 0xFFFFFFFF,
-        optional NodeFilter? filter = null);
+    [NewObject] NodeIterator createNodeIterator(Node root, optional unsigned long whatToShow = 0xFFFFFFFF, optional NodeFilter? filter = null);
+    [NewObject] TreeWalker createTreeWalker(Node root, optional unsigned long whatToShow = 0xFFFFFFFF, optional NodeFilter? filter = null);
 
     readonly attribute DOMWindow defaultView;
 
@@ -192,6 +188,7 @@
     // FIXME: Should these be exposed on Window as well (and therefore moved to GlobalEventHandlers.idl)?
     [NotEnumerable] attribute EventHandler onbeforecopy;
     [NotEnumerable] attribute EventHandler onbeforecut;
+    [NotEnumerable] attribute EventHandler onbeforeinput;
     [NotEnumerable] attribute EventHandler onbeforepaste;
     [NotEnumerable] attribute EventHandler oncopy;
     [NotEnumerable] attribute EventHandler oncut;

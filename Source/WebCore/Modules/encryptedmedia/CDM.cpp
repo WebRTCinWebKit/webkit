@@ -32,9 +32,8 @@
 #include "CDMPrivateClearKey.h"
 #include "CDMPrivateMediaPlayer.h"
 #include "CDMSession.h"
-#include "MediaKeyError.h"
-#include "MediaKeys.h"
 #include "MediaPlayer.h"
+#include "WebKitMediaKeys.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/WTFString.h>
 
@@ -132,9 +131,9 @@ bool CDM::supportsMIMEType(const String& mimeType) const
     return m_private->supportsMIMEType(mimeType);
 }
 
-std::unique_ptr<CDMSession> CDM::createSession(CDMSessionClient* client)
+std::unique_ptr<CDMSession> CDM::createSession(CDMSessionClient& client)
 {
-    std::unique_ptr<CDMSession> session = m_private->createSession(client);
+    auto session = m_private->createSession(&client);
     if (mediaPlayer())
         mediaPlayer()->setCDMSession(session.get());
     return session;

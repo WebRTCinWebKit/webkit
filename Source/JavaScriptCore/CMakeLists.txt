@@ -96,7 +96,6 @@ set(JavaScriptCore_SOURCES
     b3/air/AirLowerMacros.cpp
     b3/air/AirOptimizeBlockOrder.cpp
     b3/air/AirPhaseScope.cpp
-    b3/air/AirRegisterPriority.cpp
     b3/air/AirReportUsedRegisters.cpp
     b3/air/AirSimplifyCFG.cpp
     b3/air/AirSpecial.cpp
@@ -286,6 +285,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGConstantHoistingPhase.cpp
     dfg/DFGCriticalEdgeBreakingPhase.cpp
     dfg/DFGDCEPhase.cpp
+    dfg/DFGDOMJITPatchpointParams.cpp
     dfg/DFGDesiredIdentifiers.cpp
     dfg/DFGDesiredTransitions.cpp
     dfg/DFGDesiredWatchpoints.cpp
@@ -415,6 +415,7 @@ set(JavaScriptCore_SOURCES
     ftl/FTLCapabilities.cpp
     ftl/FTLCommonValues.cpp
     ftl/FTLCompile.cpp
+    ftl/FTLDOMJITPatchpointParams.cpp
     ftl/FTLExceptionTarget.cpp
     ftl/FTLExitArgument.cpp
     ftl/FTLExitArgumentForOperand.cpp

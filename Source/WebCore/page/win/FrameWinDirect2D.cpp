@@ -33,6 +33,7 @@
 #include "FrameSelection.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
+#include "NotImplemented.h"
 #include "RenderObject.h"
 #include "Settings.h"
 #include <d2d1.h>

@@ -1,3 +1,908 @@
+2016-10-10  Adam Bergkvist  <adam.bergkvist@ericsson.com> and Alejandro G. Castro <alex@igalia.com>
+
+        WebRTC: Make MediaEndpointPeerConnection handle remotely assigned mids correctly
+        https://bugs.webkit.org/show_bug.cgi?id=163202
+
+        Reviewed by Eric Carlson.
+
+        Test the case when an RTCRtpTransceiver gets its mid assigned from a remote session
+        description.
+
+        * fast/mediastream/RTCPeerConnection-remotely-assigned-transceiver-mid-expected.txt: Added.
+        * fast/mediastream/RTCPeerConnection-remotely-assigned-transceiver-mid.html: Added.
+        * platform/mac/TestExpectations:
+        Skip above test until the Mac port builds with WEB_RTC.
+
+2016-10-10  Gyuyoung Kim  <gyuyoung.kim@navercorp.com>
+
+        [EFL] Skip imported/w3c/web-platform-tests for a while
+
+        Unreviewed EFL gardening.
+
+        Many imported/w3c/web-platform-tests have been failed, timeout, and crash.
+        So skip the tests until fixing all problems.
+
+        Additionally this patch removes duplciated tests.
+
+        * platform/efl/TestExpectations:
+
+2016-10-10  Chris Dumez  <cdumez@apple.com>
+
+        Update WheelEvent / MouseEvent to stop using legacy [ConstructorTemplate=Event]
+        https://bugs.webkit.org/show_bug.cgi?id=163254
+
+        Reviewed by Darin Adler.
+
+        Update existing tests now that:
+        - Exception messages are now slightly different in some cases.
+        - We now throw when an invalid relatedTarget type is passed in the dictionary.
+
+        * fast/events/constructors/mouse-event-constructor.html:
+        * fast/events/constructors/wheel-event-constructor.html:
+        * platform/mac/fast/events/constructors/mouse-event-constructor-expected.txt:
+        * platform/mac/fast/events/constructors/wheel-event-constructor-expected.txt:
+
+2016-10-10  Chris Dumez  <cdumez@apple.com>
+
+        Add support for languagechange event
+        https://bugs.webkit.org/show_bug.cgi?id=163222
+
+        Reviewed by Ryosuke Niwa.
+
+        Add layout test coverage.
+
+        * fast/dom/window-languagechange-event-expected.txt: Added.
+        * fast/dom/window-languagechange-event.html: Added.
+
+2016-10-10  Nan Wang  <n_wang@apple.com>
+
+        AX: Expose invalid status for input types with that information
+        https://bugs.webkit.org/show_bug.cgi?id=163252
+        <rdar://problem/28704409>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/invalid-status-for-input-types-expected.txt: Added.
+        * accessibility/mac/invalid-status-for-input-types.html: Added.
+
+2016-10-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking two media/modern-media-controls tests as failing.
+        https://bugs.webkit.org/show_bug.cgi?id=163248
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2016-10-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        TestExpectations cleanup for LayoutTests that no longer exist.
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2016-10-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking tiled-drawing/scrolling/latched-div-with-scroll-snap.html as flaky on mac-wk2.
+        https://bugs.webkit.org/show_bug.cgi?id=162505
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-10-10  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Placards
+        https://bugs.webkit.org/show_bug.cgi?id=163110
+        <rdar://problem/28669342>
+
+        Reviewed by Dean Jackson.
+
+        Testing the properties of the new Placard class and its subclasses.
+
+        * media/modern-media-controls/airplay-placard/airplay-placard-expected.txt: Added.
+        * media/modern-media-controls/airplay-placard/airplay-placard.html: Added.
+        * media/modern-media-controls/pip-placard/pip-placard-expected.txt: Added.
+        * media/modern-media-controls/pip-placard/pip-placard.html: Added.
+        * media/modern-media-controls/placard/placard-expected.txt: Added.
+        * media/modern-media-controls/placard/placard.html: Added.
+
+2016-10-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/replaced/preferred-widths.html as flaky on mac.
+        https://bugs.webkit.org/show_bug.cgi?id=116621
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-10-10  Chris Dumez  <cdumez@apple.com>
+
+        Add support for Navigator.languages attribute
+        https://bugs.webkit.org/show_bug.cgi?id=163220
+
+        Reviewed by Darin Adler.
+
+        Rebase existing test to reflect change.
+
+        * fast/dom/navigator-detached-no-crash-expected.txt:
+        * platform/mac-wk2/fast/dom/navigator-detached-no-crash-expected.txt:
+
+2016-10-10  Chris Dumez  <cdumez@apple.com>
+
+        Update MessageEvent to stop using legacy [ConstructorTemplate=Event]
+        https://bugs.webkit.org/show_bug.cgi?id=163187
+
+        Reviewed by Darin Adler.
+
+        Rebaseline existing test now that:
+        - Exception messages are sometimes a bit different
+        - We properly use the default member value when input is an explicit undefined
+        - We throw in more cases of bad input
+
+        * fast/events/constructors/message-event-constructor-expected.txt:
+        * fast/events/constructors/message-event-constructor.html:
+
+2016-10-10  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Buttons
+        https://bugs.webkit.org/show_bug.cgi?id=163109
+        <rdar://problem/28668954>
+
+        Reviewed by Dean Jackson.
+
+        Adding new tests for all new button types introduced, including any custom JS properties
+        and backing DOM structure that they may have, as well as checking which assets are loaded.
+
+        * media/modern-media-controls/airplay-button/airplay-button-expected.txt: Added.
+        * media/modern-media-controls/airplay-button/airplay-button-on-expected.txt: Added.
+        * media/modern-media-controls/airplay-button/airplay-button-on.html: Added.
+        * media/modern-media-controls/airplay-button/airplay-button.html: Added.
+        * media/modern-media-controls/aspect-ratio-button/aspect-ratio-button-expected.txt: Added.
+        * media/modern-media-controls/aspect-ratio-button/aspect-ratio-button.html: Added.
+        * media/modern-media-controls/forward-button/forward-button-expected.txt: Added.
+        * media/modern-media-controls/forward-button/forward-button.html: Added.
+        * media/modern-media-controls/fullscreen-button/fullscreen-button-expected.txt: Added.
+        * media/modern-media-controls/fullscreen-button/fullscreen-button.html: Added.
+        * media/modern-media-controls/mute-button/mute-button-expected.txt: Added.
+        * media/modern-media-controls/mute-button/mute-button.html: Added.
+        * media/modern-media-controls/pip-button/pip-button-expected.txt: Added.
+        * media/modern-media-controls/pip-button/pip-button.html: Added.
+        * media/modern-media-controls/play-pause-button/play-pause-button-expected.txt: Added.
+        * media/modern-media-controls/play-pause-button/play-pause-button.html: Added.
+        * media/modern-media-controls/rewind-button/rewind-button-expected.txt: Added.
+        * media/modern-media-controls/rewind-button/rewind-button.html: Added.
+        * media/modern-media-controls/skip-back-button/skip-back-button-expected.txt: Added.
+        * media/modern-media-controls/skip-back-button/skip-back-button.html: Added.
+        * media/modern-media-controls/start-button/start-button-expected.txt: Added.
+        * media/modern-media-controls/start-button/start-button.html: Added.
+        * media/modern-media-controls/tracks-button/tracks-button-expected.txt: Added.
+        * media/modern-media-controls/tracks-button/tracks-button.html: Added.
+        * platform/ios-simulator/media/modern-media-controls/airplay-button/airplay-button-on-expected.txt: Added.
+
+2016-10-10  Nan Wang  <n_wang@apple.com>
+
+        AX: Update AXPlaceHolder algorithm
+        https://bugs.webkit.org/show_bug.cgi?id=163229
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/placeholder-expected.txt:
+        * accessibility/placeholder.html:
+
+2016-10-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DOMJIT] Implement Node accessors in DOMJIT
+        https://bugs.webkit.org/show_bug.cgi?id=163005
+
+        Reviewed by Filip Pizlo.
+
+        * js/dom/domjit-accessor-monomorphic-expected.txt: Added.
+        * js/dom/domjit-accessor-monomorphic.html: Added.
+        * js/dom/domjit-accessor-polymorphic-expected.txt: Added.
+        * js/dom/domjit-accessor-polymorphic.html: Added.
+
+2016-10-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/controls/airplay-picker.html as flaky on ElCapitan+.
+        https://bugs.webkit.org/show_bug.cgi?id=163231
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-10-10  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Support InputEvent.data for the new InputEvent spec
+        https://bugs.webkit.org/show_bug.cgi?id=163113
+        <rdar://problem/28681935>
+
+        Reviewed by Darin Adler.
+
+        Adds 2 new layout tests verifying the data attribute of `beforeinput` and `input` events when typing, pasting,
+        and selecting candidate replacements in plain text and contenteditable areas.
+
+        Also tweaks an existing test to ensure that `data` is an attribute of an InputEvent.
+
+        * fast/events/input-events-fired-when-typing-expected.txt:
+        * fast/events/input-events-fired-when-typing.html:
+        * fast/events/input-events-paste-data-expected.txt: Added.
+        * fast/events/input-events-paste-data.html: Added.
+        * fast/events/input-events-typing-data-expected.txt: Added.
+        * fast/events/input-events-typing-data.html: Added.
+        * platform/ios-simulator/TestExpectations:
+
+2016-10-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking storage/indexeddb/modern/abort-requests-cancelled* tests as flaky on mac.
+        https://bugs.webkit.org/show_bug.cgi?id=156070
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2016-10-10  Jer Noble  <jer.noble@apple.com>
+
+        Address flaky airplay-* LayouTests
+        https://bugs.webkit.org/show_bug.cgi?id=163044
+
+        Reviewed by Brent Fulgham.
+
+        * media/airplay-autoplay.html:
+        * platform/mac/TestExpectations:
+
+2016-10-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/xmlhttprequest/onabort-response-getters.html as flaky on ios-simulator.
+        https://bugs.webkit.org/show_bug.cgi?id=162647
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-10-10  Youenn Fablet  <youennf@gmail.com>
+
+        Sync web-platform-tests up to revision 33f4da1
+        https://bugs.webkit.org/show_bug.cgi?id=163205
+
+        Reviewed by Alex Christensen.
+
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-checkValidity-expected.txt:
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-reportValidity-expected.txt:
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-validity-stepMismatch-expected.txt:
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-validity-valid-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/media-source/interfaces-expected.txt:
+        * tests-options.json:
+
+2016-10-10  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Memory cache should not bypass redirect mode
+        https://bugs.webkit.org/show_bug.cgi?id=162959
+
+        Reviewed by Darin Adler.
+
+        * http/tests/fetch/redirectmode-and-preload-expected.txt: Added.
+        * http/tests/fetch/redirectmode-and-preload.html: Added.
+        * http/tests/fetch/resources/redirect-with-cache.php:
+
+2016-10-09  Antti Koivisto  <antti@apple.com>
+
+        Enable optimized stylesheet updates in shadow trees
+        https://bugs.webkit.org/show_bug.cgi?id=163180
+
+        Reviewed by Darin Adler.
+
+        * fast/shadow-dom/scoped-style-invalidation-expected.txt: Added.
+        * fast/shadow-dom/scoped-style-invalidation.html: Added.
+
+2016-10-09  Gyuyoung Kim  <gyuyoung.kim@navercorp.com>
+
+        Unreviewed, EFL Gardening on Oct. 10th - 2
+
+        Mark missing test to Skip because the tests aren't supported by EFL yet.
+        Unskip passing tests and add *PASS* to some flaky tests because I guess
+        it is still flaky.
+
+        * platform/efl/TestExpectations:
+
+2016-10-09  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Support InputEvent.inputType for the new InputEvent spec
+        https://bugs.webkit.org/show_bug.cgi?id=163025
+        <rdar://problem/28658092>
+
+        Reviewed by Darin Adler.
+
+        Adds new layout tests to check that various actions, such as cutting, pasting and undoing can
+        be prevented via the InputEvent fired in a `beforechange` handler.
+
+        * fast/events/before-input-prevent-biu-expected.txt: Added.
+        * fast/events/before-input-prevent-biu.html: Added.
+        * fast/events/before-input-prevent-cut-expected.txt: Added.
+        * fast/events/before-input-prevent-cut.html: Added.
+        * fast/events/before-input-prevent-paste-expected.txt: Added.
+        * fast/events/before-input-prevent-paste.html: Added.
+        * fast/events/before-input-prevent-typing-expected.txt: Added.
+        * fast/events/before-input-prevent-typing.html: Added.
+        * fast/events/before-input-prevent-undo-expected.txt: Added.
+        * fast/events/before-input-prevent-undo.html: Added.
+        * platform/ios-simulator/TestExpectations:
+
+2016-10-09  Gyuyoung Kim  <gyuyoung.kim@navercorp.com>
+
+        [EFL] Gardening timout tests, failure tests on Oct. 10th.
+
+        Unreviewed EFL gardening.
+
+        * platform/efl/TestExpectations:
+
+2016-10-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r165103): labels list doesn't get invalidated when other lists are invalidated at document level
+        https://bugs.webkit.org/show_bug.cgi?id=163145
+
+        Reviewed by Darin Adler.
+
+        Added a regression test.
+
+        * fast/dom/NodeList/form-labels-length-expected.txt: Added.
+        * fast/dom/NodeList/form-labels-length.html: Added.
+
+2016-10-09  Chris Dumez  <cdumez@apple.com>
+
+        Update KeyboardEvent to stop using legacy [ConstructorTemplate=Event]
+        https://bugs.webkit.org/show_bug.cgi?id=163176
+
+        Reviewed by Darin Adler.
+
+        Rebaseline existing test now that the exception message is slightly
+        different in some cases. Also add test coverage for passing
+        modifierAltGraph / modifierCapsLock in initialization dictionary.
+
+        * fast/events/constructors/keyboard-event-constructor-expected.txt:
+        * fast/events/constructors/keyboard-event-constructor.html:
+
+2016-10-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Miscellaneous unreviewed test gardening
+
+        * platform/gtk/TestExpectations:
+
+2016-10-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Skip new custom elements tests, they're all failing
+
+        * platform/gtk/TestExpectations:
+
+2016-10-09  Youenn Fablet  <youenn@apple.com>
+
+        Promise attribute getters should reject promises in case of casted-this errors
+        https://bugs.webkit.org/show_bug.cgi?id=163167
+
+        Reviewed by Darin Adler.
+
+        * fast/text/font-face-set-javascript-expected.txt:
+        * fast/text/font-face-set-javascript.html:
+
+2016-10-08  Chris Dumez  <cdumez@apple.com>
+
+        [Mac] Write HTML to the pasteboard when copying image in WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=163100
+
+        Reviewed by Darin Adler.
+
+        Convert editing/pasteboard/copy-standalone-image.html into a ref test
+        and unskip on WebKit2 now that it passes there as well. Before this
+        patch, the test would fail on WebKit2 (the pasted image would not be
+        displayed).
+
+        * editing/pasteboard/copy-standalone-image-expected.html: Added.
+        * editing/pasteboard/copy-standalone-image.html:
+        * platform/gtk/editing/pasteboard/copy-standalone-image-expected.png: Removed.
+        * platform/gtk/editing/pasteboard/copy-standalone-image-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/pasteboard/copy-standalone-image-expected.png: Removed.
+        * platform/ios-simulator/editing/pasteboard/copy-standalone-image-expected.txt: Removed.
+        * platform/mac/editing/pasteboard/copy-standalone-image-expected.png: Removed.
+        * platform/mac/editing/pasteboard/copy-standalone-image-expected.txt: Removed.
+        * platform/win/editing/pasteboard/copy-standalone-image-expected.txt: Removed.
+        * platform/wk2/TestExpectations:
+
+2016-10-08  Chris Dumez  <cdumez@apple.com>
+
+        Update CustomEvent to stop using legacy [ConstructorTemplate=Event]
+        https://bugs.webkit.org/show_bug.cgi?id=163174
+
+        Reviewed by Darin Adler.
+
+        Update existing layout test to reflect minor behavior change.
+
+        * fast/events/constructors/custom-event-constructor-expected.txt:
+        * fast/events/constructors/custom-event-constructor.html:
+
+2016-10-08  Chris Dumez  <cdumez@apple.com>
+
+        Add support for ClipboardEvent
+        https://bugs.webkit.org/show_bug.cgi?id=163164
+
+        Reviewed by Darin Adler.
+
+        Extended layout test coverage.
+
+        * editing/pasteboard/clipboard-event-expected.txt: Added.
+        * editing/pasteboard/clipboard-event.html: Added.
+        * fast/events/clipboard-event-constructor-expected.txt: Added.
+        * fast/events/clipboard-event-constructor.html: Added.
+        * fast/xmlhttprequest/xmlhttprequest-get-expected.txt:
+        * http/tests/workers/worker-importScriptsOnError-expected.txt:
+        * inspector/model/remote-object-get-properties-expected.txt:
+        * js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-wk1/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        * platform/win/js/dom/global-constructors-attributes-expected.txt:
+
+2016-10-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking js/regress-141098.html as flaky on mac.
+        https://bugs.webkit.org/show_bug.cgi?id=163046
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-10-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/media/track-in-band-hls-metadata.html as a flaky timeout on mac.
+        https://bugs.webkit.org/show_bug.cgi?id=140022
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-10-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking storage/indexeddb/key-generator.html as flaky on mac-wk2 debug.
+        https://bugs.webkit.org/show_bug.cgi?id=161653
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-10-08  Youenn Fablet  <youennf@gmail.com>
+
+        [Fetch API] Request constructor should provide exception messages
+        https://bugs.webkit.org/show_bug.cgi?id=162382
+
+        Reviewed by Darin Adler.
+
+        * fetch/fetch-url-serialization-expected.txt: Rebasing test expectation.
+
+2016-10-07  Chris Dumez  <cdumez@apple.com>
+
+        window.navigator.language incorrectly returns all lowercase string
+        https://bugs.webkit.org/show_bug.cgi?id=163096
+
+        Reviewed by Darin Adler.
+
+        Update existing test so that it does not lowercase navigator.language
+        before checking it. This way, we can make sure it returns en-US and
+        not en-us.
+
+        * js/dom/navigator-language-expected.txt:
+        * js/dom/navigator-language.html:
+
+2016-10-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        REGRESSION (r206853?): LayoutTest js/regress-141098.html failing
+        https://bugs.webkit.org/show_bug.cgi?id=163046
+
+        Reviewed by Saam Barati.
+
+        This is attempt-to-fix patch since I cannot reproduce this flakiness.
+        We reduce the number of frames to back off from the stack overflow to
+        catch the closer frame limit to the actual stack limit.
+
+        * js/script-tests/regress-141098.js:
+
+2016-10-07  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, mark a test as failing on iOS simulator
+
+        This was intended to be a part of r206944.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-10-07  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Support onbeforeinput event handling for the new InputEvent spec
+        https://bugs.webkit.org/show_bug.cgi?id=163021
+        <rdar://problem/28658073>
+
+        Reviewed by Darin Adler.
+
+        Tweak an existing test to hook into the 'input' event instead of 'webkitEditableContentChanged', as well as
+        tests added in r206843 to verify that `onbeforeinput` handlers are invoked with InputEvents. Also introduces
+        new unit tests verifying that calling preventDefault on InputEvents fired by `onbeforeinput` correctly prevent
+        text from being inserted or deleted.
+
+        * editing/undo/undo-after-event-edited.html:
+        * fast/events/before-input-events-different-start-end-elements-expected.txt: Added.
+        * fast/events/before-input-events-different-start-end-elements.html: Added.
+        * fast/events/before-input-events-prevent-default-expected.txt: Added.
+        * fast/events/before-input-events-prevent-default-in-textfield-expected.txt: Added.
+        * fast/events/before-input-events-prevent-default-in-textfield.html: Added.
+        * fast/events/before-input-events-prevent-default.html: Added.
+        * fast/events/input-events-fired-when-typing-expected.txt:
+        * fast/events/input-events-fired-when-typing.html:
+        * platform/ios-simulator/TestExpectations:
+
+2016-10-07  Nan Wang  <n_wang@apple.com>
+
+        AX: <figcaption> should be AXTitleUIElement for other content inside the <figure>
+        https://bugs.webkit.org/show_bug.cgi?id=108996
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/figure-element-expected.txt: Added.
+        * accessibility/mac/figure-element.html: Added.
+
+2016-10-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/debugger/stepping tests as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=161951
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2016-10-07  Jonathan Bedard  <jbedard@apple.com>
+
+        js/function-apply-aliased.html is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=127860
+
+        Reviewed by Darin Adler.
+
+        This test no longer times out.  Reintegrating into test suites.
+
+        * TestExpectations: Stopped skipping js/function-apply-aliased.html.
+
+2016-10-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/console/addInspectedNode.html as flaky on mac-debug.
+        https://bugs.webkit.org/show_bug.cgi?id=155138
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2016-10-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/cache/disk-cache/memory-cache-revalidation-updates-disk-cache.html as flaky on mac-wk2 debug.
+        https://bugs.webkit.org/show_bug.cgi?id=162975
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-10-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/loading/basic-auth-load-URL-with-consecutive-slashes.html as flaky on mac-wk2
+        https://bugs.webkit.org/show_bug.cgi?id=163139
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-10-07  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r201970): productSub / vendor / vendorSub should not be exposed on WorkerNavigator
+        https://bugs.webkit.org/show_bug.cgi?id=163124
+
+        Reviewed by Ryosuke Niwa.
+
+        Update existing test to reflect behavior change.
+
+        * fast/workers/resources/worker-navigator.js:
+        * fast/workers/worker-navigator-expected.txt:
+
+2016-10-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/xmlhttprequest/auth-reject-protection-space.html as flaky on mac-wk2.
+        https://bugs.webkit.org/show_bug.cgi?id=163136
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-10-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking storage/indexeddb/key-type-array.html as flaky on mac-debug.
+        https://bugs.webkit.org/show_bug.cgi?id=161720
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-10-07  Nan Wang  <n_wang@apple.com>
+
+        AX: AXRoleDescription for details and summary elements
+        https://bugs.webkit.org/show_bug.cgi?id=163094
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/details-summary-role-description-expected.txt: Added.
+        * accessibility/mac/details-summary-role-description.html: Added.
+
+2016-10-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking imported/blink/storage/indexeddb/blob-valid-after-deletion.html as flaky on mac.
+        https://bugs.webkit.org/show_bug.cgi?id=163122
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-10-07  Zalan Bujtas  <zalan@apple.com>
+
+        https://vuldb.com/?cvssv3.2012 takes long time to load.
+        https://bugs.webkit.org/show_bug.cgi?id=162994
+        <rdar://problem/28593746>
+
+        Reviewed by Darin Adler.
+
+        It takes ~100 seconds to run this test case without the fix (300ms with the fix).
+        Surely it will timeout if it gets regressed. 
+
+        * fast/selectors/slow-style-sharing-with-long-cousin-list-expected.txt: Added.
+        * fast/selectors/slow-style-sharing-with-long-cousin-list.html: Added.
+        * platform/mac/TestExpectations: Skip perf test in debug.
+
+2016-10-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking contentextensions tests as flaky on mac-wk2.
+        https://bugs.webkit.org/show_bug.cgi?id=162942
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-10-07  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=163106
+
+        Reviewed by Philippe Normand.
+
+        * fast/mediastream/RTCPeerConnection-add-removeTrack-expected.txt:
+        Update expected results to include webkit prefix on RTCPeerConnection name. (Not GTK+
+        specific.)
+        * platform/gtk/TestExpectations:
+        Skip some tests since the GTK+ MediaPlayer, used with MediaStreams, isn't capable enough.
+
+2016-10-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Variation fonts don't affect glyph advances
+        https://bugs.webkit.org/show_bug.cgi?id=163093
+
+        Reviewed by Darin Adler.
+
+        * platform/ios-simulator/TestExpectations: Mark the test
+        as failing on iOS because that OS doesn't have Skia.
+        * fast/text/variations/advances-expected.txt: Added.
+        * fast/text/variations/advances.html: Added.
+
+2016-10-06  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Skip to test imported/w3c/web-platform-tests/
+
+        Unreivewed EFL gardening
+
+        Too many tests have been failures, timeout, and crash.
+        Skip it for a while until we fix it.
+
+        * platform/efl/TestExpectations:
+
+2016-10-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r206713.
+        https://bugs.webkit.org/show_bug.cgi?id=163097
+
+        triggers apparent codegen bug on ARM 32-bit (Requested by smfr
+        on #webkit).
+
+        Reverted changeset:
+
+        "Support transitions/animations of background-position with
+        right/bottom-relative values"
+        https://bugs.webkit.org/show_bug.cgi?id=162048
+        http://trac.webkit.org/changeset/206713
+
+2016-10-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Upgrading and constructing element should always report exception instead of rethrowing
+        https://bugs.webkit.org/show_bug.cgi?id=162996
+
+        Reviewed by Darin Adler.
+
+        Updated the tests to expect exceptions thrown during custom element constructions are always reported.
+
+        * fast/custom-elements/Document-createElement-expected.txt:
+        * fast/custom-elements/Document-createElement.html:
+        * fast/custom-elements/defined-pseudo-class-expected.txt:
+        * fast/custom-elements/defined-pseudo-class.html:
+        * fast/custom-elements/upgrading/Node-cloneNode.html:
+        * fast/custom-elements/upgrading/upgrading-parser-created-element.html:
+
+2016-10-06  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Add a dummy SubtleCrypto interface
+        https://bugs.webkit.org/show_bug.cgi?id=162992
+        <rdar://problem/28643573>
+
+        Reviewed by Brent Fulgham.
+
+        * crypto/resources/common.js:
+        * crypto/subtle/gc-2-expected.txt: Added.
+        * crypto/subtle/gc-2.html: Added.
+        * crypto/subtle/gc-3-expected.txt: Added.
+        * crypto/subtle/gc-3.html: Added.
+        * crypto/subtle/gc-expected.txt: Added.
+        * crypto/subtle/gc.html: Added.
+        * crypto/webkitSubtle/aes-cbc-192-encrypt-decrypt-expected.txt: Renamed from LayoutTests/crypto/subtle/aes-cbc-192-encrypt-decrypt-expected.txt.
+        * crypto/webkitSubtle/aes-cbc-192-encrypt-decrypt.html: Renamed from LayoutTests/crypto/subtle/aes-cbc-192-encrypt-decrypt.html.
+        * crypto/webkitSubtle/aes-cbc-256-encrypt-decrypt-expected.txt: Renamed from LayoutTests/crypto/subtle/aes-cbc-256-encrypt-decrypt-expected.txt.
+        * crypto/webkitSubtle/aes-cbc-256-encrypt-decrypt.html: Renamed from LayoutTests/crypto/subtle/aes-cbc-256-encrypt-decrypt.html.
+        * crypto/webkitSubtle/aes-cbc-encrypt-decrypt-expected.txt: Renamed from LayoutTests/crypto/subtle/aes-cbc-encrypt-decrypt-expected.txt.
+        * crypto/webkitSubtle/aes-cbc-encrypt-decrypt-with-padding-expected.txt: Renamed from LayoutTests/crypto/subtle/aes-cbc-encrypt-decrypt-with-padding-expected.txt.
+        * crypto/webkitSubtle/aes-cbc-encrypt-decrypt-with-padding.html: Renamed from LayoutTests/crypto/subtle/aes-cbc-encrypt-decrypt-with-padding.html.
+        * crypto/webkitSubtle/aes-cbc-encrypt-decrypt.html: Renamed from LayoutTests/crypto/subtle/aes-cbc-encrypt-decrypt.html.
+        * crypto/webkitSubtle/aes-cbc-generate-key-expected.txt: Renamed from LayoutTests/crypto/subtle/aes-cbc-generate-key-expected.txt.
+        * crypto/webkitSubtle/aes-cbc-generate-key.html: Renamed from LayoutTests/crypto/subtle/aes-cbc-generate-key.html.
+        * crypto/webkitSubtle/aes-cbc-import-jwk-expected.txt: Renamed from LayoutTests/crypto/subtle/aes-cbc-import-jwk-expected.txt.
+        * crypto/webkitSubtle/aes-cbc-import-jwk.html: Renamed from LayoutTests/crypto/subtle/aes-cbc-import-jwk.html.
+        * crypto/webkitSubtle/aes-cbc-invalid-length-expected.txt: Renamed from LayoutTests/crypto/subtle/aes-cbc-invalid-length-expected.txt.
+        * crypto/webkitSubtle/aes-cbc-invalid-length.html: Renamed from LayoutTests/crypto/subtle/aes-cbc-invalid-length.html.
+        * crypto/webkitSubtle/aes-cbc-unwrap-failure-expected.txt: Renamed from LayoutTests/crypto/subtle/aes-cbc-unwrap-failure-expected.txt.
+        * crypto/webkitSubtle/aes-cbc-unwrap-failure.html: Renamed from LayoutTests/crypto/subtle/aes-cbc-unwrap-failure.html.
+        * crypto/webkitSubtle/aes-cbc-unwrap-rsa-expected.txt: Renamed from LayoutTests/crypto/subtle/aes-cbc-unwrap-rsa-expected.txt.
+        * crypto/webkitSubtle/aes-cbc-unwrap-rsa.html: Renamed from LayoutTests/crypto/subtle/aes-cbc-unwrap-rsa.html.
+        * crypto/webkitSubtle/aes-cbc-wrap-rsa-expected.txt: Renamed from LayoutTests/crypto/subtle/aes-cbc-wrap-rsa-expected.txt.
+        * crypto/webkitSubtle/aes-cbc-wrap-rsa-non-extractable-expected.txt: Renamed from LayoutTests/crypto/subtle/aes-cbc-wrap-rsa-non-extractable-expected.txt.
+        * crypto/webkitSubtle/aes-cbc-wrap-rsa-non-extractable.html: Renamed from LayoutTests/crypto/subtle/aes-cbc-wrap-rsa-non-extractable.html.
+        * crypto/webkitSubtle/aes-cbc-wrap-rsa.html: Renamed from LayoutTests/crypto/subtle/aes-cbc-wrap-rsa.html.
+        * crypto/webkitSubtle/aes-cbc-wrong-key-class-expected.txt: Renamed from LayoutTests/crypto/subtle/aes-cbc-wrong-key-class-expected.txt.
+        * crypto/webkitSubtle/aes-cbc-wrong-key-class.html: Renamed from LayoutTests/crypto/subtle/aes-cbc-wrong-key-class.html.
+        * crypto/webkitSubtle/aes-export-key-expected.txt: Renamed from LayoutTests/crypto/subtle/aes-export-key-expected.txt.
+        * crypto/webkitSubtle/aes-export-key.html: Renamed from LayoutTests/crypto/subtle/aes-export-key.html.
+        * crypto/webkitSubtle/aes-kw-key-manipulation-expected.txt: Renamed from LayoutTests/crypto/subtle/aes-kw-key-manipulation-expected.txt.
+        * crypto/webkitSubtle/aes-kw-key-manipulation.html: Renamed from LayoutTests/crypto/subtle/aes-kw-key-manipulation.html.
+        * crypto/webkitSubtle/aes-kw-wrap-unwrap-aes-expected.txt: Renamed from LayoutTests/crypto/subtle/aes-kw-wrap-unwrap-aes-expected.txt.
+        * crypto/webkitSubtle/aes-kw-wrap-unwrap-aes.html: Renamed from LayoutTests/crypto/subtle/aes-kw-wrap-unwrap-aes.html.
+        * crypto/webkitSubtle/aes-postMessage-expected.txt: Renamed from LayoutTests/crypto/subtle/aes-postMessage-expected.txt.
+        * crypto/webkitSubtle/aes-postMessage.html: Renamed from LayoutTests/crypto/subtle/aes-postMessage.html.
+        * crypto/webkitSubtle/argument-conversion-expected.txt: Renamed from LayoutTests/crypto/subtle/argument-conversion-expected.txt.
+        * crypto/webkitSubtle/argument-conversion.html: Renamed from LayoutTests/crypto/subtle/argument-conversion.html.
+        * crypto/webkitSubtle/array-buffer-view-offset-expected.txt: Renamed from LayoutTests/crypto/subtle/array-buffer-view-offset-expected.txt.
+        * crypto/webkitSubtle/array-buffer-view-offset.html: Renamed from LayoutTests/crypto/subtle/array-buffer-view-offset.html.
+        * crypto/webkitSubtle/crypto-key-algorithm-gc-expected.txt: Renamed from LayoutTests/crypto/subtle/crypto-key-algorithm-gc-expected.txt.
+        * crypto/webkitSubtle/crypto-key-algorithm-gc.html: Renamed from LayoutTests/crypto/subtle/crypto-key-algorithm-gc.html.
+        * crypto/webkitSubtle/crypto-key-usages-gc-expected.txt: Renamed from LayoutTests/crypto/subtle/crypto-key-usages-gc-expected.txt.
+        * crypto/webkitSubtle/crypto-key-usages-gc.html: Renamed from LayoutTests/crypto/subtle/crypto-key-usages-gc.html.
+        * crypto/webkitSubtle/hmac-check-algorithm-expected.txt: Renamed from LayoutTests/crypto/subtle/hmac-check-algorithm-expected.txt.
+        * crypto/webkitSubtle/hmac-check-algorithm.html: Renamed from LayoutTests/crypto/subtle/hmac-check-algorithm.html.
+        * crypto/webkitSubtle/hmac-export-key-expected.txt: Renamed from LayoutTests/crypto/subtle/hmac-export-key-expected.txt.
+        * crypto/webkitSubtle/hmac-export-key.html: Renamed from LayoutTests/crypto/subtle/hmac-export-key.html.
+        * crypto/webkitSubtle/hmac-generate-key-expected.txt: Renamed from LayoutTests/crypto/subtle/hmac-export-key.html.
+        * crypto/webkitSubtle/hmac-generate-key.html: Renamed from LayoutTests/crypto/subtle/hmac-generate-key.html.
+        * crypto/webkitSubtle/hmac-import-jwk-expected.txt: Renamed from LayoutTests/crypto/subtle/hmac-import-jwk-expected.txt.
+        * crypto/webkitSubtle/hmac-import-jwk.html: Renamed from LayoutTests/crypto/subtle/hmac-import-jwk.html.
+        * crypto/webkitSubtle/hmac-postMessage-expected.txt: Renamed from LayoutTests/crypto/subtle/hmac-postMessage-expected.txt.
+        * crypto/webkitSubtle/hmac-postMessage.html: Renamed from LayoutTests/crypto/subtle/hmac-postMessage.html.
+        * crypto/webkitSubtle/hmac-sign-verify-empty-key-expected.txt: Renamed from LayoutTests/crypto/subtle/hmac-sign-verify-empty-key-expected.txt.
+        * crypto/webkitSubtle/hmac-sign-verify-empty-key.html: Renamed from LayoutTests/crypto/subtle/hmac-sign-verify-empty-key.html.
+        * crypto/webkitSubtle/hmac-sign-verify-expected.txt: Renamed from LayoutTests/crypto/subtle/hmac-sign-verify-expected.txt.
+        * crypto/webkitSubtle/hmac-sign-verify.html: Renamed from LayoutTests/crypto/subtle/hmac-sign-verify.html.
+        * crypto/webkitSubtle/import-jwk-expected.txt: Renamed from LayoutTests/crypto/subtle/import-jwk-expected.txt.
+        * crypto/webkitSubtle/import-jwk.html: Renamed from LayoutTests/crypto/subtle/import-jwk-expected.html.
+        * crypto/webkitSubtle/jwk-export-use-values-expected.txt: Renamed from LayoutTests/crypto/subtle/jwk-export-use-values-expected.txt.
+        * crypto/webkitSubtle/jwk-export-use-values.html: Renamed from LayoutTests/crypto/subtle/jwk-export-use-values.html.
+        * crypto/webkitSubtle/jwk-import-use-values-expected.txt: Renamed from LayoutTests/crypto/subtle/jwk-import-use-values-expected.txt.
+        * crypto/webkitSubtle/jwk-import-use-values.html: Renamed from LayoutTests/crypto/subtle/jwk-import-use-values.html.
+        * crypto/webkitSubtle/resources/rsa-indexeddb-non-exportable.js: Renamed from LayoutTests/crypto/subtle/resources/rsa-indexeddb-non-exportable.js.
+        * crypto/webkitSubtle/resources/rsa-indexeddb.js: Renamed from LayoutTests/crypto/subtle/resources/rsa-indexeddb.js.
+        * crypto/webkitSubtle/rsa-export-generated-keys-expected.txt: Renamed from LayoutTests/crypto/subtle/rsa-export-generated-keys-expected.txt.
+        * crypto/webkitSubtle/rsa-export-generated-keys.html: Renamed from LayoutTests/crypto/subtle/rsa-export-generated-keys.html.
+        * crypto/webkitSubtle/rsa-export-key-expected.txt: Renamed from LayoutTests/crypto/subtle/rsa-export-key-expected.txt.
+        * crypto/webkitSubtle/rsa-export-key.html: Renamed from LayoutTests/crypto/subtle/rsa-export-key.html.
+        * crypto/webkitSubtle/rsa-export-private-key-expected.txt: Renamed from LayoutTests/crypto/subtle/rsa-export-private-key-expected.txt.
+        * crypto/webkitSubtle/rsa-export-private-key.html: Renamed from LayoutTests/crypto/subtle/rsa-export-private-key.html.
+        * crypto/webkitSubtle/rsa-indexeddb-expected.txt: Renamed from LayoutTests/crypto/subtle/rsa-indexeddb-expected.txt.
+        * crypto/webkitSubtle/rsa-indexeddb-non-exportable-expected.txt: Renamed from LayoutTests/crypto/subtle/rsa-indexeddb-non-exportable-expected.txt.
+        * crypto/webkitSubtle/rsa-indexeddb-non-exportable-private-expected.txt: Renamed from LayoutTests/crypto/subtle/rsa-indexeddb-non-exportable-private-expected.txt.
+        * crypto/webkitSubtle/rsa-indexeddb-non-exportable-private.html: Renamed from LayoutTests/crypto/subtle/rsa-indexeddb-non-exportable-private.html.
+        * crypto/webkitSubtle/rsa-indexeddb-non-exportable.html: Renamed from LayoutTests/crypto/subtle/rsa-indexeddb-non-exportable.html.
+        * crypto/webkitSubtle/rsa-indexeddb-private-expected.txt: Renamed from LayoutTests/crypto/subtle/rsa-indexeddb-private-expected.txt.
+        * crypto/webkitSubtle/rsa-indexeddb-private.html: Renamed from LayoutTests/crypto/subtle/rsa-indexeddb-private.html.
+        * crypto/webkitSubtle/rsa-indexeddb.html: Renamed from LayoutTests/crypto/subtle/rsa-indexeddb.html.
+        * crypto/webkitSubtle/rsa-oaep-generate-non-extractable-key-expected.txt: Renamed from LayoutTests/crypto/subtle/rsa-oaep-generate-non-extractable-key-expected.txt.
+        * crypto/webkitSubtle/rsa-oaep-generate-non-extractable-key.html: Renamed from LayoutTests/crypto/subtle/rsa-oaep-generate-non-extractable-key.html.
+        * crypto/webkitSubtle/rsa-oaep-key-manipulation-expected.txt: Renamed from LayoutTests/crypto/subtle/rsa-oaep-key-manipulation-expected.txt.
+        * crypto/webkitSubtle/rsa-oaep-key-manipulation.html: Renamed from LayoutTests/crypto/subtle/rsa-oaep-key-manipulation.html.
+        * crypto/webkitSubtle/rsa-oaep-plaintext-length-expected.txt: Renamed from LayoutTests/crypto/subtle/rsa-oaep-plaintext-length-expected.txt.
+        * crypto/webkitSubtle/rsa-oaep-plaintext-length.html: Renamed from LayoutTests/crypto/subtle/rsa-oaep-plaintext-length.html.
+        * crypto/webkitSubtle/rsa-oaep-wrap-unwrap-aes-expected.txt: Renamed from LayoutTests/crypto/subtle/rsa-oaep-wrap-unwrap-aes-expected.txt.
+        * crypto/webkitSubtle/rsa-oaep-wrap-unwrap-aes.html: Renamed from LayoutTests/crypto/subtle/rsa-oaep-wrap-unwrap-aes.html.
+        * crypto/webkitSubtle/rsa-postMessage-expected.txt: Renamed from LayoutTests/crypto/subtle/rsa-postMessage-expected.txt.
+        * crypto/webkitSubtle/rsa-postMessage.html: Renamed from LayoutTests/crypto/subtle/rsa-postMessage.html.
+        * crypto/webkitSubtle/rsaes-pkcs1-v1_5-decrypt-expected.txt: Renamed from LayoutTests/crypto/subtle/rsaes-pkcs1-v1_5-decrypt-expected.txt.
+        * crypto/webkitSubtle/rsaes-pkcs1-v1_5-decrypt.html: Renamed from LayoutTests/crypto/subtle/rsaes-pkcs1-v1_5-decrypt.html.
+        * crypto/webkitSubtle/rsaes-pkcs1-v1_5-wrap-unwrap-aes-expected.txt: Renamed from LayoutTests/crypto/subtle/rsaes-pkcs1-v1_5-wrap-unwrap-aes-expected.txt.
+        * crypto/webkitSubtle/rsaes-pkcs1-v1_5-wrap-unwrap-aes.html: Renamed from LayoutTests/crypto/subtle/rsaes-pkcs1-v1_5-wrap-unwrap-aes.html.
+        * crypto/webkitSubtle/rsassa-pkcs1-v1_5-generate-key-expected.txt: Renamed from LayoutTests/crypto/subtle/rsassa-pkcs1-v1_5-generate-key-expected.txt.
+        * crypto/webkitSubtle/rsassa-pkcs1-v1_5-generate-key-with-leading-zeroes-in-exponent-expected.txt: Renamed from LayoutTests/crypto/subtle/rsassa-pkcs1-v1_5-generate-key-with-leading-zeroes-in-exponent-expected.txt.
+        * crypto/webkitSubtle/rsassa-pkcs1-v1_5-generate-key-with-leading-zeroes-in-exponent.html: Renamed from LayoutTests/crypto/subtle/rsassa-pkcs1-v1_5-generate-key-with-leading-zeroes-in-exponent.html.
+        * crypto/webkitSubtle/rsassa-pkcs1-v1_5-generate-key.html: Renamed from LayoutTests/crypto/subtle/rsassa-pkcs1-v1_5-generate-key.html.
+        * crypto/webkitSubtle/rsassa-pkcs1-v1_5-import-jwk-expected.txt: Renamed from LayoutTests/crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-expected.txt.
+        * crypto/webkitSubtle/rsassa-pkcs1-v1_5-import-jwk-small-key-expected.txt: Added.
+        * crypto/webkitSubtle/rsassa-pkcs1-v1_5-import-jwk-small-key.html: Renamed from LayoutTests/crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-small-key.html.
+        * crypto/webkitSubtle/rsassa-pkcs1-v1_5-import-jwk.html: Renamed from LayoutTests/crypto/subtle/rsassa-pkcs1-v1_5-import-jwk.html.
+        * crypto/webkitSubtle/rsassa-pkcs1-v1_5-sign-verify-expected.txt: Renamed from LayoutTests/crypto/subtle/rsassa-pkcs1-v1_5-sign-verify-expected.txt.
+        * crypto/webkitSubtle/rsassa-pkcs1-v1_5-sign-verify.html: Renamed from LayoutTests/crypto/subtle/rsassa-pkcs1-v1_5-sign-verify.html.
+        * crypto/webkitSubtle/sha-1-expected.txt: Renamed from LayoutTests/crypto/subtle/sha-1-expected.txt.
+        * crypto/webkitSubtle/sha-1.html: Renamed from LayoutTests/crypto/subtle/sha-1.html.
+        * crypto/webkitSubtle/sha-224-expected.txt: Renamed from LayoutTests/crypto/subtle/sha-224-expected.txt.
+        * crypto/webkitSubtle/sha-224.html: Renamed from LayoutTests/crypto/subtle/sha-224.html.
+        * crypto/webkitSubtle/sha-256-expected.txt: Renamed from LayoutTests/crypto/subtle/sha-256-expected.txt.
+        * crypto/webkitSubtle/sha-256.html: Renamed from LayoutTests/crypto/subtle/sha-256.html.
+        * crypto/webkitSubtle/sha-384-expected.txt: Renamed from LayoutTests/crypto/subtle/sha-384-expected.txt.
+        * crypto/webkitSubtle/sha-384.html: Renamed from LayoutTests/crypto/subtle/sha-384.html.
+        * crypto/webkitSubtle/sha-512-expected.txt: Renamed from LayoutTests/crypto/subtle/sha-512-expected.txt.
+        * crypto/webkitSubtle/sha-512.html: Renamed from LayoutTests/crypto/subtle/sha-512.html.
+        * crypto/webkitSubtle/unimplemented-unwrap-crash-expected.txt: Renamed from LayoutTests/crypto/subtle/unimplemented-unwrap-crash-expected.txt.
+        * crypto/webkitSubtle/unimplemented-unwrap-crash.html: Renamed from LayoutTests/crypto/subtle/unimplemented-unwrap-crash.html.
+        * crypto/webkitSubtle/unwrapKey-check-usage-expected.txt: Renamed from LayoutTests/crypto/subtle/unwrapKey-check-usage-expected.txt.
+        * crypto/webkitSubtle/unwrapKey-check-usage.html: Renamed from LayoutTests/crypto/subtle/unwrapKey-check-usage.html.
+        * crypto/webkitSubtle/wrapKey-check-usage-expected.txt: Renamed from LayoutTests/crypto/subtle/wrapKey-check-usage-expected.txt.
+        * crypto/webkitSubtle/wrapKey-check-usage.html: Renamed from LayoutTests/crypto/subtle/wrapKey-check-usage.html.
+        * crypto/workers/subtle/aes-postMessage-worker-expected.txt: Renamed from LayoutTests/crypto/workers/aes-postMessage-worker-expected.txt.
+        * crypto/workers/subtle/aes-postMessage-worker.html: Renamed from LayoutTests/crypto/workers/aes-postMessage-worker.html.
+        * crypto/workers/subtle/gc-worker-expected.txt: Added.
+        * crypto/workers/subtle/gc-worker.html: Added.
+        * crypto/workers/subtle/hmac-postMessage-worker-expected.txt: Renamed from LayoutTests/crypto/workers/hmac-postMessage-worker-expected.txt.
+        * crypto/workers/subtle/hmac-postMessage-worker.html: Renamed from LayoutTests/crypto/workers/hmac-postMessage-worker.html.
+        * crypto/workers/subtle/hrsa-postMessage-worker-expected.txt: Renamed from LayoutTests/crypto/workers/hrsa-postMessage-worker-expected.txt.
+        * crypto/workers/subtle/hrsa-postMessage-worker.html: Renamed from LayoutTests/crypto/workers/hrsa-postMessage-worker.html.
+        * crypto/workers/subtle/multiple-postMessage-worker-expected.txt: Renamed from LayoutTests/crypto/workers/multiple-postMessage-worker-expected.txt.
+        * crypto/workers/subtle/multiple-postMessage-worker.html: Renamed from LayoutTests/crypto/workers/multiple-postMessage-worker.html.
+        * crypto/workers/subtle/resources/aes-postMessage-worker.js: Renamed from LayoutTests/crypto/workers/resources/aes-postMessage-worker.js.
+        * crypto/workers/subtle/resources/gc-worker.js: Added.
+        * crypto/workers/subtle/resources/hmac-postMessage-worker.js: Renamed from LayoutTests/crypto/workers/resources/hmac-postMessage-worker.js.
+        * crypto/workers/subtle/resources/hrsa-postMessage-worker.js: Renamed from LayoutTests/crypto/workers/resources/hrsa-postMessage-worker.js.
+        * crypto/workers/subtle/resources/rsa-postMessage-worker.js: Renamed from LayoutTests/crypto/workers/resources/rsa-postMessage-worker.js.
+        * crypto/workers/subtle/rsa-postMessage-worker-expected.txt: Renamed from LayoutTests/crypto/workers/rsa-postMessage-worker-expected.txt.
+        * crypto/workers/subtle/rsa-postMessage-worker.html: Renamed from LayoutTests/crypto/workers/rsa-postMessage-worker.html.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2016-10-06  Antti Koivisto  <antti@apple.com>
+
+        Mutating styleSheet in shadow tree doesn't update the style
+        https://bugs.webkit.org/show_bug.cgi?id=162744
+        <rdar://problem/28550588>
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/shadow-dom/mutating-stylesheet-in-shadow-tree-expected.html: Added.
+        * fast/shadow-dom/mutating-stylesheet-in-shadow-tree.html: Added.
+
 2016-10-06  Adam Bergkvist  <adam.bergkvist@ericsson.com>
 
         WebRTC: Add support for the iceconnectionstatechange event in MediaEndpointPeerConnection

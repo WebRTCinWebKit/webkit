@@ -65,19 +65,19 @@ LinkLoader::~LinkLoader()
         m_preloadResourceClient->clear();
 }
 
-void LinkLoader::triggerEvents(const CachedResource* resource)
+void LinkLoader::triggerEvents(const CachedResource& resource)
 {
-    if (resource->errorOccurred())
+    if (resource.errorOccurred())
         m_client.linkLoadingErrored();
     else
         m_client.linkLoaded();
 }
 
-void LinkLoader::notifyFinished(CachedResource* resource)
+void LinkLoader::notifyFinished(CachedResource& resource)
 {
-    ASSERT_UNUSED(resource, m_cachedLinkResource.get() == resource);
+    ASSERT_UNUSED(resource, m_cachedLinkResource.get() == &resource);
 
-    triggerEvents(m_cachedLinkResource.get());
+    triggerEvents(*m_cachedLinkResource);
 
     m_cachedLinkResource->removeClient(*this);
     m_cachedLinkResource = nullptr;
@@ -162,7 +162,6 @@ void LinkLoader::preloadIfNeeded(const LinkRelAttribute& relAttribute, const URL
     linkRequest.setInitiator("link");
 
     linkRequest.setAsPotentiallyCrossOrigin(crossOriginMode, document);
-    linkRequest.setForPreload(true);
     CachedResourceHandle<CachedResource> cachedLinkResource = document.cachedResourceLoader().preload(type.value(), WTFMove(linkRequest), CachedResourceLoader::ExplicitPreload);
 
     if (cachedLinkResource)

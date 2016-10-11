@@ -43,8 +43,13 @@ template<typename T> EnableIfFloatingPointType<T> convert(JSC::ExecState&, JSC::
 
 template<typename T> Optional<T> convertDictionary(JSC::ExecState&, JSC::JSValue);
 
+// Used for IDL enumerations.
+template<typename T> Optional<T> parse(JSC::ExecState&, JSC::JSValue);
+template<typename T> const char* expectedEnumerationValues();
+
 enum class IsNullable { No, Yes };
 template<typename T, typename JST> T* convertWrapperType(JSC::ExecState&, JSC::JSValue, IsNullable);
+template<typename T, typename JST, typename VectorType> VectorType convertWrapperTypeSequence(JSC::ExecState&, JSC::JSValue);
 
 // This is where the implementation of the things declared above begins:
 
@@ -71,6 +76,11 @@ template<typename T, typename JST> inline T* convertWrapperType(JSC::ExecState& 
     if (!object && (isNullable == IsNullable::No || !value.isUndefinedOrNull()))
         throwTypeError(&state, scope);
     return object;
+}
+
+template<typename T, typename JST, typename VectorType> inline VectorType convertWrapperTypeSequence(JSC::ExecState& state, JSC::JSValue value)
+{
+    return toRefPtrNativeArray<T, JST, VectorType>(state, value);
 }
 
 template<typename T> struct DefaultConverter {
@@ -108,6 +118,13 @@ template<> struct Converter<IDLUSVString> : DefaultConverter<String> {
     static String convert(JSC::ExecState& state, JSC::JSValue value)
     {
         return valueToUSVString(&state, value);
+    }
+};
+
+template<typename T> struct Converter<IDLInterface<T>> : DefaultConverter<T*> {
+    static T* convert(JSC::ExecState& state, JSC::JSValue value)
+    {
+        return convertWrapperType<T, typename JSDOMWrapperConverterTraits<T>::WrapperClass>(state, value, IsNullable::No);
     }
 };
 
@@ -408,8 +425,66 @@ struct Converter<IDLUnion<T...>> : DefaultConverter<typename IDLUnion<T...>::Imp
     }
 };
 
-// Used for IDL enumerations.
-template<typename T> Optional<T> parse(JSC::ExecState&, JSC::JSValue);
-template<typename T> const char* expectedEnumerationValues();
+template<typename IDLType> 
+struct VariadicConverterBase;
+
+template<typename IDLType> 
+struct VariadicConverterBase {
+    using Item = typename IDLType::ImplementationType;
+
+    static Optional<Item> convert(JSC::ExecState& state, JSC::JSValue value)
+    {
+        auto& vm = state.vm();
+        auto scope = DECLARE_THROW_SCOPE(vm);
+
+        auto result = Converter<IDLType>::convert(state, value);
+        RETURN_IF_EXCEPTION(scope, Nullopt);
+
+        return result;
+    }
+};
+
+template<typename T>
+struct VariadicConverterBase<IDLInterface<T>> {
+    using Item = typename IDLInterface<T>::ImplementationType;
+
+    static Optional<Item> convert(JSC::ExecState& state, JSC::JSValue value)
+    {
+        auto* result = Converter<IDLInterface<T>>::convert(state, value);
+        if (!result)
+            return Nullopt;
+        return Optional<Item>(*result);
+    }
+};
+
+template<typename IDLType>
+struct VariadicConverter : VariadicConverterBase<IDLType> {
+    using Item = typename VariadicConverterBase<IDLType>::Item;
+    using Container = Vector<Item>;
+
+    struct Result {
+        size_t argumentIndex;
+        Optional<Container> arguments;
+    };
+};
+
+template<typename IDLType> typename VariadicConverter<IDLType>::Result convertVariadicArguments(JSC::ExecState& state, size_t startIndex)
+{
+    size_t length = state.argumentCount();
+    if (startIndex > length)
+        return { 0, Nullopt };
+
+    typename VariadicConverter<IDLType>::Container result;
+    result.reserveInitialCapacity(length - startIndex);
+
+    for (size_t i = startIndex; i < length; ++i) {
+        auto value = VariadicConverter<IDLType>::convert(state, state.uncheckedArgument(i));
+        if (!value)
+            return { i, Nullopt };
+        result.uncheckedAppend(WTFMove(*value));
+    }
+
+    return { length, WTFMove(result) };
+}
 
 } // namespace WebCore

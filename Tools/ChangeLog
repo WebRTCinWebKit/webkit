@@ -1,3 +1,488 @@
+2016-10-10  Zan Dobersek  <zdobersek@igalia.com>
+
+        Add ENABLE_ENCRYPTED_MEDIA configuration option
+        https://bugs.webkit.org/show_bug.cgi?id=163219
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        Make the ENABLE_ENCRYPTED_MEDIA option overridable via build-webkit.
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+        Add the ENABLE_ENCRYPTED_MEDIA configuration option. It will be used
+        to enable or disable the new EME implementation at build-time.
+
+2016-10-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r206972.
+        https://bugs.webkit.org/show_bug.cgi?id=163227
+
+        Making EWS flaky (Requested by bfulgham_ on #webkit).
+
+        Reverted changeset:
+
+        "[CMake] CMake does not support the dep files for implicit
+        dependency"
+        https://bugs.webkit.org/show_bug.cgi?id=161433
+        http://trac.webkit.org/changeset/206972
+
+2016-10-10  Youenn Fablet  <youenn@apple.com>
+
+        W3C test downloader should be able to import specific files/sub-directories in a skipped directory
+        https://bugs.webkit.org/show_bug.cgi?id=161789
+
+        Reviewed by Ryosuke Niwa.
+
+        Removed tests_directory option and corresponding test.
+        This option was allowing to import a sub-directory from a test repository.
+        We can readd it if necessary.
+
+        Adding support for finer-grained import rules.
+        Previously skipped directories were fully removed.
+        Now, directories may be skipped but sub directories of them may be imported.
+        This currently happens in web-platform-tests repo.
+
+        * Scripts/webkitpy/w3c/test_downloader.py:
+        (TestDownloader._add_test_suite_paths): Removing tests_directory option.
+        (TestDownloader.copy_tests): Refactoring file copy by generating the list of all directories for which direct files should be imported.
+        (TestDownloader.copy_tests.should_copy_dir):
+        (TestDownloader.copy_tests.should_copy_file):
+        * Scripts/webkitpy/w3c/test_importer_unittest.py:
+        (TestImporterTest.test_tests_directory): Deleted.
+        (TestImporterTest.test_skip_test_import): Added.
+
+2016-10-09  Simon Fraser  <simon.fraser@apple.com>
+
+        Make validate-committer-lists show inactive reviewers
+        https://bugs.webkit.org/show_bug.cgi?id=163193
+
+        Reviewed by Sam Weinig.
+        
+        In preparation for updating contributors.json with the WebKit policy of retiring
+        inactive reviewers, make validate-committer-lists show the list of reviewers who
+        have not reviewed in the past year.
+        
+        This list is computed by grepping the output of 'git log --since=1.year" for
+        the reviewer line, and looking up reviewers via Contributor.mentioned_in_text(),
+        which looks for full names, aliases, irc nicks and email addresses.
+        
+        Support for aliases is added to Contributor. Aliases are alternates
+        or misspellings of the reviewer's name. Some common aliases were added to
+        contributors.json by manual examination of "Reviewed by" lines.
+
+        * Scripts/validate-committer-lists:
+        (CommitterListFromGit.possibly_expired_committers):
+        (CommitterListFromGit):
+        (CommitterListFromGit.possibly_inactive_reviewers):
+        (CommitterListFromGit.print_possibly_expired_committers):
+        (CommitterListFromGit.print_possibly_inactive_reviewers):
+        * Scripts/webkitpy/common/config/committers.py:
+        (Contributor.__init__):
+        (Contributor.contains_string):
+        (Contributor.mentioned_in_text):
+        (Contributor.as_dict):
+        (Committer.__init__):
+        (Reviewer.__init__):
+        (CommitterList.load_json):
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2016-10-09  Simon Fraser  <simon.fraser@apple.com>
+
+        Convert contributors.json to a flat list
+        https://bugs.webkit.org/show_bug.cgi?id=163183
+
+        Reviewed by Darin Adler.
+        
+        Make contributors.json easier to maintain by eliminating the big groupings ("Committers", "Reviewers" etc)
+        and moving that data to a "status" property on each contributor.
+
+        * Scripts/webkitpy/common/config/committers.py:
+        (Contributor.__eq__): Implement this to fix unit tests, now that load_json() is not @memoized.
+        (Contributor.as_dict): Include status in the dict.
+        (CommitterList.__init__): Clean up to make the testing code path more explicit.
+        (CommitterList.load_json):
+        (CommitterList.load_test_data):
+        (CommitterList.as_json):
+        (Contributor.__unicode__): Deleted.
+        * Scripts/webkitpy/common/config/contributors.json:
+        * Scripts/webkitpy/tool/bot/irc_command_unittest.py:
+        (IRCCommandTest.test_whois): The ordering here is now alphabetical.
+
+2016-10-09  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [CMake] CMake does not support the dep files for implicit dependency
+        https://bugs.webkit.org/show_bug.cgi?id=161433
+
+        Reviewed by Brent Fulgham.
+
+        Created a Perl script to generate all IDL bindings for CMake.
+        This script can regenerate outdated bindings by based on the
+        supplemental dependency and dep files created by
+        '--write-dependencies' switch of generate-bindings.pl.
+
+        add_custom_target is used to invoke the script instead of
+        add_custom_command because Ninja deletes all output files before
+        executing the command in case of add_custom_command.
+
+        USES_TERMINAL option of add_custom_target has two effects:
+        1) Not buffering output of the command
+        2) Invoking the command in the special Ninja pool which inhibits parallel build
+        One needs to use CMake 3.2 or later to enable this feature.
+
+        * DumpRenderTree/CMakeLists.txt: Specified a target name for
+        GENERATE_BINDINGS. Added dependency for the target.
+        * WebKitTestRunner/CMakeLists.txt: Ditto.
+
+2016-10-09  Simon Fraser  <simon.fraser@apple.com>
+
+        Add support for canonicalizing contributors.json, and have check-webkit-style check the format.
+        https://bugs.webkit.org/show_bug.cgi?id=163177
+
+        Follow-up fix.
+        
+        For unknown reasons, overriding Commiter.__dict__() caused mysterious test failures.
+        Rename it to as_dict().
+
+        * Scripts/webkitpy/common/config/committers.py:
+        (Contributor.as_dict):
+        (CommitterList._contributor_list_to_dict):
+        (Contributor.__dict__): Deleted.
+
+2016-10-08  Simon Fraser  <simon.fraser@apple.com>
+
+        Add support for canonicalizing contributors.json, and have check-webkit-style check the format.
+        https://bugs.webkit.org/show_bug.cgi?id=163177
+
+        Reviewed by Ryosuke Niwa.
+        
+        Make it possible to round-trip contributors.json through CommitterList, so we can
+        support writing out contributors.json in canonical format. This requires saving
+        the case-preserved email and expertise in Contributor. CommitterList also needs
+        to be able to generate the "exclusive" lists, since it currently uses lists
+        that are the union of, say, committers and reviewers.
+        
+        If contributors.json is malformed (invalid JSON), catch the Exception, report it
+        and exit rather than allowing the exception to propagate. With an invalid file,
+        an exception would be thrown before the JSON style checker reached this file, so
+        the error was not correctly reported.
+        
+        Add style/checker/committer.py for checking that committers.json has the canonical format.
+        
+        Add support to validate-committer-lists to dump out the canonical json (-d) or update
+        the file in-place (-c).
+
+        * Scripts/validate-committer-lists:
+        (CommitterListFromGit._print_three_column_row):
+        (CommitterListFromGit.possibly_expired_committers):
+        (CommitterListFromGit):
+        (CommitterListFromGit.print_possibly_expired_committers):
+        (main):
+        * Scripts/webkitpy/common/config/committers.py:
+        (Contributor.__init__):
+        (Contributor.__dict__):
+        (Committer.__init__):
+        (Reviewer.__init__):
+        (CommitterList.load_json):
+        (CommitterList):
+        (CommitterList._contributor_list_to_dict):
+        (CommitterList.as_json):
+        (CommitterList.reformat_in_place):
+        (CommitterList._exclusive_contributors):
+        (CommitterList._exclusive_committers):
+        (Contributor.matches_glob): Deleted.
+        (CommitterList.contributors): Deleted.
+        * Scripts/webkitpy/common/config/contributors.json:
+        * Scripts/webkitpy/style/checker.py:
+        (CheckerDispatcher._create_checker):
+        * Scripts/webkitpy/style/checkers/contributors.py: Added.
+        (ContributorsChecker):
+        (ContributorsChecker.__init__):
+        (ContributorsChecker.check):
+        (ContributorsChecker._unidiff_output):
+
+2016-10-06  Darin Adler  <darin@apple.com>
+
+        Next step on moving to modern way to return DOM exceptions
+        https://bugs.webkit.org/show_bug.cgi?id=163016
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/do-webcore-rename: Add proposed name change of setDOMException
+        to propagateException, since this function is primarily used to take an
+        exception already effectively "thrown" by setting an ExceptionCode out
+        argument and propagate it into the JavaScript engine's exception machinery.
+
+2016-10-07  Alex Christensen  <achristensen@webkit.org>
+
+        Non-special URL fragments should percent-encode non-ASCII characters
+        https://bugs.webkit.org/show_bug.cgi?id=163153
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2016-10-07  Jonathan Bedard  <jbedard@apple.com>
+
+        Build fix for “Move functionality common to Darwin ports into a base class”
+        https://bugs.webkit.org/show_bug.cgi?id=160709
+
+        Unreviewed build fix.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort._get_crash_log): Added iOS implementation.
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort._get_crash_log): Added Mac implementation.
+
+2016-10-07  Chelsea Pugh  <cpugh@apple.com>
+
+        Unreviewed. Added myself to the list of committers.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2016-10-07  Jonathan Bedard  <jbedard@apple.com>
+
+        Move functionality common to Darwin ports into a base class
+        https://bugs.webkit.org/show_bug.cgi?id=160709
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/port/apple.py:
+        (ApplePort.determine_full_port_name): Specific iOS port check.
+        (ApplePort.__init__): Move leak detector to DarwinPort.
+        (ApplePort._make_leak_detector): Moved to DarwinPort.
+        (ApplePort.supports_per_test_timeout): Moved to Port.
+        (ApplePort.check_for_leaks): Moved to DarwinPort.
+        (ApplePort.print_leaks_summary): Moved to DarwinPort.
+        (ApplePort._path_to_webcore_library): Moved to DarwinPort.
+        (ApplePort.show_results_html_file): Moved to DarwinPort.
+        (ApplePort._merge_crash_logs): Moved to DarwinPort.
+        (ApplePort._look_for_all_crash_logs_in_log_dir): Moved to DarwinPort.
+        (ApplePort._get_crash_log): Moved to DarwinPort.
+        (ApplePort.look_for_new_crash_logs): Moved to DarwinPort.
+        (ApplePort.sample_process): Moved to DarwinPort.
+        (ApplePort.sample_file_path): Moved to DarwinPort.
+        (ApplePort.look_for_new_samples): Moved to DarwinPort.
+        * Scripts/webkitpy/port/base.py:
+        (Port.supports_per_test_timeout): Return true for all ports.
+        * Scripts/webkitpy/port/darwin.py: Added.
+        (DarwinPort): Shared iOS and Mac functions.
+        * Scripts/webkitpy/port/darwin_testcase.py: Added.
+        (DarwinTest): Shared iOS and Mac testing.
+        * Scripts/webkitpy/port/efl.py:
+        (EflPort):
+        (EflPort.supports_per_test_timeout): Moved to Port.
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort._driver_class):
+        (GtkPort):
+        (GtkPort.supports_per_test_timeout): Moved to Port.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort):
+        (IOSPort.operating_system):
+        (IOSSimulatorPort):
+        (IOSSimulatorPort.__init__): Inherits from DarwinPort.
+        (IOSSimulatorPort._port_specific_expectations_files): Moved to DarwinPort.
+        (IOSSimulatorPort._get_crash_log): Deleted.
+        (IOSSimulatorPort.xcrun_find): Deleted.
+        * Scripts/webkitpy/port/ios_unittest.py: Added.
+        (iosTest): Unit tests for the iOS port.
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort):
+        (MacPort.__init__): Inherits from DarwinPort.
+        (MacPort._port_specific_expectations_files): Moved to DarwinPort.
+        (MacPort.make_command): Moved to DarwinPort.
+        (MacPort._get_crash_log): Moved to DarwinPort.
+        (MacPort.nm_command): Moved to DarwinPort.
+        * Scripts/webkitpy/port/mac_unittest.py:
+        (MacTest):
+        (MacTest.test_sdk_name): Added test.
+        (MacTest.test_xcrun): Added test.
+        (MacTest.assert_skipped_file_search_paths): Moved to DarwinTest.
+        (MacTest.test_default_timeout_ms): Moved to DarwinTest.
+        (MacTest.assert_name): Moved to DarwinTest.
+        (MacTest.test_helper_starts): Moved to DarwinTest.
+        (MacTest.test_helper_fails_to_start): Moved to DarwinTest.
+        (MacTest.test_helper_fails_to_stop): Moved to DarwinTest.
+        (MacTest.test_spindump): Moved to DarwinTest.
+        (MacTest.test_sample_process): Moved to DarwinTest.
+        (MacTest.test_sample_process_exception): Moved to DarwinTest.
+        * Scripts/webkitpy/port/port_testcase.py:
+        (PortTestCase):
+        (PortTestCase.test_diff_image): Added is_simulator flag.
+        (PortTestCase.test_diff_image): Skip test if on a simulator.
+        (PortTestCase.test_diff_image_crashed): Skip test if on a simulator.
+        * Scripts/webkitpy/port/win.py:
+        (WinPort):
+        (WinPort.look_for_new_samples): Used default, ApplePort no longer implements.
+        (WinPort.sample_process): Ditto.
+        (WinPort._make_leak_detector): Ditto.
+        (WinPort.check_for_leaks): Ditto.
+        (WinPort.print_leaks_summary): Ditto.
+        (WinPort._path_to_webcore_library): Ditto.
+
+2016-10-07  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of WKPageSetSession
+        https://bugs.webkit.org/show_bug.cgi?id=163129
+
+        Reviewed by Tim Horton.
+
+        Rewrite this test to use WKPageConfigurationRef and WKWebsiteDataStoreRef.
+
+        * TestWebKitAPI/Tests/WebKit2/EphemeralSessionPushStateNoHistoryCallback.cpp:
+        (TestWebKitAPI::TEST):
+
+2016-10-07  Andreas Kling  <akling@apple.com>
+
+        [WK2] didRemoveFrameFromHierarchy callback doesn't fire for subframes when evicting from PageCache.
+        <https://webkit.org/b/163098>
+        <rdar://problem/28663488>
+
+        Reviewed by Antti Koivisto.
+
+        Add an API test that puts a 10-subframe page into the page cache, then loads other pages
+        until the first page gets kicked out. The test succeeds if we receive didRemoveFrameFromHierarchy
+        callbacks for all the subframes.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/DidRemoveFrameFromHiearchyInPageCache.cpp: Added.
+        (TestWebKitAPI::didFinishLoadForFrame):
+        (TestWebKitAPI::setPageLoaderClient):
+        (TestWebKitAPI::didReceivePageMessageFromInjectedBundle):
+        (TestWebKitAPI::setInjectedBundleClient):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2/DidRemoveFrameFromHiearchyInPageCache_Bundle.cpp: Added.
+        (TestWebKitAPI::didRemoveFrameFromHierarchyCallback):
+        (TestWebKitAPI::DidRemoveFrameFromHiearchyInPageCacheTest::DidRemoveFrameFromHiearchyInPageCacheTest):
+        (TestWebKitAPI::DidRemoveFrameFromHiearchyInPageCacheTest::didCreatePage):
+        * TestWebKitAPI/Tests/WebKit2/many-iframes.html: Added.
+
+2016-10-07  Emanuele Aina  <emanuele.aina@collabora.com>
+
+        Replace bug URL placeholders independently of the short desc one
+        https://bugs.webkit.org/show_bug.cgi?id=161684
+
+        Reviewed by Darin Adler.
+
+        Instead of adding the bug URL when replacing the short description
+        placeholder and then ignoring the bug URL placeholder, use the former
+        to set the short description and the latter for the bug URL.
+        This means that developers can fully prepare the changelog with short
+        and long description before submission leaving the bug placeholder in
+        place, and the changelog machinery will make sure to replace the
+        latter with the URL of the newly created bug while submitting.
+
+        Note that this also means that the short description placeholder alone
+        no longer causes the bug URL to be added.
+
+        * Scripts/webkitpy/common/checkout/changelog.py:
+        (ChangeLog.set_short_description_and_bug_url):
+        * Scripts/webkitpy/common/checkout/changelog_unittest.py:
+        (test_set_short_description_and_bug_url):
+
+2016-10-07  Jonathan Bedard  <jbedard@apple.com>
+
+        Style Checking Error when Objective C Blocks passed as Argument
+        https://bugs.webkit.org/show_bug.cgi?id=162463
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (regex_for_lambdas_and_blocks): Consider case where block is passed as a function argument.
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (CppStyleTest.test_objective_c_block_as_argument): Test case where block is passed as a function argument. 
+
+2016-10-07  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK] Docs build failure
+        https://bugs.webkit.org/show_bug.cgi?id=163102
+
+        Reviewed by Carlos Garcia Campos.
+
+        * gtk/jhbuild.modules: Bump to gtk-doc 1.25 to fix build errors on Debian Testing.
+
+2016-10-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        check-webkit-style: Enable the legal/copyright rule for cpp/h files
+        https://bugs.webkit.org/show_bug.cgi?id=162707
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/style/checker.py:
+        Enable this rule by default.
+
+2016-10-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Header guard style should be updated to be "#pragma once"
+        https://bugs.webkit.org/show_bug.cgi?id=159785
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_for_header_guard):
+        (_process_lines):
+        Simplify header_guard check to warn for a missing #pragma once
+        in header files. For legacy files that contain an #ifndef only
+        warn if the #ifndef line itself is changing.
+
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (CppStyleTestBase.perform_header_guard_check):
+        (CppStyleTestBase.assert_header_guard):
+        Helpers for enabling just this warning.
+
+        (CppStyleTest.test_build_header_guard):
+        Test different header guard cases.
+
+        * Scripts/webkitpy/style/error_handlers.py:
+        (DefaultStyleErrorHandler.should_line_be_checked):
+        Always allow warnings that output for "line 0" which won't be in
+        the list of modified lines that are 1-based.
+
+2016-10-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r206713.
+        https://bugs.webkit.org/show_bug.cgi?id=163097
+
+        triggers apparent codegen bug on ARM 32-bit (Requested by smfr
+        on #webkit).
+
+        Reverted changeset:
+
+        "Support transitions/animations of background-position with
+        right/bottom-relative values"
+        https://bugs.webkit.org/show_bug.cgi?id=162048
+        http://trac.webkit.org/changeset/206713
+
+2016-10-06  Alex Christensen  <achristensen@webkit.org>
+
+        URLParser: Non-ASCII characters in Non-UTF-8 encoded queries of relative URLs with ws, wss, or nonspecial schemes should be UTF-8 encoded
+        https://bugs.webkit.org/show_bug.cgi?id=163089
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::checkURL):
+        (TestWebKitAPI::TEST_F):
+
+2016-10-06  Alex Christensen  <achristensen@webkit.org>
+
+        Skip tabs and newlines between end of query and beginning of fragment in non-UTF-8-encoded URLs
+        https://bugs.webkit.org/show_bug.cgi?id=163071
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2016-10-06  Alex Christensen  <achristensen@webkit.org>
+
+        URLParser should parse file URLs with ports consistently
+        https://bugs.webkit.org/show_bug.cgi?id=163075
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
 2016-10-06  John Wilander  <wilander@apple.com>
 
         Update Resource Load Statistics

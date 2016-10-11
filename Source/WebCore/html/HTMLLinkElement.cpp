@@ -26,7 +26,6 @@
 #include "HTMLLinkElement.h"
 
 #include "Attribute.h"
-#include "AuthorStyleSheets.h"
 #include "CachedCSSStyleSheet.h"
 #include "CachedResource.h"
 #include "CachedResourceLoader.h"
@@ -54,6 +53,7 @@
 #include "Settings.h"
 #include "StyleInheritedData.h"
 #include "StyleResolveForDocument.h"
+#include "StyleScope.h"
 #include "StyleSheetContents.h"
 #include <wtf/Ref.h>
 #include <wtf/StdLibExtras.h>
@@ -102,7 +102,7 @@ HTMLLinkElement::~HTMLLinkElement()
         m_cachedSheet->removeClient(*this);
 
     if (inDocument())
-        document().authorStyleSheets().removeStyleSheetCandidateNode(*this);
+        document().styleScope().removeStyleSheetCandidateNode(*this);
 
     linkLoadEventSender().cancelEvent(*this);
     linkErrorEventSender().cancelEvent(*this);
@@ -140,7 +140,7 @@ void HTMLLinkElement::setDisabledState(bool disabled)
         if (!m_sheet && m_disabledState == EnabledViaScript)
             process();
         else
-            document().authorStyleSheets().didChangeContentsOrInterpretation();
+            document().styleScope().didChangeContentsOrInterpretation();
     }
 }
 
@@ -176,7 +176,7 @@ void HTMLLinkElement::parseAttribute(const QualifiedName& name, const AtomicStri
         m_media = value.string().convertToASCIILowercase();
         process();
         if (m_sheet && !isDisabled())
-            document().authorStyleSheets().didChangeContentsOrInterpretation();
+            document().styleScope().didChangeContentsOrInterpretation();
         return;
     }
     if (name == disabledAttr) {
@@ -228,7 +228,7 @@ void HTMLLinkElement::process()
         || (document().settings() && document().settings()->treatsAnyTextCSSLinkAsStylesheet() && m_type.containsIgnoringASCIICase("text/css"));
 
     if (m_disabledState != Disabled && treatAsStyleSheet && document().frame() && url.isValid()) {
-        AtomicString charset = attributeWithoutSynchronization(charsetAttr);
+        String charset = attributeWithoutSynchronization(charsetAttr);
         if (charset.isEmpty() && document().frame())
             charset = document().charset();
 
@@ -261,7 +261,7 @@ void HTMLLinkElement::process()
         Optional<ResourceLoadPriority> priority;
         if (!isActive)
             priority = ResourceLoadPriority::VeryLow;
-        CachedResourceRequest request(url, charset, priority);
+        CachedResourceRequest request(url, CachedResourceLoader::defaultCachedResourceOptions(), priority, WTFMove(charset));
         request.setInitiator(this);
 
         if (document().contentSecurityPolicy()->allowStyleWithNonce(attributeWithoutSynchronization(HTMLNames::nonceAttr))) {
@@ -283,7 +283,7 @@ void HTMLLinkElement::process()
     } else if (m_sheet) {
         // we no longer contain a stylesheet, e.g. perhaps rel or type was changed
         clearSheet();
-        document().authorStyleSheets().didChangeContentsOrInterpretation();
+        document().styleScope().didChangeContentsOrInterpretation();
     }
 }
 
@@ -305,7 +305,7 @@ Node::InsertionNotificationRequest HTMLLinkElement::insertedInto(ContainerNode& 
     if (m_isInShadowTree)
         return InsertionDone;
 
-    document().authorStyleSheets().addStyleSheetCandidateNode(*this, m_createdByParser);
+    document().styleScope().addStyleSheetCandidateNode(*this, m_createdByParser);
 
     process();
     return InsertionDone;
@@ -321,16 +321,13 @@ void HTMLLinkElement::removedFrom(ContainerNode& insertionPoint)
         ASSERT(!m_sheet);
         return;
     }
-    document().authorStyleSheets().removeStyleSheetCandidateNode(*this);
+    document().styleScope().removeStyleSheetCandidateNode(*this);
 
     if (m_sheet)
         clearSheet();
 
     if (styleSheetIsLoading())
         removePendingSheet(RemovePendingSheetNotifyLater);
-
-    if (document().hasLivingRenderTree())
-        document().authorStyleSheets().didChangeCandidatesForActiveSet();
 }
 
 void HTMLLinkElement::finishParsingChildren()
@@ -344,7 +341,7 @@ void HTMLLinkElement::initializeStyleSheet(Ref<StyleSheetContents>&& styleSheet,
     // FIXME: originClean should be turned to false except if fetch mode is CORS.
     Optional<bool> originClean;
     if (cachedStyleSheet.options().mode == FetchOptions::Mode::Cors)
-        originClean = cachedStyleSheet.isClean();
+        originClean = cachedStyleSheet.isCORSSameOrigin();
 
     m_sheet = CSSStyleSheet::create(WTFMove(styleSheet), *this, originClean);
     m_sheet->setMediaQueries(MediaQuerySet::createAllowingDescriptionSyntax(m_media));
@@ -547,7 +544,7 @@ void HTMLLinkElement::addPendingSheet(PendingSheetType type)
 
     if (m_pendingSheetType == InactiveSheet)
         return;
-    document().authorStyleSheets().addPendingSheet();
+    document().styleScope().addPendingSheet();
 }
 
 void HTMLLinkElement::removePendingSheet(RemovePendingSheetNotificationType notification)
@@ -560,14 +557,14 @@ void HTMLLinkElement::removePendingSheet(RemovePendingSheetNotificationType noti
 
     if (type == InactiveSheet) {
         // Document just needs to know about the sheet for exposure through document.styleSheets
-        document().authorStyleSheets().didChangeCandidatesForActiveSet();
+        document().styleScope().didChangeCandidatesForActiveSet();
         return;
     }
 
-    document().authorStyleSheets().removePendingSheet(
+    document().styleScope().removePendingSheet(
         notification == RemovePendingSheetNotifyImmediately
-        ? AuthorStyleSheets::RemovePendingSheetNotifyImmediately
-        : AuthorStyleSheets::RemovePendingSheetNotifyLater);
+        ? Style::Scope::RemovePendingSheetNotifyImmediately
+        : Style::Scope::RemovePendingSheetNotifyLater);
 }
 
 } // namespace WebCore

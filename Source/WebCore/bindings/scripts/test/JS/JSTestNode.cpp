@@ -146,9 +146,8 @@ void JSTestNodePrototype::finishCreation(VM& vm)
         VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
         JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
     }
-    if (RuntimeEnabledFeatures::sharedFeatures().domIteratorEnabled()) {
+    if (RuntimeEnabledFeatures::sharedFeatures().domIteratorEnabled())
         putDirect(vm, vm.propertyNames->iteratorSymbol, JSFunction::create(vm, globalObject(), 0, ASCIILiteral("[Symbol.Iterator]"), jsTestNodePrototypeFunctionSymbolIterator), DontEnum);
-    }
 }
 
 const ClassInfo JSTestNode::s_info = { "TestNode", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestNode) };
@@ -168,22 +167,26 @@ JSObject* JSTestNode::prototype(VM& vm, JSGlobalObject* globalObject)
     return getDOMPrototype<JSTestNode>(vm, globalObject);
 }
 
-EncodedJSValue jsTestNodeName(ExecState* state, EncodedJSValue thisValue, PropertyName)
+inline JSTestNode* JSTestNode::castForAttribute(JSC::ExecState*, EncodedJSValue thisValue)
 {
-    VM& vm = state->vm();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
-    UNUSED_PARAM(throwScope);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestNode*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, throwScope, "TestNode", "name");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsStringWithCache(state, impl.name());
-    return JSValue::encode(result);
+    return jsDynamicCast<JSTestNode*>(JSValue::decode(thisValue));
 }
 
+static inline JSValue jsTestNodeNameGetter(ExecState&, JSTestNode&, ThrowScope& throwScope);
+
+EncodedJSValue jsTestNodeName(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return BindingCaller<JSTestNode>::attribute<jsTestNodeNameGetter>(state, thisValue, "name");
+}
+
+static inline JSValue jsTestNodeNameGetter(ExecState& state, JSTestNode& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = jsStringWithCache(&state, impl.name());
+    return result;
+}
 
 EncodedJSValue jsTestNodeConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
@@ -209,17 +212,17 @@ bool setJSTestNodeConstructor(ExecState* state, EncodedJSValue thisValue, Encode
     return domObject->putDirect(state->vm(), state->propertyNames().constructor, value);
 }
 
+static inline bool setJSTestNodeNameFunction(ExecState*, JSTestNode*, JSValue, ThrowScope&);
+
 bool setJSTestNodeName(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
-    VM& vm = state->vm();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    return BindingCaller<JSTestNode>::setAttribute<setJSTestNodeNameFunction>(state, thisValue, encodedValue, "name");
+}
+
+static inline bool setJSTestNodeNameFunction(ExecState* state, JSTestNode* castedThis, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestNode* castedThis = jsDynamicCast<JSTestNode*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        return throwSetterTypeError(*state, throwScope, "TestNode", "name");
-    }
     auto& impl = castedThis->wrapped();
     auto nativeValue = value.toWTFString(state);
     RETURN_IF_EXCEPTION(throwScope, false);
@@ -297,9 +300,8 @@ EncodedJSValue JSC_HOST_CALL jsTestNodePrototypeFunctionToJSON(ExecState* state)
     auto castedThis = jsDynamicCast<JSTestNode*>(thisValue);
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    if (UNLIKELY(!castedThis)){
+    if (UNLIKELY(!castedThis))
         return throwThisTypeError(*state, throwScope, "TestNode", "toJSON");
-    }
     ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestNode::info());
 
     auto* result = constructEmptyObject(state);

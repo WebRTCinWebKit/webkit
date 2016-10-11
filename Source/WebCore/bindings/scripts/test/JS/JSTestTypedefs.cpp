@@ -210,126 +210,124 @@ void JSTestTypedefs::destroy(JSC::JSCell* cell)
     thisObject->JSTestTypedefs::~JSTestTypedefs();
 }
 
-EncodedJSValue jsTestTypedefsUnsignedLongLongAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
+inline JSTestTypedefs* JSTestTypedefs::castForAttribute(JSC::ExecState*, EncodedJSValue thisValue)
 {
-    VM& vm = state->vm();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
-    UNUSED_PARAM(throwScope);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestTypedefs*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, throwScope, "TestTypedefs", "unsignedLongLongAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.unsignedLongLongAttr());
-    return JSValue::encode(result);
+    return jsDynamicCast<JSTestTypedefs*>(JSValue::decode(thisValue));
 }
 
+static inline JSValue jsTestTypedefsUnsignedLongLongAttrGetter(ExecState&, JSTestTypedefs&, ThrowScope& throwScope);
+
+EncodedJSValue jsTestTypedefsUnsignedLongLongAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return BindingCaller<JSTestTypedefs>::attribute<jsTestTypedefsUnsignedLongLongAttrGetter>(state, thisValue, "unsignedLongLongAttr");
+}
+
+static inline JSValue jsTestTypedefsUnsignedLongLongAttrGetter(ExecState& state, JSTestTypedefs& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = jsNumber(impl.unsignedLongLongAttr());
+    return result;
+}
+
+static inline JSValue jsTestTypedefsImmutableSerializedScriptValueGetter(ExecState&, JSTestTypedefs&, ThrowScope& throwScope);
 
 EncodedJSValue jsTestTypedefsImmutableSerializedScriptValue(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    VM& vm = state->vm();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
-    UNUSED_PARAM(throwScope);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestTypedefs*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, throwScope, "TestTypedefs", "immutableSerializedScriptValue");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = impl.immutableSerializedScriptValue() ? impl.immutableSerializedScriptValue()->deserialize(state, castedThis->globalObject(), 0) : jsNull();
-    return JSValue::encode(result);
+    return BindingCaller<JSTestTypedefs>::attribute<jsTestTypedefsImmutableSerializedScriptValueGetter>(state, thisValue, "immutableSerializedScriptValue");
 }
 
+static inline JSValue jsTestTypedefsImmutableSerializedScriptValueGetter(ExecState& state, JSTestTypedefs& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = impl.immutableSerializedScriptValue() ? impl.immutableSerializedScriptValue()->deserialize(&state, thisObject.globalObject(), 0) : jsNull();
+    return result;
+}
+
+static inline JSValue jsTestTypedefsConstructorTestSubObjGetter(ExecState&, JSTestTypedefs&, ThrowScope& throwScope);
 
 EncodedJSValue jsTestTypedefsConstructorTestSubObj(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    VM& vm = state->vm();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
-    UNUSED_PARAM(throwScope);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestTypedefs*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, throwScope, "TestTypedefs", "TestSubObj");
-    }
-    return JSValue::encode(JSTestSubObj::getConstructor(state->vm(), castedThis->globalObject()));
+    return BindingCaller<JSTestTypedefs>::attribute<jsTestTypedefsConstructorTestSubObjGetter>(state, thisValue, "TestSubObj");
 }
 
+static inline JSValue jsTestTypedefsConstructorTestSubObjGetter(ExecState& state, JSTestTypedefs& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    return JSTestSubObj::getConstructor(state.vm(), thisObject.globalObject());
+}
+
+static inline JSValue jsTestTypedefsAttrWithGetterExceptionGetter(ExecState&, JSTestTypedefs&, ThrowScope& throwScope);
 
 EncodedJSValue jsTestTypedefsAttrWithGetterException(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    VM& vm = state->vm();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
-    UNUSED_PARAM(throwScope);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestTypedefs*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, throwScope, "TestTypedefs", "attrWithGetterException");
-    }
-    ExceptionCode ec = 0;
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.attrWithGetterException(ec));
-    setDOMException(state, throwScope, ec);
-    return JSValue::encode(result);
+    return BindingCaller<JSTestTypedefs>::attribute<jsTestTypedefsAttrWithGetterExceptionGetter>(state, thisValue, "attrWithGetterException");
 }
 
+static inline JSValue jsTestTypedefsAttrWithGetterExceptionGetter(ExecState& state, JSTestTypedefs& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    ExceptionCode ec = 0;
+    auto& impl = thisObject.wrapped();
+    JSValue result = jsNumber(impl.attrWithGetterException(ec));
+    setDOMException(&state, throwScope, ec);
+    return result;
+}
+
+static inline JSValue jsTestTypedefsAttrWithSetterExceptionGetter(ExecState&, JSTestTypedefs&, ThrowScope& throwScope);
 
 EncodedJSValue jsTestTypedefsAttrWithSetterException(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    VM& vm = state->vm();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
-    UNUSED_PARAM(throwScope);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestTypedefs*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, throwScope, "TestTypedefs", "attrWithSetterException");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.attrWithSetterException());
-    return JSValue::encode(result);
+    return BindingCaller<JSTestTypedefs>::attribute<jsTestTypedefsAttrWithSetterExceptionGetter>(state, thisValue, "attrWithSetterException");
 }
 
+static inline JSValue jsTestTypedefsAttrWithSetterExceptionGetter(ExecState& state, JSTestTypedefs& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = jsNumber(impl.attrWithSetterException());
+    return result;
+}
+
+static inline JSValue jsTestTypedefsStringAttrWithGetterExceptionGetter(ExecState&, JSTestTypedefs&, ThrowScope& throwScope);
 
 EncodedJSValue jsTestTypedefsStringAttrWithGetterException(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    VM& vm = state->vm();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
-    UNUSED_PARAM(throwScope);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestTypedefs*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, throwScope, "TestTypedefs", "stringAttrWithGetterException");
-    }
-    ExceptionCode ec = 0;
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsStringWithCache(state, impl.stringAttrWithGetterException(ec));
-    setDOMException(state, throwScope, ec);
-    return JSValue::encode(result);
+    return BindingCaller<JSTestTypedefs>::attribute<jsTestTypedefsStringAttrWithGetterExceptionGetter>(state, thisValue, "stringAttrWithGetterException");
 }
 
+static inline JSValue jsTestTypedefsStringAttrWithGetterExceptionGetter(ExecState& state, JSTestTypedefs& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    ExceptionCode ec = 0;
+    auto& impl = thisObject.wrapped();
+    JSValue result = jsStringWithCache(&state, impl.stringAttrWithGetterException(ec));
+    setDOMException(&state, throwScope, ec);
+    return result;
+}
+
+static inline JSValue jsTestTypedefsStringAttrWithSetterExceptionGetter(ExecState&, JSTestTypedefs&, ThrowScope& throwScope);
 
 EncodedJSValue jsTestTypedefsStringAttrWithSetterException(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    VM& vm = state->vm();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
-    UNUSED_PARAM(throwScope);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestTypedefs*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, throwScope, "TestTypedefs", "stringAttrWithSetterException");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsStringWithCache(state, impl.stringAttrWithSetterException());
-    return JSValue::encode(result);
+    return BindingCaller<JSTestTypedefs>::attribute<jsTestTypedefsStringAttrWithSetterExceptionGetter>(state, thisValue, "stringAttrWithSetterException");
 }
 
+static inline JSValue jsTestTypedefsStringAttrWithSetterExceptionGetter(ExecState& state, JSTestTypedefs& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = jsStringWithCache(&state, impl.stringAttrWithSetterException());
+    return result;
+}
 
 EncodedJSValue jsTestTypedefsConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
@@ -355,17 +353,17 @@ bool setJSTestTypedefsConstructor(ExecState* state, EncodedJSValue thisValue, En
     return domObject->putDirect(state->vm(), state->propertyNames().constructor, value);
 }
 
+static inline bool setJSTestTypedefsUnsignedLongLongAttrFunction(ExecState*, JSTestTypedefs*, JSValue, ThrowScope&);
+
 bool setJSTestTypedefsUnsignedLongLongAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
-    VM& vm = state->vm();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    return BindingCaller<JSTestTypedefs>::setAttribute<setJSTestTypedefsUnsignedLongLongAttrFunction>(state, thisValue, encodedValue, "unsignedLongLongAttr");
+}
+
+static inline bool setJSTestTypedefsUnsignedLongLongAttrFunction(ExecState* state, JSTestTypedefs* castedThis, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestTypedefs* castedThis = jsDynamicCast<JSTestTypedefs*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        return throwSetterTypeError(*state, throwScope, "TestTypedefs", "unsignedLongLongAttr");
-    }
     auto& impl = castedThis->wrapped();
     auto nativeValue = convert<uint64_t>(*state, value, NormalConversion);
     RETURN_IF_EXCEPTION(throwScope, false);
@@ -374,17 +372,17 @@ bool setJSTestTypedefsUnsignedLongLongAttr(ExecState* state, EncodedJSValue this
 }
 
 
+static inline bool setJSTestTypedefsImmutableSerializedScriptValueFunction(ExecState*, JSTestTypedefs*, JSValue, ThrowScope&);
+
 bool setJSTestTypedefsImmutableSerializedScriptValue(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
-    VM& vm = state->vm();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    return BindingCaller<JSTestTypedefs>::setAttribute<setJSTestTypedefsImmutableSerializedScriptValueFunction>(state, thisValue, encodedValue, "immutableSerializedScriptValue");
+}
+
+static inline bool setJSTestTypedefsImmutableSerializedScriptValueFunction(ExecState* state, JSTestTypedefs* castedThis, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestTypedefs* castedThis = jsDynamicCast<JSTestTypedefs*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        return throwSetterTypeError(*state, throwScope, "TestTypedefs", "immutableSerializedScriptValue");
-    }
     auto& impl = castedThis->wrapped();
     auto nativeValue = SerializedScriptValue::create(state, value, 0, 0);
     RETURN_IF_EXCEPTION(throwScope, false);
@@ -393,17 +391,17 @@ bool setJSTestTypedefsImmutableSerializedScriptValue(ExecState* state, EncodedJS
 }
 
 
+static inline bool setJSTestTypedefsAttrWithGetterExceptionFunction(ExecState*, JSTestTypedefs*, JSValue, ThrowScope&);
+
 bool setJSTestTypedefsAttrWithGetterException(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
-    VM& vm = state->vm();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    return BindingCaller<JSTestTypedefs>::setAttribute<setJSTestTypedefsAttrWithGetterExceptionFunction>(state, thisValue, encodedValue, "attrWithGetterException");
+}
+
+static inline bool setJSTestTypedefsAttrWithGetterExceptionFunction(ExecState* state, JSTestTypedefs* castedThis, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestTypedefs* castedThis = jsDynamicCast<JSTestTypedefs*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        return throwSetterTypeError(*state, throwScope, "TestTypedefs", "attrWithGetterException");
-    }
     auto& impl = castedThis->wrapped();
     auto nativeValue = convert<int32_t>(*state, value, NormalConversion);
     RETURN_IF_EXCEPTION(throwScope, false);
@@ -412,17 +410,17 @@ bool setJSTestTypedefsAttrWithGetterException(ExecState* state, EncodedJSValue t
 }
 
 
+static inline bool setJSTestTypedefsAttrWithSetterExceptionFunction(ExecState*, JSTestTypedefs*, JSValue, ThrowScope&);
+
 bool setJSTestTypedefsAttrWithSetterException(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
-    VM& vm = state->vm();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    return BindingCaller<JSTestTypedefs>::setAttribute<setJSTestTypedefsAttrWithSetterExceptionFunction>(state, thisValue, encodedValue, "attrWithSetterException");
+}
+
+static inline bool setJSTestTypedefsAttrWithSetterExceptionFunction(ExecState* state, JSTestTypedefs* castedThis, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestTypedefs* castedThis = jsDynamicCast<JSTestTypedefs*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        return throwSetterTypeError(*state, throwScope, "TestTypedefs", "attrWithSetterException");
-    }
     auto& impl = castedThis->wrapped();
     ExceptionCode ec = 0;
     auto nativeValue = convert<int32_t>(*state, value, NormalConversion);
@@ -433,17 +431,17 @@ bool setJSTestTypedefsAttrWithSetterException(ExecState* state, EncodedJSValue t
 }
 
 
+static inline bool setJSTestTypedefsStringAttrWithGetterExceptionFunction(ExecState*, JSTestTypedefs*, JSValue, ThrowScope&);
+
 bool setJSTestTypedefsStringAttrWithGetterException(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
-    VM& vm = state->vm();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    return BindingCaller<JSTestTypedefs>::setAttribute<setJSTestTypedefsStringAttrWithGetterExceptionFunction>(state, thisValue, encodedValue, "stringAttrWithGetterException");
+}
+
+static inline bool setJSTestTypedefsStringAttrWithGetterExceptionFunction(ExecState* state, JSTestTypedefs* castedThis, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestTypedefs* castedThis = jsDynamicCast<JSTestTypedefs*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        return throwSetterTypeError(*state, throwScope, "TestTypedefs", "stringAttrWithGetterException");
-    }
     auto& impl = castedThis->wrapped();
     auto nativeValue = value.toWTFString(state);
     RETURN_IF_EXCEPTION(throwScope, false);
@@ -452,17 +450,17 @@ bool setJSTestTypedefsStringAttrWithGetterException(ExecState* state, EncodedJSV
 }
 
 
+static inline bool setJSTestTypedefsStringAttrWithSetterExceptionFunction(ExecState*, JSTestTypedefs*, JSValue, ThrowScope&);
+
 bool setJSTestTypedefsStringAttrWithSetterException(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
-    VM& vm = state->vm();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    return BindingCaller<JSTestTypedefs>::setAttribute<setJSTestTypedefsStringAttrWithSetterExceptionFunction>(state, thisValue, encodedValue, "stringAttrWithSetterException");
+}
+
+static inline bool setJSTestTypedefsStringAttrWithSetterExceptionFunction(ExecState* state, JSTestTypedefs* castedThis, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestTypedefs* castedThis = jsDynamicCast<JSTestTypedefs*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        return throwSetterTypeError(*state, throwScope, "TestTypedefs", "stringAttrWithSetterException");
-    }
     auto& impl = castedThis->wrapped();
     ExceptionCode ec = 0;
     auto nativeValue = value.toWTFString(state);

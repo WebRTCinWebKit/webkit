@@ -274,7 +274,7 @@ COMPtr<ID2D1SolidColorBrush> GraphicsContextPlatformPrivate::brushWithColor(cons
     }
 
     auto existingBrush = m_solidColoredBrushCache.ensure(colorKey, [this, color] {
-        ID2D1SolidColorBrush* colorBrush;
+        ID2D1SolidColorBrush* colorBrush = nullptr;
         m_renderTarget->CreateSolidColorBrush(color, &colorBrush);
         return colorBrush;
     });
@@ -467,9 +467,147 @@ void GraphicsContext::drawRect(const FloatRect& rect, float borderThickness)
 
     drawWithoutShadow(rect, [this, rect](ID2D1RenderTarget* renderTarget) {
         const D2D1_RECT_F d2dRect = rect;
-        renderTarget->DrawRectangle(&d2dRect, solidStrokeBrush(), strokeThickness());
         renderTarget->FillRectangle(&d2dRect, solidFillBrush());
+        renderTarget->DrawRectangle(&d2dRect, solidStrokeBrush(), strokeThickness(), m_data->strokeStyle());
     });
+}
+
+void GraphicsContextPlatformPrivate::setLineCap(LineCap cap)
+{
+    if (m_lineCap == cap)
+        return;
+
+    D2D1_CAP_STYLE capStyle = D2D1_CAP_STYLE_FLAT;
+    switch (cap) {
+    case RoundCap:
+        capStyle = D2D1_CAP_STYLE_ROUND;
+        break;
+    case SquareCap:
+        capStyle = D2D1_CAP_STYLE_SQUARE;
+        break;
+    case ButtCap:
+    default:
+        capStyle = D2D1_CAP_STYLE_FLAT;
+        break;
+    }
+
+    m_lineCap = capStyle;
+    m_strokeSyleIsDirty = true;
+}
+
+void GraphicsContextPlatformPrivate::setLineJoin(LineJoin join)
+{
+    if (m_lineJoin == join)
+        return;
+
+    D2D1_LINE_JOIN joinStyle = D2D1_LINE_JOIN_MITER;
+    switch (join) {
+    case RoundJoin:
+        joinStyle = D2D1_LINE_JOIN_ROUND;
+        break;
+    case BevelJoin:
+        joinStyle = D2D1_LINE_JOIN_BEVEL;
+        break;
+    case MiterJoin:
+    default:
+        joinStyle = D2D1_LINE_JOIN_MITER;
+        break;
+    }
+
+    m_lineJoin = joinStyle;
+    m_strokeSyleIsDirty = true;
+}
+
+void GraphicsContextPlatformPrivate::setStrokeStyle(StrokeStyle strokeStyle)
+{
+    if (m_strokeStyle == strokeStyle)
+        return;
+
+    m_strokeStyle = strokeStyle;
+    m_strokeSyleIsDirty = true;
+}
+
+void GraphicsContextPlatformPrivate::setMiterLimit(float miterLimit)
+{
+    if (WTF::areEssentiallyEqual(miterLimit, m_miterLimit))
+        return;
+
+    m_miterLimit = miterLimit;
+    m_strokeSyleIsDirty = true;
+}
+
+void GraphicsContextPlatformPrivate::setDashOffset(float dashOffset)
+{
+    if (WTF::areEssentiallyEqual(dashOffset, m_dashOffset))
+        return;
+
+    m_dashOffset = dashOffset;
+    m_strokeSyleIsDirty = true;
+}
+
+void GraphicsContextPlatformPrivate::setPatternWidth(float patternWidth)
+{
+    if (WTF::areEssentiallyEqual(patternWidth, m_patternWidth))
+        return;
+
+    m_patternWidth = patternWidth;
+    m_strokeSyleIsDirty = true;
+}
+
+void GraphicsContextPlatformPrivate::setPatternOffset(float patternOffset)
+{
+    if (WTF::areEssentiallyEqual(patternOffset, m_patternOffset))
+        return;
+
+    m_patternOffset = patternOffset;
+    m_strokeSyleIsDirty = true;
+}
+
+void GraphicsContextPlatformPrivate::setStrokeThickness(float thickness)
+{
+    if (WTF::areEssentiallyEqual(thickness, m_strokeThickness))
+        return;
+
+    m_strokeThickness = thickness;
+    m_strokeSyleIsDirty = true;
+}
+
+void GraphicsContextPlatformPrivate::setDashes(const DashArray& dashes)
+{
+    if (m_dashes == dashes)
+        return;
+
+    m_dashes = dashes;
+    m_strokeSyleIsDirty = true;
+}
+
+void GraphicsContextPlatformPrivate::recomputeStrokeStyle()
+{
+    if (!m_strokeSyleIsDirty)
+        return;
+
+    m_d2dStrokeStyle = nullptr;
+
+    if ((m_strokeStyle != SolidStroke) && (m_strokeStyle != NoStroke)) {
+        float patternOffset = m_patternOffset / m_strokeThickness;
+
+        DashArray dashes = m_dashes;
+
+        // In Direct2D, dashes and dots are defined in terms of the ratio of the dash length to the line thickness.
+        for (auto& dash : dashes)
+            dash /= m_strokeThickness;
+
+        auto strokeStyleProperties = D2D1::StrokeStyleProperties(m_lineCap, m_lineCap, m_lineCap, m_lineJoin, m_strokeThickness, D2D1_DASH_STYLE_CUSTOM, patternOffset);
+        GraphicsContext::systemFactory()->CreateStrokeStyle(&strokeStyleProperties, dashes.data(), dashes.size(), &m_d2dStrokeStyle);
+    }
+
+    m_strokeSyleIsDirty = false;
+}
+
+ID2D1StrokeStyle* GraphicsContextPlatformPrivate::strokeStyle()
+{
+    recomputeStrokeStyle();
+    return m_d2dStrokeStyle.get();
 }
 
 // This is only used to draw borders.
@@ -502,49 +640,28 @@ void GraphicsContext::drawLine(const FloatPoint& point1, const FloatPoint& point
     D2DContextStateSaver stateSaver(*m_data, drawsDashedLine);
     if (drawsDashedLine) {
         // Figure out end points to ensure we always paint corners.
-        cornerWidth = strokeStyle == DottedStroke ? thickness : std::min(2 * thickness, std::max(thickness, strokeWidth / 3));
+        cornerWidth = dashedLineCornerWidthForStrokeWidth(strokeWidth);
         strokeWidth -= 2 * cornerWidth;
-        float patternWidth = strokeStyle == DottedStroke ? thickness : std::min(3 * thickness, std::max(thickness, strokeWidth / 3));
+        float patternWidth = dashedLinePatternWidthForStrokeWidth(strokeWidth);
         // Check if corner drawing sufficiently covers the line.
         if (strokeWidth <= patternWidth + 1)
             return;
 
-        // Pattern starts with full fill and ends with the empty fill.
-        // 1. Let's start with the empty phase after the corner.
-        // 2. Check if we've got odd or even number of patterns and whether they fully cover the line.
-        // 3. In case of even number of patterns and/or remainder, move the pattern start position
-        // so that the pattern is balanced between the corners.
-        float patternOffset = patternWidth;
-        int numberOfSegments = floorf(strokeWidth / patternWidth);
-        bool oddNumberOfSegments = numberOfSegments % 2;
-        float remainder = strokeWidth - (numberOfSegments * patternWidth);
-        if (oddNumberOfSegments && remainder)
-            patternOffset -= remainder / 2;
-        else if (!oddNumberOfSegments) {
-            if (remainder)
-                patternOffset += patternOffset - (patternWidth + remainder) / 2;
-            else
-                patternOffset += patternWidth / 2;
-        }
+        float patternOffset = dashedLinePatternOffsetForPatternAndStrokeWidth(patternWidth, strokeWidth);
         const float dashes[2] = { patternWidth, patternWidth };
-
         auto strokeStyleProperties = D2D1::StrokeStyleProperties();
-
         GraphicsContext::systemFactory()->CreateStrokeStyle(&strokeStyleProperties, dashes, ARRAYSIZE(dashes), &d2dStrokeStyle);
+
+        m_data->setPatternWidth(patternWidth);
+        m_data->setPatternOffset(patternOffset);
+        m_data->setDashes(DashArray(2, patternWidth));
+
+        d2dStrokeStyle = m_data->strokeStyle();
     }
 
-    FloatPoint p1 = point1;
-    FloatPoint p2 = point2;
-    // Center line and cut off corners for pattern patining.
-    if (isVerticalLine) {
-        float centerOffset = (p2.x() - p1.x()) / 2;
-        p1.move(centerOffset, cornerWidth);
-        p2.move(-centerOffset, -cornerWidth);
-    } else {
-        float centerOffset = (p2.y() - p1.y()) / 2;
-        p1.move(cornerWidth, centerOffset);
-        p2.move(-cornerWidth, -centerOffset);
-    }
+    auto centeredPoints = centerLineAndCutOffCorners(isVerticalLine, cornerWidth, point1, point2);
+    auto p1 = centeredPoints[0];
+    auto p2 = centeredPoints[1];
 
     context->SetTags(1, __LINE__);
 
@@ -574,7 +691,7 @@ void GraphicsContext::drawEllipse(const FloatRect& rect)
     drawWithoutShadow(rect, [this, ellipse](ID2D1RenderTarget* renderTarget) {
         renderTarget->FillEllipse(&ellipse, solidFillBrush());
 
-        renderTarget->DrawEllipse(&ellipse, solidStrokeBrush(), strokeThickness());
+        renderTarget->DrawEllipse(&ellipse, solidStrokeBrush(), strokeThickness(), m_data->strokeStyle());
     });
 }
 
@@ -630,7 +747,7 @@ void GraphicsContext::drawPath(const Path& path)
 
     auto rect = path.fastBoundingRect();
     drawWithoutShadow(rect, [this, &path](ID2D1RenderTarget* renderTarget) {
-        renderTarget->DrawGeometry(path.platformPath(), solidStrokeBrush());
+        renderTarget->DrawGeometry(path.platformPath(), solidStrokeBrush(), strokeThickness(), m_data->strokeStyle());
     });
 }
 
@@ -795,7 +912,7 @@ void GraphicsContext::strokePath(const Path& path)
 
     FloatRect contextRect(FloatPoint(), context->GetSize());
     drawWithoutShadow(contextRect, [this, &path](ID2D1RenderTarget* renderTarget) {
-        renderTarget->DrawGeometry(path.platformPath(), solidStrokeBrush(), strokeThickness());
+        renderTarget->DrawGeometry(path.platformPath(), solidStrokeBrush(), strokeThickness(), m_data->strokeStyle());
     });
 }
 
@@ -1116,6 +1233,14 @@ void GraphicsContext::clearPlatformShadow()
     notImplemented();
 }
 
+void GraphicsContext::setPlatformStrokeStyle(StrokeStyle style)
+{
+    if (paintingDisabled())
+        return;
+
+    m_data->setStrokeStyle(style);
+}
+
 void GraphicsContext::setMiterLimit(float limit)
 {
     if (paintingDisabled())
@@ -1127,7 +1252,7 @@ void GraphicsContext::setMiterLimit(float limit)
         return;
     }
 
-    notImplemented();
+    m_data->setMiterLimit(limit);
 }
 
 void GraphicsContext::clearRect(const FloatRect& rect)
@@ -1162,8 +1287,15 @@ void GraphicsContext::strokeRect(const FloatRect& rect, float lineWidth)
 
 void GraphicsContext::setLineCap(LineCap cap)
 {
-    (void)cap;
-    notImplemented();
+    if (paintingDisabled())
+        return;
+
+    if (isRecording()) {
+        m_displayListRecorder->setLineCap(cap);
+        return;
+    }
+
+    m_data->setLineCap(cap);
 }
 
 void GraphicsContext::setLineDash(const DashArray& dashes, float dashOffset)
@@ -1184,7 +1316,8 @@ void GraphicsContext::setLineDash(const DashArray& dashes, float dashOffset)
             dashOffset = fmod(dashOffset, length) + length;
     }
 
-    notImplemented();
+    m_data->setDashes(dashes);
+    m_data->setDashOffset(dashOffset);
 }
 
 void GraphicsContext::setLineJoin(LineJoin join)
@@ -1197,7 +1330,7 @@ void GraphicsContext::setLineJoin(LineJoin join)
         return;
     }
 
-    notImplemented();
+    m_data->setLineJoin(join);
 }
 
 void GraphicsContext::canvasClip(const Path& path, WindRule fillRule)
@@ -1441,8 +1574,8 @@ void GraphicsContext::setPlatformStrokeColor(const Color& color)
 
 void GraphicsContext::setPlatformStrokeThickness(float thickness)
 {
-    // This is a no-op on Windows. We fill using the GraphicsContextState::strokeThickness member.
     ASSERT(m_state.strokeThickness == thickness);
+    m_data->setStrokeThickness(thickness);
 }
 
 void GraphicsContext::setPlatformFillColor(const Color& color)
@@ -1643,7 +1776,7 @@ void GraphicsContext::platformStrokeEllipse(const FloatRect& ellipse)
     platformContext()->SetTags(1, __LINE__);
 
     drawWithoutShadow(ellipse, [this, d2dEllipse](ID2D1RenderTarget* renderTarget) {
-        renderTarget->DrawEllipse(&d2dEllipse, solidStrokeBrush(), strokeThickness());
+        renderTarget->DrawEllipse(&d2dEllipse, solidStrokeBrush(), strokeThickness(), m_data->strokeStyle());
     });
 }
 

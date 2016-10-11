@@ -74,7 +74,6 @@ namespace WebCore {
 
 class AXObjectCache;
 class Attr;
-class AuthorStyleSheets;
 class CDATASection;
 class CSSFontSelector;
 class CSSStyleDeclaration;
@@ -223,6 +222,10 @@ struct TextAutoSizingTraits : WTF::GenericHashTraits<TextAutoSizingKey> {
 #if ENABLE(MEDIA_SESSION)
 class MediaSession;
 #endif
+
+namespace Style {
+class Scope;
+};
 
 const uint64_t HTMLMediaElementInvalidID = 0;
 
@@ -440,8 +443,8 @@ public:
     WEBCORE_EXPORT void setDocumentURI(const String&);
 
 #if ENABLE(WEB_REPLAY)
-    JSC::InputCursor& inputCursor() const { return *m_inputCursor; }
-    void setInputCursor(PassRefPtr<JSC::InputCursor>);
+    JSC::InputCursor& inputCursor();
+    void setInputCursor(Ref<JSC::InputCursor>&&);
 #endif
 
     void visibilityStateChanged();
@@ -484,16 +487,8 @@ public:
 
     bool isSrcdocDocument() const { return m_isSrcdocDocument; }
 
-    StyleResolver* styleResolverIfExists() const { return m_styleResolver.get(); }
-
     bool sawElementsInKnownNamespaces() const { return m_sawElementsInKnownNamespaces; }
 
-    StyleResolver& ensureStyleResolver()
-    { 
-        if (!m_styleResolver)
-            createStyleResolver();
-        return *m_styleResolver;
-    }
     StyleResolver& userAgentShadowTreeStyleResolver();
 
     CSSFontSelector& fontSelector() { return m_fontSelector; }
@@ -504,8 +499,8 @@ public:
 
     WEBCORE_EXPORT StyleSheetList& styleSheets();
 
-    AuthorStyleSheets& authorStyleSheets() { return *m_authorStyleSheets; }
-    const AuthorStyleSheets& authorStyleSheets() const { return *m_authorStyleSheets; }
+    Style::Scope& styleScope() { return *m_styleScope; }
+    const Style::Scope& styleScope() const { return *m_styleScope; }
     ExtensionStyleSheets& extensionStyleSheets() { return *m_extensionStyleSheets; }
     const ExtensionStyleSheets& extensionStyleSheets() const { return *m_extensionStyleSheets; }
 
@@ -857,7 +852,7 @@ public:
     WEBCORE_EXPORT String domain() const;
     void setDomain(const String& newDomain, ExceptionCode&);
 
-    WEBCORE_EXPORT String lastModified() const;
+    WEBCORE_EXPORT String lastModified();
 
     // The cookieURL is used to query the cookie database for this document's
     // cookies. For example, if the cookie URL is http://example.com, we'll
@@ -1227,7 +1222,7 @@ public:
 
     void didRemoveAllPendingStylesheet();
     void setNeedsNotifyRemoveAllPendingStylesheet() { m_needsNotifyRemoveAllPendingStylesheet = true; }
-    void clearStyleResolver();
+    void didClearStyleResolver();
 
     bool inStyleRecalc() const { return m_inStyleRecalc; }
     bool inRenderTreeUpdate() const { return m_inRenderTreeUpdate; }
@@ -1297,6 +1292,8 @@ public:
     using ContainerNode::setAttributeEventListener;
     void setAttributeEventListener(const AtomicString& eventType, const QualifiedName& attributeName, const AtomicString& value);
 
+    DOMSelection* getSelection();
+
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
     Document(Frame*, const URL&, unsigned = DefaultDocumentClass, unsigned constructionFlags = 0);
@@ -1349,8 +1346,6 @@ private:
 
     void buildAccessKeyMap(TreeScope* root);
 
-    void createStyleResolver();
-
     void loadEventDelayTimerFired();
 
     void pendingTasksTimerFired();
@@ -1394,7 +1389,6 @@ private:
 
     unsigned m_referencingNodeCount;
 
-    std::unique_ptr<StyleResolver> m_styleResolver;
     std::unique_ptr<StyleResolver> m_userAgentShadowTreeStyleResolver;
     bool m_hasNodesWithPlaceholderStyle;
     bool m_needsNotifyRemoveAllPendingStylesheet;
@@ -1469,7 +1463,7 @@ private:
 
     MutationObserverOptions m_mutationObserverTypes;
 
-    std::unique_ptr<AuthorStyleSheets> m_authorStyleSheets;
+    std::unique_ptr<Style::Scope> m_styleScope;
     std::unique_ptr<ExtensionStyleSheets> m_extensionStyleSheets;
     RefPtr<StyleSheetList> m_styleSheetList;
 
@@ -1549,10 +1543,6 @@ private:
 
     HashSet<LiveNodeList*> m_listsInvalidatedAtDocument;
     HashSet<HTMLCollection*> m_collectionsInvalidatedAtDocument;
-#if !ASSERT_DISABLED
-    bool m_inInvalidateNodeListAndCollectionCaches;
-#endif
-
     unsigned m_nodeListAndCollectionCounts[numNodeListInvalidationTypes];
 
     RefPtr<XPathEvaluator> m_xpathEvaluator;
@@ -1719,7 +1709,7 @@ private:
     Ref<CSSFontSelector> m_fontSelector;
 
 #if ENABLE(WEB_REPLAY)
-    RefPtr<JSC::InputCursor> m_inputCursor;
+    Ref<JSC::InputCursor> m_inputCursor;
 #endif
 
     Timer m_didAssociateFormControlsTimer;

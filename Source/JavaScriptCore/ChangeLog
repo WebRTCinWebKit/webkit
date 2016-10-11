@@ -1,3 +1,413 @@
+2016-10-10  Zan Dobersek  <zdobersek@igalia.com>
+
+        Add ENABLE_ENCRYPTED_MEDIA configuration option
+        https://bugs.webkit.org/show_bug.cgi?id=163219
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Add the ENABLE_ENCRYPTED_MEDIA configuration option. It will be used
+        to enable or disable the new EME implementation at build-time.
+
+2016-10-10  Filip Pizlo  <fpizlo@apple.com>
+
+        B3->Air lowering should be able to emit complex leas on x86
+        https://bugs.webkit.org/show_bug.cgi?id=163234
+
+        Reviewed by Saam Barati.
+        
+        This adds comprehensive support for emitting lea on x86.
+        
+        When adding this, I found that it was useful to also finally add more reassociation. That
+        reduces the amount of patterns that the instruction selector has to deal with.
+
+        * assembler/MacroAssembler.h:
+        (JSC::MacroAssembler::lea32):
+        (JSC::MacroAssembler::lea64):
+        (JSC::MacroAssembler::lea): Deleted.
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::commitInternal):
+        (JSC::B3::Air::LowerToAir::tryAppendLea):
+        (JSC::B3::Air::LowerToAir::lower):
+        (JSC::B3::Air::LowerToAir::createSelect): Deleted.
+        * b3/B3ReduceStrength.cpp:
+        * b3/B3Value.h:
+        * b3/B3ValueInlines.h:
+        (JSC::B3::Value::isRepresentableAs):
+        (JSC::B3::Value::representableAs): Deleted.
+        * b3/air/AirOpcode.opcodes:
+        * b3/testb3.cpp: Lots of tests for lea and reassociation.
+
+2016-10-10  Mark Lam  <mark.lam@apple.com>
+
+        Change ArrayPrototype.cpp's putLength() and setLength() to take a VM& so that we can use vm.propertyNames.
+        https://bugs.webkit.org/show_bug.cgi?id=163260
+
+        Reviewed by Saam Barati.
+
+        In all cases where we call these, we already have the VM& anyway.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::putLength):
+        (JSC::setLength):
+        (JSC::arrayProtoFuncPop):
+        (JSC::arrayProtoFuncPush):
+        (JSC::arrayProtoFuncShift):
+        (JSC::arrayProtoFuncSlice):
+        (JSC::arrayProtoFuncSplice):
+        (JSC::arrayProtoFuncUnShift):
+
+2016-10-10  Mark Lam  <mark.lam@apple.com>
+
+        Rename the StrictModeReadonlyPropertyWriteError string to ReadonlyPropertyWriteError.
+        https://bugs.webkit.org/show_bug.cgi?id=163239
+
+        Reviewed by Filip Pizlo.
+
+        This string is also used for reporting the same error in cases which have nothing
+        to do with strict mode.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitReadOnlyExceptionIfNeeded):
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/GetterSetter.cpp:
+        (JSC::callSetter):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::setLengthWithArrayStorage):
+        (JSC::JSArray::pop):
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::putToPrimitive):
+        (JSC::JSValue::putToPrimitiveByIndex):
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::put):
+        * runtime/JSModuleEnvironment.cpp:
+        (JSC::JSModuleEnvironment::put):
+        * runtime/JSModuleNamespaceObject.cpp:
+        (JSC::JSModuleNamespaceObject::put):
+        (JSC::JSModuleNamespaceObject::putByIndex):
+        * runtime/JSObject.cpp:
+        (JSC::ordinarySetSlow):
+        (JSC::JSObject::putInlineSlow):
+        (JSC::JSObject::setPrototypeWithCycleCheck):
+        (JSC::JSObject::putByIndexBeyondVectorLengthWithArrayStorage):
+        (JSC::JSObject::putDirectIndexBeyondVectorLengthWithArrayStorage):
+        * runtime/JSObject.h:
+        * runtime/JSObjectInlines.h:
+        (JSC::JSObject::putInline):
+        * runtime/JSSymbolTableObject.h:
+        (JSC::symbolTablePut):
+        * runtime/Lookup.h:
+        (JSC::putEntry):
+        * runtime/RegExpObject.h:
+        (JSC::RegExpObject::setLastIndex):
+        * runtime/SparseArrayValueMap.cpp:
+        (JSC::SparseArrayValueMap::putEntry):
+        (JSC::SparseArrayEntry::put):
+        * runtime/StringObject.cpp:
+        (JSC::StringObject::put):
+        (JSC::StringObject::putByIndex):
+
+2016-10-10  Saam Barati  <sbarati@apple.com>
+
+        compileCheckStringIdent in the FTL is wrong
+        https://bugs.webkit.org/show_bug.cgi?id=163215
+
+        Reviewed by Mark Lam and Filip Pizlo.
+
+        lowStringIdent() returns the StringImpl pointer. The compileCheckStringIdent()
+        was treating its return value as the actual JSString. This is wrong.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileCheckStringIdent):
+
+2016-10-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DOMJIT] Implement Node accessors in DOMJIT
+        https://bugs.webkit.org/show_bug.cgi?id=163005
+
+        Reviewed by Filip Pizlo.
+
+        Add some helper methods and offsetOfXXX for JSC::Weak since it is used
+        for DOM wrapper caching.
+
+        And make DOMJIT::Patchpoint in FTL closer to one in DFG. We add resultConstraint
+        to avoid the situation that the same register is allocated to child and result.
+
+        We also extend DOMJIT::Patchpoint to tell useTagTypeNumberRegister / useTagMaskRegister.
+
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * domjit/DOMJITSlowPathCalls.h:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileCheckDOM):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallDOM):
+        * heap/WeakImpl.h:
+        (JSC::WeakImpl::offsetOfJSValue):
+        (JSC::WeakImpl::offsetOfWeakHandleOwner):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::boxCell):
+        (JSC::AssemblyHelpers::boxInt32): Deleted.
+        * jit/JITOperations.h:
+
+2016-10-09  Filip Pizlo  <fpizlo@apple.com>
+
+        Air should expose API for pinning registers
+        https://bugs.webkit.org/show_bug.cgi?id=163175
+
+        Reviewed by Keith Miller.
+        
+        You can now call Procedure::pinRegister(), or Code::pinRegister(), and it will make this
+        register behave as follows:
+        
+        - B3 and Air will emit no code that modifies the value in this register, except if that
+          happens via a Patchpoint or stackmap constraint (i.e. the user explicitly asked for it).
+        - B3 and Air will allow others to modify the register. For example, if the register is not
+          callee-save, then the compiler knows that the register's value will be trashed by any
+          C-style call.
+        - Air will be happy to emit code that reads from this register, including coalescing tmps
+          with it, so longer as there is no interference (i.e. no chance of the register's value
+          changing). For example, if we went back to having pinned tag registers, we would tell B3
+          to use them by (1) excluding them from any clobber set (easy, since they're callee save)
+          and (2) emitting ArgumentReg to grab their value. There's a test that does this.
+        
+        This is accomplished by taking regsInPriorityOrder() and making it a method of Code. Air 
+        already used this API when choosing registers in register allocation. Code now also vends a
+        mutableRegs() set, which is derived from regsInPriorityOrder(), that can quickly tell you if
+        a register can be mutated. Doing it this way means that most of this is a purely mechanical
+        change. The calls to mutableRegs() are the places where we had to change logic:
+        
+        - The register allocators needs to know that coalescing with a precolored pinned tmp is free.
+        - The callee-save handler needs to know that we're not supposed to save/restore pinned
+          registers.
+        
+        Note that in this scheme, pinned registers are simply registers that do not appear in
+        regsInPriorityOrder(). This means, for example, that we will now say that FP is pinned. So,
+        this means that you can also pin registers by calling setRegsInPriorityOrder() and passing a
+        vector that excludes some registers. More generally, this means that clients can now tweak
+        the register allocator's register preferences, since the ordering in that list reflects the
+        order in which the allocator will try registers.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/B3Procedure.cpp:
+        (JSC::B3::Procedure::pinRegister):
+        * b3/B3Procedure.h:
+        * b3/air/AirCode.cpp:
+        (JSC::B3::Air::Code::Code):
+        (JSC::B3::Air::Code::setRegsInPriorityOrder):
+        (JSC::B3::Air::Code::pinRegister):
+        * b3/air/AirCode.h:
+        (JSC::B3::Air::Code::regsInPriorityOrder):
+        (JSC::B3::Air::Code::mutableRegs):
+        (JSC::B3::Air::Code::isPinned):
+        (JSC::B3::Air::Code::regsInPriorityOrderImpl):
+        (JSC::B3::Air::Code::proc): Deleted.
+        * b3/air/AirEmitShuffle.cpp:
+        (JSC::B3::Air::emitShuffle):
+        * b3/air/AirEmitShuffle.h:
+        * b3/air/AirHandleCalleeSaves.cpp:
+        (JSC::B3::Air::handleCalleeSaves):
+        * b3/air/AirIteratedRegisterCoalescing.cpp:
+        * b3/air/AirLowerAfterRegAlloc.cpp:
+        (JSC::B3::Air::lowerAfterRegAlloc):
+        * b3/air/AirRegisterPriority.cpp: Removed.
+        * b3/air/AirRegisterPriority.h: Removed.
+        * b3/air/AirSpillEverything.cpp:
+        (JSC::B3::Air::spillEverything):
+        * b3/air/testair.cpp:
+        (JSC::B3::Air::testShuffleBroadcastAllRegs):
+        (JSC::B3::Air::testShuffleShiftAllRegs):
+        (JSC::B3::Air::testShuffleRotateAllRegs):
+        (JSC::B3::Air::testShuffleShiftMemoryAllRegs):
+        (JSC::B3::Air::testShuffleShiftMemoryAllRegs64):
+        (JSC::B3::Air::testShuffleShiftMemoryAllRegsMixedWidth):
+        (JSC::B3::Air::testShuffleRotateMemoryAllRegs64):
+        (JSC::B3::Air::testShuffleRotateMemoryAllRegsMixedWidth):
+        * b3/testb3.cpp:
+        (JSC::B3::testPinRegisters):
+        (JSC::B3::run):
+        * jit/RegisterSet.h:
+
+2016-10-08  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 should know about mutable pinned registers
+        https://bugs.webkit.org/show_bug.cgi?id=163172
+
+        Reviewed by Keith Miller.
+        
+        If we have mutable pinned registers then we need to know which operations mutate them. At
+        first I considered making this into a heap range thing, but I think that this would be very
+        confusing. Also, in the future, we might want to make Effects track register sets of
+        clobbered registers (see bug 163173).
+
+        * b3/B3Effects.cpp:
+        (JSC::B3::Effects::interferes):
+        (JSC::B3::Effects::operator==):
+        (JSC::B3::Effects::dump):
+        * b3/B3Effects.h:
+        (JSC::B3::Effects::forCall):
+        (JSC::B3::Effects::mustExecute):
+
+2016-10-08  Saam Barati  <sbarati@apple.com>
+
+        HasIndexedProperty clobberize rule is wrong for Array::ForceOSRExit
+        https://bugs.webkit.org/show_bug.cgi?id=159942
+        <rdar://problem/27328836>
+
+        Reviewed by Filip Pizlo.
+
+        When HasIndexedProperty has a ForceOSRExit array mode, it should
+        report to write to side state, like the ForceOSRExit node, and the
+        other nodes with ForceOSRExit array mode.
+
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+
+2016-10-07  Mark Lam  <mark.lam@apple.com>
+
+        Object.freeze() and seal() should throw if [[PreventExtensions]]() fails.
+        https://bugs.webkit.org/show_bug.cgi?id=163160
+
+        Reviewed by Saam Barati.
+
+        See https://tc39.github.io/ecma262/#sec-object.freeze,
+        https://tc39.github.io/ecma262/#sec-object.seal, and
+        https://tc39.github.io/ecma262/#sec-setintegritylevel.  We need to call
+        preventExtensions first before proceeding to freeze / seal the object.  If
+        preventExtensions fails, we should throw a TypeError.
+
+        * runtime/ObjectConstructor.cpp:
+        (JSC::setIntegrityLevel):
+        (JSC::objectConstructorSeal):
+        (JSC::objectConstructorFreeze):
+
+2016-10-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DOMJIT] Support slow path call
+        https://bugs.webkit.org/show_bug.cgi?id=162978
+
+        Reviewed by Saam Barati.
+
+        One of the most important features required in DOMJIT::Patchpoint is slow path calls.
+        DOM operation typically returns DOMWrapper object. At that time, if wrapper cache hits, we can go
+        to the fast path. However, if we cannot use the cache, we need to go to the slow path to call toJS function.
+        At that time, slow path call functionality is necessary.
+
+        This patch expose DOMJIT::PatchpointParams::addSlowPathCall. We can request slow path call code generation
+        through this interface. DOMJIT::PatchpointParams automatically leverages appropriate slow path call systems
+        in each tier. In DFG, we use slow path call system. In FTL, we implement slow path call by using addLatePath
+        to construct slow path call. But these details are completely hidden by DOMJIT::PatchpointParams. Users can
+        just use addSlowPathCall.
+
+        Since DFG and FTL slow path call systems are implemented in variadic templates, directly using this means
+        that we need to expose core part of DFG and FTL. For example, DFG::SpeculativeJIT need to be exposed in
+        such a design. That is too bad. Instead, we use magical macro in DOMJITSlowPathCalls.h. We can list up the
+        call signatures in DOMJIT_SLOW_PATH_CALLS. DOMJIT uses these signatures to generate an interface to request
+        slow path calls inside DFG and FTL instead of exposing everything.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGCommon.h:
+        * dfg/DFGDOMJITPatchpointParams.cpp: Copied from Source/JavaScriptCore/domjit/DOMJITPatchpointParams.h.
+        (JSC::DFG::dispatch):
+        * dfg/DFGDOMJITPatchpointParams.h: Copied from Source/JavaScriptCore/domjit/DOMJITPatchpointParams.h.
+        (JSC::DFG::DOMJITPatchpointParams::DOMJITPatchpointParams):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileCallDOM):
+        (JSC::DFG::SpeculativeJIT::compileCheckDOM):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::extractResult): Deleted.
+        * domjit/DOMJITPatchpointParams.h:
+        (JSC::DOMJIT::PatchpointParams::addSlowPathCall):
+        * domjit/DOMJITSlowPathCalls.h: Copied from Source/JavaScriptCore/domjit/DOMJITPatchpointParams.h.
+        * ftl/FTLDOMJITPatchpointParams.cpp: Added.
+        (JSC::FTL::dispatch):
+        * ftl/FTLDOMJITPatchpointParams.h: Copied from Source/JavaScriptCore/domjit/DOMJITPatchpointParams.h.
+        (JSC::FTL::DOMJITPatchpointParams::DOMJITPatchpointParams):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileCheckDOM):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallDOM):
+        * jit/GPRInfo.h:
+        (JSC::extractResult):
+        * jsc.cpp:
+
+2016-10-06  Saam Barati  <sbarati@apple.com>
+
+        HasOwnPropertyCache flattening dictionaries is causing insane memory usage with the uBlock Safari extension
+        https://bugs.webkit.org/show_bug.cgi?id=163091
+
+        Reviewed by Mark Lam.
+
+        I'm investigating a real fix for this in:
+        https://bugs.webkit.org/show_bug.cgi?id=163092
+        However, it's best to get this out of trunk for now.
+
+        * runtime/HasOwnPropertyCache.h:
+        (JSC::HasOwnPropertyCache::tryAdd):
+
+2016-10-06  Keith Miller  <keith_miller@apple.com>
+
+        getInternalObjcObject should validate the JSManagedObject's value.
+        https://bugs.webkit.org/show_bug.cgi?id=162985
+
+        Reviewed by Geoffrey Garen.
+
+        Previously, if, for instance, the JSManagedObject's weak value had been
+        cleared we would call tryUnwrapObjcObject with a nil context and value.
+        This triggered assertions failures as those functions expect their inputs
+        to be valid.
+
+        * API/JSVirtualMachine.mm:
+        (getInternalObjcObject):
+
+2016-10-06  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RemoteInspector should cache client capabilities for off-main thread usage
+        https://bugs.webkit.org/show_bug.cgi?id=163039
+        <rdar://problem/28571460>
+
+        Reviewed by Timothy Hatcher.
+
+        The fix in r206797 was incorrect because listings are always pushed out on the XPC connection queue.
+        Instead of delaying the listing needlessly, RemoteInspector should cache the capabilities of its
+        client while on the main thread, then use the cached struct data on the XPC connection queue rather
+        than directly accessing m_client. This is similar to how RemoteConnectionToTarget marshalls listing
+        information from arbitrary queues into m_targetListingMap, which can then be read from any queue.
+
+        * inspector/remote/RemoteInspector.h:
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::RemoteInspector::updateClientCapabilities): Cache the capabilities.
+        (Inspector::RemoteInspector::setRemoteInspectorClient):
+        Re-cache the capabilities. Scope the lock to avoid reentrant locking.
+
+        (Inspector::RemoteInspector::clientCapabilitiesDidChange): Cache the capabilities.
+        (Inspector::RemoteInspector::pushListingsNow): Use cached client capabilities.
+        (Inspector::RemoteInspector::receivedGetListingMessage): Revert the change in r206797.
+        (Inspector::RemoteInspector::receivedAutomationSessionRequestMessage):
+
+2016-10-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WebCore][JSC] Use new @throwTypeError and @throwRangeError intrinsics
+        https://bugs.webkit.org/show_bug.cgi?id=163001
+
+        Reviewed by Keith Miller.
+
+        Previously, the argument of @throwXXXError intrinsics must be string literal.
+        But it is error-prone restriction. This patch relaxes the restriction to accept
+        arbitrary values. To keep emitted bytecode small, if the argument is string literal,
+        we generate the same bytecode as before. If the argument is not string literal,
+        we evaluate it and perform to_string before passing to throw_static_error.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitThrowStaticError):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::BytecodeIntrinsicNode::emit_intrinsic_throwTypeError):
+        (JSC::BytecodeIntrinsicNode::emit_intrinsic_throwRangeError):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+
 2016-10-05  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [JSC] Add @throwXXXError bytecode intrinsic

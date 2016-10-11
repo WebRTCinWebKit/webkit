@@ -125,6 +125,8 @@ CachedResource::CachedResource(CachedResourceRequest&& request, Type type, Sessi
     , m_type(type)
 {
     ASSERT(sessionID.isValid());
+
+    setLoadPriority(request.priority());
     finishRequestInitialization();
 
     // FIXME: We should have a better way of checking for Navigation loads, maybe FetchMode::Options::Navigate.
@@ -371,7 +373,7 @@ void CachedResource::checkNotify()
 
     CachedResourceClientWalker<CachedResourceClient> walker(m_clients);
     while (CachedResourceClient* client = walker.next())
-        client->notifyFinished(this);
+        client->notifyFinished(*this);
 }
 
 void CachedResource::addDataBuffer(SharedBuffer&)
@@ -440,8 +442,13 @@ bool CachedResource::isCrossOrigin() const
     return m_responseTainting != ResourceResponse::Tainting::Basic;
 }
 
-bool CachedResource::isClean() const
+bool CachedResource::isCORSSameOrigin() const
 {
+    // Following resource types do not use CORS
+    ASSERT(type() != CachedResource::Type::FontResource);
+    ASSERT(type() != CachedResource::Type::SVGFontResource);
+    ASSERT(type() != CachedResource::XSLStyleSheet);
+
     // https://html.spec.whatwg.org/multipage/infrastructure.html#cors-same-origin
     return !loadFailedOrCanceled() && m_responseTainting != ResourceResponse::Tainting::Opaque;
 }
@@ -543,7 +550,7 @@ void CachedResource::didAddClient(CachedResourceClient& client)
     if (m_clientsAwaitingCallback.remove(&client))
         m_clients.add(&client);
     if (!isLoading() && !stillNeedsLoad())
-        client.notifyFinished(this);
+        client.notifyFinished(*this);
 }
 
 bool CachedResource::addClientToSet(CachedResourceClient& client)

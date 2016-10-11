@@ -208,6 +208,7 @@ fast/mediastream/RTCPeerConnection-media-setup-callbacks-single-dialog.html
 fast/mediastream/RTCPeerConnection-legacy-stream-based-api.html
 fast/mediastream/RTCPeerConnection-icecandidate-event.html
 fast/mediastream/RTCPeerConnection-iceconnectionstatechange-event.html
+fast/mediastream/RTCPeerConnection-remotely-assigned-transceiver-mid.html
 
 # Asserts in debug.
 [ Debug ] fast/images/large-size-image-crash.html [ Skip ]
@@ -868,8 +869,6 @@ media/video-does-not-loop.html [ WontFix ]
 media/video-size-intrinsic-scale.html [ WontFix ]
 
 # These tests are for an obsolete version of the EME spec.
-fast/events/constructors/media-key-event-constructor.html [ WontFix ]
-media/encrypted-media/encrypted-media-can-play-type-webm.html [ WontFix ]
 media/encrypted-media/encrypted-media-events.html [ WontFix ]
 media/encrypted-media/encrypted-media-not-loaded.html [ WontFix ]
 media/encrypted-media/encrypted-media-syntax.html [ WontFix ]
@@ -1016,6 +1015,8 @@ webkit.org/b/122021 media/video-controls-captions-trackmenu.html [ Timeout ]
 webkit.org/b/122021 media/video-controls-fullscreen-volume.html [ Failure ]
 webkit.org/b/116266 media/video-controls-toggling.html [ Timeout ]
 
+webkit.org/b/163231 [ ElCapitan+ ] media/controls/airplay-picker.html [ Pass Failure ]
+
 # --- End media tests ---
 webkit.org/b/136994 http/tests/media/hls/video-cookie.html [ Failure ]
 
@@ -1160,9 +1161,6 @@ webkit.org/b/141534 [ Yosemite ] media/video-load-networkState.html [ Pass Crash
 # See also: rdar://problem/27356144
 webkit.org/b/142726 fast/images/animated-png.html [ Skip ]
 
-# Fails when an actual AppleTV is nearby.
-webkit.org/b/148912 [ ElCapitan+ ] media/controls/airplay-picker.html [ Pass Failure ]
-
 # OS X 10.10.3+ has the necessary glyphs.
 webkit.org/b/142548 [ Yosemite+ ] editing/selection/extend-by-character-007.html [ Pass ]
 
@@ -1170,8 +1168,7 @@ webkit.org/b/142548 [ Yosemite+ ] editing/selection/extend-by-character-007.html
 
 webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]
 
-# <rdar://problem/19588632>
-[ ElCapitan+ ] http/tests/media/track-in-band-hls-metadata.html [ Timeout ]
+webkit.org/b/140022 http/tests/media/track-in-band-hls-metadata.html [ Pass Timeout ]
 
 # <rdar://problem/19893462>
 [ ElCapitan+ ] sputnik/Unicode/Unicode_510/S7.6_A3.1.html [ Failure ]
@@ -1410,7 +1407,7 @@ webkit.org/b/159683 imported/w3c/web-platform-tests/fetch/api/request/request-ca
 
 webkit.org/b/158500 storage/indexeddb/database-close-private.html [ Pass Failure ]
 
-webkit.org/b/158640 imported/blink/storage/indexeddb/blob-valid-after-deletion.html [ Pass Failure ]
+webkit.org/b/163122 imported/blink/storage/indexeddb/blob-valid-after-deletion.html [ Pass Timeout ]
 
 webkit.org/b/128312 media/video-load-preload-metadata.html [ Pass Failure ]
 
@@ -1467,3 +1464,16 @@ webkit.org/b/127116 [ Debug ] svg/custom/animate-initial-pause-unpause.html [ Pa
 # rdar://problem/28586837
 fast/text/variations/order.html [ Crash ]
 animations/font-variation-settings-order.html [ Crash ]
+
+[ Debug ] fast/selectors/slow-style-sharing-with-long-cousin-list.html [ Skip ]
+
+webkit.org/b/161720 [ Debug ] storage/indexeddb/key-type-array.html [ Pass Timeout ]
+
+webkit.org/b/155138 [ Debug ] inspector/console/addInspectedNode.html [ Pass Timeout ]
+
+webkit.org/b/163046 js/regress-141098.html [ Pass Failure ]
+
+webkit.org/b/156070 storage/indexeddb/modern/abort-requests-cancelled.html [ Pass Timeout ]
+webkit.org/b/156070 storage/indexeddb/modern/abort-requests-cancelled-private.html [ Pass Timeout ]
+
+webkit.org/b/116621 fast/replaced/preferred-widths.html [ Pass Failure ]

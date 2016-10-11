@@ -29,6 +29,8 @@ package CodeGenerator;
 use strict;
 
 use File::Find;
+use Carp qw<longmess>;
+use Data::Dumper;
 
 my $useDocument = "";
 my $useGenerator = "";
@@ -138,6 +140,17 @@ my %svgTypeWithWritablePropertiesNeedingTearOff = (
 # Cache of IDL file pathnames.
 my $idlFiles;
 my $cachedInterfaces = {};
+my $cachedExternalDictionaries = {};
+
+sub assert
+{
+    my $message = shift;
+    
+    my $mess = longmess();
+    print Dumper($mess);
+
+    die $message;
+}
 
 # Default constructor
 sub new
@@ -198,6 +211,14 @@ sub ProcessDocument
         # multiple interfaces per file, but we aren't, so this is fine for now.
         $codeGenerator->GenerateInterface($interface, $defines, $useDocument->enumerations, $useDocument->dictionaries);
         $codeGenerator->WriteData($interface, $useOutputDir, $useOutputHeadersDir);
+    }
+
+    # It is possible to have dictionaries in an IDL file without any interface.
+    unless (@$interfaces) {
+        foreach my $dictionary (@{$useDocument->dictionaries}) {
+            $codeGenerator->GenerateDictionary($dictionary);
+            $codeGenerator->WriteData($dictionary, $useOutputDir, $useOutputHeadersDir);
+        }
     }
 }
 
@@ -312,6 +333,7 @@ sub ParseInterface
     my $interfaceName = shift;
 
     return undef if $interfaceName eq 'Object';
+    return undef if $interfaceName eq 'UNION';
 
     if (exists $cachedInterfaces->{$interfaceName}) {
         return $cachedInterfaces->{$interfaceName};
@@ -319,7 +341,7 @@ sub ParseInterface
 
     # Step #1: Find the IDL file associated with 'interface'
     my $filename = $object->IDLFileForInterface($interfaceName)
-        or die("Could NOT find IDL file for interface \"$interfaceName\", reachable from \"" . $outerInterface->name . "\"!\n");
+        or assert("Could NOT find IDL file for interface \"$interfaceName\", reachable from \"" . $outerInterface->name . "\"!\n");
 
     print "  |  |>  Parsing parent IDL \"$filename\" for interface \"$interfaceName\"\n" if $verbose;
 
@@ -449,14 +471,6 @@ sub GetEnumImplementationNameOverride
     return $enumTypeImplementationNameOverrides{$type};
 }
 
-sub IsDictionaryType
-{
-    my ($object, $type) = @_;
-
-    return 1 if exists $dictionaryTypes{$type};
-    return 0;
-}
-
 sub GetDictionaryByName
 {
     my ($object, $name) = @_;
@@ -465,6 +479,45 @@ sub GetDictionaryByName
     for my $dictionary (@{$useDocument->dictionaries}) {
         return $dictionary if $dictionary->name eq $name;
     }
+
+    return $cachedExternalDictionaries->{$name} if exists($cachedExternalDictionaries->{$name});
+
+    # Find the IDL file associated with the dictionary.
+    my $filename = $object->IDLFileForInterface($name) or return;
+
+    # Do a fast check to see if it seems to contain a dictionary.
+    my $fileContents = slurp($filename);
+
+    if ($fileContents =~ /\bdictionary\s+$name/gs) {
+        # Parse the IDL.
+        my $parser = IDLParser->new(1);
+        my $document = $parser->Parse($filename, $defines, $preprocessor);
+
+        foreach my $dictionary (@{$document->dictionaries}) {
+            next unless $dictionary->name eq $name;
+
+            $cachedExternalDictionaries->{$name} = $dictionary;
+            my $implementedAs = $dictionary->extendedAttributes->{ImplementedAs};
+            $dictionaryTypeImplementationNameOverrides{$dictionary->name} = $implementedAs if $implementedAs;
+            return $dictionary;
+        }
+    }
+    $cachedExternalDictionaries->{$name} = undef;
+}
+
+sub IsDictionaryType
+{
+    my ($object, $type) = @_;
+
+    return $type =~ /^[A-Z]/ && defined($object->GetDictionaryByName($type));
+}
+
+# A dictionary defined in its own IDL file.
+sub IsExternalDictionaryType
+{
+    my ($object, $type) = @_;
+
+    return $object->IsDictionaryType($type) && defined($cachedExternalDictionaries->{$type});
 }
 
 sub HasDictionaryImplementationNameOverride
@@ -624,6 +677,99 @@ sub GetSequenceOrFrozenArrayInnerType
     return "";
 }
 
+# http://heycam.github.io/webidl/#dfn-flattened-union-member-types
+sub GetFlattenedMemberTypes
+{
+    my ($object, $idlUnionType) = @_;
+
+    my @flattenedMemberTypes = ();
+
+    foreach my $memberType (@{$idlUnionType->subtypes}) {
+        if ($memberType->isUnion) {
+            push(@flattenedMemberTypes, $object->GetFlattenedMemberTypes($memberType));
+        } else {
+            push(@flattenedMemberTypes, $memberType);
+        }
+    }
+
+    return @flattenedMemberTypes;
+}
+
+# http://heycam.github.io/webidl/#dfn-number-of-nullable-member-types
+sub GetNumberOfNullableMemberTypes
+{
+    my ($object, $idlUnionType) = @_;
+
+    my $count = 0;
+
+    foreach my $memberType (@{$idlUnionType->subtypes}) {
+        $count++ if $memberType->isNullable;
+        $count += $object->GetNumberOfNullableMemberTypes($memberType) if $memberType->isUnion;
+    }
+
+    return $count;
+}
+
+sub GetIDLUnionMemberTypes
+{
+    my ($object, $interface, $idlUnionType) = @_;
+
+    my $numberOfNullableMembers = $object->GetNumberOfNullableMemberTypes($idlUnionType);
+    assert("Union types must only have 0 or 1 nullable types.") if $numberOfNullableMembers > 1;
+
+    my @idlUnionMemberTypes = ();
+
+    push(@idlUnionMemberTypes, "IDLNull") if $numberOfNullableMembers == 1;
+
+    foreach my $memberType ($object->GetFlattenedMemberTypes($idlUnionType)) {
+        push(@idlUnionMemberTypes, $object->GetBaseIDLType($interface, $memberType));
+    }
+
+    return @idlUnionMemberTypes;
+}
+
+sub GetBaseIDLType
+{
+    my ($object, $interface, $idlType) = @_;
+
+    my %IDLTypes = (
+        "any" => "IDLAny",
+        "boolean" => "IDLBoolean",
+        "byte" => "IDLByte",
+        "octet" => "IDLOctet",
+        "short" => "IDLShort",
+        "unsigned short" => "IDLUnsignedShort",
+        "long" => "IDLLong",
+        "unsigned long" => "IDLUnsignedLong",
+        "long long" => "IDLLongLong",
+        "unsigned long long" => "IDLUnsignedLongLong",
+        "float" => "IDLFloat",
+        "unrestricted float" => "IDLUnrestrictedFloat",
+        "double" => "IDLDouble",
+        "unrestricted double" => "IDLUnrestrictedDouble",
+        "DOMString" => "IDLDOMString",
+        "ByteString" => "IDLByteString",
+        "USVString" => "IDLUSVString",
+    );
+
+    return $IDLTypes{$idlType->name} if exists $IDLTypes{$idlType->name};
+    return "IDLEnumeration<" . $object->GetEnumerationClassName($interface, $idlType->name) . ">" if $object->IsEnumType($idlType->name);
+    return "IDLDictionary<" . $object->GetDictionaryClassName($interface, $idlType->name) . ">" if $object->IsDictionaryType($idlType->name);
+    return "IDLSequence<" . $object->GetIDLType($interface, @{$idlType->subtypes}[0]) . ">" if $object->IsSequenceType($idlType->name);
+    return "IDLFrozenArray<" . $object->GetIDLType($interface, @{$idlType->subtypes}[0]) . ">" if $object->IsFrozenArrayType($idlType->name);
+    return "IDLUnion<" . join(", ", $object->GetIDLUnionMemberTypes($interface, $idlType)) . ">" if $idlType->isUnion;
+    return "IDLInterface<" . $idlType->name . ">";
+}
+
+sub GetIDLType
+{
+    my ($object, $interface, $idlType) = @_;
+
+    my $baseIDLType = $object->GetBaseIDLType($interface, $idlType);
+    return "IDLNullable<" . $baseIDLType . ">" if $idlType->isNullable;
+    return $baseIDLType;
+}
+
 # These match WK_lcfirst and WK_ucfirst defined in builtins_generator.py.
 # Uppercase the first letter while respecting WebKit style guidelines.
 # E.g., xmlEncoding becomes XMLEncoding, but xmlllang becomes Xmllang.
@@ -658,6 +804,16 @@ sub WK_lcfirst
     $ret =~ s/^exclusive/isExclusive/ if $ret =~ /^exclusive$/;
 
     return $ret;
+}
+
+sub slurp {
+    my $file = shift;
+
+    open my $fh, '<', $file or die;
+    local $/ = undef;
+    my $content = <$fh>;
+    close $fh;
+    return $content;
 }
 
 sub trim
@@ -803,6 +959,7 @@ sub IsWrapperType
 
     return 0 if !$object->IsRefPtrType($type);
     return 0 if $object->IsTypedArrayType($type);
+    return 0 if $type eq "UNION";
     return 0 if $webCoreTypeHash{$type};
 
     return 1;
@@ -816,7 +973,7 @@ sub getInterfaceExtendedAttributesFromName
     my $object = shift;
     my $interfaceName = shift;
 
-    my $idlFile = $object->IDLFileForInterface($interfaceName) or die("Could NOT find IDL file for interface \"$interfaceName\"!\n");
+    my $idlFile = $object->IDLFileForInterface($interfaceName) or assert("Could NOT find IDL file for interface \"$interfaceName\"!\n");
 
     open FILE, "<", $idlFile or die;
     my @lines = <FILE>;
@@ -848,7 +1005,7 @@ sub ComputeIsCallbackInterface
 
   return 0 unless $object->IsWrapperType($type);
 
-  my $idlFile = $object->IDLFileForInterface($type) or die("Could NOT find IDL file for interface \"$type\"!\n");
+  my $idlFile = $object->IDLFileForInterface($type) or assert("Could NOT find IDL file for interface \"$type\"!\n");
 
   open FILE, "<", $idlFile or die;
   my @lines = <FILE>;
@@ -884,7 +1041,7 @@ sub ComputeIsFunctionOnlyCallbackInterface
 
   return 0 unless $object->IsCallbackInterface($type);
 
-  my $idlFile = $object->IDLFileForInterface($type) or die("Could NOT find IDL file for interface \"$type\"!\n");
+  my $idlFile = $object->IDLFileForInterface($type) or assert("Could NOT find IDL file for interface \"$type\"!\n");
 
   open FILE, "<", $idlFile or die;
   my @lines = <FILE>;

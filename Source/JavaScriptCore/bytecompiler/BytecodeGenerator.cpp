@@ -3905,6 +3905,15 @@ int BytecodeGenerator::labelScopeDepth() const
     return localScopeDepth() + m_finallyDepth;
 }
 
+void BytecodeGenerator::emitThrowStaticError(ErrorType errorType, RegisterID* raw)
+{
+    RefPtr<RegisterID> message = newTemporary();
+    emitToString(message.get(), raw);
+    emitOpcode(op_throw_static_error);
+    instructions().append(message->index());
+    instructions().append(static_cast<unsigned>(errorType));
+}
+
 void BytecodeGenerator::emitThrowStaticError(ErrorType errorType, const Identifier& message)
 {
     emitOpcode(op_throw_static_error);
@@ -4122,7 +4131,7 @@ bool BytecodeGenerator::emitReadOnlyExceptionIfNeeded(const Variable& variable)
     // If we're in strict mode, we always throw.
     // If we're not in strict mode, we throw for "const" variables but not the function callee.
     if (isStrictMode() || variable.isConst()) {
-        emitThrowTypeError(Identifier::fromString(m_vm, StrictModeReadonlyPropertyWriteError));
+        emitThrowTypeError(Identifier::fromString(m_vm, ReadonlyPropertyWriteError));
         return true;
     }
     return false;

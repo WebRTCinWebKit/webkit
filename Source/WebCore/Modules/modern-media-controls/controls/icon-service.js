@@ -24,11 +24,26 @@
  */
 
 const Icons = {
-    Pause   : "pause",
-    Start   : "start"
+    Airplay         : "airplay",
+    AirplayPlacard  : "airplay-placard",
+    EnterFullscreen : "enter-fullscreen",
+    EnterPiP        : "pip-in",
+    ExitFullscreen  : "exit-fullscreen",
+    Forward         : "forward",
+    Pause           : "pause",
+    PiPPlacard      : "pip-placard",
+    Play            : "play",
+    Rewind          : "rewind",
+    ScaleToFill     : "scale-to-fill",
+    ScaleToFit      : "scale-to-fit",
+    SkipBack        : "interval-skip-back",
+    Start           : "start",
+    Tracks          : "media-selection",
+    Volume          : "volume",
+    VolumeMuted     : "volume-mute"
 };
 
-const IconsWithFullScreenVariants = [Icons.Pause];
+const IconsWithFullScreenVariants = [Icons.Airplay, Icons.Tracks, Icons.Pause, Icons.Play];
 
 const iconService = new class IconService {
 

@@ -29,6 +29,8 @@
 
 #include "CCallHelpers.h"
 #include "DOMJITReg.h"
+#include "DOMJITSlowPathCalls.h"
+#include "JITOperations.h"
 #include "RegisterSet.h"
 
 namespace JSC { namespace DOMJIT {
@@ -52,7 +54,16 @@ public:
     {
     }
 
+    template<typename FunctionType, typename ResultType, typename... Arguments>
+    void addSlowPathCall(CCallHelpers::JumpList from, CCallHelpers& jit, FunctionType function, ResultType result, Arguments... arguments) const
+    {
+        addSlowPathCallImpl(from, jit, function, result, std::make_tuple(arguments...));
+    }
+
 private:
+#define JSC_DEFINE_CALL_OPERATIONS(OperationType, ResultType, ...) JS_EXPORT_PRIVATE virtual void addSlowPathCallImpl(CCallHelpers::JumpList, CCallHelpers&, OperationType, ResultType, std::tuple<__VA_ARGS__> args) const = 0;
+    DOMJIT_SLOW_PATH_CALLS(JSC_DEFINE_CALL_OPERATIONS)
+#undef JSC_DEFINE_CALL_OPERATIONS
 
     Vector<Reg> m_regs;
     Vector<GPRReg> m_gpScratch;

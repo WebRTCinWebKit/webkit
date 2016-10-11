@@ -118,13 +118,14 @@ static void checkURL(const String& urlString, const ExpectedParts& parts, TestTa
     EXPECT_TRUE(URLParser::internalValuesConsistent(url));
     EXPECT_TRUE(URLParser::internalValuesConsistent(oldURL));
 
-    if (testTabs == TestTabs::Yes) {
-        for (size_t i = 0; i < urlString.length(); ++i) {
-            String urlStringWithTab = insertTabAtLocation(urlString, i);
-            checkURL(urlStringWithTab,
-                parts.isInvalid() ? invalidParts(urlStringWithTab) : parts,
-                TestTabs::No);
-        }
+    if (testTabs == TestTabs::No)
+        return;
+
+    for (size_t i = 0; i < urlString.length(); ++i) {
+        String urlStringWithTab = insertTabAtLocation(urlString, i);
+        checkURL(urlStringWithTab,
+            parts.isInvalid() ? invalidParts(urlStringWithTab) : parts,
+            TestTabs::No);
     }
 }
 
@@ -328,6 +329,8 @@ TEST_F(URLParserTest, Basic)
     checkURL("foo:#", {"foo", "", "", "", 0, "", "", "", "foo:#"});
     checkURL("A://", {"a", "", "", "", 0, "//", "", "", "a://"});
     checkURL("aA://", {"aa", "", "", "", 0, "//", "", "", "aa://"});
+    checkURL(utf16String(u"foo://host/#ПП\u0007 a</"), {"foo", "", "", "host", 0, "/", "", "%D0%9F%D0%9F%07 a</", "foo://host/#%D0%9F%D0%9F%07 a</"});
+    checkURL(utf16String(u"foo://host/#\u0007 a</"), {"foo", "", "", "host", 0, "/", "", "%07 a</", "foo://host/#%07 a</"});
 
     // This disagrees with the web platform test for http://:@www.example.com but agrees with Chrome and URL::parse,
     // and Firefox fails the web platform test differently. Maybe the web platform test ought to be changed.
@@ -367,14 +370,15 @@ static void checkRelativeURL(const String& urlString, const String& baseURLStrin
     EXPECT_TRUE(URLParser::internalValuesConsistent(url));
     EXPECT_TRUE(URLParser::internalValuesConsistent(oldURL));
     
-    if (testTabs == TestTabs::Yes) {
-        for (size_t i = 0; i < urlString.length(); ++i) {
-            String urlStringWithTab = insertTabAtLocation(urlString, i);
-            checkRelativeURL(urlStringWithTab,
-                baseURLString,
-                parts.isInvalid() ? invalidParts(urlStringWithTab) : parts,
-                TestTabs::No);
-        }
+    if (testTabs == TestTabs::No)
+        return;
+
+    for (size_t i = 0; i < urlString.length(); ++i) {
+        String urlStringWithTab = insertTabAtLocation(urlString, i);
+        checkRelativeURL(urlStringWithTab,
+            baseURLString,
+            parts.isInvalid() ? invalidParts(urlStringWithTab) : parts,
+            TestTabs::No);
     }
 }
 
@@ -491,14 +495,15 @@ static void checkURLDifferences(const String& urlString, const ExpectedParts& pa
     EXPECT_TRUE(URLParser::internalValuesConsistent(url));
     EXPECT_TRUE(URLParser::internalValuesConsistent(oldURL));
     
-    if (testTabs == TestTabs::Yes) {
-        for (size_t i = 0; i < urlString.length(); ++i) {
-            String urlStringWithTab = insertTabAtLocation(urlString, i);
-            checkURLDifferences(urlStringWithTab,
-                partsNew.isInvalid() ? invalidParts(urlStringWithTab) : partsNew,
-                partsOld.isInvalid() ? invalidParts(urlStringWithTab) : partsOld,
-                TestTabs::No);
-        }
+    if (testTabs == TestTabs::No)
+        return;
+
+    for (size_t i = 0; i < urlString.length(); ++i) {
+        String urlStringWithTab = insertTabAtLocation(urlString, i);
+        checkURLDifferences(urlStringWithTab,
+            partsNew.isInvalid() ? invalidParts(urlStringWithTab) : partsNew,
+            partsOld.isInvalid() ? invalidParts(urlStringWithTab) : partsOld,
+            TestTabs::No);
     }
 }
 
@@ -535,14 +540,15 @@ static void checkRelativeURLDifferences(const String& urlString, const String& b
     EXPECT_TRUE(URLParser::internalValuesConsistent(url));
     EXPECT_TRUE(URLParser::internalValuesConsistent(oldURL));
 
-    if (testTabs == TestTabs::Yes) {
-        for (size_t i = 0; i < urlString.length(); ++i) {
-            String urlStringWithTab = insertTabAtLocation(urlString, i);
-            checkRelativeURLDifferences(urlStringWithTab, baseURLString,
-                partsNew.isInvalid() ? invalidParts(urlStringWithTab) : partsNew,
-                partsOld.isInvalid() ? invalidParts(urlStringWithTab) : partsOld,
-                TestTabs::No);
-        }
+    if (testTabs == TestTabs::No)
+        return;
+
+    for (size_t i = 0; i < urlString.length(); ++i) {
+        String urlStringWithTab = insertTabAtLocation(urlString, i);
+        checkRelativeURLDifferences(urlStringWithTab, baseURLString,
+            partsNew.isInvalid() ? invalidParts(urlStringWithTab) : partsNew,
+            partsOld.isInvalid() ? invalidParts(urlStringWithTab) : partsOld,
+            TestTabs::No);
     }
 }
 
@@ -1044,6 +1050,22 @@ TEST_F(URLParserTest, DefaultPort)
     checkURLDifferences("unknown://host:81",
         {"unknown", "", "", "host", 81, "/", "", "", "unknown://host:81/"},
         {"unknown", "", "", "host", 81, "", "", "", "unknown://host:81"});
+
+    checkURL("file://host:0", {"file", "", "", "host", 0, "/", "", "", "file://host:0/"});
+    checkURL("file://host:80", {"file", "", "", "host", 80, "/", "", "", "file://host:80/"});
+    checkURL("file://host:80/path", {"file", "", "", "host", 80, "/path", "", "", "file://host:80/path"});
+    checkURLDifferences("file://:80/path",
+        {"", "", "", "", 0, "", "", "", "file://:80/path"},
+        {"file", "", "", "", 80, "/path", "", "", "file://:80/path"});
+    checkURLDifferences("file://:0/path",
+        {"", "", "", "", 0, "", "", "", "file://:0/path"},
+        {"file", "", "", "", 0, "/path", "", "", "file://:0/path"});
+    checkURLDifferences(utf16String(u"http://host/#ПП\u0007 a</"),
+        {"http", "", "", "host", 0, "/", "", utf16String(u"ПП\u0007 a</"), utf16String(u"http://host/#ПП\u0007 a</")},
+        {"http", "", "", "host", 0, "/", "", "%D0%9F%D0%9F%07 a</", "http://host/#%D0%9F%D0%9F%07 a</"});
+    checkURLDifferences(utf16String(u"http://host/#\u0007 a</"),
+        {"http", "", "", "host", 0, "/", "", "\a a</", "http://host/#\a a</"},
+        {"http", "", "", "host", 0, "/", "", "%07 a</", "http://host/#%07 a</"});
 }
     
 static void shouldFail(const String& urlString)
@@ -1163,13 +1185,40 @@ static void checkURL(const String& urlString, const TextEncoding& encoding, cons
     EXPECT_TRUE(eq(parts.fragment, url.fragmentIdentifier()));
     EXPECT_TRUE(eq(parts.string, url.string()));
 
-    if (testTabs == TestTabs::Yes) {
-        for (size_t i = 0; i < urlString.length(); ++i) {
-            String urlStringWithTab = insertTabAtLocation(urlString, i);
-            checkURL(urlStringWithTab, encoding,
-                parts.isInvalid() ? invalidParts(urlStringWithTab) : parts,
-                TestTabs::No);
-        }
+    if (testTabs == TestTabs::No)
+        return;
+
+    for (size_t i = 0; i < urlString.length(); ++i) {
+        String urlStringWithTab = insertTabAtLocation(urlString, i);
+        checkURL(urlStringWithTab, encoding,
+            parts.isInvalid() ? invalidParts(urlStringWithTab) : parts,
+            TestTabs::No);
+    }
+}
+
+static void checkURL(const String& urlString, const String& baseURLString, const TextEncoding& encoding, const ExpectedParts& parts, TestTabs testTabs = TestTabs::Yes)
+{
+    URLParser baseParser(baseURLString, { }, encoding);
+    URLParser parser(urlString, baseParser.result(), encoding);
+    auto url = parser.result();
+    EXPECT_TRUE(eq(parts.protocol, url.protocol()));
+    EXPECT_TRUE(eq(parts.user, url.user()));
+    EXPECT_TRUE(eq(parts.password, url.pass()));
+    EXPECT_TRUE(eq(parts.host, url.host()));
+    EXPECT_EQ(parts.port, url.port());
+    EXPECT_TRUE(eq(parts.path, url.path()));
+    EXPECT_TRUE(eq(parts.query, url.query()));
+    EXPECT_TRUE(eq(parts.fragment, url.fragmentIdentifier()));
+    EXPECT_TRUE(eq(parts.string, url.string()));
+    
+    if (testTabs == TestTabs::No)
+        return;
+
+    for (size_t i = 0; i < urlString.length(); ++i) {
+        String urlStringWithTab = insertTabAtLocation(urlString, i);
+        checkURL(urlStringWithTab, baseURLString, encoding,
+            parts.isInvalid() ? invalidParts(urlStringWithTab) : parts,
+            TestTabs::No);
     }
 }
 
@@ -1184,6 +1233,7 @@ TEST_F(URLParserTest, QueryEncoding)
     checkURL("http://host/?\tquery", latin1, {"http", "", "", "host", 0, "/", "query", "", "http://host/?query"});
     checkURL("http://host/?q\tuery", latin1, {"http", "", "", "host", 0, "/", "query", "", "http://host/?query"});
     checkURL("http://host/?query with SpAcEs#fragment", latin1, {"http", "", "", "host", 0, "/", "query%20with%20SpAcEs", "fragment", "http://host/?query%20with%20SpAcEs#fragment"});
+    checkURL("http://host/?que\rry\t\r\n#fragment", latin1, {"http", "", "", "host", 0, "/", "query", "fragment", "http://host/?query#fragment"});
 
     TextEncoding unrecognized(String("unrecognized invalid encoding name"));
     checkURL("http://host/?query", unrecognized, {"http", "", "", "host", 0, "/", "", "", "http://host/?"});
@@ -1196,7 +1246,14 @@ TEST_F(URLParserTest, QueryEncoding)
     checkURL(makeString("asdf://host/path?", withUmlauts), iso88591, {"asdf", "", "", "host", 0, "/path", "%C3%9C%D0%B0%D1%91", "", "asdf://host/path?%C3%9C%D0%B0%D1%91"});
     checkURL(makeString("https://host/path?", withUmlauts), iso88591, {"https", "", "", "host", 0, "/path", "%DC%26%231072%3B%26%231105%3B", "", "https://host/path?%DC%26%231072%3B%26%231105%3B"});
     checkURL(makeString("gopher://host/path?", withUmlauts), iso88591, {"gopher", "", "", "host", 0, "/path", "%DC%26%231072%3B%26%231105%3B", "", "gopher://host/path?%DC%26%231072%3B%26%231105%3B"});
-    
+    checkURL(makeString("/path?", withUmlauts, "#fragment"), "ws://example.com/", iso88591, {"ws", "", "", "example.com", 0, "/path", "%C3%9C%D0%B0%D1%91", "fragment", "ws://example.com/path?%C3%9C%D0%B0%D1%91#fragment"});
+    checkURL(makeString("/path?", withUmlauts, "#fragment"), "wss://example.com/", iso88591, {"wss", "", "", "example.com", 0, "/path", "%C3%9C%D0%B0%D1%91", "fragment", "wss://example.com/path?%C3%9C%D0%B0%D1%91#fragment"});
+    checkURL(makeString("/path?", withUmlauts, "#fragment"), "asdf://example.com/", iso88591, {"asdf", "", "", "example.com", 0, "/path", "%C3%9C%D0%B0%D1%91", "fragment", "asdf://example.com/path?%C3%9C%D0%B0%D1%91#fragment"});
+    checkURL(makeString("/path?", withUmlauts, "#fragment"), "https://example.com/", iso88591, {"https", "", "", "example.com", 0, "/path", "%DC%26%231072%3B%26%231105%3B", "fragment", "https://example.com/path?%DC%26%231072%3B%26%231105%3B#fragment"});
+    checkURL(makeString("/path?", withUmlauts, "#fragment"), "gopher://example.com/", iso88591, {"gopher", "", "", "example.com", 0, "/path", "%DC%26%231072%3B%26%231105%3B", "fragment", "gopher://example.com/path?%DC%26%231072%3B%26%231105%3B#fragment"});
+    checkURL(makeString("gopher://host/path?", withUmlauts, "#fragment"), "asdf://example.com/?doesntmatter", iso88591, {"gopher", "", "", "host", 0, "/path", "%DC%26%231072%3B%26%231105%3B", "fragment", "gopher://host/path?%DC%26%231072%3B%26%231105%3B#fragment"});
+    checkURL(makeString("asdf://host/path?", withUmlauts, "#fragment"), "http://example.com/?doesntmatter", iso88591, {"asdf", "", "", "host", 0, "/path", "%C3%9C%D0%B0%D1%91", "fragment", "asdf://host/path?%C3%9C%D0%B0%D1%91#fragment"});
+
     // FIXME: Add more tests with other encodings and things like non-ascii characters, emoji and unmatched surrogate pairs.
 }
 

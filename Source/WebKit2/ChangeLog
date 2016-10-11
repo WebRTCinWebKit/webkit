@@ -1,3 +1,412 @@
+2016-10-10  Zan Dobersek  <zdobersek@igalia.com>
+
+        Add ENABLE_ENCRYPTED_MEDIA configuration option
+        https://bugs.webkit.org/show_bug.cgi?id=163219
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Add the ENABLE_ENCRYPTED_MEDIA configuration option. It will be used
+        to enable or disable the new EME implementation at build-time.
+
+2016-10-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        NetworkSession: NetworkDataTask is leaked if download finishes in didReceiveResponse completion handler
+        https://bugs.webkit.org/show_bug.cgi?id=163204
+
+        Reviewed by Alex Christensen.
+
+        After the completion handler a reference of the NetworkDataTask is saved in m_downloadsAfterDestinationDecided.
+        If the download failed or was canceled DownloadManager::dataTaskBecameDownloadTask is never called and the data
+        task is kept in the download manager forever. This patch exposes NSURLSessionTask state property in
+        NetworkDataTask, so that the download manager can check the task state after the completion handler and return
+        early if the download finished or was cancelled.
+
+        * NetworkProcess/Downloads/DownloadManager.cpp:
+        (WebKit::DownloadManager::continueDecidePendingDownloadDestination):
+        * NetworkProcess/NetworkDataTask.h:
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.mm:
+        (WebKit::NetworkDataTask::state):
+
+2016-10-10  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Added final specifier to WebInspectorServer and to its overridden methods
+        https://bugs.webkit.org/show_bug.cgi?id=163228
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/InspectorServer/WebInspectorServer.h:
+
+2016-10-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] 2.14.0 Compile Errors: GTK 3.22.1
+        https://bugs.webkit.org/show_bug.cgi?id=163190
+
+        Reviewed by Alex Christensen.
+
+        * UIProcess/gtk/AcceleratedBackingStoreX11.cpp: Include gtk.h since we are using gtk_widget_queue_draw().
+
+2016-10-10  Gyuyoung Kim  <gyuyoung.kim@navercorp.com>
+
+        [EFL] ewk_context_preferred_languages has been failed since r206949
+        https://bugs.webkit.org/show_bug.cgi?id=163211
+
+        Reviewed by Chris Dumez.
+
+        r206949 changed to return value of navigator.language from en-us to en-US
+        in order to match other browsers and w3c spec. So ewk_context_preferred_languages
+        needs to change the expected result as well.
+
+        * UIProcess/API/efl/tests/test_ewk2_context.cpp:
+        (TEST_F):
+
+2016-10-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        NetworkSession: downloads started by startDownload() can fail before starting from the API point of view
+        https://bugs.webkit.org/show_bug.cgi?id=163107
+
+        Reviewed by Alex Christensen.
+
+        In the network process we use a PendingDownload in this case, but in the UI process we always have a single
+        download proxy. If an error happens before the pending download is converted inot a real download, the DidFail
+        messages is received in the download proxy before the DidStart one. This is problematic at least for the GTK+
+        API, because it's common to connect to the started signal and connect to all other signals from there, but in
+        this case the started signal is never emitted, and then the failed one is not handled. This is not a problem for
+        downloads started by convertTaskToDownload, because in that case those loads are not considered a download by
+        the UI process when those early errors happen, and then the web page handles them.
+
+        * NetworkProcess/Downloads/PendingDownload.cpp:
+        (WebKit::PendingDownload::PendingDownload): Send DidStart message right after the network load starts like the
+        non network session code does.
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::convertTaskToDownload): Send DidStart message now that the normal load has been converted
+        into a download.
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::findPendingDownloadLocation): Do not send DidStart message here.
+
+2016-10-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Network Session: PendingDownload is always nullptr in DownloadManager::dataTaskBecameDownloadTask
+        https://bugs.webkit.org/show_bug.cgi?id=163006
+
+        Reviewed by Alex Christensen.
+
+        In DownloadManager::dataTaskBecameDownloadTask() we are supposed to have either a pending download, or a network
+        data task depending on whether the download was started by startDownload() or convertTaskToDownload. However, in
+        both cases we do have a data task and never a pending download. In the case of startDownload() the pending
+        download is removed from m_pendingDownloads in willDecidePendingDownloadDestination(). The task is always
+        added to m_downloadsWaitingForDestination in willDecidePendingDownloadDestination() and to
+        m_downloadsAfterDestinationDecided in continueDecidePendingDownloadDestination() in both cases.
+
+        * NetworkProcess/Downloads/DownloadManager.cpp:
+        (WebKit::DownloadManager::dataTaskBecameDownloadTask): Add an ASSERT to ensure we don't have a pending download
+        at this point and that the download is not already in the map. Remove the download from the
+        m_downloadsAfterDestinationDecided map, but don't check its result because it might not bein that map if
+        dataTaskBecameDownloadTask is called synchronously from the didReceiveResponse completion handler.
+        (WebKit::DownloadManager::willDecidePendingDownloadDestination): Do not take the pending download here, wait
+        until didReceiveResponse completion handler is called.
+        (WebKit::DownloadManager::continueDecidePendingDownloadDestination): Take the pending download here ensuring
+        it's alive while the didReceiveResponse completion handler is called. Also remove invalid early return when
+        either networkDataTask or completionHandler are nullptr because we are using both unconditionally, we should
+        return early if both are nullptr to avoid crashes. However, we are checking that the download is in the
+        m_downloadsWaitingForDestination and in that case we should always have both, so better add asserts there. If
+        the download is already in the map after the completion handler it means that dataTaskBecameDownloadTask() has
+        alrady been called, so we can just return in that case.
+        * NetworkProcess/Downloads/DownloadManager.h:
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (-[WKNetworkSessionDelegate URLSession:dataTask:didBecomeDownloadTask:]): Protect the NetworkDataTask that can
+        be deleted by dataTaskBecameDownloadTask().
+
+2016-10-10  Tim Horton  <timothy_horton@apple.com>
+
+        Share more code between iOS and macOS ViewGestureController
+        https://bugs.webkit.org/show_bug.cgi?id=163158
+
+        Reviewed by Simon Fraser.
+
+        Share canSwipeInDirection() and the (unused on Mac) alternate back-forward list mechanism.
+        Make ViewGestureController operate in terms of WebPageProxy, not WKWebView,
+        because it shouldn't know anything about WKWebView.
+        Refactor scrollEventCanBecomeSwipe a bit to be less repetitive.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView setAllowsBackForwardNavigationGestures:]):
+        * UIProcess/Cocoa/ViewGestureController.cpp:
+        (WebKit::ViewGestureController::ViewGestureController):
+        (WebKit::ViewGestureController::setAlternateBackForwardListSourcePage):
+        (WebKit::ViewGestureController::canSwipeInDirection):
+        (WebKit::ViewGestureController::gestureControllerForPage): Deleted.
+        * UIProcess/Cocoa/ViewGestureController.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::WebPageProxy):
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::createWeakPtr):
+        * UIProcess/ios/ViewGestureControllerIOS.mm:
+        (WebKit::ViewGestureController::beginSwipeGesture):
+        (WebKit::ViewGestureController::setAlternateBackForwardListSourceView): Deleted.
+        (WebKit::ViewGestureController::canSwipeInDirection): Deleted.
+        * UIProcess/mac/ViewGestureControllerMac.mm:
+        (WebKit::ViewGestureController::PendingSwipeTracker::PendingSwipeTracker):
+        (WebKit::ViewGestureController::PendingSwipeTracker::scrollEventCanBecomeSwipe):
+        (WebKit::ViewGestureController::PendingSwipeTracker::tryToStartSwipe):
+
+2016-10-10  Tomas Popela  <tpopela@redhat.com>
+
+        [GTK] UIProcess crashes when using Japanese IM
+        https://bugs.webkit.org/show_bug.cgi?id=163011
+
+        We have to reference the current GdkEventKey before we try process it
+        as later when the lambda body is reached the event could be already
+        freed.
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseKeyPressEvent):
+        (webkitWebViewBaseKeyReleaseEvent):
+        * UIProcess/gtk/InputMethodFilter.h:
+        Use non-copyable Function so we can use WTFMove to pass the event to
+        lambda.
+
+2016-10-09  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Support InputEvent.inputType for the new InputEvent spec
+        https://bugs.webkit.org/show_bug.cgi?id=163025
+        <rdar://problem/28658092>
+
+        Reviewed by Darin Adler.
+
+        Accounts for some changes to the EditAction enum in nameForEditAction. Some former edit
+        actions, such as EditActionTyping, have been split out into its more specific subtypes,
+        so we preserve shipping behavior by treating all of the new subtypes the same way as the
+        original type.
+
+        * UIProcess/WebEditCommandProxy.cpp:
+        (WebKit::WebEditCommandProxy::nameForEditAction):
+
+2016-10-08  Emanuele Aina  <emanuele.aina@collabora.com>
+
+        [GTK] Drop redundant wl_display_flush_clients() call
+        https://bugs.webkit.org/show_bug.cgi?id=161904
+
+        Reviewed by Michael Catanzaro.
+
+        The Wayland GSource::prepare() function already calls
+        wl_display_flush_clients() at every mainloop iteration, so there's no
+        need to further call it on Surface::commit().
+
+        * UIProcess/gtk/WaylandCompositor.cpp:
+        (WebKit::WaylandCompositor::Surface::commit):
+        * UIProcess/gtk/WaylandCompositor.h:
+
+2016-10-06  Darin Adler  <darin@apple.com>
+
+        Next step on moving to modern way to return DOM exceptions
+        https://bugs.webkit.org/show_bug.cgi?id=163016
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMDOMImplementation.cpp:
+        (webkit_dom_dom_implementation_create_document_type): Updated for name change
+        from takeReturnValue to releaseReturnValue.
+        (webkit_dom_dom_implementation_create_document): Ditto.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMDOMSelection.cpp:
+        (webkit_dom_dom_selection_collapse_to_end): Use ExceptionOr instead of ExceptionCode.
+        (webkit_dom_dom_selection_collapse_to_start): Ditto.
+        (webkit_dom_dom_selection_extend): Ditto.
+        (webkit_dom_dom_selection_get_range_at): Ditto.
+
+2016-10-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r206950.
+        https://bugs.webkit.org/show_bug.cgi?id=163169
+
+        broke an API test (Requested by thorton on #webkit).
+
+        Reverted changeset:
+
+        "Share more code between iOS and macOS ViewGestureController"
+        https://bugs.webkit.org/show_bug.cgi?id=163158
+        http://trac.webkit.org/changeset/206950
+
+2016-10-08  Tim Horton  <timothy_horton@apple.com>
+
+        Share more code between iOS and macOS ViewGestureController
+        https://bugs.webkit.org/show_bug.cgi?id=163158
+
+        Reviewed by Simon Fraser.
+
+        Share canSwipeInDirection() and the (unused on Mac) alternate back-forward list mechanism.
+        Make ViewGestureController operate in terms of WebPageProxy, not WKWebView,
+        because it shouldn't know anything about WKWebView.
+        Refactor scrollEventCanBecomeSwipe a bit to be less repetitive.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView setAllowsBackForwardNavigationGestures:]):
+        * UIProcess/Cocoa/ViewGestureController.cpp:
+        (WebKit::ViewGestureController::ViewGestureController):
+        (WebKit::ViewGestureController::setAlternateBackForwardListSourcePage):
+        (WebKit::ViewGestureController::canSwipeInDirection):
+        (WebKit::ViewGestureController::gestureControllerForPage): Deleted.
+        * UIProcess/Cocoa/ViewGestureController.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::WebPageProxy):
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::createWeakPtr):
+        * UIProcess/ios/ViewGestureControllerIOS.mm:
+        (WebKit::ViewGestureController::beginSwipeGesture):
+        (WebKit::ViewGestureController::setAlternateBackForwardListSourceView): Deleted.
+        (WebKit::ViewGestureController::canSwipeInDirection): Deleted.
+        * UIProcess/mac/ViewGestureControllerMac.mm:
+        (WebKit::ViewGestureController::PendingSwipeTracker::PendingSwipeTracker):
+        (WebKit::ViewGestureController::PendingSwipeTracker::scrollEventCanBecomeSwipe):
+        (WebKit::ViewGestureController::PendingSwipeTracker::tryToStartSwipe):
+
+2016-10-07  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of API::Session and WKSessionRef
+        https://bugs.webkit.org/show_bug.cgi?id=163140
+
+        Reviewed by Tim Horton.
+
+        This API is no longer used.
+
+        * CMakeLists.txt:
+        * Shared/API/APIObject.h:
+        * Shared/API/c/WKSharedAPICast.h:
+        * UIProcess/API/APISession.cpp: Removed.
+        (API::generateID): Deleted.
+        (API::Session::defaultSession): Deleted.
+        (API::Session::Session): Deleted.
+        (API::Session::createEphemeral): Deleted.
+        (API::Session::isEphemeral): Deleted.
+        (API::Session::getID): Deleted.
+        (API::Session::~Session): Deleted.
+        * UIProcess/API/APISession.h: Removed.
+        * UIProcess/API/C/WKPage.h:
+        * UIProcess/API/C/WKSessionRef.cpp: Removed.
+        (WKSessionCreate): Deleted.
+        (WKSessionGetTypeID): Deleted.
+        (WKSessionIsEphemeral): Deleted.
+        * UIProcess/API/C/WKSessionRef.h: Removed.
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebProcessProxy.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2016-10-07  Tim Horton  <timothy_horton@apple.com>
+
+        Move ViewGestureController files to more accurate locations
+        https://bugs.webkit.org/show_bug.cgi?id=163141
+
+        Reviewed by Anders Carlsson.
+
+        * PlatformMac.cmake:
+        * UIProcess/Cocoa/ViewGestureController.cpp: Renamed from UIProcess/ViewGestureController.cpp.
+        * UIProcess/Cocoa/ViewGestureController.h: Renamed from UIProcess/mac/ViewGestureController.h.
+        * UIProcess/Cocoa/ViewGestureController.messages.in: Renamed from UIProcess/mac/ViewGestureController.messages.in.
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2016-10-07  Tim Horton  <timothy_horton@apple.com>
+
+        Adopt BlockPtr in ViewGestureController
+        https://bugs.webkit.org/show_bug.cgi?id=163132
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/Cocoa/WebViewImpl.h:
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::setDidMoveSwipeSnapshotCallback):
+        * UIProcess/ViewGestureController.cpp:
+        (WebKit::ViewGestureController::SnapshotRemovalTracker::stopWaitingForEvent):
+        * UIProcess/mac/ViewGestureController.h:
+        (WebKit::ViewGestureController::setDidMoveSwipeSnapshotCallback):
+        (WebKit::ViewGestureController::m_didMoveSwipeSnapshotCallback): Deleted.
+        * UIProcess/mac/ViewGestureControllerMac.mm:
+        (WebKit::ViewGestureController::platformTeardown):
+        (WebKit::ViewGestureController::setDidMoveSwipeSnapshotCallback): Deleted.
+
+2016-10-07  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of WKPageSetSession
+        https://bugs.webkit.org/show_bug.cgi?id=163129
+
+        Reviewed by Tim Horton.
+
+        This function is no longer used.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetSession): Deleted.
+        * UIProcess/API/C/WKPage.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::setSessionID): Deleted.
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::sessionID):
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2016-10-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r206909.
+        https://bugs.webkit.org/show_bug.cgi?id=163116
+
+        Caused most of  GTK layout tests to crash (Requested by KaL on
+        #webkit).
+
+        Reverted changeset:
+
+        "[GTK] UIProcess crashes when using Japanese IM"
+        https://bugs.webkit.org/show_bug.cgi?id=163011
+        http://trac.webkit.org/changeset/206909
+
+2016-10-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Network Session: Allow NetworkDataTask decide what to do when override is allowed for a download
+        https://bugs.webkit.org/show_bug.cgi?id=163010
+
+        Reviewed by Alex Christensen.
+
+        Current code always deletes the file before starting a download when allow override is True. In soup backend we
+        use glib API that takes care of it and tries to ensure that the original file is not deleted if the new file
+        creation fails for whatever reason.
+
+        * NetworkProcess/Downloads/DownloadManager.cpp:
+        (WebKit::DownloadManager::continueDecidePendingDownloadDestination): Pass allowOverride to setPendingDownloadLocation().
+        * NetworkProcess/NetworkDataTask.h:
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.mm:
+        (WebKit::NetworkDataTask::setPendingDownloadLocation): Delete the destination file if exists and allowOverride
+        is True.
+
+2016-10-07  Tomas Popela  <tpopela@redhat.com>
+
+        [GTK] UIProcess crashes when using Japanese IM
+        https://bugs.webkit.org/show_bug.cgi?id=163011
+
+        We have to reference the current GdkEventKey before we try process it
+        as later when the lambda body is reached the event could be already
+        freed.
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseKeyPressEvent):
+        (webkitWebViewBaseKeyReleaseEvent):
+        * UIProcess/gtk/InputMethodFilter.h:
+        Use non-copyable Function so we can use WTFMove to pass the event to
+        lambda.
+
+2016-10-06  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Expose WebKitDOMHTMLInputElement APIs for form autofill
+        https://bugs.webkit.org/show_bug.cgi?id=163082
+
+        Reviewed by Darin Adler.
+
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLInputElement.cpp:
+        (webkit_dom_html_input_element_get_auto_filled): Added.
+        (webkit_dom_html_input_element_set_auto_filled): Added.
+        (webkit_dom_html_input_element_set_editing_value): Added.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLInputElement.h:
+        * WebProcess/InjectedBundle/API/gtk/DOM/docs/webkitdomgtk-4.0-sections.txt:
+
 2016-10-06  John Wilander  <wilander@apple.com>
 
         Update Resource Load Statistics

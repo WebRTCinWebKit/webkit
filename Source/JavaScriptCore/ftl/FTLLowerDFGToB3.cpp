@@ -45,10 +45,10 @@
 #include "DFGOSRAvailabilityAnalysisPhase.h"
 #include "DFGOSRExitFuzz.h"
 #include "DOMJITPatchpoint.h"
-#include "DOMJITPatchpointParams.h"
 #include "DirectArguments.h"
 #include "FTLAbstractHeapRepository.h"
 #include "FTLAvailableRecovery.h"
+#include "FTLDOMJITPatchpointParams.h"
 #include "FTLExceptionTarget.h"
 #include "FTLForOSREntryJITCode.h"
 #include "FTLFormattedValue.h"
@@ -2606,8 +2606,7 @@ private:
     void compileCheckStringIdent()
     {
         UniquedStringImpl* uid = m_node->uidOperand();
-        LValue string = lowStringIdent(m_node->child1());
-        LValue stringImpl = m_out.loadPtr(string, m_heaps.JSString_value);
+        LValue stringImpl = lowStringIdent(m_node->child1());
         speculate(BadIdent, noValue(), nullptr, m_out.notEqual(stringImpl, m_out.constIntPtr(uid)));
     }
 
@@ -8731,8 +8730,11 @@ private:
         patchpoint->appendSomeRegister(cell);
         patchpoint->numGPScratchRegisters = domJIT->numGPScratchRegisters;
         patchpoint->numFPScratchRegisters = domJIT->numFPScratchRegisters;
+        patchpoint->append(m_tagMask, ValueRep::reg(GPRInfo::tagMaskRegister));
+        patchpoint->append(m_tagTypeNumber, ValueRep::reg(GPRInfo::tagTypeNumberRegister));
 
         State* state = &m_ftlState;
+        Node* node = m_node;
         NodeOrigin origin = m_origin;
         unsigned osrExitArgumentOffset = patchpoint->numChildren();
         OSRExitDescriptor* exitDescriptor = appendOSRExitDescriptor(jsValueValue(cell), m_node->child1().node());
@@ -8754,7 +8756,7 @@ private:
 
                 RefPtr<OSRExitHandle> handle = exitDescriptor->emitOSRExitLater(*state, BadType, origin, params, osrExitArgumentOffset);
 
-                DOMJIT::PatchpointParams domJITParams(WTFMove(regs), WTFMove(gpScratch), WTFMove(fpScratch));
+                DOMJITPatchpointParams domJITParams(*state, params, node, nullptr, WTFMove(regs), WTFMove(gpScratch), WTFMove(fpScratch));
                 CCallHelpers::JumpList failureCases = domJIT->generator()->run(jit, domJITParams);
 
                 jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
@@ -8773,15 +8775,20 @@ private:
         PatchpointValue* patchpoint = m_out.patchpoint(Int64);
         patchpoint->appendSomeRegister(globalObject);
         patchpoint->appendSomeRegister(cell);
-        patchpoint->append(m_tagMask, ValueRep::lateReg(GPRInfo::tagMaskRegister));
-        patchpoint->append(m_tagTypeNumber, ValueRep::lateReg(GPRInfo::tagTypeNumberRegister));
+        patchpoint->append(m_tagMask, ValueRep::reg(GPRInfo::tagMaskRegister));
+        patchpoint->append(m_tagTypeNumber, ValueRep::reg(GPRInfo::tagTypeNumberRegister));
         RefPtr<PatchpointExceptionHandle> exceptionHandle = preparePatchpointForExceptions(patchpoint);
         patchpoint->clobber(RegisterSet::macroScratchRegisters());
         patchpoint->numGPScratchRegisters = domJIT->numGPScratchRegisters;
         patchpoint->numFPScratchRegisters = domJIT->numFPScratchRegisters;
+        patchpoint->resultConstraint = ValueRep::SomeEarlyRegister;
 
+        State* state = &m_ftlState;
+        Node* node = m_node;
         patchpoint->setGenerator(
             [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                AllowMacroScratchRegisterUsage allowScratch(jit);
+
                 Vector<GPRReg> gpScratch;
                 Vector<FPRReg> fpScratch;
                 Vector<DOMJIT::Reg> regs;
@@ -8791,8 +8798,6 @@ private:
                 regs.append(JSValueRegs(params[0].gpr()));
                 regs.append(params[1].gpr());
                 regs.append(params[2].gpr());
-                regs.append(params[3].gpr());
-                regs.append(params[4].gpr());
 
                 for (unsigned i = 0; i < domJIT->numGPScratchRegisters; ++i)
                     gpScratch.append(params.gpScratch(i));
@@ -8802,7 +8807,7 @@ private:
 
                 Box<CCallHelpers::JumpList> exceptions = exceptionHandle->scheduleExitCreation(params)->jumps(jit);
 
-                DOMJIT::PatchpointParams domJITParams(WTFMove(regs), WTFMove(gpScratch), WTFMove(fpScratch));
+                DOMJITPatchpointParams domJITParams(*state, params, node, exceptions, WTFMove(regs), WTFMove(gpScratch), WTFMove(fpScratch));
                 domJIT->generator()->run(jit, domJITParams);
             });
         patchpoint->effects = Effects::forCall();

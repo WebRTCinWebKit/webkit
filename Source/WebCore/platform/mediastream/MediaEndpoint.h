@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016 Ericsson AB. All rights reserved.
+ * Copyright (C) 2015 Ericsson AB. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,7 +33,6 @@
 #if ENABLE(WEB_RTC)
 
 #include "MediaEndpointConfiguration.h"
-#include "PeerConnectionStates.h"
 #include "RealtimeMediaSource.h"
 #include <wtf/HashMap.h>
 #include <wtf/text/WTFString.h>
@@ -78,7 +77,7 @@ public:
 
     virtual Ref<RealtimeMediaSource> createMutedRemoteSource(const String& mid, RealtimeMediaSource::Type) = 0;
     virtual void replaceSendSource(RealtimeMediaSource&, const String& mid) = 0;
-    virtual void replaceMutedRemoteSourceMid(const String&, const String&) = 0;
+    virtual void replaceMutedRemoteSourceMid(const String& oldMid, const String& newMid) = 0;
 
     virtual void stop() = 0;
 

@@ -2478,6 +2478,9 @@ static NSString* roleValueToNSString(AccessibilityRole value)
         if (ariaLandmarkRoleDescription)
             return ariaLandmarkRoleDescription;
         
+        if (m_object->isFigure())
+            return AXFigureText();
+        
         switch (m_object->roleValue()) {
         case AudioRole:
             return localizedMediaControlElementString("AudioElement");
@@ -2487,8 +2490,12 @@ static NSString* roleValueToNSString(AccessibilityRole value)
             return AXDescriptionListTermText();
         case DescriptionListDetailRole:
             return AXDescriptionListDetailText();
+        case DetailsRole:
+            return AXDetailsText();
         case FooterRole:
             return AXFooterRoleDescriptionText();
+        case SummaryRole:
+            return AXSummaryText();
         case VideoRole:
             return localizedMediaControlElementString("VideoElement");
         default:

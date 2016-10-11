@@ -145,8 +145,8 @@
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-#include "MediaKeyNeededEvent.h"
-#include "MediaKeys.h"
+#include "WebKitMediaKeyNeededEvent.h"
+#include "WebKitMediaKeys.h"
 #endif
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
@@ -583,7 +583,7 @@ HTMLMediaElement::~HTMLMediaElement()
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    setMediaKeys(0);
+    webkitSetMediaKeys(0);
 #endif
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
@@ -2446,7 +2446,7 @@ bool HTMLMediaElement::mediaPlayerKeyNeeded(MediaPlayer*, Uint8Array* initData)
         return false;
     }
 
-    auto event = MediaKeyNeededEvent::create(eventNames().webkitneedkeyEvent, initData);
+    auto event = WebKitMediaKeyNeededEvent::create(eventNames().webkitneedkeyEvent, initData);
     event->setTarget(this);
     m_asyncEventQueue.enqueueEvent(WTFMove(event));
 
@@ -2470,7 +2470,7 @@ String HTMLMediaElement::mediaPlayerMediaKeysStorageDirectory() const
     return pathByAppendingComponent(storageDirectory, origin->databaseIdentifier());
 }
 
-void HTMLMediaElement::setMediaKeys(MediaKeys* mediaKeys)
+void HTMLMediaElement::webkitSetMediaKeys(WebKitMediaKeys* mediaKeys)
 {
     if (m_mediaKeys == mediaKeys)
         return;
@@ -3238,92 +3238,6 @@ void HTMLMediaElement::detachMediaSource()
     m_mediaSource->detachFromElement(*this);
     m_mediaSource = nullptr;
 }
-#endif
-
-#if ENABLE(ENCRYPTED_MEDIA)
-void HTMLMediaElement::webkitGenerateKeyRequest(const String& keySystem, const RefPtr<Uint8Array>& initData, ExceptionCode& ec)
-{
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    static bool firstTime = true;
-    if (firstTime && scriptExecutionContext()) {
-        scriptExecutionContext()->addConsoleMessage(MessageSource::JS, MessageLevel::Warning, ASCIILiteral("'HTMLMediaElement.webkitGenerateKeyRequest()' is deprecated.  Use 'MediaKeys.createSession()' instead."));
-        firstTime = false;
-    }
-#endif
-
-    if (keySystem.isEmpty()) {
-        ec = SYNTAX_ERR;
-        return;
-    }
-
-    if (!m_player) {
-        ec = INVALID_STATE_ERR;
-        return;
-    }
-
-    const unsigned char* initDataPointer = nullptr;
-    unsigned initDataLength = 0;
-    if (initData) {
-        initDataPointer = initData->data();
-        initDataLength = initData->length();
-    }
-
-    MediaPlayer::MediaKeyException result = m_player->generateKeyRequest(keySystem, initDataPointer, initDataLength);
-    ec = exceptionCodeForMediaKeyException(result);
-}
-
-void HTMLMediaElement::webkitAddKey(const String& keySystem, Uint8Array& key, const RefPtr<Uint8Array>& initData, const String& sessionId, ExceptionCode& ec)
-{
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    static bool firstTime = true;
-    if (firstTime && scriptExecutionContext()) {
-        scriptExecutionContext()->addConsoleMessage(MessageSource::JS, MessageLevel::Warning, ASCIILiteral("'HTMLMediaElement.webkitAddKey()' is deprecated.  Use 'MediaKeySession.update()' instead."));
-        firstTime = false;
-    }
-#endif
-
-    if (keySystem.isEmpty()) {
-        ec = SYNTAX_ERR;
-        return;
-    }
-
-    if (!key.length()) {
-        ec = TYPE_MISMATCH_ERR;
-        return;
-    }
-
-    if (!m_player) {
-        ec = INVALID_STATE_ERR;
-        return;
-    }
-
-    const unsigned char* initDataPointer = nullptr;
-    unsigned initDataLength = 0;
-    if (initData) {
-        initDataPointer = initData->data();
-        initDataLength = initData->length();
-    }
-
-    MediaPlayer::MediaKeyException result = m_player->addKey(keySystem, key.data(), key.length(), initDataPointer, initDataLength, sessionId);
-    ec = exceptionCodeForMediaKeyException(result);
-}
-
-void HTMLMediaElement::webkitCancelKeyRequest(const String& keySystem, const String& sessionId, ExceptionCode& ec)
-{
-    if (keySystem.isEmpty()) {
-        ec = SYNTAX_ERR;
-        return;
-    }
-
-    if (!m_player) {
-        ec = INVALID_STATE_ERR;
-        return;
-    }
-
-    MediaPlayer::MediaKeyException result = m_player->cancelKeyRequest(keySystem, sessionId);
-    ec = exceptionCodeForMediaKeyException(result);
-}
-
 #endif
 
 bool HTMLMediaElement::loop() const
@@ -5133,6 +5047,11 @@ void HTMLMediaElement::clearMediaPlayer(DelayedActionType flags)
         // Send an availability event in case scripts want to hide the picker when the element
         // doesn't support playback to a target.
         enqueuePlaybackTargetAvailabilityChangedEvent();
+    }
+
+    if (m_isPlayingToWirelessTarget) {
+        m_isPlayingToWirelessTarget = false;
+        scheduleEvent(eventNames().webkitcurrentplaybacktargetiswirelesschangedEvent);
     }
 #endif
 

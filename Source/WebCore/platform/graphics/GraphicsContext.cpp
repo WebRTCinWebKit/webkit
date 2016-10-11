@@ -964,7 +964,7 @@ void GraphicsContext::setPlatformTextDrawingMode(TextDrawingModeFlags)
 }
 #endif
 
-#if !USE(CAIRO)
+#if !USE(CAIRO) && !USE(DIRECT2D)
 void GraphicsContext::setPlatformStrokeStyle(StrokeStyle)
 {
 }
@@ -1124,6 +1124,57 @@ void GraphicsContext::applyState(const GraphicsContextState& state)
     setPlatformCompositeOperation(state.compositeOperator, state.blendMode);
     setPlatformShouldAntialias(state.shouldAntialias);
     setPlatformShouldSmoothFonts(state.shouldSmoothFonts);
+}
+
+float GraphicsContext::dashedLineCornerWidthForStrokeWidth(float strokeWidth) const
+{
+    float thickness = strokeThickness();
+    return strokeStyle() == DottedStroke ? thickness : std::min(2.0f * thickness, std::max(thickness, strokeWidth / 3.0f));
+}
+
+float GraphicsContext::dashedLinePatternWidthForStrokeWidth(float strokeWidth) const
+{
+    float thickness = strokeThickness();
+    return strokeStyle() == DottedStroke ? thickness : std::min(3.0f * thickness, std::max(thickness, strokeWidth / 3.0f));
+}
+
+float GraphicsContext::dashedLinePatternOffsetForPatternAndStrokeWidth(float patternWidth, float strokeWidth) const
+{
+    // Pattern starts with full fill and ends with the empty fill.
+    // 1. Let's start with the empty phase after the corner.
+    // 2. Check if we've got odd or even number of patterns and whether they fully cover the line.
+    // 3. In case of even number of patterns and/or remainder, move the pattern start position
+    // so that the pattern is balanced between the corners.
+    float patternOffset = patternWidth;
+    int numberOfSegments = std::floor(strokeWidth / patternWidth);
+    bool oddNumberOfSegments = numberOfSegments % 2;
+    float remainder = strokeWidth - (numberOfSegments * patternWidth);
+    if (oddNumberOfSegments && remainder)
+        patternOffset -= remainder / 2.0f;
+    else if (!oddNumberOfSegments) {
+        if (remainder)
+            patternOffset += patternOffset - (patternWidth + remainder) / 2.0f;
+        else
+            patternOffset += patternWidth / 2.0f;
+    }
+
+    return patternOffset;
+}
+
+Vector<FloatPoint> GraphicsContext::centerLineAndCutOffCorners(bool isVerticalLine, float cornerWidth, FloatPoint point1, FloatPoint point2) const
+{
+    // Center line and cut off corners for pattern painting.
+    if (isVerticalLine) {
+        float centerOffset = (point2.x() - point1.x()) / 2.0f;
+        point1.move(centerOffset, cornerWidth);
+        point2.move(-centerOffset, -cornerWidth);
+    } else {
+        float centerOffset = (point2.y() - point1.y()) / 2.0f;
+        point1.move(cornerWidth, centerOffset);
+        point2.move(-cornerWidth, -centerOffset);
+    }
+
+    return { point1, point2 };
 }
 
 }
