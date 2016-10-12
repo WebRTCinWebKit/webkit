@@ -54,6 +54,8 @@ static const Vector<String> candidateTypes = { "host", "srflx", "prflx", "relay"
 static const Vector<String> candidateTcpTypes = { "", "active", "passive", "so" };
 static const Vector<String> codecTypes = { "NONE", "PCMU", "PCMA", "OPUS", "H264", "VP8" };
 
+static const char* helperServerRegEx = "(turn|stun):([\\w\\.\\-]+|\\[[\\w\\:]+\\])(:\\d+)?(\\?.+)?";
+
 static std::unique_ptr<MediaEndpoint> createMediaEndpointOwr(MediaEndpointClient& client)
 {
     return std::unique_ptr<MediaEndpoint>(new MediaEndpointOwr(client));
@@ -70,6 +72,10 @@ MediaEndpointOwr::MediaEndpointOwr(MediaEndpointClient& client)
     , m_dtlsCertificate(nullptr)
 {
     initializeOpenWebRTC();
+
+    GRegexCompileFlags compileFlags = G_REGEX_JAVASCRIPT_COMPAT;
+    GRegexMatchFlags matchFlags = static_cast<GRegexMatchFlags>(0);
+    m_helperServerRegEx = g_regex_new(helperServerRegEx, compileFlags, matchFlags, nullptr);
 }
 
 MediaEndpointOwr::~MediaEndpointOwr()
@@ -78,6 +84,8 @@ MediaEndpointOwr::~MediaEndpointOwr()
 
     g_free(m_dtlsPrivateKey);
     g_free(m_dtlsCertificate);
+
+    g_regex_unref(m_helperServerRegEx);
 }
 
 void MediaEndpointOwr::setConfiguration(RefPtr<MediaEndpointConfiguration>&& configuration)
@@ -500,6 +508,40 @@ void MediaEndpointOwr::prepareMediaSession(OwrMediaSession* mediaSession, PeerMe
     }
 }
 
+struct HelperServerUrl {
+    String protocol;
+    String host;
+    unsigned short port;
+    String query;
+};
+
+static void parseHelperServerUrl(GRegex* regex, const URL& url, HelperServerUrl& outUrl)
+{
+    GMatchInfo *matchInfo;
+
+    if (g_regex_match(regex, url.string().ascii().data(), static_cast<GRegexMatchFlags>(0), &matchInfo)) {
+        gchar** matches =  g_match_info_fetch_all(matchInfo);
+        gint matchCount = g_strv_length(matches);
+
+        outUrl.protocol = matches[1];
+        outUrl.host = matches[2][0] == '[' ? String(matches[2] + 1, strlen(matches[2]) - 2) // IPv6
+            : matches[2];
+
+        outUrl.port = 0;
+        if (matchCount >= 4) {
+            String portString = String(matches[3] + 1); // Skip port colon
+            outUrl.port = portString.toUIntStrict();
+        }
+
+        if (matchCount == 5)
+            outUrl.query = String(matches[4] + 1); // Skip question mark
+
+        g_strfreev(matches);
+    }
+
+    g_match_info_free(matchInfo);
+}
+
 void MediaEndpointOwr::ensureTransportAgentAndTransceivers(bool isInitiator, const Vector<TransceiverConfig>& transceiverConfigs)
 {
     ASSERT(m_dtlsPrivateKey);
@@ -509,19 +551,23 @@ void MediaEndpointOwr::ensureTransportAgentAndTransceivers(bool isInitiator, con
         m_transportAgent = owr_transport_agent_new(false);
 
         for (auto& server : m_configuration->iceServers()) {
-            for (auto& url : server->urls()) {
-                unsigned short port = url.port() ? url.port() : 3478;
+            for (auto& webkitUrl : server->urls()) {
+                HelperServerUrl url;
+                // WebKit's URL class can't handle ICE helper server urls properly
+                parseHelperServerUrl(m_helperServerRegEx, webkitUrl, url);
 
-                if (url.protocol() == "stun") {
+                unsigned short port = url.port ? url.port : 3478;
+
+                if (url.protocol == "stun") {
                     owr_transport_agent_add_helper_server(m_transportAgent, OWR_HELPER_SERVER_TYPE_STUN,
-                        url.host().ascii().data(), port, nullptr, nullptr);
+                        url.host.ascii().data(), port, nullptr, nullptr);
 
-                } else if (url.protocol() == "turn") {
-                    OwrHelperServerType serverType = url.query() == "transport=tcp" ? OWR_HELPER_SERVER_TYPE_TURN_TCP
+                } else if (url.protocol == "turn") {
+                    OwrHelperServerType serverType = url.query == "transport=tcp" ? OWR_HELPER_SERVER_TYPE_TURN_TCP
                         : OWR_HELPER_SERVER_TYPE_TURN_UDP;
 
                     owr_transport_agent_add_helper_server(m_transportAgent, serverType,
-                        url.host().ascii().data(), port,
+                        url.host.ascii().data(), port,
                         server->username().ascii().data(), server->credential().ascii().data());
                 } else
                     ASSERT_NOT_REACHED();

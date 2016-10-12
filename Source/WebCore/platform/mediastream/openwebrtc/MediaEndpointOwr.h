@@ -124,6 +124,7 @@ private:
     void internalAddRemoteCandidate(OwrSession*, IceCandidate&, const String& ufrag, const String& password);
 
     RefPtr<MediaEndpointConfiguration> m_configuration;
+    GRegex* m_helperServerRegEx;
 
     OwrTransportAgent* m_transportAgent;
     Vector<RefPtr<OwrTransceiver>> m_transceivers;

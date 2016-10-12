@@ -73,8 +73,6 @@ static const char httpsScheme[] = {'h', 't', 't', 'p', 's'};
 static const char httpsPort[] = {'4', '4', '3'};
 static const char gopherScheme[] = {'g', 'o', 'p', 'h', 'e', 'r'};
 static const char gopherPort[] = {'7', '0'};
-static const char stunScheme[] = {'s', 't', 'u', 'n'};
-static const char turnScheme[] = {'t', 'u', 'r', 'n'};
 
 static inline bool isLetterMatchIgnoringCase(char character, char lowercaseLetter)
 {
@@ -1436,8 +1434,7 @@ static bool isNonFileHierarchicalScheme(const char* scheme, size_t schemeLength)
     case 3:
         return equal(scheme, ftpScheme) || equal(scheme, wssScheme);
     case 4:
-        // FIXME: It's probably not right to make stun and turn hierachical like this
-        return equal(scheme, httpScheme) || equal(scheme, stunScheme) || equal(scheme, turnScheme);
+        return equal(scheme, httpScheme);
     case 5:
         return equal(scheme, httpsScheme);
     case 6:
