@@ -32,10 +32,8 @@ Clamp
 Conditional=*
 Constructor
 ConstructorCallWith=Document|ScriptExecutionContext|ScriptState
-ConstructorConditional=*
 ConstructorMayThrowException
 ConstructorMayThrowLegacyException
-ConstructorTemplate=Event|TypedArray
 Custom
 CustomCall
 CustomConstructor
@@ -51,12 +49,10 @@ CustomNamedSetter
 CustomPreventExtensions
 CustomProxyToJSObject
 CustomPutFunction
-CustomReturn
 CustomSetPrototype
 CustomSetter
 CustomToJSObject
 DOMJIT
-Deletable
 DoNotCheckConstants
 DoNotCheckSecurity
 DoNotCheckSecurityOnGetter
@@ -75,10 +71,8 @@ GetterMayThrowLegacyException
 Immutable
 ImplementedAs=*
 ImplementationLacksVTable
-ImplementationNamespace=*
 ImplementationReturnType=*
 ImplicitThis
-InitializedByEventConstructor
 InterfaceName=*
 IsWeakCallback
 JSBuiltin
@@ -121,7 +115,6 @@ SetterMayThrowLegacyException
 SkipVTableValidation
 SuppressToJSObject
 TreatNullAs=EmptyString
-TypedArray=*
 URL
 Unforgeable
 Unscopable

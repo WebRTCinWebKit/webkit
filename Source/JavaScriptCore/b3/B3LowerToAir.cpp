@@ -54,6 +54,7 @@
 #include "B3ValueInlines.h"
 #include "B3Variable.h"
 #include "B3VariableValue.h"
+#include "B3WasmAddressValue.h"
 #include <wtf/IndexMap.h>
 #include <wtf/IndexSet.h>
 #include <wtf/ListDump.h>
@@ -425,6 +426,28 @@ private:
         ASSERT_NOT_REACHED();
         return true;
     }
+    
+    Optional<unsigned> scaleForShl(Value* shl, int32_t offset, Optional<Arg::Width> width = Nullopt)
+    {
+        if (shl->opcode() != Shl)
+            return Nullopt;
+        if (!shl->child(1)->hasInt32())
+            return Nullopt;
+        unsigned logScale = shl->child(1)->asInt32();
+        if (shl->type() == Int32)
+            logScale &= 31;
+        else
+            logScale &= 63;
+        // Use 64-bit math to perform the shift so that <<32 does the right thing, but then switch
+        // to signed since that's what all of our APIs want.
+        int64_t bigScale = static_cast<uint64_t>(1) << static_cast<uint64_t>(logScale);
+        if (!isRepresentableAs<int32_t>(bigScale))
+            return Nullopt;
+        unsigned scale = static_cast<int32_t>(bigScale);
+        if (!Arg::isValidIndexForm(scale, offset, width))
+            return Nullopt;
+        return scale;
+    }
 
     // This turns the given operand into an address.
     Arg effectiveAddr(Value* address, int32_t offset, Arg::Width width)
@@ -447,18 +470,12 @@ private:
             Value* right = address->child(1);
 
             auto tryIndex = [&] (Value* index, Value* base) -> Arg {
-                if (index->opcode() != Shl)
+                Optional<unsigned> scale = scaleForShl(index, offset, width);
+                if (!scale)
                     return Arg();
                 if (m_locked.contains(index->child(0)) || m_locked.contains(base))
                     return Arg();
-                if (!index->child(1)->hasInt32())
-                    return Arg();
-                
-                unsigned scale = 1 << (index->child(1)->asInt32() & 31);
-                if (!Arg::isValidIndexForm(scale, offset, width))
-                    return Arg();
-
-                return Arg::index(tmp(base), tmp(index->child(0)), scale, offset);
+                return Arg::index(tmp(base), tmp(index->child(0)), *scale, offset);
             };
 
             if (Arg result = tryIndex(left, right))
@@ -491,6 +508,21 @@ private:
 
         case SlotBase:
             return Arg::stack(m_stackToStack.get(address->as<SlotBaseValue>()->slot()), offset);
+
+        case WasmAddress: {
+            WasmAddressValue* wasmAddress = address->as<WasmAddressValue>();
+            Value* pointer = wasmAddress->child(0);
+            ASSERT(Arg::isValidIndexForm(1, offset, width));
+            if (m_locked.contains(pointer))
+                return fallback();
+
+            // FIXME: We should support ARM64 LDR 32-bit addressing, which will
+            // allow us to fuse a Shl ptr, 2 into the address. Additionally, and
+            // perhaps more importantly, it would allow us to avoid a truncating
+            // move. See: https://bugs.webkit.org/show_bug.cgi?id=163465
+
+            return Arg::index(Tmp(wasmAddress->pinnedGPR()), tmp(pointer), 1, offset);
+        }
 
         default:
             return fallback();
@@ -552,13 +584,17 @@ private:
         return loadPromise(loadValue, Load);
     }
 
+    Arg imm(int64_t intValue)
+    {
+        if (Arg::isValidImmForm(intValue))
+            return Arg::imm(intValue);
+        return Arg();
+    }
+
     Arg imm(Value* value)
     {
-        if (value->hasInt()) {
-            int64_t intValue = value->asInt();
-            if (Arg::isValidImmForm(intValue))
-                return Arg::imm(intValue);
-        }
+        if (value->hasInt())
+            return imm(value->asInt());
         return Arg();
     }
 
@@ -1898,29 +1934,16 @@ private:
         }
         
         auto tryShl = [&] (Value* shl, Value* other) -> bool {
-            if (shl->opcode() != Shl)
+            Optional<unsigned> scale = scaleForShl(shl, offset);
+            if (!scale)
                 return false;
             if (!canBeInternal(shl))
-                return false;
-            if (!shl->child(1)->hasInt32())
-                return false;
-            unsigned logScale = shl->child(1)->asInt32();
-            if (m_value->type() == Int32)
-                logScale &= 31;
-            else
-                logScale &= 63;
-            // Use 64-bit math to perform the shift so that <<32 does the right thing.
-            int64_t bigScale = static_cast<uint64_t>(1) << static_cast<uint64_t>(logScale);
-            if (!isRepresentableAs<int32_t>(bigScale))
-                return false;
-            unsigned scale = static_cast<int32_t>(bigScale);
-            if (!Arg::isValidIndexForm(scale, offset))
                 return false;
             
             ASSERT(!m_locked.contains(shl->child(0)));
             ASSERT(!m_locked.contains(other));
             
-            append(leaOpcode, Arg::index(tmp(other), tmp(shl->child(0)), scale, offset), tmp(m_value));
+            append(leaOpcode, Arg::index(tmp(other), tmp(shl->child(0)), *scale, offset), tmp(m_value));
             commitInternal(innerAdd);
             commitInternal(shl);
             return true;
@@ -2269,7 +2292,14 @@ private:
             appendStore(Air::Store16, valueToStore, addr(m_value));
             return;
         }
-            
+
+        case WasmAddress: {
+            WasmAddressValue* address = m_value->as<WasmAddressValue>();
+
+            append(Add64, Arg(address->pinnedGPR()), tmp(address));
+            return;
+        }
+
         case Fence: {
             FenceValue* fence = m_value->as<FenceValue>();
             if (!fence->write && !fence->read)
@@ -2348,7 +2378,7 @@ private:
             // We expect that the moveConstants() phase has run, and any doubles referenced from
             // stackmaps get fused.
             RELEASE_ASSERT(m_value->opcode() == ConstFloat || isIdentical(m_value->asDouble(), 0.0));
-            RELEASE_ASSERT(m_value->opcode() == ConstDouble || isIdentical(m_value->asFloat(), 0.0));
+            RELEASE_ASSERT(m_value->opcode() == ConstDouble || isIdentical(m_value->asFloat(), 0.0f));
             append(MoveZeroToDouble, tmp(m_value));
             return;
         }
@@ -2621,6 +2651,26 @@ private:
             fillStackmap(inst, checkValue, 1);
             
             m_insts.last().append(WTFMove(inst));
+            return;
+        }
+
+        case B3::WasmBoundsCheck: {
+            WasmBoundsCheckValue* value = m_value->as<WasmBoundsCheckValue>();
+
+            Value* ptr = value->child(0);
+
+            Arg temp = m_code.newTmp(Arg::GP);
+            append(Inst(Move32, value, tmp(ptr), temp));
+            if (value->offset()) {
+                if (imm(value->offset()))
+                    append(Add64, imm(value->offset()), temp);
+                else {
+                    Arg bigImm = m_code.newTmp(Arg::GP);
+                    append(Move, Arg::bigImm(value->offset()), bigImm);
+                    append(Add64, bigImm, temp);
+                }
+            }
+            append(Inst(Air::WasmBoundsCheck, value, temp, Arg(value->pinnedGPR())));
             return;
         }
 

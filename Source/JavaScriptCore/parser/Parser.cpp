@@ -1186,6 +1186,7 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseForStatement(
     handleProductionOrFail(OPENPAREN, "(", "start", "for-loop header");
     int nonLHSCount = m_parserState.nonLHSCount;
     int declarations = 0;
+    JSTokenLocation declLocation(tokenLocation());
     JSTextPosition declsStart;
     JSTextPosition declsEnd;
     TreeExpression decls = 0;
@@ -1280,12 +1281,12 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseForStatement(
         gatherLexicalVariablesIfNecessary();
         TreeStatement result;
         if (isOfEnumeration)
-            result = context.createForOfLoop(location, forInTarget, expr, statement, declsStart, inLocation, exprEnd, startLine, endLine, *lexicalVariables);
+            result = context.createForOfLoop(location, forInTarget, expr, statement, declLocation, declsStart, inLocation, exprEnd, startLine, endLine, *lexicalVariables);
         else {
             if (isVarDeclaraton && forInInitializer)
-                result = context.createForInLoop(location, decls, expr, statement, declsStart, inLocation, exprEnd, startLine, endLine, *lexicalVariables);
+                result = context.createForInLoop(location, decls, expr, statement, declLocation, declsStart, inLocation, exprEnd, startLine, endLine, *lexicalVariables);
             else
-                result = context.createForInLoop(location, forInTarget, expr, statement, declsStart, inLocation, exprEnd, startLine, endLine, *lexicalVariables);
+                result = context.createForInLoop(location, forInTarget, expr, statement, declLocation, declsStart, inLocation, exprEnd, startLine, endLine, *lexicalVariables);
         }
         popLexicalScopeIfNecessary();
         return result;
@@ -1372,17 +1373,17 @@ enumerationLoop:
     if (pattern) {
         ASSERT(!decls);
         if (isOfEnumeration)
-            result = context.createForOfLoop(location, pattern, expr, statement, declsStart, declsEnd, exprEnd, startLine, endLine, *lexicalVariables);
+            result = context.createForOfLoop(location, pattern, expr, statement, declLocation, declsStart, declsEnd, exprEnd, startLine, endLine, *lexicalVariables);
         else 
-            result = context.createForInLoop(location, pattern, expr, statement, declsStart, declsEnd, exprEnd, startLine, endLine, *lexicalVariables);
+            result = context.createForInLoop(location, pattern, expr, statement, declLocation, declsStart, declsEnd, exprEnd, startLine, endLine, *lexicalVariables);
 
         popLexicalScopeIfNecessary();
         return result;
     }
     if (isOfEnumeration)
-        result = context.createForOfLoop(location, decls, expr, statement, declsStart, declsEnd, exprEnd, startLine, endLine, *lexicalVariables);
+        result = context.createForOfLoop(location, decls, expr, statement, declLocation, declsStart, declsEnd, exprEnd, startLine, endLine, *lexicalVariables);
     else
-        result = context.createForInLoop(location, decls, expr, statement, declsStart, declsEnd, exprEnd, startLine, endLine, *lexicalVariables);
+        result = context.createForInLoop(location, decls, expr, statement, declLocation, declsStart, declsEnd, exprEnd, startLine, endLine, *lexicalVariables);
     popLexicalScopeIfNecessary();
     return result;
 }
@@ -2351,6 +2352,11 @@ template <class TreeBuilder> bool Parser<LexerType>::parseFunctionInfo(TreeBuild
         generatorBodyScope->setSourceParseMode(innerParseMode);
         generatorBodyScope->setConstructorKind(ConstructorKind::None);
         generatorBodyScope->setExpectedSuperBinding(expectedSuperBinding);
+
+        // Disallow 'use strict' directives in the implicit inner function if
+        // needed.
+        if (functionScope->hasNonSimpleParameterList())
+            generatorBodyScope->setHasNonSimpleParameterList();
 
         functionInfo.body = performParsingFunctionBody();
 
@@ -4241,6 +4247,11 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parsePrimaryExpre
         return context.createThisExpr(location);
     }
     case AWAIT:
+#if ENABLE(ES2017_ASYNCFUNCTION_SYNTAX)
+        if (m_parserState.functionParsePhase == FunctionParsePhase::Parameters)
+            failIfFalse(m_parserState.allowAwait, "Cannot use await expression within parameters");
+        FALLTHROUGH;
+#endif
     case IDENT: {
     identifierExpression:
         JSTextPosition start = tokenStartPosition();
@@ -4483,7 +4494,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseMemberExpres
             int initialAssignments = m_parserState.assignmentCount;
             TreeExpression property = parseExpression(context);
             failIfFalse(property, "Cannot parse subscript expression");
-            base = context.createBracketAccess(location, base, property, initialAssignments != m_parserState.assignmentCount, expressionStart, expressionEnd, tokenEndPosition());
+            base = context.createBracketAccess(startLocation, base, property, initialAssignments != m_parserState.assignmentCount, expressionStart, expressionEnd, tokenEndPosition());
             
             if (UNLIKELY(baseIsSuper && currentScope()->isArrowFunction()))
                 currentFunctionScope()->setInnerArrowFunctionUsesSuperProperty();
@@ -4541,7 +4552,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseMemberExpres
             JSTextPosition expressionEnd = lastTokenEndPosition();
             nextExpectIdentifier(LexerFlagsIgnoreReservedWords | TreeBuilder::DontBuildKeywords);
             matchOrFail(IDENT, "Expected a property name after '.'");
-            base = context.createDotAccess(location, base, m_token.m_data.ident, expressionStart, expressionEnd, tokenEndPosition());
+            base = context.createDotAccess(startLocation, base, m_token.m_data.ident, expressionStart, expressionEnd, tokenEndPosition());
             if (UNLIKELY(baseIsSuper && currentScope()->isArrowFunction()))
                 currentFunctionScope()->setInnerArrowFunctionUsesSuperProperty();
             next();
@@ -4553,7 +4564,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseMemberExpres
             int nonLHSCount = m_parserState.nonLHSCount;
             typename TreeBuilder::TemplateLiteral templateLiteral = parseTemplateLiteral(context, LexerType::RawStringsBuildMode::BuildRawStrings);
             failIfFalse(templateLiteral, "Cannot parse template literal");
-            base = context.createTaggedTemplate(location, base, templateLiteral, expressionStart, expressionEnd, lastTokenEndPosition());
+            base = context.createTaggedTemplate(startLocation, base, templateLiteral, expressionStart, expressionEnd, lastTokenEndPosition());
             m_parserState.nonLHSCount = nonLHSCount;
             break;
         }

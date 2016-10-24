@@ -932,6 +932,18 @@ void throwAttributeTypeError(JSC::ExecState& state, JSC::ThrowScope& scope, cons
     throwTypeError(state, scope, makeString("The ", interfaceName, '.', attributeName, " attribute must be an instance of ", expectedType));
 }
 
+JSC::EncodedJSValue throwRequiredMemberTypeError(JSC::ExecState& state, JSC::ThrowScope& scope, const char* memberName, const char* dictionaryName, const char* expectedType)
+{
+    StringBuilder builder;
+    builder.appendLiteral("Member ");
+    builder.append(dictionaryName);
+    builder.append('.');
+    builder.append(memberName);
+    builder.appendLiteral(" is required and must be an instance of ");
+    builder.append(expectedType);
+    return throwVMTypeError(&state, scope, builder.toString());
+}
+
 JSC::EncodedJSValue throwConstructorScriptExecutionContextUnavailableError(JSC::ExecState& state, JSC::ThrowScope& scope, const char* interfaceName)
 {
     return throwVMError(&state, scope, createReferenceError(&state, makeString(interfaceName, " constructor associated execution context is unavailable")));
@@ -976,6 +988,17 @@ String makeThisTypeErrorMessage(const char* interfaceName, const char* functionN
 EncodedJSValue throwThisTypeError(JSC::ExecState& state, JSC::ThrowScope& scope, const char* interfaceName, const char* functionName)
 {
     return throwTypeError(state, scope, makeThisTypeErrorMessage(interfaceName, functionName));
+}
+
+JSC::EncodedJSValue rejectPromiseWithThisTypeError(DeferredPromise& promise, const char* interfaceName, const char* methodName)
+{
+    promise.reject(TypeError, makeThisTypeErrorMessage(interfaceName, methodName));
+    return JSValue::encode(jsUndefined());
+}
+
+JSC::EncodedJSValue rejectPromiseWithThisTypeError(JSC::ExecState& state, const char* interfaceName, const char* methodName)
+{
+    return createRejectedPromiseWithTypeError(state, makeThisTypeErrorMessage(interfaceName, methodName));
 }
 
 void callFunctionWithCurrentArguments(JSC::ExecState& state, JSC::JSObject& thisObject, JSC::JSFunction& function)

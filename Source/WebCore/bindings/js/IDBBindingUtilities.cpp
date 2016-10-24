@@ -37,8 +37,10 @@
 #include "IDBValue.h"
 #include "IndexKey.h"
 #include "JSDOMBinding.h"
+#include "JSDOMConvert.h"
 #include "JSDOMStringList.h"
 #include "Logging.h"
+#include "MessagePort.h"
 #include "ScriptExecutionContext.h"
 #include "SerializedScriptValue.h"
 #include "SharedBuffer.h"
@@ -178,7 +180,7 @@ IDBKeyPath idbKeyPathFromValue(ExecState& exec, JSValue keyPathValue)
 {
     IDBKeyPath keyPath;
     if (isJSArray(keyPathValue))
-        keyPath = IDBKeyPath(toNativeArray<String>(exec, keyPathValue));
+        keyPath = IDBKeyPath(convert<IDLSequence<IDLDOMString>>(exec, keyPathValue));
     else
         keyPath = IDBKeyPath(keyPathValue.toWTFString(&exec));
     return keyPath;
@@ -327,7 +329,8 @@ JSValue deserializeIDBValueToJSValue(ExecState& exec, const IDBValue& value)
     auto serializedValue = SerializedScriptValue::createFromWireBytes(Vector<uint8_t>(data));
 
     exec.vm().apiLock().lock();
-    JSValue result = serializedValue->deserialize(&exec, exec.lexicalGlobalObject(), 0, NonThrowing, value.blobURLs(), value.blobFilePaths());
+    Vector<RefPtr<MessagePort>> messagePorts;
+    JSValue result = serializedValue->deserialize(exec, exec.lexicalGlobalObject(), messagePorts, value.blobURLs(), value.blobFilePaths(), NonThrowing);
     exec.vm().apiLock().unlock();
 
     return result;

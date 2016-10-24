@@ -885,8 +885,6 @@ void RenderObject::repaintSlowRepaintObject() const
         return;
 
     const RenderLayerModelObject* repaintContainer = containerForRepaint();
-    if (!repaintContainer)
-        repaintContainer = &view;
 
     bool shouldClipToLayer = true;
     IntRect repaintRect;
@@ -1127,7 +1125,11 @@ void RenderObject::showRenderObject(bool mark, int depth) const
                 fprintf(stderr, " \"%s\"", value.utf8().data());
         }
     }
-
+    if (is<RenderBoxModelObject>(*this)) {
+        auto& renderer = downcast<RenderBoxModelObject>(*this);
+        if (renderer.hasContinuation())
+            fprintf(stderr, " continuation->(%p)", renderer.continuation());
+    }
     showRegionsInformation();
     fprintf(stderr, "\n");
 }
@@ -1488,13 +1490,15 @@ void RenderObject::updateDragState(bool dragOn)
 {
     bool valueChanged = (dragOn != isDragging());
     setIsDragging(dragOn);
-    if (valueChanged && node() && (style().affectedByDrag() || (is<Element>(*node()) && downcast<Element>(*node()).childrenAffectedByDrag())))
-        node()->setNeedsStyleRecalc();
 
     if (!is<RenderElement>(*this))
         return;
+    auto& renderElement = downcast<RenderElement>(*this);
 
-    for (auto& child : childrenOfType<RenderObject>(downcast<RenderElement>(*this)))
+    if (valueChanged && renderElement.element() && (style().affectedByDrag() || renderElement.element()->childrenAffectedByDrag()))
+        renderElement.element()->invalidateStyleForSubtree();
+
+    for (auto& child : childrenOfType<RenderObject>(renderElement))
         child.updateDragState(dragOn);
 }
 

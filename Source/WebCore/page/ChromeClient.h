@@ -405,7 +405,6 @@ public:
 #if ENABLE(POINTER_LOCK)
     virtual bool requestPointerLock() { return false; }
     virtual void requestPointerUnlock() { }
-    virtual bool isPointerLocked() { return false; }
 #endif
 
     virtual FloatSize minimumWindowSize() const { return FloatSize(100, 100); };
@@ -432,8 +431,6 @@ public:
     virtual void mediaSessionMetadataDidChange(const WebCore::MediaSessionMetadata&) { }
     virtual void focusedContentMediaElementDidChange(uint64_t) { }
 #endif
-
-    virtual void setPageActivityState(PageActivityState::Flags) { }
 
 #if ENABLE(SUBTLE_CRYPTO)
     virtual bool wrapCryptoKey(const Vector<uint8_t>&, Vector<uint8_t>&) const { return false; }

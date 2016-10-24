@@ -26,6 +26,7 @@
 
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
+#include "JSDOMConvert.h"
 #include "JSMessagePort.h"
 #include "SerializedScriptValue.h"
 #include <runtime/FunctionPrototype.h>
@@ -132,7 +133,7 @@ void JSTestSerializedScriptValueInterface::destroy(JSC::JSCell* cell)
     thisObject->JSTestSerializedScriptValueInterface::~JSTestSerializedScriptValueInterface();
 }
 
-inline JSTestSerializedScriptValueInterface* JSTestSerializedScriptValueInterface::castForAttribute(JSC::ExecState*, EncodedJSValue thisValue)
+template<> inline JSTestSerializedScriptValueInterface* BindingCaller<JSTestSerializedScriptValueInterface>::castForAttribute(ExecState&, EncodedJSValue thisValue)
 {
     return jsDynamicCast<JSTestSerializedScriptValueInterface*>(JSValue::decode(thisValue));
 }
@@ -149,7 +150,7 @@ static inline JSValue jsTestSerializedScriptValueInterfaceValueGetter(ExecState&
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
     auto& impl = thisObject.wrapped();
-    JSValue result = impl.value() ? impl.value()->deserialize(&state, thisObject.globalObject(), 0) : jsNull();
+    JSValue result = impl.value() ? impl.value()->deserialize(state, thisObject.globalObject()) : jsNull();
     return result;
 }
 
@@ -165,7 +166,7 @@ static inline JSValue jsTestSerializedScriptValueInterfaceReadonlyValueGetter(Ex
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
     auto& impl = thisObject.wrapped();
-    JSValue result = impl.readonlyValue() ? impl.readonlyValue()->deserialize(&state, thisObject.globalObject(), 0) : jsNull();
+    JSValue result = impl.readonlyValue() ? impl.readonlyValue()->deserialize(state, thisObject.globalObject()) : jsNull();
     return result;
 }
 
@@ -183,7 +184,7 @@ static inline JSValue jsTestSerializedScriptValueInterfaceCachedValueGetter(Exec
     if (JSValue cachedValue = thisObject.m_cachedValue.get())
         return cachedValue;
     auto& impl = thisObject.wrapped();
-    JSValue result = impl.cachedValue() ? impl.cachedValue()->deserialize(&state, thisObject.globalObject(), 0) : jsNull();
+    JSValue result = impl.cachedValue() ? impl.cachedValue()->deserialize(state, thisObject.globalObject()) : jsNull();
     thisObject.m_cachedValue.set(state.vm(), &thisObject, result);
     return result;
 }
@@ -200,7 +201,7 @@ static inline JSValue jsTestSerializedScriptValueInterfacePortsGetter(ExecState&
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
     auto& impl = thisObject.wrapped();
-    JSValue result = jsArray(&state, thisObject.globalObject(), impl.ports());
+    JSValue result = toJS<IDLSequence<IDLInterface<MessagePort>>>(state, *thisObject.globalObject(), impl.ports());
     return result;
 }
 
@@ -218,7 +219,7 @@ static inline JSValue jsTestSerializedScriptValueInterfaceCachedReadonlyValueGet
     if (JSValue cachedValue = thisObject.m_cachedReadonlyValue.get())
         return cachedValue;
     auto& impl = thisObject.wrapped();
-    JSValue result = impl.cachedReadonlyValue() ? impl.cachedReadonlyValue()->deserialize(&state, thisObject.globalObject(), 0) : jsNull();
+    JSValue result = impl.cachedReadonlyValue() ? impl.cachedReadonlyValue()->deserialize(state, thisObject.globalObject()) : jsNull();
     thisObject.m_cachedReadonlyValue.set(state.vm(), &thisObject, result);
     return result;
 }
@@ -247,38 +248,38 @@ bool setJSTestSerializedScriptValueInterfaceConstructor(ExecState* state, Encode
     return domObject->putDirect(state->vm(), state->propertyNames().constructor, value);
 }
 
-static inline bool setJSTestSerializedScriptValueInterfaceValueFunction(ExecState*, JSTestSerializedScriptValueInterface*, JSValue, ThrowScope&);
+static inline bool setJSTestSerializedScriptValueInterfaceValueFunction(ExecState&, JSTestSerializedScriptValueInterface&, JSValue, ThrowScope&);
 
 bool setJSTestSerializedScriptValueInterfaceValue(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     return BindingCaller<JSTestSerializedScriptValueInterface>::setAttribute<setJSTestSerializedScriptValueInterfaceValueFunction>(state, thisValue, encodedValue, "value");
 }
 
-static inline bool setJSTestSerializedScriptValueInterfaceValueFunction(ExecState* state, JSTestSerializedScriptValueInterface* castedThis, JSValue value, ThrowScope& throwScope)
+static inline bool setJSTestSerializedScriptValueInterfaceValueFunction(ExecState& state, JSTestSerializedScriptValueInterface& thisObject, JSValue value, ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
-    auto& impl = castedThis->wrapped();
-    auto nativeValue = SerializedScriptValue::create(state, value, 0, 0);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = SerializedScriptValue::create(state, value);
     RETURN_IF_EXCEPTION(throwScope, false);
     impl.setValue(WTFMove(nativeValue));
     return true;
 }
 
 
-static inline bool setJSTestSerializedScriptValueInterfaceCachedValueFunction(ExecState*, JSTestSerializedScriptValueInterface*, JSValue, ThrowScope&);
+static inline bool setJSTestSerializedScriptValueInterfaceCachedValueFunction(ExecState&, JSTestSerializedScriptValueInterface&, JSValue, ThrowScope&);
 
 bool setJSTestSerializedScriptValueInterfaceCachedValue(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     return BindingCaller<JSTestSerializedScriptValueInterface>::setAttribute<setJSTestSerializedScriptValueInterfaceCachedValueFunction>(state, thisValue, encodedValue, "cachedValue");
 }
 
-static inline bool setJSTestSerializedScriptValueInterfaceCachedValueFunction(ExecState* state, JSTestSerializedScriptValueInterface* castedThis, JSValue value, ThrowScope& throwScope)
+static inline bool setJSTestSerializedScriptValueInterfaceCachedValueFunction(ExecState& state, JSTestSerializedScriptValueInterface& thisObject, JSValue value, ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
-    auto& impl = castedThis->wrapped();
-    auto nativeValue = SerializedScriptValue::create(state, value, 0, 0);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = SerializedScriptValue::create(state, value);
     RETURN_IF_EXCEPTION(throwScope, false);
     impl.setCachedValue(WTFMove(nativeValue));
     return true;

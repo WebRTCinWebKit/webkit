@@ -298,6 +298,24 @@ enum TestConfidence { "high", "kinda-low" };
 
     void overloadedMethodWithOptionalParameter(DOMString strArg, optional TestObj? objArg = null);
     void overloadedMethodWithOptionalParameter(TestObj? objArg, optional long longArg);
+
+    void overloadedMethodWithDistinguishingUnion((TestObj or TestNode) objectOrNode);
+    void overloadedMethodWithDistinguishingUnion(long value);
+
+    void overloadedMethodWith2DistinguishingUnions((TestObj or TestNode) objectOrNode);
+    void overloadedMethodWith2DistinguishingUnions((TestInterface or DOMString or long) value);
+
+    void overloadedMethodWithNonDistinguishingUnion((TestObj or TestNode) objectOrNode, TestObj object);
+    void overloadedMethodWithNonDistinguishingUnion((TestObj or TestNode) objectOrNode, TestNode node);
+
+    void overloadWithNullableUnion((TestObj or TestNode)? objectOrNode);
+    void overloadWithNullableUnion(long index);
+
+    void overloadWithOptionalUnion(optional (DOMString or boolean) objectOrNode = true);
+    void overloadWithOptionalUnion(long index);
+
+    void overloadWithNullableNonDistinguishingParameter(TestObj? obj, TestNode node);
+    void overloadWithNullableNonDistinguishingParameter(TestNode? node, long index);
 #endif
 
     // Class methods within JavaScript (like what's used for IDBKeyRange).
@@ -401,10 +419,6 @@ enum TestConfidence { "high", "kinda-low" };
     [PutForwards=name] readonly attribute TestNode? putForwardsNullableAttribute;
 
 #if defined(TESTING_JS)
-    [CEReactions] void methodWithNeedsCustomElementReactionStack();
-#endif
-
-#if defined(TESTING_JS)
     // Overloading with conditionals.
     [Conditional=CONDITION1] void conditionalOverload(DOMString str);
     [Conditional=CONDITION2] void conditionalOverload(long a);
@@ -418,8 +432,9 @@ enum TestConfidence { "high", "kinda-low" };
 
     stringifier attribute USVString stringifierAttribute;
 
+    serializer = {create, readOnlyStringAttr, enumAttr, longAttr};
 
-    serializer = {readOnlyStringAttr, create, enumAttr, longAttr};
+    void bufferSourceParameter(BufferSource data);
 };
 
 // The following comment should not generate any code.
@@ -433,6 +448,7 @@ dictionary TestDictionary {
     TestEnumType enumerationValueWithEmptyStringDefault = "";
     DOMString stringWithDefault = "defaultString";
     DOMString stringWithoutDefault;
+    DOMString? nullableStringWithDefault = null;
     boolean booleanWithDefault = false;
     boolean booleanWithoutDefault;
     sequence<DOMString> sequenceOfStrings;
@@ -456,11 +472,15 @@ dictionary TestDictionary {
     long long largeIntegerWithDefault = 0;
     unsigned long long unsignedLargeInteger;
     unsigned long long unsignedLargeIntegerWithDefault = 0;
+    long? nullableIntegerWithDefault = null;
     Node? nullableNode = null;
     any anyValue;
     any anyValueWithNullDefault = null;
     AnyTypedef anyTypedefValue;
     TestDictionaryThatShouldTolerateNull dictionaryMember;
+    (long or Node) unionMember;
+    (long or Node)? nullableUnionMember = null;
+    BufferSource bufferSourceValue;
 };
 
 dictionary TestDictionaryThatShouldNotTolerateNull {

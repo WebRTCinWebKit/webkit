@@ -26,7 +26,7 @@
 #include "config.h"
 #include "MarkedAllocator.h"
 
-#include "AllocationScope.h"
+#include "AllocatingScope.h"
 #include "GCActivityCallback.h"
 #include "Heap.h"
 #include "IncrementalSweeper.h"
@@ -53,11 +53,8 @@ bool MarkedAllocator::isPagedOut(double deadline)
     unsigned itersSinceLastTimeCheck = 0;
     for (size_t index = 0; index < m_blocks.size(); ++index) {
         MarkedBlock::Handle* block = m_blocks[index];
-        if (block) {
-            // Forces us to touch the memory of the block, but has no semantic effect.
-            if (block->areMarksStale())
-                block->block().resetMarkingVersion();
-        }
+        if (block)
+            block->block().updateNeedsDestruction();
         ++itersSinceLastTimeCheck;
         if (itersSinceLastTimeCheck >= Heap::s_timeCheckResolution) {
             double currentTime = WTF::monotonicallyIncreasingTime();
@@ -188,7 +185,6 @@ ALWAYS_INLINE void MarkedAllocator::doTestCollectionsIfNeeded(GCDeferralContext*
             else
                 m_heap->collectAllGarbage();
         }
-        ASSERT(m_heap->m_operationInProgress == NoOperation);
     }
     if (++allocationCount >= Options::slowPathAllocsBetweenGCs())
         allocationCount = 0;
@@ -217,10 +213,10 @@ void* MarkedAllocator::allocateSlowCaseImpl(GCDeferralContext* deferralContext, 
     
     didConsumeFreeList();
     
+    AllocatingScope healpingHeap(*m_heap);
+
     m_heap->collectIfNecessaryOrDefer(deferralContext);
     
-    AllocationScope allocationScope(*m_heap);
-
     void* result = tryAllocateWithoutCollecting();
     
     if (LIKELY(result != 0))
@@ -436,7 +432,8 @@ void MarkedAllocator::sweep()
 {
     m_unswept.forEachSetBit(
         [&] (size_t index) {
-            m_blocks[index]->sweep();
+            MarkedBlock::Handle* block = m_blocks[index];
+            block->sweep();
         });
 }
 

@@ -39,16 +39,22 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         this._widgetMap = new Map;
         this._contentPopulated = false;
         this._invalidLineNumbers = {0: true};
-        this._ignoreContentDidChange = 0;
         this._requestingScriptContent = false;
         this._activeCallFrameSourceCodeLocation = null;
 
         this._typeTokenScrollHandler = null;
         this._typeTokenAnnotator = null;
         this._basicBlockAnnotator = null;
+        this._editingController = null;
 
         this._autoFormat = false;
         this._isProbablyMinified = false;
+
+        this._ignoreContentDidChange = 0;
+        this._ignoreLocationUpdateBreakpoint = null;
+        this._ignoreBreakpointAddedBreakpoint = null;
+        this._ignoreBreakpointRemovedBreakpoint = null;
+        this._ignoreAllBreakpointLocationUpdates = false;
 
         // FIXME: Currently this just jumps between resources and related source map resources. It doesn't "jump to symbol" yet.
         this._updateTokenTrackingControllerState();
@@ -1098,11 +1104,9 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         this._addBreakpointWithEditorLineInfo(breakpoint, lineInfo);
 
         this._ignoreBreakpointAddedBreakpoint = breakpoint;
-
-        var shouldSkipEventDispatch = false;
-        var shouldSpeculativelyResolveBreakpoint = true;
-        WebInspector.debuggerManager.addBreakpoint(breakpoint, shouldSkipEventDispatch, shouldSpeculativelyResolveBreakpoint);
-        delete this._ignoreBreakpointAddedBreakpoint;
+        const shouldSpeculativelyResolveBreakpoint = true;
+        WebInspector.debuggerManager.addBreakpoint(breakpoint, shouldSpeculativelyResolveBreakpoint);
+        this._ignoreBreakpointAddedBreakpoint = null;
 
         // Return the more accurate location and breakpoint info.
         return {
@@ -1128,7 +1132,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
 
         this._ignoreBreakpointRemovedBreakpoint = breakpoint;
         WebInspector.debuggerManager.removeBreakpoint(breakpoint);
-        delete this._ignoreBreakpointAddedBreakpoint;
+        this._ignoreBreakpointRemovedBreakpoint = null;
     }
 
     textEditorBreakpointMoved(textEditor, oldLineNumber, oldColumnNumber, newLineNumber, newColumnNumber)
@@ -1149,7 +1153,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         var unformattedNewLineInfo = this._unformattedLineInfoForEditorLineInfo(newLineInfo);
         this._ignoreLocationUpdateBreakpoint = breakpoint;
         breakpoint.sourceCodeLocation.update(this._sourceCode, unformattedNewLineInfo.lineNumber, unformattedNewLineInfo.columnNumber);
-        delete this._ignoreLocationUpdateBreakpoint;
+        this._ignoreLocationUpdateBreakpoint = null;
 
         var accurateNewLineInfo = this._editorLineInfoForSourceCodeLocation(breakpoint.sourceCodeLocation);
         this._addBreakpointWithEditorLineInfo(breakpoint, accurateNewLineInfo);
@@ -1210,7 +1214,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         this._reinsertAllIssues();
     }
 
-    textEditorExecutionHighlightRange(offset, position, callback)
+    textEditorExecutionHighlightRange(offset, position, characterAtOffset, callback)
     {
         let script = this._getAssociatedScript(position);
         if (!script) {
@@ -1235,11 +1239,19 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
             }
 
             // Find a node starting at this offset.
+            // Avoid highlighting the entire program if this is the start of the first statement.
+            // Special case the assignment expression inside of a for..of and for..in to highlight a larger range.
             for (let node of nodes) {
                 let startOffset = node.range[0];
-                if (startOffset === offset) {
+                if (startOffset === offset && node.type !== WebInspector.ScriptSyntaxTree.NodeType.Program) {
                     callback(convertRangeOffsetsToSourceCodeOffsets(node.range));
                     return;
+                }
+                if (node.type === WebInspector.ScriptSyntaxTree.NodeType.ForInStatement || node.type === WebInspector.ScriptSyntaxTree.NodeType.ForOfStatement) {
+                    if (node.left.range[0] === offset) {
+                        callback(convertRangeOffsetsToSourceCodeOffsets([node.left.range[0], node.right.range[1]]));
+                        return;
+                    }
                 }
                 if (startOffset > offset)
                     break;
@@ -1270,6 +1282,8 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
                 return aLength - bLength;
             });
 
+            let characterAtOffsetIsDotOrBracket = characterAtOffset === "." || characterAtOffset === "[";
+
             for (let i = 0; i < nodes.length; ++i) {
                 let node = nodes[i];
 
@@ -1280,14 +1294,38 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
                     return;
                 }
 
-                // In the middle of a member expression.
+                // In the middle of a member expression we want to highlight the best
+                // member expression range. We can end up in the middle when we are
+                // paused inside of a getter and select the parent call frame. For
+                // these cases we may be at a '.' or '[' and we can find the best member
+                // expression from there.
+                //
+                // Examples:
+                //
+                //     foo*.x.y.z => inside x looking at parent call frame => |foo.x|.y.z
+                //     foo.x*.y.z => inside y looking at parent call frame => |foo.x.y|.z
+                //
+                //     foo*["x"]["y"]["z"] => inside x looking at parent call frame => |foo["x"]|["y"]["z"]
+                //     foo["x"]*["y"]["z"] => inside y looking at parent call frame => |foo["x"]["y"]|["z"]
+                //
                 if (node.type === WebInspector.ScriptSyntaxTree.NodeType.ThisExpression
-                    || node.type === WebInspector.ScriptSyntaxTree.NodeType.IdentifierExpression) {
-                    let nextNode = nodes[i + 1];
-                    if (nextNode && nextNode.type === WebInspector.ScriptSyntaxTree.NodeType.MemberExpression) {
-                        callback(convertRangeOffsetsToSourceCodeOffsets(nextNode.range));
+                    || (characterAtOffsetIsDotOrBracket && (node.type === WebInspector.ScriptSyntaxTree.NodeType.Identifier || node.type === WebInspector.ScriptSyntaxTree.NodeType.MemberExpression))) {
+                    let memberExpressionNode = null;
+                    for (let j = i + 1; j < nodes.length; ++j) {
+                        let nextNode = nodes[j];
+                        if (nextNode.type === WebInspector.ScriptSyntaxTree.NodeType.MemberExpression) {
+                            memberExpressionNode = nextNode;
+                            if (offset === memberExpressionNode.range[1])
+                                continue;
+                        }
+                        break;
+                    }
+
+                    if (memberExpressionNode) {
+                        callback(convertRangeOffsetsToSourceCodeOffsets(memberExpressionNode.range));
                         return;
                     }
+
                     callback(convertRangeOffsetsToSourceCodeOffsets(node.range));
                     return;
                 }
@@ -1508,7 +1546,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         var sourceCode = this._sourceCode;
         var sourceID = sourceCode instanceof WebInspector.Script ? sourceCode.id : sourceCode.scripts[0].id;
         var range = candidate.hoveredTokenRange;
-        var offset = this.positionToOffset({line: range.start.line, ch: range.start.ch});
+        var offset = this.currentPositionToOriginalOffset(range.start);
 
         var allRequests = [{
             typeInformationDescriptor: WebInspector.ScriptSyntaxTree.TypeProfilerSearchDescriptor.NormalExpression,
@@ -1763,7 +1801,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
             var color = this._editingController.value;
             if (!color || !color.valid) {
                 editableMarker.clear();
-                delete this._editingController;
+                this._editingController = null;
                 return;
             }
         }
@@ -1778,7 +1816,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
             this._editingController.dismissHoverMenu(discrete);
 
         this.tokenTrackingController.hoveredMarker = null;
-        delete this._editingController;
+        this._editingController = null;
     }
 
     // CodeMirrorEditingController Delegate
@@ -1803,7 +1841,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
 
         this._ignoreContentDidChange--;
 
-        delete this._editingController;
+        this._editingController = null;
     }
 
     _setTypeTokenAnnotatorEnabledState(shouldActivate)

@@ -27,7 +27,7 @@
 
 #include "WebView.h"
 
-#include "BackForwardController.h"
+#include "BackForwardList.h"
 #include "COMVariantSetter.h"
 #include "DOMCoreClasses.h"
 #include "FullscreenVideoController.h"
@@ -84,7 +84,6 @@
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/BString.h>
 #include <WebCore/BackForwardController.h>
-#include <WebCore/BackForwardList.h>
 #include <WebCore/BitmapInfo.h>
 #include <WebCore/Chrome.h>
 #include <WebCore/ContextMenu.h>
@@ -178,7 +177,7 @@
 #include <CoreFoundation/CoreFoundation.h>
 #endif
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 #include <CFNetwork/CFURLCachePriv.h>
 #include <CFNetwork/CFURLProtocolPriv.h>
 #include <WebKitSystemInterface/WebKitSystemInterface.h>
@@ -497,11 +496,11 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
 
     String cacheDirectory;
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
     RetainPtr<CFURLCacheRef> cfurlCache = adoptCF(CFURLCacheCopySharedURLCache());
     RetainPtr<CFStringRef> cfurlCacheDirectory = adoptCF(wkCopyFoundationCacheDirectory(0));
     if (!cfurlCacheDirectory) {
-        RetainPtr<CFPropertyListRef> preference = adoptCF(CFPreferencesCopyAppValue(WebKitLocalCacheDefaultsKey, kCFPreferencesCurrentApplication));
+        RetainPtr<CFPropertyListRef> preference = adoptCF(CFPreferencesCopyAppValue(WebKitLocalCacheDefaultsKey, WebPreferences::applicationId()));
         if (preference && (CFStringGetTypeID() == CFGetTypeID(preference.get())))
             cfurlCacheDirectory = adoptCF(static_cast<CFStringRef>(preference.leakRef()));
         else
@@ -551,7 +550,7 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
         // Memory cache capacity (in bytes)
         cacheMemoryCapacity = 0;
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
         // Foundation disk cache capacity (in bytes)
         cacheDiskCapacity = CFURLCacheDiskCapacity(cfurlCache.get());
 #endif
@@ -675,7 +674,7 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
     memoryCache.setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
     PageCache::singleton().setMaxSize(pageCacheSize);
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
     // Don't shrink a big disk cache, since that would cause churn.
     cacheDiskCapacity = max(cacheDiskCapacity, CFURLCacheDiskCapacity(cfurlCache.get()));
 
@@ -1547,7 +1546,7 @@ void WebView::closeWindow()
 
 bool WebView::canHandleRequest(const WebCore::ResourceRequest& request)
 {
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
     // On the Mac there's an about URL protocol implementation but Windows CFNetwork doesn't have that.
     if (request.url().protocolIs("about"))
         return true;
@@ -3099,6 +3098,7 @@ HRESULT WebView::initWithFrame(RECT frame, _In_ BSTR frameName, _In_ BSTR groupN
     m_inspectorClient = new WebInspectorClient(this);
 
     PageConfiguration configuration(makeUniqueRef<WebEditorClient>(this), SocketProvider::create());
+    configuration.backForwardClient = BackForwardList::create();
     configuration.chromeClient = new WebChromeClient(this);
     configuration.contextMenuClient = new WebContextMenuClient(this);
     configuration.dragClient = new WebDragClient(this);
@@ -3430,7 +3430,7 @@ HRESULT WebView::backForwardList(_COM_Outptr_opt_ IWebBackForwardList** list)
     if (!m_useBackForwardList)
         return E_FAIL;
  
-    *list = WebBackForwardList::createInstance(static_cast<WebCore::BackForwardList*>(m_page->backForward().client()));
+    *list = WebBackForwardList::createInstance(static_cast<BackForwardList*>(m_page->backForward().client()));
 
     return S_OK;
 }
@@ -5261,7 +5261,7 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     hr = preferences->privateBrowsingEnabled(&enabled);
     if (FAILED(hr))
         return hr;
-#if PLATFORM(WIN) || USE(CFNETWORK)
+#if PLATFORM(WIN) || USE(CFURLCONNECTION)
     if (enabled)
         WebFrameNetworkingContext::ensurePrivateBrowsingSession();
     else
@@ -5560,7 +5560,7 @@ HRESULT updateSharedSettingsFromPreferencesIfNeeded(IWebPreferences* preferences
     if (FAILED(hr))
         return hr;
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
     WebFrameNetworkingContext::setCookieAcceptPolicyForAllContexts(acceptPolicy);
 #endif
 

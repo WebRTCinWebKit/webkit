@@ -23,9 +23,8 @@
 
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
-#include "URL.h"
+#include "JSDOMConvert.h"
 #include <runtime/FunctionPrototype.h>
-#include <runtime/JSString.h>
 #include <wtf/GetPtr.h>
 
 using namespace JSC;
@@ -132,7 +131,7 @@ void JSattribute::destroy(JSC::JSCell* cell)
     thisObject->JSattribute::~JSattribute();
 }
 
-inline JSattribute* JSattribute::castForAttribute(JSC::ExecState*, EncodedJSValue thisValue)
+template<> inline JSattribute* BindingCaller<JSattribute>::castForAttribute(ExecState&, EncodedJSValue thisValue)
 {
     return jsDynamicCast<JSattribute*>(JSValue::decode(thisValue));
 }
@@ -149,7 +148,7 @@ static inline JSValue jsattributeReadonlyGetter(ExecState& state, JSattribute& t
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
     auto& impl = thisObject.wrapped();
-    JSValue result = jsStringWithCache(&state, impl.readonly());
+    JSValue result = toJS<IDLDOMString>(state, impl.readonly());
     return result;
 }
 

@@ -787,22 +787,22 @@ static inline bool floatValueFromPrimitiveValue(CSSPrimitiveValue& primitiveValu
     // FIXME: Use CSSPrimitiveValue::computeValue.
     switch (primitiveValue.primitiveType()) {
     case CSSPrimitiveValue::CSS_PX:
-        result = primitiveValue.getFloatValue(CSSPrimitiveValue::CSS_PX);
+        result = primitiveValue.floatValue(CSSPrimitiveValue::CSS_PX);
         return true;
     case CSSPrimitiveValue::CSS_PT:
-        result = 4 * primitiveValue.getFloatValue(CSSPrimitiveValue::CSS_PT) / 3;
+        result = 4 * primitiveValue.floatValue(CSSPrimitiveValue::CSS_PT) / 3;
         return true;
     case CSSPrimitiveValue::CSS_PC:
-        result = 16 * primitiveValue.getFloatValue(CSSPrimitiveValue::CSS_PC);
+        result = 16 * primitiveValue.floatValue(CSSPrimitiveValue::CSS_PC);
         return true;
     case CSSPrimitiveValue::CSS_CM:
-        result = 96 * primitiveValue.getFloatValue(CSSPrimitiveValue::CSS_PC) / 2.54;
+        result = 96 * primitiveValue.floatValue(CSSPrimitiveValue::CSS_PC) / 2.54;
         return true;
     case CSSPrimitiveValue::CSS_MM:
-        result = 96 * primitiveValue.getFloatValue(CSSPrimitiveValue::CSS_PC) / 25.4;
+        result = 96 * primitiveValue.floatValue(CSSPrimitiveValue::CSS_PC) / 25.4;
         return true;
     case CSSPrimitiveValue::CSS_IN:
-        result = 96 * primitiveValue.getFloatValue(CSSPrimitiveValue::CSS_IN);
+        result = 96 * primitiveValue.floatValue(CSSPrimitiveValue::CSS_IN);
         return true;
     default:
         return false;
@@ -989,13 +989,13 @@ Color HTMLConverterCaches::colorPropertyValueForNode(Node& node, CSSPropertyID p
     Element& element = downcast<Element>(node);
     if (RefPtr<CSSValue> value = computedStylePropertyForElement(element, propertyId)) {
         if (is<CSSPrimitiveValue>(*value) && downcast<CSSPrimitiveValue>(*value).isRGBColor())
-            return normalizedColor(Color(downcast<CSSPrimitiveValue>(*value).getRGBA32Value()), propertyId == CSSPropertyColor);
+            return normalizedColor(Color(downcast<CSSPrimitiveValue>(*value).color().rgb()), propertyId == CSSPropertyColor);
     }
 
     bool inherit = false;
     if (RefPtr<CSSValue> value = inlineStylePropertyForElement(element, propertyId)) {
         if (is<CSSPrimitiveValue>(*value) && downcast<CSSPrimitiveValue>(*value).isRGBColor())
-            return normalizedColor(Color(downcast<CSSPrimitiveValue>(*value).getRGBA32Value()), propertyId == CSSPropertyColor);
+            return normalizedColor(Color(downcast<CSSPrimitiveValue>(*value).color().rgb()), propertyId == CSSPropertyColor);
         if (value->isInheritedValue())
             inherit = true;
     }

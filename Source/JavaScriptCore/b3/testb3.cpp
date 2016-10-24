@@ -54,6 +54,8 @@
 #include "B3Validate.h"
 #include "B3ValueInlines.h"
 #include "B3VariableValue.h"
+#include "B3WasmAddressValue.h"
+#include "B3WasmBoundsCheckValue.h"
 #include "CCallHelpers.h"
 #include "FPRInfo.h"
 #include "GPRInfo.h"
@@ -710,6 +712,20 @@ void testAddArgsFloat(float a, float b)
     root->appendNewControlValue(proc, Return, Origin(), result32);
 
     CHECK(isIdentical(compileAndRun<int32_t>(proc, bitwise_cast<int32_t>(a), bitwise_cast<int32_t>(b)), bitwise_cast<int32_t>(a + b)));
+}
+
+void testAddFPRArgsFloat(float a, float b)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* argument1 = root->appendNew<Value>(proc, Trunc, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR0));
+    Value* argument2 = root->appendNew<Value>(proc, Trunc, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR1));
+    Value* result = root->appendNew<Value>(proc, Add, Origin(), argument1, argument2);
+    root->appendNewControlValue(proc, Return, Origin(), result);
+
+    CHECK(isIdentical(compileAndRun<float>(proc, a, b), a + b));
 }
 
 void testAddArgImmFloat(float a, float b)
@@ -4008,7 +4024,7 @@ void testCeilArgWithEffectfulDoubleConversion(float a)
     double effect = 0;
     int32_t resultValue = compileAndRun<int32_t>(proc, bitwise_cast<int32_t>(a), &effect);
     CHECK(isIdentical(resultValue, bitwise_cast<int32_t>(ceilf(a))));
-    CHECK(isIdentical(effect, ceilf(a)));
+    CHECK(isIdentical(effect, static_cast<double>(ceilf(a))));
 }
 
 void testFloorArg(double a)
@@ -4203,7 +4219,7 @@ void testFloorArgWithEffectfulDoubleConversion(float a)
     double effect = 0;
     int32_t resultValue = compileAndRun<int32_t>(proc, bitwise_cast<int32_t>(a), &effect);
     CHECK(isIdentical(resultValue, bitwise_cast<int32_t>(floorf(a))));
-    CHECK(isIdentical(effect, floorf(a)));
+    CHECK(isIdentical(effect, static_cast<double>(floorf(a))));
 }
 
 void testSqrtArg(double a)
@@ -4536,7 +4552,7 @@ void testDoubleProducerPhiToFloatConversionWithDoubleConsumer(float value)
 
     auto code = compile(proc);
     CHECK(isIdentical(invoke<double>(*code, 1, bitwise_cast<int32_t>(value)), (value + value) + static_cast<double>(value)));
-    CHECK(isIdentical(invoke<double>(*code, 0, bitwise_cast<int32_t>(value)), (42.5f + value) + 42.5f));
+    CHECK(isIdentical(invoke<double>(*code, 0, bitwise_cast<int32_t>(value)), static_cast<double>((42.5f + value) + 42.5f)));
 }
 
 void testDoubleProducerPhiWithNonFloatConst(float value, double constValue)
@@ -13659,6 +13675,158 @@ void testReduceStrengthReassociation(bool flip)
         (root->last()->child(0)->child(0)->child(0) == arg2 && root->last()->child(0)->child(0)->child(1) == arg1));
 }
 
+void testLoadBaseIndexShift2()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    root->appendNew<Value>(
+        proc, Return, Origin(),
+        root->appendNew<MemoryValue>(
+            proc, Load, Int32, Origin(),
+            root->appendNew<Value>(
+                proc, Add, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0),
+                root->appendNew<Value>(
+                    proc, Shl, Origin(),
+                    root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1),
+                    root->appendNew<Const32Value>(proc, Origin(), 2)))));
+    auto code = compile(proc);
+    if (isX86())
+        checkUsesInstruction(*code, "(%rdi,%rsi,4)");
+    int32_t value = 12341234;
+    char* ptr = bitwise_cast<char*>(&value);
+    for (unsigned i = 0; i < 10; ++i)
+        CHECK_EQ(invoke<int32_t>(*code, ptr - (static_cast<intptr_t>(1) << static_cast<intptr_t>(2)) * i, i), 12341234);
+}
+
+void testLoadBaseIndexShift32()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    root->appendNew<Value>(
+        proc, Return, Origin(),
+        root->appendNew<MemoryValue>(
+            proc, Load, Int32, Origin(),
+            root->appendNew<Value>(
+                proc, Add, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0),
+                root->appendNew<Value>(
+                    proc, Shl, Origin(),
+                    root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1),
+                    root->appendNew<Const32Value>(proc, Origin(), 32)))));
+    auto code = compile(proc);
+    int32_t value = 12341234;
+    char* ptr = bitwise_cast<char*>(&value);
+    for (unsigned i = 0; i < 10; ++i)
+        CHECK_EQ(invoke<int32_t>(*code, ptr - (static_cast<intptr_t>(1) << static_cast<intptr_t>(32)) * i, i), 12341234);
+}
+
+void testOptimizeMaterialization()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    root->appendNew<CCallValue>(
+        proc, Void, Origin(),
+        root->appendNew<ConstPtrValue>(proc, Origin(), 0x123423453456llu),
+        root->appendNew<ConstPtrValue>(proc, Origin(), 0x123423453456llu + 35));
+    root->appendNew<Value>(proc, Return, Origin());
+    
+    auto code = compile(proc);
+    bool found = false;
+    for (Air::BasicBlock* block : proc.code()) {
+        for (Air::Inst& inst : *block) {
+            if (inst.kind.opcode != Air::Add64)
+                continue;
+            if (inst.args[0] != Air::Arg::imm(35))
+                continue;
+            found = true;
+        }
+    }
+    CHECK(found);
+}
+
+void testWasmBoundsCheck(unsigned offset)
+{
+    Procedure proc;
+    GPRReg pinned = GPRInfo::argumentGPR1;
+    proc.pinRegister(pinned);
+
+    proc.setWasmBoundsCheckGenerator([=] (CCallHelpers& jit, GPRReg pinnedGPR, unsigned actualOffset) {
+        CHECK_EQ(pinnedGPR, pinned);
+        CHECK_EQ(actualOffset, offset);
+
+        // This should always work because a function this simple should never have callee
+        // saves.
+        jit.move(CCallHelpers::TrustedImm32(42), GPRInfo::returnValueGPR);
+        jit.emitFunctionEpilogue();
+        jit.ret();
+    });
+
+    BasicBlock* root = proc.addBlock();
+    Value* left = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    if (pointerType() != Int32)
+        left = root->appendNew<Value>(proc, Trunc, Origin(), left);
+    root->appendNew<WasmBoundsCheckValue>(proc, Origin(), left, pinned, offset);
+    Value* result = root->appendNew<Const32Value>(proc, Origin(), 0x42);
+    root->appendNewControlValue(proc, Return, Origin(), result);
+
+    auto code = compile(proc);
+    CHECK_EQ(invoke<int32_t>(*code, 1, 2 + offset), 0x42);
+    CHECK_EQ(invoke<int32_t>(*code, 3, 2 + offset), 42);
+    CHECK_EQ(invoke<int32_t>(*code, 2, 2 + offset), 42);
+}
+
+void testWasmAddress()
+{
+    Procedure proc;
+    GPRReg pinnedGPR = GPRInfo::argumentGPR2;
+    proc.pinRegister(pinnedGPR);
+
+    unsigned loopCount = 100;
+    Vector<unsigned> values(loopCount);
+    unsigned numToStore = 42;
+
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* header = proc.addBlock();
+    BasicBlock* body = proc.addBlock();
+    BasicBlock* continuation = proc.addBlock();
+
+    // Root
+    Value* loopCountValue = root->appendNew<Value>(proc, Trunc, Origin(), root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+    Value* valueToStore = root->appendNew<Value>(proc, Trunc, Origin(), root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1));
+    UpsilonValue* beginUpsilon = root->appendNew<UpsilonValue>(proc, Origin(), root->appendNew<Const32Value>(proc, Origin(), 0));
+    root->appendNewControlValue(proc, Jump, Origin(), header);
+
+    // Header
+    Value* indexPhi = header->appendNew<Value>(proc, Phi, Int32, Origin());
+    header->appendNewControlValue(proc, Branch, Origin(),
+        header->appendNew<Value>(proc, Below, Origin(), indexPhi, loopCountValue),
+        body, continuation);
+
+    // Body
+    Value* pointer = body->appendNew<Value>(proc, Mul, Origin(), indexPhi,
+        body->appendNew<Const32Value>(proc, Origin(), sizeof(unsigned)));
+    pointer = body->appendNew<Value>(proc, ZExt32, Origin(), pointer);
+    body->appendNew<MemoryValue>(proc, Store, Origin(), valueToStore,
+        body->appendNew<WasmAddressValue>(proc, Origin(), pointer, pinnedGPR));
+    UpsilonValue* incUpsilon = body->appendNew<UpsilonValue>(proc, Origin(),
+        body->appendNew<Value>(proc, Add, Origin(), indexPhi,
+            body->appendNew<Const32Value>(proc, Origin(), 1)));
+    body->appendNewControlValue(proc, Jump, Origin(), header);
+
+    // Continuation
+    continuation->appendNewControlValue(proc, Return, Origin());
+
+    beginUpsilon->setPhi(indexPhi);
+    incUpsilon->setPhi(indexPhi);
+
+
+    auto code = compile(proc);
+    invoke<void>(*code, loopCount, numToStore, values.data());
+    for (unsigned value : values)
+        CHECK_EQ(numToStore, value);
+}
+
 // Make sure the compiler does not try to optimize anything out.
 NEVER_INLINE double zero()
 {
@@ -13781,6 +13949,7 @@ void run(const char* filter)
     RUN(testAddImmsDouble(negativeZero(), negativeZero()));
     RUN_UNARY(testAddArgFloat, floatingPointOperands<float>());
     RUN_BINARY(testAddArgsFloat, floatingPointOperands<float>(), floatingPointOperands<float>());
+    RUN_BINARY(testAddFPRArgsFloat, floatingPointOperands<float>(), floatingPointOperands<float>());
     RUN_BINARY(testAddArgImmFloat, floatingPointOperands<float>(), floatingPointOperands<float>());
     RUN_BINARY(testAddImmArgFloat, floatingPointOperands<float>(), floatingPointOperands<float>());
     RUN_BINARY(testAddImmsFloat, floatingPointOperands<float>(), floatingPointOperands<float>());
@@ -15078,7 +15247,7 @@ void run(const char* filter)
     RUN(testSomeEarlyRegister());
     RUN(testPatchpointTerminalReturnValue(true));
     RUN(testPatchpointTerminalReturnValue(false));
-    
+
     RUN(testMemoryFence());
     RUN(testStoreFence());
     RUN(testLoadFence());
@@ -15095,7 +15264,16 @@ void run(const char* filter)
     RUN(testAddShl32());
     RUN(testAddShl64());
     RUN(testAddShl65());
-    
+    RUN(testLoadBaseIndexShift2());
+    RUN(testLoadBaseIndexShift32());
+    RUN(testOptimizeMaterialization());
+
+    RUN(testWasmBoundsCheck(0));
+    RUN(testWasmBoundsCheck(100));
+    RUN(testWasmBoundsCheck(10000));
+    RUN(testWasmBoundsCheck(std::numeric_limits<unsigned>::max() - 5));
+    RUN(testWasmAddress());
+
     if (isX86()) {
         RUN(testBranchBitAndImmFusion(Identity, Int64, 1, Air::BranchTest32, Air::Arg::Tmp));
         RUN(testBranchBitAndImmFusion(Identity, Int64, 0xff, Air::BranchTest32, Air::Arg::Tmp));

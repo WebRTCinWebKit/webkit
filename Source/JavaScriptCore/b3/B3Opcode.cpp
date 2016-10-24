@@ -251,6 +251,9 @@ void printInternal(PrintStream& out, Opcode opcode)
     case Store:
         out.print("Store");
         return;
+    case WasmAddress:
+        out.print("WasmAddress");
+        return;
     case Fence:
         out.print("Fence");
         return;
@@ -271,6 +274,9 @@ void printInternal(PrintStream& out, Opcode opcode)
         return;
     case Check:
         out.print("Check");
+        return;
+    case WasmBoundsCheck:
+        out.print("WasmBoundsCheck");
         return;
     case Upsilon:
         out.print("Upsilon");

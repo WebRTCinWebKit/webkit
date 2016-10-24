@@ -47,6 +47,7 @@
     [ImplementedAs=submitFromJavaScript] void submit();
     void reset();
     boolean checkValidity();
+    [EnabledAtRuntime=InteractiveFormValidation] boolean reportValidity();
 
     [Conditional=REQUEST_AUTOCOMPLETE] void requestAutocomplete();
 };

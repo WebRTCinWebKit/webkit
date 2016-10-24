@@ -20,11 +20,11 @@
 
 #pragma once
 
+#include "DictionaryImplName.h"
 #include "JSDOMConvert.h"
-#include "TestStandaloneDictionary.h"
 
 namespace WebCore {
 
-template<> Optional<TestStandaloneDictionary> convertDictionary<TestStandaloneDictionary>(JSC::ExecState&, JSC::JSValue);
+template<> DictionaryImplName convertDictionary<DictionaryImplName>(JSC::ExecState&, JSC::JSValue);
 
 } // namespace WebCore

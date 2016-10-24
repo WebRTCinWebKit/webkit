@@ -50,9 +50,10 @@ static inline bool featureWithValidIdent(const AtomicString& mediaFeature)
     || mediaFeature == MediaFeatureNames::anyPointer
     || mediaFeature == MediaFeatureNames::hover
     || mediaFeature == MediaFeatureNames::invertedColors
-    || mediaFeature == MediaFeatureNames::pointer;
+    || mediaFeature == MediaFeatureNames::pointer
+    || mediaFeature == MediaFeatureNames::prefersReducedMotion;
 }
-    
+
 static inline bool featureWithValidDensity(const String& mediaFeature, const CSSParserToken& token)
 {
     if ((token.unitType() != CSSPrimitiveValue::UnitTypes::CSS_DPPX && token.unitType() != CSSPrimitiveValue::UnitTypes::CSS_DPI && token.unitType() != CSSPrimitiveValue::UnitTypes::CSS_DPCM) || token.numericValue() <= 0)
@@ -128,7 +129,7 @@ static inline bool isFeatureValidWithIdentifier(const AtomicString& mediaFeature
 
 static inline bool isFeatureValidWithNonNegativeLengthOrNumber(const AtomicString& mediaFeature, const CSSParserValue& value)
 {
-    if (!(CSSPrimitiveValue::isLength(value.unit) || value.unit == CSSPrimitiveValue::CSS_NUMBER) || value.fValue < 0)
+    if (!(CSSPrimitiveValue::isLength(static_cast<CSSPrimitiveValue::UnitTypes>(value.unit)) || value.unit == CSSPrimitiveValue::CSS_NUMBER) || value.fValue < 0)
         return false;
 
     return mediaFeature == MediaFeatureNames::height
@@ -147,7 +148,7 @@ static inline bool isFeatureValidWithNonNegativeLengthOrNumber(const AtomicStrin
 
 static inline bool isFeatureValidWithDensity(const AtomicString& mediaFeature, const CSSParserValue& value)
 {
-    if (!CSSPrimitiveValue::isResolution(value.unit) || value.fValue <= 0)
+    if (!CSSPrimitiveValue::isResolution(static_cast<CSSPrimitiveValue::UnitTypes>(value.unit)) || value.fValue <= 0)
         return false;
 
     return mediaFeature == MediaFeatureNames::resolution
@@ -228,6 +229,7 @@ static inline bool isFeatureValidWithoutValue(const AtomicString& mediaFeature)
         || mediaFeature == MediaFeatureNames::viewMode
 #endif
         || mediaFeature == MediaFeatureNames::pointer
+        || mediaFeature == MediaFeatureNames::prefersReducedMotion
         || mediaFeature == MediaFeatureNames::devicePixelRatio
         || mediaFeature == MediaFeatureNames::resolution
         || mediaFeature == MediaFeatureNames::videoPlayableInline;

@@ -47,7 +47,6 @@ public:
     }
 
     static JSC::JSValue getConstructor(JSC::VM&, const JSC::JSGlobalObject*);
-    static JSTestNode* castForAttribute(JSC::ExecState*, JSC::EncodedJSValue);
     static void visitChildren(JSCell*, JSC::SlotVisitor&);
 
     TestNode& wrapped() const
@@ -72,6 +71,7 @@ inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* g
 
 template<> struct JSDOMWrapperConverterTraits<TestNode> {
     using WrapperClass = JSTestNode;
+    using ToWrappedReturnType = TestNode*;
 };
 
 } // namespace WebCore

@@ -586,6 +586,9 @@ Effects Value::effects() const
         result.writes = as<MemoryValue>()->range();
         result.controlDependent = true;
         break;
+    case WasmAddress:
+        result.readsPinned = true;
+        break;
     case Fence: {
         const FenceValue* fence = as<FenceValue>();
         result.reads = fence->read;
@@ -615,6 +618,10 @@ Effects Value::effects() const
     case CheckMul:
     case Check:
         result = Effects::forCheck();
+        break;
+    case WasmBoundsCheck:
+        result.readsPinned = true;
+        result.exitsSideways = true;
         break;
     case Upsilon:
     case Set:
@@ -767,7 +774,6 @@ Type Value::typeFor(Kind kind, Value* firstChild, Value* secondChild)
         return pointerType();
     case SExt8:
     case SExt16:
-    case Trunc:
     case Equal:
     case NotEqual:
     case LessThan:
@@ -780,6 +786,8 @@ Type Value::typeFor(Kind kind, Value* firstChild, Value* secondChild)
     case BelowEqual:
     case EqualOrUnordered:
         return Int32;
+    case Trunc:
+        return firstChild->type() == Int64 ? Int32 : Float;
     case SExt32:
     case ZExt32:
         return Int64;
@@ -809,6 +817,7 @@ Type Value::typeFor(Kind kind, Value* firstChild, Value* secondChild)
     case Return:
     case Oops:
     case EntrySwitch:
+    case WasmBoundsCheck:
         return Void;
     case Select:
         ASSERT(secondChild);

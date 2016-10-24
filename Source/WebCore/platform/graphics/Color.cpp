@@ -222,30 +222,118 @@ int differenceSquared(const Color& c1, const Color& c2)
     return dR * dR + dG * dG + dB * dB;
 }
 
+static inline const NamedColor* findNamedColor(const String& name)
+{
+    char buffer[64]; // easily big enough for the longest color name
+    unsigned length = name.length();
+    if (length > sizeof(buffer) - 1)
+        return nullptr;
+    for (unsigned i = 0; i < length; ++i) {
+        UChar c = name[i];
+        if (!c || !WTF::isASCII(c))
+            return nullptr;
+        buffer[i] = toASCIILower(static_cast<char>(c));
+    }
+    buffer[length] = '\0';
+    return findColor(buffer, length);
+}
+
 Color::Color(const String& name)
 {
     if (name[0] == '#') {
+        RGBA32 color;
+        bool valid;
+
         if (name.is8Bit())
-            m_valid = parseHexColor(name.characters8() + 1, name.length() - 1, m_color);
+            valid = parseHexColor(name.characters8() + 1, name.length() - 1, color);
         else
-            m_valid = parseHexColor(name.characters16() + 1, name.length() - 1, m_color);
-    } else
-        setNamedColor(name);
+            valid = parseHexColor(name.characters16() + 1, name.length() - 1, color);
+
+        if (valid)
+            setRGB(color);
+    } else {
+        if (auto* foundColor = findNamedColor(name))
+            setRGB(foundColor->ARGBValue);
+        else
+            m_colorData.rgbaAndFlags = invalidRGBAColor;
+    }
 }
 
 Color::Color(const char* name)
 {
+    RGBA32 color;
+    bool valid;
     if (name[0] == '#')
-        m_valid = parseHexColor((String)&name[1], m_color);
+        valid = parseHexColor((String)&name[1], color);
     else {
         const NamedColor* foundColor = findColor(name, strlen(name));
-        m_color = foundColor ? foundColor->ARGBValue : 0;
-        m_valid = foundColor;
+        color = foundColor ? foundColor->ARGBValue : 0;
+        valid = foundColor;
     }
+
+    if (valid)
+        setRGB(color);
+}
+
+Color::Color(const Color& other)
+    : m_colorData(other.m_colorData)
+{
+    if (isExtended())
+        m_colorData.extendedColor->ref();
+}
+
+Color::Color(Color&& other)
+{
+    *this = WTFMove(other);
+}
+
+Color::Color(float r, float g, float b, float a, ColorSpace colorSpace)
+{
+    // Zero the union, just in case a 32-bit system only assigns the
+    // top 32 bits when copying the extendedColor pointer below.
+    m_colorData.rgbaAndFlags = 0;
+    auto extendedColorRef = ExtendedColor::create(r, g, b, a, colorSpace);
+    m_colorData.extendedColor = &extendedColorRef.leakRef();
+    ASSERT(isExtended());
+}
+
+Color::~Color()
+{
+    if (isExtended())
+        m_colorData.extendedColor->deref();
+}
+
+Color& Color::operator=(const Color& other)
+{
+    if (*this == other)
+        return *this;
+
+    if (isExtended())
+        m_colorData.extendedColor->deref();
+
+    m_colorData = other.m_colorData;
+
+    if (isExtended())
+        m_colorData.extendedColor->ref();
+    return *this;
+}
+
+Color& Color::operator=(Color&& other)
+{
+    if (*this == other)
+        return *this;
+
+    m_colorData = other.m_colorData;
+    other.m_colorData.rgbaAndFlags = invalidRGBAColor;
+
+    return *this;
 }
 
 String Color::serialized() const
 {
+    if (isExtended())
+        return asExtended().cssText();
+
     if (!hasAlpha()) {
         StringBuilder builder;
         builder.reserveCapacity(7);
@@ -261,6 +349,9 @@ String Color::serialized() const
 
 String Color::cssText() const
 {
+    if (isExtended())
+        return asExtended().cssText();
+
     StringBuilder builder;
     builder.reserveCapacity(28);
     bool colorHasAlpha = hasAlpha();
@@ -291,38 +382,16 @@ String Color::cssText() const
 
 String Color::nameForRenderTreeAsText() const
 {
+    // FIXME: Handle ExtendedColors.
     if (alpha() < 0xFF)
         return String::format("#%02X%02X%02X%02X", red(), green(), blue(), alpha());
     return String::format("#%02X%02X%02X", red(), green(), blue());
 }
 
-static inline const NamedColor* findNamedColor(const String& name)
-{
-    char buffer[64]; // easily big enough for the longest color name
-    unsigned length = name.length();
-    if (length > sizeof(buffer) - 1)
-        return 0;
-    for (unsigned i = 0; i < length; ++i) {
-        UChar c = name[i];
-        if (!c || c > 0x7F)
-            return 0;
-        buffer[i] = toASCIILower(static_cast<char>(c));
-    }
-    buffer[length] = '\0';
-    return findColor(buffer, length);
-}
-
-void Color::setNamedColor(const String& name)
-{
-    const NamedColor* foundColor = findNamedColor(name);
-    m_color = foundColor ? foundColor->ARGBValue : 0;
-    m_valid = foundColor;
-}
-
 Color Color::light() const
 {
     // Hardcode this common case for speed.
-    if (m_color == black)
+    if (rgb() == black)
         return lightenedBlack;
     
     const float scaleFactor = nextafterf(256.0f, 0.0f);
@@ -347,7 +416,7 @@ Color Color::light() const
 Color Color::dark() const
 {
     // Hardcode this common case for speed.
-    if (m_color == white)
+    if (rgb() == white)
         return darkenedWhite;
     
     const float scaleFactor = nextafterf(256.0f, 0.0f);
@@ -559,6 +628,22 @@ Color blend(const Color& from, const Color& to, double progress, bool blendPremu
 TextStream& operator<<(TextStream& ts, const Color& color)
 {
     return ts << color.nameForRenderTreeAsText();
+}
+
+void Color::tagAsValid()
+{
+    m_colorData.rgbaAndFlags |= validRGBAColor;
+}
+
+bool Color::isExtended() const
+{
+    return !(m_colorData.rgbaAndFlags & invalidRGBAColor);
+}
+
+ExtendedColor& Color::asExtended() const
+{
+    ASSERT(isExtended());
+    return *m_colorData.extendedColor;
 }
 
 } // namespace WebCore

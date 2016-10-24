@@ -67,13 +67,13 @@ public:
     bool frameAllowSubsamplingAtIndex(size_t) const;
     unsigned frameBytesAtIndex(size_t, SubsamplingLevel = SubsamplingLevel::Default) const;
     
-    NativeImagePtr createFrameImageAtIndex(size_t, SubsamplingLevel = SubsamplingLevel::Default) const;
+    NativeImagePtr createFrameImageAtIndex(size_t, SubsamplingLevel = SubsamplingLevel::Default, DecodingMode = DecodingMode::OnDemand) const;
     
     void setData(SharedBuffer&, bool allDataReceived);
     bool isAllDataReceived() const { return m_isAllDataReceived; }
     void clearFrameBufferCache(size_t) { }
 
-    void setRenderTarget(ID2D1RenderTarget*);
+    void setTargetContext(ID2D1RenderTarget*);
 
     static IWICImagingFactory* systemImagingFactory();
 

@@ -41,8 +41,9 @@ public:
     HTMLOptionElement* item(unsigned offset) const final;
     HTMLOptionElement* namedItem(const AtomicString& name) const final;
 
-    WEBCORE_EXPORT void add(HTMLElement&, HTMLElement* beforeElement, ExceptionCode&);
-    WEBCORE_EXPORT void add(HTMLElement&, int beforeIndex, ExceptionCode&);
+    using OptionOrOptGroupElement = Variant<RefPtr<HTMLOptionElement>, RefPtr<HTMLOptGroupElement>>;
+    using HTMLElementOrInt = Variant<RefPtr<HTMLElement>, int>;
+    WEBCORE_EXPORT ExceptionOr<void> add(const OptionOrOptGroupElement&, Optional<HTMLElementOrInt> before);
     WEBCORE_EXPORT void remove(int index);
     void remove(HTMLOptionElement&);
 
@@ -70,7 +71,14 @@ inline HTMLOptionElement* HTMLOptionsCollection::namedItem(const AtomicString& n
 
 inline bool HTMLOptionsCollection::elementMatches(Element& element) const
 {
-    return element.hasTagName(HTMLNames::optionTag);
+    if (!element.hasTagName(HTMLNames::optionTag))
+        return false;
+
+    if (element.parentNode() == &selectElement())
+        return true;
+
+    ASSERT(element.parentNode());
+    return element.parentNode()->hasTagName(HTMLNames::optgroupTag) && element.parentNode()->parentNode() == &selectElement();
 }
 
 } // namespace WebCore

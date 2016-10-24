@@ -22,27 +22,19 @@
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
- *
  */
 
 #include "config.h"
-
 #include "Worker.h"
 
-#include "DOMWindow.h"
-#include "CachedResourceLoader.h"
 #include "ContentSecurityPolicy.h"
-#include "Document.h"
-#include "EventListener.h"
+#include "Event.h"
 #include "EventNames.h"
 #include "ExceptionCode.h"
-#include "Frame.h"
-#include "FrameLoader.h"
 #include "InspectorInstrumentation.h"
-#include "MessageEvent.h"
 #include "NetworkStateNotifier.h"
+#include "ResourceResponse.h"
 #include "SecurityOrigin.h"
-#include "TextEncoding.h"
 #include "WorkerGlobalScopeProxy.h"
 #include "WorkerScriptLoader.h"
 #include "WorkerThread.h"
@@ -72,21 +64,21 @@ inline Worker::Worker(ScriptExecutionContext& context)
     ASSERT_UNUSED(addResult, addResult.isNewEntry);
 }
 
-RefPtr<Worker> Worker::create(ScriptExecutionContext& context, const String& url, ExceptionCode& ec)
+ExceptionOr<Ref<Worker>> Worker::create(ScriptExecutionContext& context, const String& url)
 {
     ASSERT(isMainThread());
 
     // We don't currently support nested workers, so workers can only be created from documents.
     ASSERT_WITH_SECURITY_IMPLICATION(context.isDocument());
 
-    Ref<Worker> worker = adoptRef(*new Worker(context));
+    auto worker = adoptRef(*new Worker(context));
 
     worker->suspendIfNeeded();
 
     bool shouldBypassMainWorldContentSecurityPolicy = context.shouldBypassMainWorldContentSecurityPolicy();
-    URL scriptURL = worker->resolveURL(url, shouldBypassMainWorldContentSecurityPolicy, ec);
-    if (scriptURL.isEmpty())
-        return nullptr;
+    auto scriptURL = worker->resolveURL(url, shouldBypassMainWorldContentSecurityPolicy);
+    if (scriptURL.hasException())
+        return scriptURL.releaseException();
 
     worker->m_shouldBypassMainWorldContentSecurityPolicy = shouldBypassMainWorldContentSecurityPolicy;
 
@@ -95,7 +87,7 @@ RefPtr<Worker> Worker::create(ScriptExecutionContext& context, const String& url
 
     worker->m_scriptLoader = WorkerScriptLoader::create();
     auto contentSecurityPolicyEnforcement = shouldBypassMainWorldContentSecurityPolicy ? ContentSecurityPolicyEnforcement::DoNotEnforce : ContentSecurityPolicyEnforcement::EnforceChildSrcDirective;
-    worker->m_scriptLoader->loadAsynchronously(&context, scriptURL, FetchOptions::Mode::SameOrigin, contentSecurityPolicyEnforcement, worker.ptr());
+    worker->m_scriptLoader->loadAsynchronously(&context, scriptURL.releaseReturnValue(), FetchOptions::Mode::SameOrigin, contentSecurityPolicyEnforcement, worker.ptr());
     return WTFMove(worker);
 }
 
@@ -107,13 +99,14 @@ Worker::~Worker()
     m_contextProxy->workerObjectDestroyed();
 }
 
-void Worker::postMessage(RefPtr<SerializedScriptValue>&& message, const MessagePortArray* ports, ExceptionCode& ec)
+ExceptionOr<void> Worker::postMessage(RefPtr<SerializedScriptValue>&& message, Vector<RefPtr<MessagePort>>&& ports)
 {
     // Disentangle the port in preparation for sending it to the remote context.
-    auto channels = MessagePort::disentanglePorts(ports, ec);
-    if (ec)
-        return;
-    m_contextProxy->postMessageToWorkerGlobalScope(WTFMove(message), WTFMove(channels));
+    auto channels = MessagePort::disentanglePorts(WTFMove(ports));
+    if (channels.hasException())
+        return channels.releaseException();
+    m_contextProxy->postMessageToWorkerGlobalScope(WTFMove(message), channels.releaseReturnValue());
+    return { };
 }
 
 void Worker::terminate()

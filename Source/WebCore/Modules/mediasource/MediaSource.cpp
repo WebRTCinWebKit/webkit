@@ -203,6 +203,9 @@ std::unique_ptr<PlatformTimeRanges> MediaSource::buffered() const
 
 void MediaSource::seekToTime(const MediaTime& time)
 {
+    if (isClosed())
+        return;
+
     // 2.4.3 Seeking
     // https://rawgit.com/w3c/media-source/45627646344eea0170dd1cbc5a3d508ca751abb8/media-source-respec.html#mediasource-seeking
 
@@ -232,6 +235,9 @@ void MediaSource::seekToTime(const MediaTime& time)
 
 void MediaSource::completeSeek()
 {
+    if (isClosed())
+        return;
+
     // 2.4.3 Seeking, ctd.
     // https://dvcs.w3.org/hg/html-media/raw-file/tip/media-source/media-source.html#mediasource-seeking
 
@@ -241,13 +247,14 @@ void MediaSource::completeSeek()
     // initialization segment.
     // 3. The media element feeds coded frames from the active track buffers into the decoders starting
     // with the closest random access point before the new playback position.
+    MediaTime pendingSeekTime = m_pendingSeekTime;
+    m_pendingSeekTime = MediaTime::invalidTime();
     for (auto& sourceBuffer : *m_activeSourceBuffers)
-        sourceBuffer->seekToTime(m_pendingSeekTime);
+        sourceBuffer->seekToTime(pendingSeekTime);
 
     // 4. Resume the seek algorithm at the "Await a stable state" step.
     m_private->seekCompleted();
 
-    m_pendingSeekTime = MediaTime::invalidTime();
     monitorSourceBuffers();
 }
 
@@ -372,6 +379,9 @@ bool MediaSource::hasFutureTime()
 
 void MediaSource::monitorSourceBuffers()
 {
+    if (isClosed())
+        return;
+
     // 2.4.4 SourceBuffer Monitoring
     // https://rawgit.com/w3c/media-source/45627646344eea0170dd1cbc5a3d508ca751abb8/media-source-respec.html#buffer-monitoring
 
@@ -549,6 +559,8 @@ ExceptionOr<void> MediaSource::endOfStream(Optional<EndOfStreamError> error)
 void MediaSource::streamEndedWithError(Optional<EndOfStreamError> error)
 {
     LOG(MediaSource, "MediaSource::streamEndedWithError(%p)", this);
+    if (isClosed())
+        return;
 
     // 2.4.7 https://dvcs.w3.org/hg/html-media/raw-file/tip/media-source/media-source.html#end-of-stream-algorithm
 
@@ -920,6 +932,7 @@ void MediaSource::stop()
     m_asyncEventQueue.close();
     if (m_mediaElement)
         m_mediaElement->detachMediaSource();
+    m_readyState = closedKeyword();
     m_private = nullptr;
 }
 

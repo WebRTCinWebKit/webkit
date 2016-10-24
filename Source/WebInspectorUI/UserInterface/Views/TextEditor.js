@@ -336,8 +336,10 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         this._executionLineNumber = lineNumber;
         this._executionColumnNumber = columnNumber;
 
-        this._updateExecutionLine();
-        this._updateExecutionRangeHighlight();
+        if (!this._initialStringNotSet) {
+            this._updateExecutionLine();
+            this._updateExecutionRangeHighlight();
+        }
 
         // Still dispatch the event even if the number didn't change. The execution state still
         // could have changed (e.g. continuing in a loop with a breakpoint inside).
@@ -703,7 +705,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         if (this._formatterSourceMap)
             offset = this._formatterSourceMap.formattedToOriginalOffset(position.line, position.ch);
         else
-            offset = this.tokenTrackingController._codeMirror.getDoc().indexFromPos(position);
+            offset = this._codeMirror.getDoc().indexFromPos(position);
 
         return offset;
     }
@@ -1220,6 +1222,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
             if (this._executionLineHandle) {
                 this._codeMirror.addLineClass(this._executionLineHandle, "wrap", WebInspector.TextEditor.ExecutionLineStyleClassName);
                 this._codeMirror.addLineClass(this._executionLineHandle, "wrap", "primary");
+                this._codeMirror.removeLineClass(this._executionLineHandle, "wrap", WebInspector.TextEditor.HighlightedStyleClassName);
             }
         });
     }
@@ -1238,8 +1241,9 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         let originalOffset = this.currentPositionToOriginalOffset(currentPosition);
         let originalCodeMirrorPosition = this.currentPositionToOriginalPosition(currentPosition);
         let originalPosition = new WebInspector.SourceCodePosition(originalCodeMirrorPosition.line, originalCodeMirrorPosition.ch);
+        let characterAtOffset = this._codeMirror.getRange(currentPosition, {line: this._executionLineNumber, ch: this._executionColumnNumber + 1});
 
-        this._delegate.textEditorExecutionHighlightRange(originalOffset, originalPosition, (range) => {
+        this._delegate.textEditorExecutionHighlightRange(originalOffset, originalPosition, characterAtOffset, (range) => {
             let start, end;
             if (!range) {
                 // Highlight the rest of the line.

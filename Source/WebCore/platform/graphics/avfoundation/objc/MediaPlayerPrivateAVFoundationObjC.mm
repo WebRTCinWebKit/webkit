@@ -109,7 +109,7 @@
 #import <VideoToolbox/VideoToolbox.h>
 #endif
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 #include "CFNSURLConnectionSPI.h"
 #endif
 
@@ -372,7 +372,7 @@ static dispatch_queue_t globalPullDelegateQueue()
 }
 #endif
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 class WebCoreNSURLAuthenticationChallengeClient : public RefCounted<WebCoreNSURLAuthenticationChallengeClient>, public AuthenticationClient {
 public:
     static RefPtr<WebCoreNSURLAuthenticationChallengeClient> create(NSURLAuthenticationChallenge *challenge)
@@ -1797,7 +1797,7 @@ bool MediaPlayerPrivateAVFoundationObjC::shouldWaitForLoadingOfResource(AVAssetR
 
 bool MediaPlayerPrivateAVFoundationObjC::shouldWaitForResponseToAuthenticationChallenge(NSURLAuthenticationChallenge* nsChallenge)
 {
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
     RefPtr<WebCoreNSURLAuthenticationChallengeClient> client = WebCoreNSURLAuthenticationChallengeClient::create(nsChallenge);
     RetainPtr<CFURLAuthChallengeRef> cfChallenge = adoptCF([nsChallenge _createCFAuthChallenge]);
     AuthenticationChallenge challenge(cfChallenge.get(), client.get());

@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include "DOMJITPatchpoint.h"
+#include "DOMJITCallDOMPatchpoint.h"
 #include "PropertySlot.h"
 #include "PutPropertySlot.h"
 #include "SpeculatedType.h"
@@ -51,7 +51,7 @@ public:
     const ClassInfo* thisClassInfo() const { return m_thisClassInfo; }
 
 #if ENABLE(JIT)
-    virtual Ref<DOMJIT::Patchpoint> callDOM() = 0;
+    virtual Ref<DOMJIT::CallDOMPatchpoint> callDOM() = 0;
     virtual Ref<DOMJIT::Patchpoint> checkDOM() = 0;
 #endif
 

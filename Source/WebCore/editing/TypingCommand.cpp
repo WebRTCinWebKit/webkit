@@ -41,6 +41,7 @@
 #include "Logging.h"
 #include "MathMLElement.h"
 #include "RenderElement.h"
+#include "StaticRange.h"
 #include "TextIterator.h"
 #include "VisibleUnits.h"
 #include "htmlediting.h"
@@ -76,8 +77,24 @@ private:
     const String& m_text;
 };
 
-static inline EditAction editActionForTypingCommand(TypingCommand::ETypingCommand command, TextGranularity granularity)
+static inline EditAction editActionForTypingCommand(TypingCommand::ETypingCommand command, TextGranularity granularity, TypingCommand::TextCompositionType compositionType)
 {
+    if (compositionType == TypingCommand::TextCompositionPending) {
+        if (command == TypingCommand::InsertText)
+            return EditActionTypingInsertPendingComposition;
+        if (command == TypingCommand::DeleteSelection)
+            return EditActionTypingDeletePendingComposition;
+        ASSERT_NOT_REACHED();
+    }
+
+    if (compositionType == TypingCommand::TextCompositionFinal) {
+        if (command == TypingCommand::InsertText)
+            return EditActionTypingInsertFinalComposition;
+        if (command == TypingCommand::DeleteSelection)
+            return EditActionTypingDeleteFinalComposition;
+        ASSERT_NOT_REACHED();
+    }
+
     switch (command) {
     case TypingCommand::DeleteSelection:
         return EditActionTypingDeleteSelection;
@@ -106,8 +123,24 @@ static inline EditAction editActionForTypingCommand(TypingCommand::ETypingComman
     }
 }
 
+static inline bool editActionIsDeleteByTyping(EditAction action)
+{
+    switch (action) {
+    case EditActionTypingDeleteSelection:
+    case EditActionTypingDeleteBackward:
+    case EditActionTypingDeleteWordBackward:
+    case EditActionTypingDeleteLineBackward:
+    case EditActionTypingDeleteForward:
+    case EditActionTypingDeleteWordForward:
+    case EditActionTypingDeleteLineForward:
+        return true;
+    default:
+        return false;
+    }
+}
+
 TypingCommand::TypingCommand(Document& document, ETypingCommand commandType, const String &textToInsert, Options options, TextGranularity granularity, TextCompositionType compositionType)
-    : TextInsertionBaseCommand(document, editActionForTypingCommand(commandType, granularity))
+    : TextInsertionBaseCommand(document, editActionForTypingCommand(commandType, granularity, compositionType))
     , m_commandType(commandType)
     , m_textToInsert(textToInsert)
     , m_currentTextToInsert(textToInsert)
@@ -125,7 +158,7 @@ TypingCommand::TypingCommand(Document& document, ETypingCommand commandType, con
     updatePreservesTypingStyle(m_commandType);
 }
 
-void TypingCommand::deleteSelection(Document& document, Options options)
+void TypingCommand::deleteSelection(Document& document, Options options, TextCompositionType compositionType)
 {
     Frame* frame = document.frame();
     ASSERT(frame);
@@ -134,12 +167,13 @@ void TypingCommand::deleteSelection(Document& document, Options options)
         return;
 
     if (RefPtr<TypingCommand> lastTypingCommand = lastTypingCommandIfStillOpenForTyping(*frame)) {
+        lastTypingCommand->setCompositionType(compositionType);
         lastTypingCommand->setShouldPreventSpellChecking(options & PreventSpellChecking);
         lastTypingCommand->deleteSelection(options & SmartDelete);
         return;
     }
 
-    TypingCommand::create(document, DeleteSelection, emptyString(), options)->apply();
+    TypingCommand::create(document, DeleteSelection, emptyString(), options, compositionType)->apply();
 }
 
 void TypingCommand::deleteKeyPressed(Document& document, Options options, TextGranularity granularity)
@@ -147,6 +181,7 @@ void TypingCommand::deleteKeyPressed(Document& document, Options options, TextGr
     if (granularity == CharacterGranularity) {
         if (RefPtr<TypingCommand> lastTypingCommand = lastTypingCommandIfStillOpenForTyping(*document.frame())) {
             updateSelectionIfDifferentFromCurrentSelection(lastTypingCommand.get(), document.frame());
+            lastTypingCommand->setCompositionType(TextCompositionNone);
             lastTypingCommand->setShouldPreventSpellChecking(options & PreventSpellChecking);
             lastTypingCommand->deleteKeyPressed(granularity, options & AddsToKillRing);
             return;
@@ -163,6 +198,7 @@ void TypingCommand::forwardDeleteKeyPressed(Document& document, Options options,
     if (granularity == CharacterGranularity) {
         if (RefPtr<TypingCommand> lastTypingCommand = lastTypingCommandIfStillOpenForTyping(*frame)) {
             updateSelectionIfDifferentFromCurrentSelection(lastTypingCommand.get(), frame);
+            lastTypingCommand->setCompositionType(TextCompositionNone);
             lastTypingCommand->setShouldPreventSpellChecking(options & PreventSpellChecking);
             lastTypingCommand->forwardDeleteKeyPressed(granularity, options & AddsToKillRing);
             return;
@@ -204,7 +240,7 @@ void TypingCommand::insertText(Document& document, const String& text, const Vis
 
     VisibleSelection currentSelection = frame->selection().selection();
 
-    String newText = dispatchBeforeTextInsertedEvent(text, selectionForInsertion, compositionType == TextCompositionUpdate);
+    String newText = dispatchBeforeTextInsertedEvent(text, selectionForInsertion, compositionType == TextCompositionPending);
     
     // Set the starting and ending selection appropriately if we are using a selection
     // that is different from the current selection.  In the future, we should change EditCommand
@@ -229,6 +265,7 @@ void TypingCommand::insertText(Document& document, const String& text, const Vis
 void TypingCommand::insertLineBreak(Document& document, Options options)
 {
     if (RefPtr<TypingCommand> lastTypingCommand = lastTypingCommandIfStillOpenForTyping(*document.frame())) {
+        lastTypingCommand->setCompositionType(TextCompositionNone);
         lastTypingCommand->setShouldRetainAutocorrectionIndicator(options & RetainAutocorrectionIndicator);
         lastTypingCommand->insertLineBreakAndNotifyAccessibility();
         return;
@@ -240,6 +277,7 @@ void TypingCommand::insertLineBreak(Document& document, Options options)
 void TypingCommand::insertParagraphSeparatorInQuotedContent(Document& document)
 {
     if (RefPtr<TypingCommand> lastTypingCommand = lastTypingCommandIfStillOpenForTyping(*document.frame())) {
+        lastTypingCommand->setCompositionType(TextCompositionNone);
         lastTypingCommand->insertParagraphSeparatorInQuotedContentAndNotifyAccessibility();
         return;
     }
@@ -250,6 +288,7 @@ void TypingCommand::insertParagraphSeparatorInQuotedContent(Document& document)
 void TypingCommand::insertParagraphSeparator(Document& document, Options options)
 {
     if (RefPtr<TypingCommand> lastTypingCommand = lastTypingCommandIfStillOpenForTyping(*document.frame())) {
+        lastTypingCommand->setCompositionType(TextCompositionNone);
         lastTypingCommand->setShouldRetainAutocorrectionIndicator(options & RetainAutocorrectionIndicator);
         lastTypingCommand->insertParagraphSeparatorAndNotifyAccessibility();
         return;
@@ -265,6 +304,11 @@ RefPtr<TypingCommand> TypingCommand::lastTypingCommandIfStillOpenForTyping(Frame
         return nullptr;
 
     return static_cast<TypingCommand*>(lastEditCommand.get());
+}
+
+bool TypingCommand::shouldDeferWillApplyCommandUntilAddingTypingCommand() const
+{
+    return !m_isHandlingInitialTypingCommand || editActionIsDeleteByTyping(editingAction());
 }
 
 void TypingCommand::closeTyping(Frame* frame)
@@ -296,7 +340,7 @@ void TypingCommand::postTextStateChangeNotificationForDeletion(const VisibleSele
 
 bool TypingCommand::willApplyCommand()
 {
-    if (!m_isHandlingInitialTypingCommand) {
+    if (shouldDeferWillApplyCommandUntilAddingTypingCommand()) {
         // The TypingCommand will handle the willApplyCommand logic separately in TypingCommand::willAddTypingToOpenCommand.
         return true;
     }
@@ -345,12 +389,21 @@ String TypingCommand::inputEventTypeName() const
     return inputTypeNameForEditingAction(m_currentTypingEditAction);
 }
 
+bool TypingCommand::isBeforeInputEventCancelable() const
+{
+    return m_currentTypingEditAction != EditActionTypingInsertPendingComposition && m_currentTypingEditAction != EditActionTypingDeletePendingComposition;
+}
+
 String TypingCommand::inputEventData() const
 {
-    if (m_currentTypingEditAction == EditActionTypingInsertText)
+    switch (m_currentTypingEditAction) {
+    case EditActionTypingInsertText:
+    case EditActionTypingInsertPendingComposition:
+    case EditActionTypingInsertFinalComposition:
         return m_currentTextToInsert;
-
-    return CompositeEditCommand::inputEventData();
+    default:
+        return CompositeEditCommand::inputEventData();
+    }
 }
 
 void TypingCommand::didApplyCommand()
@@ -413,14 +466,19 @@ void TypingCommand::markMisspellingsAfterTyping(ETypingCommand commandType)
     }
 }
 
-bool TypingCommand::willAddTypingToOpenCommand(ETypingCommand commandType, TextGranularity granularity, const String& text)
+bool TypingCommand::willAddTypingToOpenCommand(ETypingCommand commandType, TextGranularity granularity, const String& text, RefPtr<Range>&& range)
 {
-    if (m_isHandlingInitialTypingCommand)
+    m_currentTextToInsert = text;
+    m_currentTypingEditAction = editActionForTypingCommand(commandType, granularity, m_compositionType);
+
+    if (!shouldDeferWillApplyCommandUntilAddingTypingCommand())
         return true;
 
-    m_currentTextToInsert = text;
-    m_currentTypingEditAction = editActionForTypingCommand(commandType, granularity);
-    return frame().editor().willApplyEditing(*this);
+    if (!range || isEditingTextAreaOrTextInput())
+        return frame().editor().willApplyEditing(*this, CompositeEditCommand::targetRangesForBindings());
+
+    RefPtr<StaticRange> staticRange = StaticRange::createFromRange(*range);
+    return frame().editor().willApplyEditing(*this, { 1, staticRange });
 }
 
 void TypingCommand::typingAddedToOpenCommand(ETypingCommand commandTypeForAddedTyping)
@@ -562,9 +620,6 @@ bool TypingCommand::makeEditableRootEmpty()
 
 void TypingCommand::deleteKeyPressed(TextGranularity granularity, bool shouldAddToKillRing)
 {
-    if (!willAddTypingToOpenCommand(DeleteKey, granularity))
-        return;
-
     Frame& frame = this->frame();
 
     frame.editor().updateMarkersForWordsAffectedByEditing(false);
@@ -593,11 +648,15 @@ void TypingCommand::deleteKeyPressed(TextGranularity granularity, bool shouldAdd
 
         if (endingSelection().visibleStart().previous(CannotCrossEditingBoundary).isNull()) {
             // When the caret is at the start of the editable area in an empty list item, break out of the list item.
-            if (breakOutOfEmptyListItem()) {
-                typingAddedToOpenCommand(DeleteKey);
+            if (auto deleteListSelection = shouldBreakOutOfEmptyListItem()) {
+                if (willAddTypingToOpenCommand(DeleteKey, granularity, { }, Range::create(document(), deleteListSelection.value().start(), deleteListSelection.value().end()))) {
+                    breakOutOfEmptyListItem();
+                    typingAddedToOpenCommand(DeleteKey);
+                }
                 return;
             }
             // When there are no visible positions in the editing root, delete its entire contents.
+            // FIXME: Dispatch a `beforeinput` event here and bail if preventDefault() was invoked.
             if (endingSelection().visibleStart().next(CannotCrossEditingBoundary).isNull() && makeEditableRootEmpty()) {
                 typingAddedToOpenCommand(DeleteKey);
                 return;
@@ -660,6 +719,9 @@ void TypingCommand::deleteKeyPressed(TextGranularity granularity, bool shouldAdd
     if (selectionToDelete.isCaret() || !frame.selection().shouldDeleteSelection(selectionToDelete))
         return;
     
+    if (!willAddTypingToOpenCommand(DeleteKey, granularity, { }, selectionToDelete.firstRange()))
+        return;
+
     if (shouldAddToKillRing)
         frame.editor().addRangeToKillRing(*selectionToDelete.toNormalizedRange().get(), Editor::KillRingInsertionMode::PrependText);
 
@@ -678,9 +740,6 @@ void TypingCommand::deleteKeyPressed(TextGranularity granularity, bool shouldAdd
 
 void TypingCommand::forwardDeleteKeyPressed(TextGranularity granularity, bool shouldAddToKillRing)
 {
-    if (!willAddTypingToOpenCommand(ForwardDeleteKey, granularity))
-        return;
-
     Frame& frame = this->frame();
 
     frame.editor().updateMarkersForWordsAffectedByEditing(false);
@@ -764,7 +823,10 @@ void TypingCommand::forwardDeleteKeyPressed(TextGranularity granularity, bool sh
     
     if (selectionToDelete.isCaret() || !frame.selection().shouldDeleteSelection(selectionToDelete))
         return;
-        
+
+    if (!willAddTypingToOpenCommand(ForwardDeleteKey, granularity, { }, selectionToDelete.firstRange()))
+        return;
+
     // Post the accessibility notification before actually deleting the content while selectionToDelete is still valid
     postTextStateChangeNotificationForDeletion(selectionToDelete);
 

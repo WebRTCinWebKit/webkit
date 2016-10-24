@@ -175,7 +175,7 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
     , m_fpsSink(0)
     , m_readyState(MediaPlayer::HaveNothing)
     , m_networkState(MediaPlayer::Empty)
-#if USE(GSTREAMER_GL)
+#if USE(GSTREAMER_GL) || USE(COORDINATED_GRAPHICS_THREADED)
     , m_drawTimer(RunLoop::main(), this, &MediaPlayerPrivateGStreamerBase::repaint)
 #endif
     , m_usingFallbackVideoSink(false)
@@ -575,7 +575,7 @@ void MediaPlayerPrivateGStreamerBase::repaint()
 
     m_player->repaint();
 
-#if USE(GSTREAMER_GL)
+#if USE(GSTREAMER_GL) || USE(COORDINATED_GRAPHICS_THREADED)
     m_drawCondition.notifyOne();
 #endif
 }
@@ -595,6 +595,13 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
     }
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
+    if (!m_player->client().mediaPlayerAcceleratedCompositingEnabled()) {
+        LockHolder locker(m_drawMutex);
+        m_drawTimer.startOneShot(0);
+        m_drawCondition.wait(m_drawMutex);
+        return;
+    }
+
 #if USE(GSTREAMER_GL)
     pushTextureToCompositor();
 #else

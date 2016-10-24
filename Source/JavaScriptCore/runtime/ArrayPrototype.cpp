@@ -163,17 +163,24 @@ static ALWAYS_INLINE JSValue getProperty(ExecState* exec, JSObject* object, unsi
     return slot.getValue(exec, index);
 }
 
-static ALWAYS_INLINE void putLength(ExecState* exec, VM& vm, JSObject* obj, JSValue value)
+static ALWAYS_INLINE bool putLength(ExecState* exec, VM& vm, JSObject* obj, JSValue value)
 {
     PutPropertySlot slot(obj);
-    obj->methodTable()->put(obj, exec, vm.propertyNames->length, value, slot);
+    return obj->methodTable()->put(obj, exec, vm.propertyNames->length, value, slot);
 }
 
 static ALWAYS_INLINE void setLength(ExecState* exec, VM& vm, JSObject* obj, unsigned value)
 {
-    if (isJSArray(obj))
-        jsCast<JSArray*>(obj)->setLength(exec, value);
-    putLength(exec, vm, obj, jsNumber(value));
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    static const bool throwException = true;
+    if (isJSArray(obj)) {
+        jsCast<JSArray*>(obj)->setLength(exec, value, throwException);
+        RETURN_IF_EXCEPTION(scope, void());
+    }
+    bool success = putLength(exec, vm, obj, jsNumber(value));
+    RETURN_IF_EXCEPTION(scope, void());
+    if (UNLIKELY(!success))
+        throwTypeError(exec, scope, ASCIILiteral(ReadonlyPropertyWriteError));
 }
 
 inline bool speciesWatchpointsValid(ExecState* exec, JSObject* thisObject)
@@ -292,13 +299,13 @@ void shift(ExecState* exec, JSObject* thisObj, unsigned header, unsigned current
             thisObj->putByIndexInline(exec, to, value, true);
             RETURN_IF_EXCEPTION(scope, void());
         } else if (!thisObj->methodTable(vm)->deletePropertyByIndex(thisObj, exec, to)) {
-            throwTypeError(exec, scope, ASCIILiteral("Unable to delete property."));
+            throwTypeError(exec, scope, ASCIILiteral(UnableToDeletePropertyError));
             return;
         }
     }
     for (unsigned k = length; k > length - count; --k) {
         if (!thisObj->methodTable(vm)->deletePropertyByIndex(thisObj, exec, k - 1)) {
-            throwTypeError(exec, scope, ASCIILiteral("Unable to delete property."));
+            throwTypeError(exec, scope, ASCIILiteral(UnableToDeletePropertyError));
             return;
         }
     }
@@ -335,7 +342,7 @@ void unshift(ExecState* exec, JSObject* thisObj, unsigned header, unsigned curre
             RETURN_IF_EXCEPTION(scope, void());
             thisObj->putByIndexInline(exec, to, value, true);
         } else if (!thisObj->methodTable(vm)->deletePropertyByIndex(thisObj, exec, to)) {
-            throwTypeError(exec, scope, ASCIILiteral("Unable to delete property."));
+            throwTypeError(exec, scope, ASCIILiteral(UnableToDeletePropertyError));
             return;
         }
         RETURN_IF_EXCEPTION(scope, void());
@@ -685,7 +692,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncPop(ExecState* exec)
         result = thisObj->get(exec, length - 1);
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
         if (!thisObj->methodTable(vm)->deletePropertyByIndex(thisObj, exec, length - 1)) {
-            throwTypeError(exec, scope, ASCIILiteral("Unable to delete property."));
+            throwTypeError(exec, scope, ASCIILiteral(UnableToDeletePropertyError));
             return JSValue::encode(jsUndefined());
         }
         putLength(exec, vm, thisObj, jsNumber(length - 1));
@@ -798,7 +805,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncReverse(ExecState* exec)
             RETURN_IF_EXCEPTION(scope, encodedJSValue());
         } else if (!thisObject->methodTable(vm)->deletePropertyByIndex(thisObject, exec, lower)) {
             if (!scope.exception())
-                throwTypeError(exec, scope, ASCIILiteral("Unable to delete property."));
+                throwTypeError(exec, scope, ASCIILiteral(UnableToDeletePropertyError));
             return JSValue::encode(JSValue());
         }
 
@@ -807,7 +814,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncReverse(ExecState* exec)
             RETURN_IF_EXCEPTION(scope, encodedJSValue());
         } else if (!thisObject->methodTable(vm)->deletePropertyByIndex(thisObject, exec, upper)) {
             if (!scope.exception())
-                throwTypeError(exec, scope, ASCIILiteral("Unable to delete property."));
+                throwTypeError(exec, scope, ASCIILiteral(UnableToDeletePropertyError));
             return JSValue::encode(JSValue());
         }
     }
@@ -874,8 +881,9 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncSlice(ExecState* exec)
         JSValue v = getProperty(exec, thisObj, k);
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
         if (v)
-            result->putDirectIndex(exec, n, v);
+            result->putDirectIndex(exec, n, v, 0, PutDirectIndexShouldThrow);
     }
+    scope.release();
     setLength(exec, vm, result, n);
     return JSValue::encode(result);
 }
@@ -907,37 +915,39 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncSplice(ExecState* exec)
         }
 
         setLength(exec, vm, result, 0);
+        RETURN_IF_EXCEPTION(scope, encodedJSValue());
+        scope.release();
         setLength(exec, vm, thisObj, length);
         return JSValue::encode(result);
     }
 
-    unsigned begin = argumentClampedIndexFromStartOrEnd(exec, 0, length);
+    unsigned actualStart = argumentClampedIndexFromStartOrEnd(exec, 0, length);
 
-    unsigned deleteCount = length - begin;
+    unsigned actualDeleteCount = length - actualStart;
     if (exec->argumentCount() > 1) {
-        double deleteDouble = exec->uncheckedArgument(1).toInteger(exec);
-        if (deleteDouble < 0)
-            deleteCount = 0;
-        else if (deleteDouble > length - begin)
-            deleteCount = length - begin;
+        double deleteCount = exec->uncheckedArgument(1).toInteger(exec);
+        if (deleteCount < 0)
+            actualDeleteCount = 0;
+        else if (deleteCount > length - actualStart)
+            actualDeleteCount = length - actualStart;
         else
-            deleteCount = static_cast<unsigned>(deleteDouble);
+            actualDeleteCount = static_cast<unsigned>(deleteCount);
     }
 
-    std::pair<SpeciesConstructResult, JSObject*> speciesResult = speciesConstructArray(exec, thisObj, deleteCount);
+    std::pair<SpeciesConstructResult, JSObject*> speciesResult = speciesConstructArray(exec, thisObj, actualDeleteCount);
     if (speciesResult.first == SpeciesConstructResult::Exception)
         return JSValue::encode(jsUndefined());
 
     JSObject* result = nullptr;
     if (speciesResult.first == SpeciesConstructResult::FastPath && isJSArray(thisObj) && length == getLength(exec, thisObj))
-        result = asArray(thisObj)->fastSlice(*exec, begin, deleteCount);
+        result = asArray(thisObj)->fastSlice(*exec, actualStart, actualDeleteCount);
 
     if (!result) {
         if (speciesResult.first == SpeciesConstructResult::CreatedObject) {
             result = speciesResult.second;
             
-            for (unsigned k = 0; k < deleteCount; ++k) {
-                JSValue v = getProperty(exec, thisObj, k + begin);
+            for (unsigned k = 0; k < actualDeleteCount; ++k) {
+                JSValue v = getProperty(exec, thisObj, k + actualStart);
                 RETURN_IF_EXCEPTION(scope, encodedJSValue());
                 if (UNLIKELY(!v))
                     continue;
@@ -945,12 +955,12 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncSplice(ExecState* exec)
                 RETURN_IF_EXCEPTION(scope, encodedJSValue());
             }
         } else {
-            result = JSArray::tryCreateUninitialized(vm, exec->lexicalGlobalObject()->arrayStructureForIndexingTypeDuringAllocation(ArrayWithUndecided), deleteCount);
+            result = JSArray::tryCreateUninitialized(vm, exec->lexicalGlobalObject()->arrayStructureForIndexingTypeDuringAllocation(ArrayWithUndecided), actualDeleteCount);
             if (!result)
                 return JSValue::encode(throwOutOfMemoryError(exec, scope));
             
-            for (unsigned k = 0; k < deleteCount; ++k) {
-                JSValue v = getProperty(exec, thisObj, k + begin);
+            for (unsigned k = 0; k < actualDeleteCount; ++k) {
+                JSValue v = getProperty(exec, thisObj, k + actualStart);
                 RETURN_IF_EXCEPTION(scope, encodedJSValue());
                 if (UNLIKELY(!v))
                     continue;
@@ -959,20 +969,21 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncSplice(ExecState* exec)
         }
     }
 
-    unsigned additionalArgs = std::max<int>(exec->argumentCount() - 2, 0);
-    if (additionalArgs < deleteCount) {
-        shift<JSArray::ShiftCountForSplice>(exec, thisObj, begin, deleteCount, additionalArgs, length);
+    unsigned itemCount = std::max<int>(exec->argumentCount() - 2, 0);
+    if (itemCount < actualDeleteCount) {
+        shift<JSArray::ShiftCountForSplice>(exec, thisObj, actualStart, actualDeleteCount, itemCount, length);
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
-    } else if (additionalArgs > deleteCount) {
-        unshift<JSArray::ShiftCountForSplice>(exec, thisObj, begin, deleteCount, additionalArgs, length);
+    } else if (itemCount > actualDeleteCount) {
+        unshift<JSArray::ShiftCountForSplice>(exec, thisObj, actualStart, actualDeleteCount, itemCount, length);
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
     }
-    for (unsigned k = 0; k < additionalArgs; ++k) {
-        thisObj->putByIndexInline(exec, k + begin, exec->uncheckedArgument(k + 2), true);
+    for (unsigned k = 0; k < itemCount; ++k) {
+        thisObj->putByIndexInline(exec, k + actualStart, exec->uncheckedArgument(k + 2), true);
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
     }
     
-    setLength(exec, vm, thisObj, length - deleteCount + additionalArgs);
+    scope.release();
+    setLength(exec, vm, thisObj, length - actualDeleteCount + itemCount);
     return JSValue::encode(result);
 }
 
@@ -1078,7 +1089,7 @@ static bool moveElements(ExecState* exec, VM& vm, JSArray* target, unsigned targ
         for (unsigned i = 0; i < sourceLength; ++i) {
             JSValue value = source->tryGetIndexQuickly(i);
             if (value) {
-                target->putDirectIndex(exec, targetOffset + i, value);
+                target->putDirectIndex(exec, targetOffset + i, value, 0, PutDirectIndexShouldThrow);
                 RETURN_IF_EXCEPTION(scope, false);
             }
         }
@@ -1087,7 +1098,7 @@ static bool moveElements(ExecState* exec, VM& vm, JSArray* target, unsigned targ
             JSValue value = getProperty(exec, source, i);
             RETURN_IF_EXCEPTION(scope, false);
             if (value) {
-                target->putDirectIndex(exec, targetOffset + i, value);
+                target->putDirectIndex(exec, targetOffset + i, value, 0, PutDirectIndexShouldThrow);
                 RETURN_IF_EXCEPTION(scope, false);
             }
         }

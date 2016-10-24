@@ -52,7 +52,6 @@ struct OSRExit;
 template <class AssemblerType, class MacroAssemblerType>
 class AbstractMacroAssembler {
 public:
-    friend class JITWriteBarrierBase;
     typedef AbstractMacroAssembler<AssemblerType, MacroAssemblerType> AbstractMacroAssemblerType;
     typedef AssemblerType AssemblerType_T;
 
@@ -932,6 +931,11 @@ public:
     static void repatchJump(CodeLocationJump jump, CodeLocationLabel destination)
     {
         AssemblerType::relinkJump(jump.dataLocation(), destination.dataLocation());
+    }
+    
+    static void repatchJumpToNop(CodeLocationJump jump)
+    {
+        AssemblerType::relinkJumpToNop(jump.dataLocation());
     }
 
     static void repatchNearCall(CodeLocationNearCall nearCall, CodeLocationLabel destination)

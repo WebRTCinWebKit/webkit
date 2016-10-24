@@ -122,7 +122,7 @@ static bool containsUncommonAttributeSelector(const CSSSelector& rootSelector, b
             }
         }
 
-        if (selector->relation() != CSSSelector::SubSelector)
+        if (selector->relation() != CSSSelector::Subselector)
             matchesRightmostElement = false;
 
         selector = selector->tagHistory();
@@ -268,7 +268,7 @@ void RuleSet::addRule(StyleRule* rule, unsigned selectorIndex, AddRuleFlags addR
             m_slottedPseudoElementRules.append(ruleData);
             return;
         }
-        if (selector->relation() != CSSSelector::SubSelector)
+        if (selector->relation() != CSSSelector::Subselector)
             break;
         selector = selector->tagHistory();
     } while (selector);
@@ -392,18 +392,6 @@ bool RuleSet::hasShadowPseudoElementRules() const
         return true;
 #endif
     return false;
-}
-
-void RuleSet::copyShadowPseudoElementRulesFrom(const RuleSet& other)
-{
-    for (auto& keyValuePair : other.m_shadowPseudoElementRules)
-        m_shadowPseudoElementRules.add(keyValuePair.key, std::make_unique<RuleDataVector>(*keyValuePair.value));
-
-#if ENABLE(VIDEO_TRACK)
-    // FIXME: We probably shouldn't treat WebVTT as author stylable user agent shadow tree.
-    for (auto& cue : other.m_cuePseudoRules)
-        m_cuePseudoRules.append(cue);
-#endif
 }
 
 static inline void shrinkMapVectorsToFit(RuleSet::AtomRuleMap& map)

@@ -177,6 +177,7 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
     , m_canHandleHTTPSServerTrustEvaluation(true)
     , m_didNetworkProcessCrash(false)
     , m_memoryCacheDisabled(false)
+    , m_alwaysRunsAtBackgroundPriority(m_configuration->alwaysRunsAtBackgroundPriority())
     , m_userObservablePageCounter([this](RefCounterEvent) { updateProcessSuppressionState(); })
     , m_processSuppressionDisabledForPageCounter([this](RefCounterEvent) { updateProcessSuppressionState(); })
     , m_hiddenPageThrottlingAutoIncreasesCounter([this](RefCounterEvent) { m_hiddenPageThrottlingTimer.startOneShot(0); })
@@ -239,11 +240,9 @@ WebProcessPool::~WebProcessPool()
 
     m_messageReceiverMap.invalidate();
 
-    WebContextSupplementMap::const_iterator it = m_supplements.begin();
-    WebContextSupplementMap::const_iterator end = m_supplements.end();
-    for (; it != end; ++it) {
-        it->value->processPoolDestroyed();
-        it->value->clearProcessPool();
+    for (auto& supplement : m_supplements.values()) {
+        supplement->processPoolDestroyed();
+        supplement->clearProcessPool();
     }
 
     m_iconDatabase->invalidate();
@@ -415,10 +414,8 @@ void WebProcessPool::networkProcessCrashed(NetworkProcessProxy* networkProcessPr
     ASSERT(networkProcessProxy == m_networkProcess.get());
     m_didNetworkProcessCrash = true;
 
-    WebContextSupplementMap::const_iterator it = m_supplements.begin();
-    WebContextSupplementMap::const_iterator end = m_supplements.end();
-    for (; it != end; ++it)
-        it->value->processDidClose(networkProcessProxy);
+    for (auto& supplement : m_supplements.values())
+        supplement->processDidClose(networkProcessProxy);
 
     m_client.networkProcessDidCrash(this);
 
@@ -472,8 +469,8 @@ void WebProcessPool::databaseProcessCrashed(DatabaseProcessProxy* databaseProces
     ASSERT(m_databaseProcess);
     ASSERT(databaseProcessProxy == m_databaseProcess.get());
 
-    for (auto& supplement : m_supplements)
-        supplement.value->processDidClose(databaseProcessProxy);
+    for (auto& supplement : m_supplements.values())
+        supplement->processDidClose(databaseProcessProxy);
 
     m_client.databaseProcessDidCrash(this);
     m_databaseProcess = nullptr;
@@ -650,7 +647,7 @@ WebProcessProxy& WebProcessPool::createNewWebProcess()
         parameters.memoryPressureMonitorHandle = MemoryPressureMonitor::singleton().createHandle();
 #endif
 
-#if PLATFORM(WAYLAND)
+#if PLATFORM(WAYLAND) && USE(EGL)
     if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::Wayland)
         parameters.waylandCompositorDisplayName = WaylandCompositor::singleton().displayName();
 #endif
@@ -817,7 +814,7 @@ Ref<WebPageProxy> WebProcessPool::createWebPage(PageClient& pageClient, Ref<API:
     return process->createWebPage(pageClient, WTFMove(pageConfiguration));
 }
 
-DownloadProxy* WebProcessPool::download(WebPageProxy* initiatingPage, const ResourceRequest& request)
+DownloadProxy* WebProcessPool::download(WebPageProxy* initiatingPage, const ResourceRequest& request, const String& suggestedFilename)
 {
     DownloadProxy* downloadProxy = createDownloadProxy(request);
     SessionID sessionID = initiatingPage ? initiatingPage->sessionID() : SessionID::defaultSessionID();
@@ -830,7 +827,7 @@ DownloadProxy* WebProcessPool::download(WebPageProxy* initiatingPage, const Reso
             updatedRequest.setFirstPartyForCookies(URL(URL(), initiatingPage->pageLoadState().url()));
         else
             updatedRequest.setFirstPartyForCookies(URL());
-        networkProcess()->send(Messages::NetworkProcess::DownloadRequest(sessionID, downloadProxy->downloadID(), updatedRequest), 0);
+        networkProcess()->send(Messages::NetworkProcess::DownloadRequest(sessionID, downloadProxy->downloadID(), updatedRequest, suggestedFilename), 0);
         return downloadProxy;
     }
 

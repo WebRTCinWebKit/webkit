@@ -39,29 +39,6 @@
 
 namespace JSC {
 
-inline bool Heap::shouldCollect()
-{
-    if (isDeferred())
-        return false;
-    if (!m_isSafeToCollect)
-        return false;
-    if (m_operationInProgress != NoOperation)
-        return false;
-    if (Options::gcMaxHeapSize())
-        return m_bytesAllocatedThisCycle > Options::gcMaxHeapSize();
-    return m_bytesAllocatedThisCycle > m_maxEdenSize;
-}
-
-inline bool Heap::isBusy()
-{
-    return m_operationInProgress != NoOperation;
-}
-
-inline bool Heap::isCollecting()
-{
-    return m_operationInProgress == FullCollection || m_operationInProgress == EdenCollection;
-}
-
 ALWAYS_INLINE Heap* Heap::heap(const HeapCell* cell)
 {
     return cell->heap();
@@ -76,7 +53,7 @@ inline Heap* Heap::heap(const JSValue v)
 
 ALWAYS_INLINE bool Heap::isMarked(const void* rawCell)
 {
-    ASSERT(!mayBeGCThread());
+    ASSERT(mayBeGCThread() != GCThreadType::Helper);
     HeapCell* cell = bitwise_cast<HeapCell*>(rawCell);
     if (cell->isLargeAllocation())
         return cell->largeAllocation().isMarked();
@@ -150,50 +127,6 @@ inline void Heap::writeBarrierWithoutFence(const JSCell* from)
         return;
     if (UNLIKELY(isWithinThreshold(from->cellState(), blackThreshold)))
         addToRememberedSet(from);
-}
-
-inline void Heap::reportExtraMemoryAllocated(size_t size)
-{
-    if (size > minExtraMemory) 
-        reportExtraMemoryAllocatedSlowCase(size);
-}
-
-inline void Heap::reportExtraMemoryVisited(JSCell* cell, size_t size)
-{
-    // We don't want to double-count the extra memory that was reported in previous collections.
-    if (operationInProgress() == EdenCollection && cell->cellState() == CellState::OldBlack)
-        return;
-
-    size_t* counter = &m_extraMemorySize;
-    
-    for (;;) {
-        size_t oldSize = *counter;
-        if (WTF::weakCompareAndSwap(counter, oldSize, oldSize + size))
-            return;
-    }
-}
-
-#if ENABLE(RESOURCE_USAGE)
-inline void Heap::reportExternalMemoryVisited(JSCell* cell, size_t size)
-{
-    // We don't want to double-count the external memory that was reported in previous collections.
-    if (operationInProgress() == EdenCollection && cell->cellState() == CellState::OldBlack)
-        return;
-
-    size_t* counter = &m_externalMemorySize;
-
-    for (;;) {
-        size_t oldSize = *counter;
-        if (WTF::weakCompareAndSwap(counter, oldSize, oldSize + size))
-            return;
-    }
-}
-#endif
-
-inline void Heap::deprecatedReportExtraMemory(size_t size)
-{
-    if (size > minExtraMemory) 
-        deprecatedReportExtraMemorySlowCase(size);
 }
 
 template<typename Functor> inline void Heap::forEachCodeBlock(const Functor& func)
@@ -358,42 +291,6 @@ inline void Heap::decrementDeferralDepth()
     m_deferralDepth--;
 }
 
-inline bool Heap::collectIfNecessaryOrDefer(GCDeferralContext* deferralContext)
-{
-    if (!shouldCollect())
-        return false;
-
-    if (deferralContext)
-        deferralContext->m_shouldGC = true;
-    else
-        collect();
-    return true;
-}
-
-inline void Heap::collectAccordingToDeferGCProbability()
-{
-    if (isDeferred() || !m_isSafeToCollect || m_operationInProgress != NoOperation)
-        return;
-
-    if (randomNumber() < Options::deferGCProbability()) {
-        collect();
-        return;
-    }
-
-    // If our coin flip told us not to GC, we still might GC,
-    // but we GC according to our memory pressure markers.
-    collectIfNecessaryOrDefer();
-}
-
-inline void Heap::decrementDeferralDepthAndGCIfNeeded()
-{
-    decrementDeferralDepth();
-    if (UNLIKELY(Options::deferGCShouldCollectWithProbability()))
-        collectAccordingToDeferGCProbability();
-    else
-        collectIfNecessaryOrDefer();
-}
-
 inline HashSet<MarkedArgumentBuffer*>& Heap::markListSet()
 {
     if (!m_markListSet)
@@ -401,32 +298,16 @@ inline HashSet<MarkedArgumentBuffer*>& Heap::markListSet()
     return *m_markListSet;
 }
 
-inline void Heap::registerWeakGCMap(void* weakGCMap, std::function<void()> pruningCallback)
+inline void Heap::reportExtraMemoryAllocated(size_t size)
 {
-    m_weakGCMaps.add(weakGCMap, WTFMove(pruningCallback));
+    if (size > minExtraMemory) 
+        reportExtraMemoryAllocatedSlowCase(size);
 }
 
-inline void Heap::unregisterWeakGCMap(void* weakGCMap)
+inline void Heap::deprecatedReportExtraMemory(size_t size)
 {
-    m_weakGCMaps.remove(weakGCMap);
-}
-
-inline void Heap::didAllocateBlock(size_t capacity)
-{
-#if ENABLE(RESOURCE_USAGE)
-    m_blockBytesAllocated += capacity;
-#else
-    UNUSED_PARAM(capacity);
-#endif
-}
-
-inline void Heap::didFreeBlock(size_t capacity)
-{
-#if ENABLE(RESOURCE_USAGE)
-    m_blockBytesAllocated -= capacity;
-#else
-    UNUSED_PARAM(capacity);
-#endif
+    if (size > minExtraMemory) 
+        deprecatedReportExtraMemorySlowCase(size);
 }
 
 } // namespace JSC

@@ -26,7 +26,7 @@ using namespace JSC;
 
 namespace WebCore {
 
-template<> Optional<TestStandaloneDictionary> convertDictionary<TestStandaloneDictionary>(ExecState& state, JSValue value)
+template<> DictionaryImplName convertDictionary<DictionaryImplName>(ExecState& state, JSValue value)
 {
     VM& vm = state.vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
@@ -34,24 +34,24 @@ template<> Optional<TestStandaloneDictionary> convertDictionary<TestStandaloneDi
     auto* object = isNullOrUndefined ? nullptr : value.getObject();
     if (UNLIKELY(!isNullOrUndefined && !object)) {
         throwTypeError(&state, throwScope);
-        return Nullopt;
+        return { };
     }
     if (UNLIKELY(object && object->type() == RegExpObjectType)) {
         throwTypeError(&state, throwScope);
-        return Nullopt;
+        return { };
     }
-    TestStandaloneDictionary result;
+    DictionaryImplName result;
     JSValue boolMemberValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "boolMember"));
     if (!boolMemberValue.isUndefined()) {
-        result.boolMember = convert<bool>(state, boolMemberValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        result.boolMember = convert<IDLBoolean>(state, boolMemberValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue stringMemberValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "stringMember"));
     if (!stringMemberValue.isUndefined()) {
-        result.stringMember = convert<String>(state, stringMemberValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        result.stringMember = convert<IDLDOMString>(state, stringMemberValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
-    return WTFMove(result);
+    return result;
 }
 
 } // namespace WebCore

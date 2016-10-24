@@ -31,7 +31,7 @@
 #include "Debugger.h"
 #include "JIT.h"
 #include "JSCInlines.h"
-#include "JSWASMModule.h"
+#include "JSWasmModule.h"
 #include "LLIntEntrypoint.h"
 #include "Parser.h"
 #include "TypeProfiler.h"
@@ -398,13 +398,12 @@ static void setupJIT(VM& vm, CodeBlock* codeBlock)
 }
 
 JSObject* ScriptExecutable::prepareForExecutionImpl(
-    ExecState* exec, JSFunction* function, JSScope* scope, CodeSpecializationKind kind, CodeBlock*& resultCodeBlock)
+    VM& vm, JSFunction* function, JSScope* scope, CodeSpecializationKind kind, CodeBlock*& resultCodeBlock)
 {
-    VM& vm = exec->vm();
     DeferGCForAWhile deferGC(vm.heap);
 
     if (vm.getAndClearFailNextNewCodeBlock())
-        return createError(exec->callerFrame(), ASCIILiteral("Forced Failure"));
+        return createError(scope->globalObject()->globalExec(), ASCIILiteral("Forced Failure"));
 
     JSObject* exception = 0;
     CodeBlock* codeBlock = newCodeBlockFor(kind, function, scope, exception);
@@ -422,7 +421,7 @@ JSObject* ScriptExecutable::prepareForExecutionImpl(
     else
         setupJIT(vm, codeBlock);
     
-    installCode(*codeBlock->vm(), codeBlock, codeBlock->codeType(), codeBlock->specializationKind());
+    installCode(vm, codeBlock, codeBlock->codeType(), codeBlock->specializationKind());
     return nullptr;
 }
 
@@ -748,7 +747,7 @@ FunctionExecutable* FunctionExecutable::fromGlobalCode(
 #if ENABLE(WEBASSEMBLY)
 const ClassInfo WebAssemblyExecutable::s_info = { "WebAssemblyExecutable", &ExecutableBase::s_info, 0, CREATE_METHOD_TABLE(WebAssemblyExecutable) };
 
-WebAssemblyExecutable::WebAssemblyExecutable(VM& vm, const SourceCode& source, JSWASMModule* module, unsigned functionIndex)
+WebAssemblyExecutable::WebAssemblyExecutable(VM& vm, const SourceCode& source, JSWasmModule* module, unsigned functionIndex)
     : ExecutableBase(vm, vm.webAssemblyExecutableStructure.get(), NUM_PARAMETERS_NOT_COMPILED, NoIntrinsic)
     , m_source(source)
     , m_module(vm, this, module)

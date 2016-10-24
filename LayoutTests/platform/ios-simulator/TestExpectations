@@ -136,6 +136,14 @@ imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements
 # No touch events
 fast/events/touch [ Skip ]
 fast/shadow-dom/touch-event-ios.html [ Skip ]
+http/tests/quicklook/at-import-stylesheet-blocked.html [ Skip ]
+http/tests/quicklook/base-url-blocked.html [ Skip ]
+http/tests/quicklook/cross-origin-iframe-blocked.html [ Skip ]
+http/tests/quicklook/document-domain-is-empty-string.html [ Skip ]
+http/tests/quicklook/external-stylesheet-blocked.html [ Skip ]
+http/tests/quicklook/submit-form-blocked.html [ Skip ]
+http/tests/quicklook/top-navigation-blocked.html [ Skip ]
+http/tests/quicklook/hide-referer-on-navigation.html [ Skip ]
 imported/w3c/web-platform-tests/touch-events [ Skip ]
 platform/ios-simulator/ios/fast/forms/range-input-container-touches.html [ Skip ]
 platform/ios-simulator/ios/fast/forms/range-input-readonly-and-disabled.html [ Skip ]
@@ -1200,6 +1208,9 @@ fast/events/inputText-never-fired-on-keydown-cancel.html [ Failure ]
 fast/events/input-events-fired-when-typing.html [ Failure ]
 fast/events/input-events-paste-data.html [ Failure ]
 fast/events/input-events-typing-data.html [ Failure ]
+fast/events/input-events-forecolor-data.html [ Failure ]
+fast/events/input-events-ime-recomposition.html [ Failure ]
+fast/events/input-events-ime-composition.html [ Failure ]
 fast/events/before-input-events-prevent-default.html [ Failure ]
 fast/events/before-input-events-prevent-default-in-textfield.html [ Failure ]
 fast/events/before-input-events-different-start-end-elements.html [ Failure ]
@@ -1208,6 +1219,11 @@ fast/events/before-input-prevent-cut.html [ Failure ]
 fast/events/before-input-prevent-paste.html [ Failure ]
 fast/events/before-input-prevent-undo.html [ Failure ]
 fast/events/before-input-prevent-typing.html [ Failure ]
+fast/events/before-input-delete-text-target-ranges.html [ Failure ]
+fast/events/before-input-replace-text-target-ranges.html [ Failure ]
+fast/events/before-input-delete-empty-list-target-ranges.html [ Failure ]
+fast/events/before-input-events-prevent-recomposition.html [ Failure ]
+fast/events/before-input-events-prevent-insert-composition.html [ Failure ]
 fast/events/key-events-in-input-button.html [ Failure ]
 fast/events/keydown-1.html [ Failure ]
 fast/events/keydown-leftright-keys.html [ Failure ]
@@ -2215,6 +2231,9 @@ platform/ios-simulator/ios/accessibility/set-value.html [ Failure ]
 platform/ios-simulator/ios/fast/css/webkit-overflow-scrolling-parsing.html [ Failure ]
 svg/custom/bug78807.svg [ Failure ]
 
+webkit.org/b/163127 http/tests/quicklook/secure-document-with-subresources.html [ Skip ]
+webkit.org/b/163127 accessibility/text-marker/character-offset-visible-position-conversion-hang.html [ Skip ]
+
 fast/filter-image/background-filter-image.html [ ImageOnlyFailure ]
 fast/text/combining-mark-paint.html [ ImageOnlyFailure ]
 fast/text/han-generic-font-families.html [ ImageOnlyFailure ]
@@ -2508,7 +2527,8 @@ webkit.org/b/157592 fast/images/composited-animated-gif-outside-viewport.html [ 
 
 webkit.org/b/156561 perf/rel-list-remove.html [ Pass Timeout Failure ]
 
-webkit.org/b/159683 imported/w3c/web-platform-tests/fetch/api/request/request-cache.html [ Pass Failure ]
+webkit.org/b/163332 imported/w3c/web-platform-tests/fetch/api/request/request-cache-reload.html [ Pass Failure ]
+webkit.org/b/163332 imported/w3c/web-platform-tests/fetch/api/request/request-cache-only-if-cached.html [ Pass Failure ]
 
 webkit.org/b/158640 imported/blink/storage/indexeddb/blob-valid-after-deletion.html [ Pass Failure ]
 
@@ -2545,7 +2565,6 @@ media/video-controls-fullscreen-volume.html
 media/video-controls-no-display-with-text-track.html
 media/video-controls-show-on-kb-or-ax-event.html
 media/video-fullscreen-restriction-removed.html
-media/video-play-require-user-gesture.html
 media/video-playsinline.html
 media/video-remote-control-playpause.html
 media/video-volume-slider-drag.html
@@ -2626,15 +2645,11 @@ media/video-controls-drop-and-restore-timeline.html [ Failure ]
 media/video-controls-in-media-document.html [ Failure ]
 media/video-controls-no-scripting.html [ Failure ]
 media/video-controls-toggling.html [ Failure ]
-media/video-controls-transformed.html [ Failure ]
-media/video-controls-visible-audio-only.html [ Failure ]
 media/video-controls-visible-exiting-fullscreen.html [ Failure ]
 media/video-controls-zoomed.html [ Failure ]
 media/video-frame-accurate-seek.html [ Failure ]
 media/video-fullscreeen-only-controls.html [ Failure ]
-media/video-fullscreeen-only-playback.html [ Failure ]
 media/video-initially-hidden-volume-slider-up.html [ Failure ]
-media/video-play-audio-require-user-gesture.html [ Failure ]
 media/video-trackmenu-selection.html [ Failure ]
 media/video-volume.html [ Failure ]
 
@@ -2648,6 +2663,9 @@ media/video-seek-to-current-time.html [ Failure ]
 fast/attachment/attachment-wrapping-action.html [ Pass ]
 
 fast/events/page-visibility-iframe-move-test.html [ Skip ]
+
+# LEGACY_ENCRYPTED_MEDIA is disabled on iOS.
+fast/events/webkit-media-key-events-constructor.html [ Failure ]
 
 webkit.org/b/161143 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/history-traversal/persisted-user-state-restoration/scroll-restoration-fragment-scrolling-samedoc.html [ Pass Failure ]
 
@@ -2680,8 +2698,34 @@ fast/text/letterpress-different.html [ Pass ]
 webkit.org/b/162739 fast/images/gif-loop-count.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/163009 media/modern-media-controls/icon-button/icon-button-active-state.html [ Failure ]
+webkit.org/b/163357 media/modern-media-controls/volume-slider/volume-slider-value.html [ Skip ]
+webkit.org/b/163669 media/modern-media-controls/start-support/start-support-fullscreen.html [ Skip ]
 
 # This variation font test requires Skia which isn't available on iOS.
 webkit.org/b/163093 fast/text/variations/advances.html [ Failure ]
 
 webkit.org/b/162647 http/tests/xmlhttprequest/onabort-response-getters.html [ Pass Failure ]
+
+# Media tests cannot tap play button on iOS.
+webkit.org/b/163291 media/require-user-gesture-to-load-video.html
+webkit.org/b/163291 media/video-controls-transformed.html [ Failure ]
+webkit.org/b/163291 media/video-controls-visible-audio-only.html [ Failure ]
+webkit.org/b/163291 media/video-fullscreeen-only-playback.html [ Failure ]
+webkit.org/b/163291 media/video-play-audio-require-user-gesture.html [ Failure ]
+webkit.org/b/163291 media/video-play-require-user-gesture.html
+
+webkit.org/b/163307 [ Debug ] loader/stateobjects/pushstate-size-iframe.html [ Skip ]
+webkit.org/b/163307 [ Debug ] loader/stateobjects/pushstate-size.html [ Skip ]
+webkit.org/b/163307 [ Debug ] loader/stateobjects/replacestate-size-iframe.html [ Skip ]
+webkit.org/b/163307 [ Debug ] loader/stateobjects/replacestate-size.html [ Skip ]
+
+webkit.org/b/163755 imported/w3c/csswg-test/css-shapes-1 [ Skip ]
+
+# These font variation tests require a variation font which supports more than 2 axes.
+animations/font-variations/font-variation-settings-order.html [ Pass ImageOnlyFailure Failure ]
+animations/font-variations/font-variation-settings-unlike.html [ Pass ImageOnlyFailure Failure ]
+
+webkit.org/b/163632 animations/font-variations/font-variation-settings.html [ Skip ]
+webkit.org/b/163632 fast/text/variations/getComputedStyle.html [ Skip ]
+
+webkit.org/b/158836 imported/w3c/web-platform-tests/encrypted-media [ Skip ]

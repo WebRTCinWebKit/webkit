@@ -17,6 +17,14 @@
       ],
       "status" : "committer"
    },
+   "Aaron Chu" : {
+      "emails" : [
+         "aaron_chu@apple.com"
+      ],
+      "nicks" : [
+         "aaron_chu"
+      ]
+   },
    "Aaron Colwell" : {
       "emails" : [
          "acolwell@chromium.org"
@@ -149,6 +157,7 @@
       "status" : "committer"
    },
    "Adobe Bug Tracker" : {
+      "class" : "bot",
       "emails" : [
          "WebkitBugTracker@adobe.com"
       ]
@@ -1258,6 +1267,7 @@
       "status" : "committer"
    },
    "Commit Queue" : {
+      "class" : "bot",
       "emails" : [
          "commit-queue@webkit.org"
       ]
@@ -1765,14 +1775,6 @@
          "dbatyai"
       ],
       "status" : "committer"
-   },
-   "Edward O'Connor" : {
-      "emails" : [
-         "eoconnor@apple.com"
-      ],
-      "nicks" : [
-         "hober"
-      ]
    },
    "Eli Fidler" : {
       "emails" : [
@@ -4521,6 +4523,7 @@
       "status" : "committer"
    },
    "Radar WebKit Bug Importer" : {
+      "class" : "bot",
       "emails" : [
          "webkit-bug-importer@group.apple.com"
       ]
@@ -5142,6 +5145,19 @@
       ],
       "status" : "committer"
    },
+   "Theresa O'Connor" : {
+      "aliases" : [
+         "Edward O'Connor",
+         "Ted O'Connor",
+         "Tess O'Connor"
+      ],
+      "emails" : [
+         "eoconnor@apple.com"
+      ],
+      "nicks" : [
+         "hober"
+      ]
+   },
    "Thiago Marcos P. Santos" : {
       "emails" : [
          "tmpsantos@gmail.com",
@@ -5455,6 +5471,7 @@
       ]
    },
    "WebKit Review Bot" : {
+      "class" : "bot",
       "emails" : [
          "webkit.review.bot@gmail.com"
       ],
@@ -5463,6 +5480,7 @@
       ]
    },
    "WebKitGTK+ Bugs" : {
+      "class" : "bot",
       "emails" : [
          "bugs-noreply@webkitgtk.org"
       ]

@@ -22,6 +22,7 @@
 #include "Heap.h"
 
 #include "CodeBlock.h"
+#include "CodeBlockSet.h"
 #include "ConservativeRoots.h"
 #include "DFGWorklist.h"
 #include "EdenGCActivityCallback.h"
@@ -38,6 +39,7 @@
 #include "HeapSnapshot.h"
 #include "HeapStatistics.h"
 #include "HeapVerifier.h"
+#include "HelpingGCScope.h"
 #include "IncrementalSweeper.h"
 #include "Interpreter.h"
 #include "JITStubRoutineSet.h"
@@ -139,15 +141,15 @@ HashMap<const char*, GCTypeMap<SimpleStats>>& timingStats()
     return *result;
 }
 
-SimpleStats& timingStats(const char* name, HeapOperation operation)
+SimpleStats& timingStats(const char* name, CollectionScope scope)
 {
-    return timingStats().add(name, GCTypeMap<SimpleStats>()).iterator->value[operation];
+    return timingStats().add(name, GCTypeMap<SimpleStats>()).iterator->value[scope];
 }
 
 class TimingScope {
 public:
-    TimingScope(HeapOperation operation, const char* name)
-        : m_operation(operation)
+    TimingScope(Optional<CollectionScope> scope, const char* name)
+        : m_scope(scope)
         , m_name(name)
     {
         if (measurePhaseTiming())
@@ -155,18 +157,18 @@ public:
     }
     
     TimingScope(Heap& heap, const char* name)
-        : TimingScope(heap.operationInProgress(), name)
+        : TimingScope(heap.collectionScope(), name)
     {
     }
     
-    void setOperation(HeapOperation operation)
+    void setScope(Optional<CollectionScope> scope)
     {
-        m_operation = operation;
+        m_scope = scope;
     }
     
-    void setOperation(Heap& heap)
+    void setScope(Heap& heap)
     {
-        setOperation(heap.operationInProgress());
+        setScope(heap.collectionScope());
     }
     
     ~TimingScope()
@@ -174,13 +176,13 @@ public:
         if (measurePhaseTiming()) {
             double after = monotonicallyIncreasingTimeMS();
             double timing = after - m_before;
-            SimpleStats& stats = timingStats(m_name, m_operation);
+            SimpleStats& stats = timingStats(m_name, *m_scope);
             stats.add(timing);
-            dataLog("[GC:", m_operation, "] ", m_name, " took: ", timing, " ms (average ", stats.mean(), " ms).\n");
+            dataLog("[GC:", *m_scope, "] ", m_name, " took: ", timing, " ms (average ", stats.mean(), " ms).\n");
         }
     }
 private:
-    HeapOperation m_operation;
+    Optional<CollectionScope> m_scope;
     double m_before;
     const char* m_name;
 };
@@ -202,7 +204,6 @@ Heap::Heap(VM* vm, HeapType heapType)
     , m_maxHeapSize(m_minBytesPerCycle)
     , m_shouldDoFullCollection(false)
     , m_totalBytesVisited(0)
-    , m_operationInProgress(NoOperation)
     , m_objectSpace(this)
     , m_extraMemorySize(0)
     , m_deprecatedExtraMemorySize(0)
@@ -251,7 +252,8 @@ bool Heap::isPagedOut(double deadline)
 void Heap::lastChanceToFinalize()
 {
     RELEASE_ASSERT(!m_vm->entryScope);
-    RELEASE_ASSERT(m_operationInProgress == NoOperation);
+    RELEASE_ASSERT(!m_collectionScope);
+    RELEASE_ASSERT(m_mutatorState == MutatorState::Running);
 
     m_arrayBuffers.lastChanceToFinalize();
     m_codeBlocks->lastChanceToFinalize();
@@ -388,18 +390,8 @@ void Heap::markRoots(double gcStartTime, void* stackOrigin, void* stackTop, Mach
 
     HeapRootVisitor heapRootVisitor(m_slotVisitor);
     
-    ConservativeRoots conservativeRoots(*this);
     {
         TimingScope preConvergenceTimingScope(*this, "Heap::markRoots before convergence");
-        // We gather conservative roots before clearing mark bits because conservative
-        // gathering uses the mark bits to determine whether a reference is valid.
-        {
-            TimingScope preConvergenceTimingScope(*this, "Heap::markRoots conservative scan");
-            SuperSamplerScope superSamplerScope(false);
-            gatherStackRoots(conservativeRoots, stackOrigin, stackTop, calleeSavedRegisters);
-            gatherJSStackRoots(conservativeRoots);
-            gatherScratchBufferRoots(conservativeRoots);
-        }
 
 #if ENABLE(DFG_JIT)
         DFG::rememberCodeBlocks(*m_vm);
@@ -417,7 +409,7 @@ void Heap::markRoots(double gcStartTime, void* stackOrigin, void* stackTop, Mach
         }
 #endif // ENABLE(SAMPLING_PROFILER)
 
-        if (m_operationInProgress == FullCollection) {
+        if (m_collectionScope == CollectionScope::Full) {
             m_opaqueRoots.clear();
             m_slotVisitor.clearMarkStack();
         }
@@ -440,7 +432,7 @@ void Heap::markRoots(double gcStartTime, void* stackOrigin, void* stackTop, Mach
                         slotVisitor = m_availableParallelSlotVisitors.takeLast();
                 }
 
-                WTF::registerGCThread();
+                WTF::registerGCThread(GCThreadType::Helper);
 
                 {
                     ParallelModeEnabler parallelModeEnabler(*slotVisitor);
@@ -463,9 +455,24 @@ void Heap::markRoots(double gcStartTime, void* stackOrigin, void* stackTop, Mach
         ParallelModeEnabler enabler(m_slotVisitor);
         
         m_slotVisitor.donateAndDrain();
+
+        {
+            TimingScope preConvergenceTimingScope(*this, "Heap::markRoots conservative scan");
+            ConservativeRoots conservativeRoots(*this);
+            SuperSamplerScope superSamplerScope(false);
+            gatherStackRoots(conservativeRoots, stackOrigin, stackTop, calleeSavedRegisters);
+            gatherJSStackRoots(conservativeRoots);
+            gatherScratchBufferRoots(conservativeRoots);
+            visitConservativeRoots(conservativeRoots);
+            
+            // We want to do this to conservatively ensure that we rescan any code blocks that are
+            // running right now. However, we need to be sure to do it *after* we mark the code block
+            // so that we know for sure if it really needs a barrier.
+            m_codeBlocks->writeBarrierCurrentlyExecuting(this);
+        }
+
         visitExternalRememberedSet();
         visitSmallStrings();
-        visitConservativeRoots(conservativeRoots);
         visitProtectedObjects(heapRootVisitor);
         visitArgumentBuffers(heapRootVisitor);
         visitException(heapRootVisitor);
@@ -520,13 +527,8 @@ void Heap::gatherScratchBufferRoots(ConservativeRoots& roots)
 void Heap::beginMarking()
 {
     TimingScope timingScope(*this, "Heap::beginMarking");
-    if (m_operationInProgress == FullCollection)
+    if (m_collectionScope == CollectionScope::Full)
         m_codeBlocks->clearMarksForFullCollection();
-    
-    {
-        TimingScope clearNewlyAllocatedTimingScope(*this, "m_objectSpace.clearNewlyAllocated");
-        m_objectSpace.clearNewlyAllocated();
-    }
     
     {
         TimingScope clearMarksTimingScope(*this, "m_objectSpace.beginMarking");
@@ -543,7 +545,7 @@ void Heap::visitExternalRememberedSet()
 
 void Heap::visitSmallStrings()
 {
-    if (!m_vm->smallStrings.needsToBeVisited(m_operationInProgress))
+    if (!m_vm->smallStrings.needsToBeVisited(*m_collectionScope))
         return;
 
     m_vm->smallStrings.visitStrongReferences(m_slotVisitor);
@@ -762,7 +764,7 @@ void Heap::updateObjectCounts(double gcStartTime)
         dataLogF("\nNumber of live Objects after GC %lu, took %.6f secs\n", static_cast<unsigned long>(visitCount), WTF::monotonicallyIncreasingTime() - gcStartTime);
     }
     
-    if (m_operationInProgress == FullCollection)
+    if (m_collectionScope == CollectionScope::Full)
         m_totalBytesVisited = 0;
 
     m_totalBytesVisitedThisCycle = m_slotVisitor.bytesVisited() + threadBytesVisited();
@@ -870,7 +872,7 @@ void Heap::deleteAllCodeBlocks()
     // If JavaScript is running, it's not safe to delete all JavaScript code, since
     // we'll end up returning to deleted code.
     RELEASE_ASSERT(!m_vm->entryScope);
-    ASSERT(m_operationInProgress == NoOperation);
+    ASSERT(!m_collectionScope);
 
     completeAllJITPlans();
 
@@ -907,7 +909,7 @@ void Heap::clearUnmarkedExecutables()
 void Heap::deleteUnmarkedCompiledCode()
 {
     clearUnmarkedExecutables();
-    m_codeBlocks->deleteUnmarkedAndUnreferenced(m_operationInProgress);
+    m_codeBlocks->deleteUnmarkedAndUnreferenced(*m_collectionScope);
     m_jitStubRoutines->deleteUnmarkedJettisonedStubRoutines();
 }
 
@@ -915,7 +917,7 @@ void Heap::addToRememberedSet(const JSCell* cell)
 {
     ASSERT(cell);
     ASSERT(!Options::useConcurrentJIT() || !isCompilationThread());
-    ASSERT(isBlack(cell->cellState()));
+    ASSERT(cell->cellState() == CellState::AnthraciteOrBlack);
     // Indicate that this object is grey and that it's one of the following:
     // - A re-greyed object during a concurrent collection.
     // - An old remembered object.
@@ -931,7 +933,7 @@ void Heap::collectAllGarbage()
     if (!m_isSafeToCollect)
         return;
 
-    collectWithoutAnySweep(FullCollection);
+    collectWithoutAnySweep(CollectionScope::Full);
 
     DeferGCForAWhile deferGC(*this);
     if (UNLIKELY(Options::useImmortalObjects()))
@@ -954,29 +956,29 @@ void Heap::collectAllGarbage()
     sweepAllLogicallyEmptyWeakBlocks();
 }
 
-void Heap::collect(HeapOperation collectionType)
+void Heap::collect(Optional<CollectionScope> scope)
 {
     SuperSamplerScope superSamplerScope(false);
     if (!m_isSafeToCollect)
         return;
-
-    collectWithoutAnySweep(collectionType);
+    
+    collectWithoutAnySweep(scope);
 }
 
-NEVER_INLINE void Heap::collectWithoutAnySweep(HeapOperation collectionType)
+NEVER_INLINE void Heap::collectWithoutAnySweep(Optional<CollectionScope> scope)
 {
     void* stackTop;
     ALLOCATE_AND_GET_REGISTER_STATE(registers);
 
-    collectImpl(collectionType, wtfThreadData().stack().origin(), &stackTop, registers);
+    collectImpl(scope, wtfThreadData().stack().origin(), &stackTop, registers);
 
     sanitizeStackForVM(m_vm);
 }
 
-NEVER_INLINE void Heap::collectImpl(HeapOperation collectionType, void* stackOrigin, void* stackTop, MachineThreads::RegisterState& calleeSavedRegisters)
+NEVER_INLINE void Heap::collectImpl(Optional<CollectionScope> scope, void* stackOrigin, void* stackTop, MachineThreads::RegisterState& calleeSavedRegisters)
 {
     SuperSamplerScope superSamplerScope(false);
-    TimingScope collectImplTimingScope(collectionType, "Heap::collectImpl");
+    TimingScope collectImplTimingScope(scope, "Heap::collectImpl");
     
 #if ENABLE(ALLOCATION_LOGGING)
     dataLogF("JSC GC starting collection.\n");
@@ -989,80 +991,78 @@ NEVER_INLINE void Heap::collectImpl(HeapOperation collectionType, void* stackOri
     }
     
     double gcStartTime;
-    {
-        TimingScope earlyTimingScope(collectionType, "Heap::collectImpl before markRoots");
-
-        if (vm()->typeProfiler()) {
-            DeferGCForAWhile awhile(*this);
-            vm()->typeProfilerLog()->processLogEntries(ASCIILiteral("GC"));
-        }
-
+    
+    if (vm()->typeProfiler()) {
+        DeferGCForAWhile awhile(*this);
+        vm()->typeProfilerLog()->processLogEntries(ASCIILiteral("GC"));
+    }
+    
 #if ENABLE(JIT)
-        {
-            DeferGCForAWhile awhile(*this);
-            JITWorklist::instance()->completeAllForVM(*m_vm);
-        }
+    {
+        DeferGCForAWhile awhile(*this);
+        JITWorklist::instance()->completeAllForVM(*m_vm);
+    }
 #endif // ENABLE(JIT)
-
-        vm()->shadowChicken().update(*vm(), vm()->topCallFrame);
-
-        RELEASE_ASSERT(!m_deferralDepth);
-        ASSERT(vm()->currentThreadIsHoldingAPILock());
-        RELEASE_ASSERT(vm()->atomicStringTable() == wtfThreadData().atomicStringTable());
-        ASSERT(m_isSafeToCollect);
-        RELEASE_ASSERT(m_operationInProgress == NoOperation);
-
-        suspendCompilerThreads();
-        willStartCollection(collectionType);
+    
+    vm()->shadowChicken().update(*vm(), vm()->topCallFrame);
+    
+    RELEASE_ASSERT(!m_deferralDepth);
+    ASSERT(vm()->currentThreadIsHoldingAPILock());
+    RELEASE_ASSERT(vm()->atomicStringTable() == wtfThreadData().atomicStringTable());
+    ASSERT(m_isSafeToCollect);
+    RELEASE_ASSERT(!m_collectionScope);
+    
+    suspendCompilerThreads();
+    willStartCollection(scope);
+    {
+        HelpingGCScope helpingHeapScope(*this);
         
-        collectImplTimingScope.setOperation(*this);
-        earlyTimingScope.setOperation(*this);
-
+        collectImplTimingScope.setScope(*this);
+        
         gcStartTime = WTF::monotonicallyIncreasingTime();
         if (m_verifier) {
             // Verify that live objects from the last GC cycle haven't been corrupted by
             // mutators before we begin this new GC cycle.
             m_verifier->verify(HeapVerifier::Phase::BeforeGC);
-
+            
             m_verifier->initializeGCCycle();
             m_verifier->gatherLiveObjects(HeapVerifier::Phase::BeforeMarking);
         }
-
+        
         flushOldStructureIDTables();
         stopAllocation();
         prepareForMarking();
         flushWriteBarrierBuffer();
-
+        
         if (HasOwnPropertyCache* cache = vm()->hasOwnPropertyCache())
             cache->clear();
+        
+        markRoots(gcStartTime, stackOrigin, stackTop, calleeSavedRegisters);
+        
+        if (m_verifier) {
+            m_verifier->gatherLiveObjects(HeapVerifier::Phase::AfterMarking);
+            m_verifier->verify(HeapVerifier::Phase::AfterMarking);
+        }
+        
+        if (vm()->typeProfiler())
+            vm()->typeProfiler()->invalidateTypeSetCache();
+        
+        reapWeakHandles();
+        pruneStaleEntriesFromWeakGCMaps();
+        sweepArrayBuffers();
+        snapshotUnswept();
+        finalizeUnconditionalFinalizers();
+        removeDeadCompilerWorklistEntries();
+        deleteUnmarkedCompiledCode();
+        deleteSourceProviderCaches();
+        
+        notifyIncrementalSweeper();
+        m_codeBlocks->writeBarrierCurrentlyExecuting(this);
+        m_codeBlocks->clearCurrentlyExecuting();
+        
+        prepareForAllocation();
+        updateAllocationLimits();
     }
-
-    markRoots(gcStartTime, stackOrigin, stackTop, calleeSavedRegisters);
-    
-    TimingScope lateTimingScope(*this, "Heap::collectImpl after markRoots");
-
-    if (m_verifier) {
-        m_verifier->gatherLiveObjects(HeapVerifier::Phase::AfterMarking);
-        m_verifier->verify(HeapVerifier::Phase::AfterMarking);
-    }
-
-    if (vm()->typeProfiler())
-        vm()->typeProfiler()->invalidateTypeSetCache();
-
-    reapWeakHandles();
-    pruneStaleEntriesFromWeakGCMaps();
-    sweepArrayBuffers();
-    snapshotUnswept();
-    finalizeUnconditionalFinalizers();
-    removeDeadCompilerWorklistEntries();
-    deleteUnmarkedCompiledCode();
-    deleteSourceProviderCaches();
-
-    notifyIncrementalSweeper();
-    writeBarrierCurrentlyExecutingCodeBlocks();
-
-    prepareForAllocation();
-    updateAllocationLimits();
     didFinishCollection(gcStartTime);
     resumeCompilerThreads();
     sweepLargeAllocations();
@@ -1101,22 +1101,22 @@ void Heap::suspendCompilerThreads()
 #endif
 }
 
-void Heap::willStartCollection(HeapOperation collectionType)
+void Heap::willStartCollection(Optional<CollectionScope> scope)
 {
     if (Options::logGC())
         dataLog("=> ");
     
-    if (shouldDoFullCollection(collectionType)) {
-        m_operationInProgress = FullCollection;
+    if (shouldDoFullCollection(scope)) {
+        m_collectionScope = CollectionScope::Full;
         m_shouldDoFullCollection = false;
         if (Options::logGC())
             dataLog("FullCollection, ");
     } else {
-        m_operationInProgress = EdenCollection;
+        m_collectionScope = CollectionScope::Eden;
         if (Options::logGC())
             dataLog("EdenCollection, ");
     }
-    if (m_operationInProgress == FullCollection) {
+    if (m_collectionScope == CollectionScope::Full) {
         m_sizeBeforeLastFullCollect = m_sizeAfterLastCollect + m_bytesAllocatedThisCycle;
         m_extraMemorySize = 0;
         m_deprecatedExtraMemorySize = 0;
@@ -1127,7 +1127,7 @@ void Heap::willStartCollection(HeapOperation collectionType)
         if (m_fullActivityCallback)
             m_fullActivityCallback->willCollect();
     } else {
-        ASSERT(m_operationInProgress == EdenCollection);
+        ASSERT(m_collectionScope == CollectionScope::Eden);
         m_sizeBeforeLastEdenCollect = m_sizeAfterLastCollect + m_bytesAllocatedThisCycle;
     }
 
@@ -1145,7 +1145,7 @@ void Heap::flushOldStructureIDTables()
 
 void Heap::flushWriteBarrierBuffer()
 {
-    if (m_operationInProgress == EdenCollection) {
+    if (m_collectionScope == CollectionScope::Eden) {
         m_writeBarrierBuffer.flush(*this);
         return;
     }
@@ -1169,7 +1169,7 @@ void Heap::reapWeakHandles()
 
 void Heap::pruneStaleEntriesFromWeakGCMaps()
 {
-    if (m_operationInProgress != FullCollection)
+    if (m_collectionScope != CollectionScope::Full)
         return;
     for (auto& pruneCallback : m_weakGCMaps.values())
         pruneCallback();
@@ -1193,17 +1193,12 @@ void Heap::deleteSourceProviderCaches()
 
 void Heap::notifyIncrementalSweeper()
 {
-    if (m_operationInProgress == FullCollection) {
+    if (m_collectionScope == CollectionScope::Full) {
         if (!m_logicallyEmptyWeakBlocks.isEmpty())
             m_indexOfNextLogicallyEmptyWeakBlockToSweep = 0;
     }
 
     m_sweeper->startSweeping();
-}
-
-void Heap::writeBarrierCurrentlyExecutingCodeBlocks()
-{
-    m_codeBlocks->writeBarrierCurrentlyExecutingCodeBlocks(this);
 }
 
 void Heap::prepareForAllocation()
@@ -1246,7 +1241,7 @@ void Heap::updateAllocationLimits()
     if (Options::gcMaxHeapSize() && currentHeapSize > Options::gcMaxHeapSize())
         HeapStatistics::exitWithFailure();
 
-    if (m_operationInProgress == FullCollection) {
+    if (m_collectionScope == CollectionScope::Full) {
         // To avoid pathological GC churn in very small and very large heaps, we set
         // the new allocation limit based on the current size of the heap, with a
         // fixed minimum.
@@ -1301,8 +1296,8 @@ void Heap::updateAllocationLimits()
 void Heap::didFinishCollection(double gcStartTime)
 {
     double gcEndTime = WTF::monotonicallyIncreasingTime();
-    HeapOperation operation = m_operationInProgress;
-    if (m_operationInProgress == FullCollection)
+    CollectionScope scope = *m_collectionScope;
+    if (scope == CollectionScope::Full)
         m_lastFullGCLength = gcEndTime - gcStartTime;
     else
         m_lastEdenGCLength = gcEndTime - gcStartTime;
@@ -1325,11 +1320,11 @@ void Heap::didFinishCollection(double gcStartTime)
         removeDeadHeapSnapshotNodes(*heapProfiler);
     }
 
-    RELEASE_ASSERT(m_operationInProgress == EdenCollection || m_operationInProgress == FullCollection);
-    m_operationInProgress = NoOperation;
+    RELEASE_ASSERT(m_collectionScope);
+    m_collectionScope = Nullopt;
 
     for (auto* observer : m_observers)
-        observer->didGarbageCollect(operation);
+        observer->didGarbageCollect(scope);
 }
 
 void Heap::resumeCompilerThreads()
@@ -1391,7 +1386,7 @@ bool Heap::isValidAllocation(size_t)
     if (!isValidThreadState(m_vm))
         return false;
 
-    if (m_operationInProgress != NoOperation)
+    if (isCurrentThreadBusy())
         return false;
     
     return true;
@@ -1436,7 +1431,7 @@ class Zombify : public MarkedBlock::VoidFunctor {
 public:
     inline void visit(HeapCell* cell) const
     {
-        void** current = reinterpret_cast<void**>(cell);
+        void** current = reinterpret_cast_ptr<void**>(cell);
 
         // We want to maintain zapped-ness because that's how we know if we've called 
         // the destructor.
@@ -1468,24 +1463,14 @@ void Heap::flushWriteBarrierBuffer(JSCell* cell)
     m_writeBarrierBuffer.add(cell);
 }
 
-bool Heap::shouldDoFullCollection(HeapOperation requestedCollectionType) const
+bool Heap::shouldDoFullCollection(Optional<CollectionScope> scope) const
 {
     if (!Options::useGenerationalGC())
         return true;
 
-    switch (requestedCollectionType) {
-    case EdenCollection:
-        return false;
-    case FullCollection:
-        return true;
-    case AnyCollection:
+    if (!scope)
         return m_shouldDoFullCollection;
-    default:
-        RELEASE_ASSERT_NOT_REACHED();
-        return false;
-    }
-    RELEASE_ASSERT_NOT_REACHED();
-    return false;
+    return *scope == CollectionScope::Full;
 }
 
 void Heap::addLogicallyEmptyWeakBlock(WeakBlock* block)
@@ -1555,11 +1540,125 @@ void Heap::writeBarrierSlowPath(const JSCell* from)
         // In this case, the barrierThreshold is the tautological threshold, so from could still be
         // not black. But we can't know for sure until we fire off a fence.
         WTF::storeLoadFence();
-        if (!isBlack(from->cellState()))
+        if (from->cellState() != CellState::AnthraciteOrBlack)
             return;
     }
     
     addToRememberedSet(from);
+}
+
+bool Heap::shouldCollect()
+{
+    if (isDeferred())
+        return false;
+    if (!m_isSafeToCollect)
+        return false;
+    if (collectionScope() || mutatorState() == MutatorState::HelpingGC)
+        return false;
+    if (Options::gcMaxHeapSize())
+        return m_bytesAllocatedThisCycle > Options::gcMaxHeapSize();
+    return m_bytesAllocatedThisCycle > m_maxEdenSize;
+}
+
+bool Heap::isCurrentThreadBusy()
+{
+    return mayBeGCThread() || mutatorState() != MutatorState::Running;
+}
+
+void Heap::reportExtraMemoryVisited(CellState oldState, size_t size)
+{
+    // We don't want to double-count the extra memory that was reported in previous collections.
+    if (collectionScope() == CollectionScope::Eden && oldState == CellState::OldGrey)
+        return;
+
+    size_t* counter = &m_extraMemorySize;
+    
+    for (;;) {
+        size_t oldSize = *counter;
+        if (WTF::weakCompareAndSwap(counter, oldSize, oldSize + size))
+            return;
+    }
+}
+
+#if ENABLE(RESOURCE_USAGE)
+void Heap::reportExternalMemoryVisited(CellState oldState, size_t size)
+{
+    // We don't want to double-count the external memory that was reported in previous collections.
+    if (collectionScope() == CollectionScope::Eden && oldState == CellState::OldGrey)
+        return;
+
+    size_t* counter = &m_externalMemorySize;
+
+    for (;;) {
+        size_t oldSize = *counter;
+        if (WTF::weakCompareAndSwap(counter, oldSize, oldSize + size))
+            return;
+    }
+}
+#endif
+
+bool Heap::collectIfNecessaryOrDefer(GCDeferralContext* deferralContext)
+{
+    if (!shouldCollect())
+        return false;
+
+    if (deferralContext)
+        deferralContext->m_shouldGC = true;
+    else
+        collect();
+    return true;
+}
+
+void Heap::collectAccordingToDeferGCProbability()
+{
+    if (isDeferred() || !m_isSafeToCollect || collectionScope() || mutatorState() == MutatorState::HelpingGC)
+        return;
+
+    if (randomNumber() < Options::deferGCProbability()) {
+        collect();
+        return;
+    }
+
+    // If our coin flip told us not to GC, we still might GC,
+    // but we GC according to our memory pressure markers.
+    collectIfNecessaryOrDefer();
+}
+
+void Heap::decrementDeferralDepthAndGCIfNeeded()
+{
+    decrementDeferralDepth();
+    if (UNLIKELY(Options::deferGCShouldCollectWithProbability()))
+        collectAccordingToDeferGCProbability();
+    else
+        collectIfNecessaryOrDefer();
+}
+
+void Heap::registerWeakGCMap(void* weakGCMap, std::function<void()> pruningCallback)
+{
+    m_weakGCMaps.add(weakGCMap, WTFMove(pruningCallback));
+}
+
+void Heap::unregisterWeakGCMap(void* weakGCMap)
+{
+    m_weakGCMaps.remove(weakGCMap);
+}
+
+void Heap::didAllocateBlock(size_t capacity)
+{
+#if ENABLE(RESOURCE_USAGE)
+    m_blockBytesAllocated += capacity;
+#else
+    UNUSED_PARAM(capacity);
+#endif
+}
+
+void Heap::didFreeBlock(size_t capacity)
+{
+#if ENABLE(RESOURCE_USAGE)
+    m_blockBytesAllocated -= capacity;
+#else
+    UNUSED_PARAM(capacity);
+#endif
 }
 
 } // namespace JSC

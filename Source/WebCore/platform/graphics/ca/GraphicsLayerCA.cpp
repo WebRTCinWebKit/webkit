@@ -786,6 +786,7 @@ bool GraphicsLayerCA::setBackdropFilters(const FilterOperations& filterOperation
         // FIXME: This would clear the backdrop filters if we had a software implementation.
         clearBackdropFilters();
     }
+
     noteLayerPropertyChanged(BackdropFiltersChanged);
     return canCompositeFilters;
 }
@@ -1371,8 +1372,8 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
     // Use having a transform as a key to making the tile wash layer. If every layer gets a wash,
     // they start to obscure useful information.
     if ((!m_transform.isIdentity() || m_usingTiledBacking) && !m_visibleTileWashLayer) {
-        static Color washFillColor(255, 0, 0, 50);
-        static Color washBorderColor(255, 0, 0, 100);
+        static NeverDestroyed<Color> washFillColor(255, 0, 0, 50);
+        static NeverDestroyed<Color> washBorderColor(255, 0, 0, 100);
         
         m_visibleTileWashLayer = createPlatformCALayer(PlatformCALayer::LayerTypeLayer, this);
         String name = String::format("Visible Tile Wash Layer %p", m_visibleTileWashLayer->platformLayer());
@@ -1970,6 +1971,7 @@ void GraphicsLayerCA::updateBackdropFilters()
         return;
     }
 
+    bool madeLayer = !m_backdropLayer;
     if (!m_backdropLayer) {
         m_backdropLayer = createPlatformCALayer(PlatformCALayer::LayerTypeBackdropLayer, this);
         m_backdropLayer->setAnchorPoint(FloatPoint3D());
@@ -1986,6 +1988,9 @@ void GraphicsLayerCA::updateBackdropFilters()
             cloneLayer->setFilters(m_backdropFilters);
         }
     }
+
+    if (madeLayer)
+        updateBackdropFiltersRect();
 }
 
 void GraphicsLayerCA::updateBackdropFiltersRect()
@@ -2066,6 +2071,7 @@ void GraphicsLayerCA::ensureStructuralLayer(StructuralLayerPurpose purpose)
         | BackfaceVisibilityChanged
         | FiltersChanged
         | BackdropFiltersChanged
+        | MaskLayerChanged
         | OpacityChanged;
 
     if (purpose == NoStructuralLayer) {
@@ -2329,7 +2335,7 @@ void GraphicsLayerCA::updateContentsImage()
         // but then what if the layer size changes?
         m_contentsLayer->setMinificationFilter(PlatformCALayer::Trilinear);
         m_contentsLayer->setContents(m_pendingContentsImage.get());
-        m_pendingContentsImage = 0;
+        m_pendingContentsImage = nullptr;
 
         if (m_contentsLayerClones) {
             LayerMap::const_iterator end = m_contentsLayerClones->end();

@@ -18,8 +18,12 @@
  * Boston, MA 02110-1301, USA.
  */
 
+// FIXME: This should be an implementation provided typedef
+// https://heycam.github.io/webidl/#DOMTimeStamp
+typedef unsigned long long DOMTimeStamp;
+
 [
-    ConstructorTemplate=Event,
+    Constructor(DOMString type, optional EventInit eventInitDict),
     CustomToJSObject,
     ExportToWrappedFunction,
     Exposed=(Window,Worker),
@@ -51,9 +55,9 @@
     readonly attribute EventTarget target;
     readonly attribute EventTarget currentTarget;
     readonly attribute unsigned short eventPhase;
-    [InitializedByEventConstructor] readonly attribute boolean bubbles;
-    [InitializedByEventConstructor] readonly attribute boolean cancelable;
-    [InitializedByEventConstructor, EnabledAtRuntime=ShadowDOM] readonly attribute boolean composed;
+    readonly attribute boolean bubbles;
+    readonly attribute boolean cancelable;
+    [EnabledAtRuntime=ShadowDOM] readonly attribute boolean composed;
     readonly attribute DOMTimeStamp timeStamp;
 
     [EnabledAtRuntime=ShadowDOM] sequence<Node> composedPath();

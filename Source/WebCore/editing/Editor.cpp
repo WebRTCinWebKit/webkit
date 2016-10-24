@@ -111,25 +111,36 @@
 
 namespace WebCore {
 
-static bool dispatchBeforeInputEvent(Element& element, const AtomicString& inputType, const String& data = { })
+static bool dispatchBeforeInputEvent(Element& element, const AtomicString& inputType, const String& data = { }, const Vector<RefPtr<StaticRange>>& targetRanges = { }, bool cancelable = true)
 {
     auto* settings = element.document().settings();
     if (!settings || !settings->inputEventsEnabled())
         return true;
 
-    auto event = InputEvent::create(eventNames().beforeinputEvent, inputType, true, true, element.document().defaultView(), data, 0);
-    element.dispatchScopedEvent(event);
-
-    return !event->defaultPrevented();
+    return element.dispatchEvent(InputEvent::create(eventNames().beforeinputEvent, inputType, true, cancelable, element.document().defaultView(), data, targetRanges, 0));
 }
 
-static void dispatchInputEvent(Element& element, const AtomicString& inputType, const String& data = { })
+static void dispatchInputEvent(Element& element, const AtomicString& inputType, const String& data = { }, const Vector<RefPtr<StaticRange>>& targetRanges = { })
 {
     auto* settings = element.document().settings();
     if (settings && settings->inputEventsEnabled())
-        element.dispatchScopedEvent(InputEvent::create(eventNames().inputEvent, inputType, true, false, element.document().defaultView(), data, 0));
+        element.dispatchEvent(InputEvent::create(eventNames().inputEvent, inputType, true, false, element.document().defaultView(), data, targetRanges, 0));
     else
         element.dispatchInputEvent();
+}
+
+static String inputEventDataForEditingStyleAndAction(EditingStyle& style, EditAction action)
+{
+    auto* properties = style.style();
+    if (!properties)
+        return { };
+
+    switch (action) {
+    case EditActionSetColor:
+        return properties->getPropertyValue(CSSPropertyColor);
+    default:
+        return { };
+    }
 }
 
 class ClearTextCommand : public DeleteSelectionCommand {
@@ -1052,31 +1063,31 @@ static void notifyTextFromControls(Element* startRoot, Element* endRoot)
         endingTextControl->didEditInnerTextValue();
 }
 
-static bool dispatchBeforeInputEvents(RefPtr<Element> startRoot, RefPtr<Element> endRoot, const AtomicString& inputTypeName, const String& data = { })
+static bool dispatchBeforeInputEvents(RefPtr<Element> startRoot, RefPtr<Element> endRoot, const AtomicString& inputTypeName, const String& data = { }, const Vector<RefPtr<StaticRange>>& targetRanges = { }, bool cancelable = true)
 {
     bool continueWithDefaultBehavior = true;
     if (startRoot)
-        continueWithDefaultBehavior &= dispatchBeforeInputEvent(*startRoot, inputTypeName, data);
+        continueWithDefaultBehavior &= dispatchBeforeInputEvent(*startRoot, inputTypeName, data, targetRanges, cancelable);
     if (endRoot && endRoot != startRoot)
-        continueWithDefaultBehavior &= dispatchBeforeInputEvent(*endRoot, inputTypeName, data);
+        continueWithDefaultBehavior &= dispatchBeforeInputEvent(*endRoot, inputTypeName, data, targetRanges, cancelable);
     return continueWithDefaultBehavior;
 }
 
-static void dispatchInputEvents(RefPtr<Element> startRoot, RefPtr<Element> endRoot, const AtomicString& inputTypeName, const String& data = { })
+static void dispatchInputEvents(RefPtr<Element> startRoot, RefPtr<Element> endRoot, const AtomicString& inputTypeName, const String& data = { }, const Vector<RefPtr<StaticRange>>& targetRanges = { })
 {
     if (startRoot)
-        dispatchInputEvent(*startRoot, inputTypeName, data);
+        dispatchInputEvent(*startRoot, inputTypeName, data, targetRanges);
     if (endRoot && endRoot != startRoot)
-        dispatchInputEvent(*endRoot, inputTypeName, data);
+        dispatchInputEvent(*endRoot, inputTypeName, data, targetRanges);
 }
 
-bool Editor::willApplyEditing(CompositeEditCommand& command) const
+bool Editor::willApplyEditing(CompositeEditCommand& command, Vector<RefPtr<StaticRange>>&& targetRanges) const
 {
     auto* composition = command.composition();
     if (!composition)
         return true;
 
-    return dispatchBeforeInputEvents(composition->startingRootEditableElement(), composition->endingRootEditableElement(), command.inputEventTypeName(), command.inputEventData());
+    return dispatchBeforeInputEvents(composition->startingRootEditableElement(), composition->endingRootEditableElement(), command.inputEventTypeName(), command.inputEventData(), targetRanges, command.isBeforeInputEventCancelable());
 }
 
 void Editor::appliedEditing(PassRefPtr<CompositeEditCommand> cmd)
@@ -1250,7 +1261,7 @@ bool Editor::insertTextWithoutSendingTextEvent(const String& text, bool selectIn
                     options |= TypingCommand::SelectInsertedText;
                 if (autocorrectionWasApplied)
                     options |= TypingCommand::RetainAutocorrectionIndicator;
-                TypingCommand::insertText(document, text, selection, options, triggeringEvent && triggeringEvent->isComposition() ? TypingCommand::TextCompositionConfirm : TypingCommand::TextCompositionNone);
+                TypingCommand::insertText(document, text, selection, options, triggeringEvent && triggeringEvent->isComposition() ? TypingCommand::TextCompositionFinal : TypingCommand::TextCompositionNone);
             }
 
             // Reveal the current selection
@@ -1821,10 +1832,11 @@ void Editor::setComposition(const String& text, SetCompositionMode mode)
         target->dispatchEvent(event);
     }
 
-    // If text is empty, then delete the old composition here.  If text is non-empty, InsertTextCommand::input
-    // will delete the old composition with an optimized replace operation.
-    if (text.isEmpty() && mode != CancelComposition)
-        TypingCommand::deleteSelection(document(), 0);
+    // Always delete the current composition before inserting the finalized composition text if we're confirming our composition.
+    // Our default behavior (if the beforeinput event is not prevented) is to insert the finalized composition text back in.
+    // We pass TypingCommand::TextCompositionPending here to indicate that we are deleting the pending composition.
+    if (mode != CancelComposition)
+        TypingCommand::deleteSelection(document(), 0, TypingCommand::TextCompositionPending);
 
     m_compositionNode = nullptr;
     m_customCompositionUnderlines.clear();
@@ -1857,6 +1869,18 @@ void Editor::setComposition(const String& text, const Vector<CompositionUnderlin
         return;
     }
 
+    String originalText = selectedText();
+    bool isStartingToRecomposeExistingRange = !text.isEmpty() && selectionStart < selectionEnd && !hasComposition();
+    if (isStartingToRecomposeExistingRange) {
+        // We pass TypingCommand::TextCompositionFinal here to indicate that we are removing composition text that has been finalized.
+        TypingCommand::deleteSelection(document(), 0, TypingCommand::TextCompositionFinal);
+        const VisibleSelection& currentSelection = m_frame.selection().selection();
+        if (currentSelection.isRange()) {
+            // If deletion was prevented, then we need to collapse the selection to the end so that the original text will not be recomposed.
+            m_frame.selection().setSelection({ currentSelection.end(), currentSelection.end() });
+        }
+    }
+
 #if PLATFORM(IOS)
     client()->startDelayingAndCoalescingContentChangeNotifications();
 #endif
@@ -1883,7 +1907,7 @@ void Editor::setComposition(const String& text, const Vector<CompositionUnderlin
             // We should send a compositionstart event only when the given text is not empty because this
             // function doesn't create a composition node when the text is empty.
             if (!text.isEmpty()) {
-                target->dispatchEvent(CompositionEvent::create(eventNames().compositionstartEvent, document().domWindow(), selectedText()));
+                target->dispatchEvent(CompositionEvent::create(eventNames().compositionstartEvent, document().domWindow(), originalText));
                 event = CompositionEvent::create(eventNames().compositionupdateEvent, document().domWindow(), text);
             }
         } else {
@@ -1899,13 +1923,13 @@ void Editor::setComposition(const String& text, const Vector<CompositionUnderlin
     // If text is empty, then delete the old composition here.  If text is non-empty, InsertTextCommand::input
     // will delete the old composition with an optimized replace operation.
     if (text.isEmpty())
-        TypingCommand::deleteSelection(document(), TypingCommand::PreventSpellChecking);
+        TypingCommand::deleteSelection(document(), TypingCommand::PreventSpellChecking, TypingCommand::TextCompositionPending);
 
     m_compositionNode = nullptr;
     m_customCompositionUnderlines.clear();
 
     if (!text.isEmpty()) {
-        TypingCommand::insertText(document(), text, TypingCommand::SelectInsertedText | TypingCommand::PreventSpellChecking, TypingCommand::TextCompositionUpdate);
+        TypingCommand::insertText(document(), text, TypingCommand::SelectInsertedText | TypingCommand::PreventSpellChecking, TypingCommand::TextCompositionPending);
 
         // Find out what node has the composition now.
         Position base = m_frame.selection().selection().base().downstream();
@@ -3107,8 +3131,9 @@ void Editor::computeAndSetTypingStyle(EditingStyle& style, EditAction editingAct
     }
 
     String inputTypeName = inputTypeNameForEditingAction(editingAction);
+    String inputEventData = inputEventDataForEditingStyleAndAction(style, editingAction);
     auto* element = m_frame.selection().selection().rootEditableElement();
-    if (element && !dispatchBeforeInputEvent(*element, inputTypeName))
+    if (element && !dispatchBeforeInputEvent(*element, inputTypeName, inputEventData))
         return;
 
     // Calculate the current typing style.
@@ -3125,7 +3150,7 @@ void Editor::computeAndSetTypingStyle(EditingStyle& style, EditAction editingAct
         applyCommand(ApplyStyleCommand::create(document(), blockStyle.get(), editingAction));
 
     if (element)
-        dispatchInputEvent(*element, inputTypeName);
+        dispatchInputEvent(*element, inputTypeName, inputEventData);
 
     // Set the remaining style as the typing style.
     m_frame.selection().setTypingStyle(typingStyle);
@@ -3191,9 +3216,9 @@ void Editor::applyEditingStyleToElement(Element* element) const
 
     // Mutate using the CSSOM wrapper so we get the same event behavior as a script.
     CSSStyleDeclaration* style = downcast<StyledElement>(*element).cssomStyle();
-    style->setPropertyInternal(CSSPropertyWordWrap, "break-word", false, IGNORE_EXCEPTION);
-    style->setPropertyInternal(CSSPropertyWebkitNbspMode, "space", false, IGNORE_EXCEPTION);
-    style->setPropertyInternal(CSSPropertyWebkitLineBreak, "after-white-space", false, IGNORE_EXCEPTION);
+    style->setPropertyInternal(CSSPropertyWordWrap, "break-word", false);
+    style->setPropertyInternal(CSSPropertyWebkitNbspMode, "space", false);
+    style->setPropertyInternal(CSSPropertyWebkitLineBreak, "after-white-space", false);
 }
 
 bool Editor::findString(const String& target, FindOptions options)

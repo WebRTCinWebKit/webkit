@@ -55,22 +55,29 @@ bool CanvasRenderingContext::wouldTaintOrigin(const HTMLCanvasElement* sourceCan
     return false;
 }
 
-bool CanvasRenderingContext::wouldTaintOrigin(const HTMLImageElement* image)
+bool CanvasRenderingContext::wouldTaintOrigin(const HTMLImageElement* element)
 {
-    if (!image || !canvas()->originClean())
+    if (!element || !canvas()->originClean())
         return false;
 
-    ASSERT(image->cachedImage());
-    CachedImage& cachedImage = *image->cachedImage();
+    auto* cachedImage = element->cachedImage();
+    if (!cachedImage)
+        return false;
 
-    ASSERT(cachedImage.image());
-    if (!cachedImage.image()->hasSingleSecurityOrigin())
+    auto* image = cachedImage->image();
+    if (!image)
+        return false;
+
+    if (!image->hasSingleSecurityOrigin())
+        return true;
+
+    if (!cachedImage->isCORSSameOrigin())
         return true;
 
     ASSERT(canvas()->securityOrigin());
-    ASSERT(cachedImage.origin());
-    ASSERT(canvas()->securityOrigin()->toString() == cachedImage.origin()->toString());
-    return !cachedImage.isCORSSameOrigin();
+    ASSERT(cachedImage->origin());
+    ASSERT(canvas()->securityOrigin()->toString() == cachedImage->origin()->toString());
+    return false;
 }
 
 bool CanvasRenderingContext::wouldTaintOrigin(const HTMLVideoElement* video)
@@ -101,13 +108,10 @@ bool CanvasRenderingContext::wouldTaintOrigin(const URL& url)
     if (!canvas()->originClean())
         return false;
 
-    if (canvas()->securityOrigin()->taintsCanvas(url))
-        return true;
-
     if (url.protocolIsData())
         return false;
 
-    return false;
+    return !canvas()->securityOrigin()->canRequest(url);
 }
 
 void CanvasRenderingContext::checkOrigin(const URL& url)

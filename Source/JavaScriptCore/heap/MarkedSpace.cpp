@@ -338,7 +338,7 @@ void MarkedSpace::prepareForAllocation()
 
     m_activeWeakSets.takeFrom(m_newActiveWeakSets);
     
-    if (m_heap->operationInProgress() == EdenCollection)
+    if (m_heap->collectionScope() == CollectionScope::Eden)
         m_largeAllocationsNurseryOffsetForSweep = m_largeAllocationsNurseryOffset;
     else
         m_largeAllocationsNurseryOffsetForSweep = 0;
@@ -355,7 +355,7 @@ void MarkedSpace::visitWeakSets(HeapRootVisitor& heapRootVisitor)
     
     m_newActiveWeakSets.forEach(visit);
     
-    if (m_heap->operationInProgress() == FullCollection)
+    if (m_heap->collectionScope() == CollectionScope::Full)
         m_activeWeakSets.forEach(visit);
 }
 
@@ -367,7 +367,7 @@ void MarkedSpace::reapWeakSets()
     
     m_newActiveWeakSets.forEach(visit);
     
-    if (m_heap->operationInProgress() == FullCollection)
+    if (m_heap->collectionScope() == CollectionScope::Full)
         m_activeWeakSets.forEach(visit);
 }
 
@@ -383,7 +383,7 @@ void MarkedSpace::stopAllocating()
 
 void MarkedSpace::prepareForMarking()
 {
-    if (m_heap->operationInProgress() == EdenCollection)
+    if (m_heap->collectionScope() == CollectionScope::Eden)
         m_largeAllocationsOffsetForThisCollection = m_largeAllocationsNurseryOffset;
     else
         m_largeAllocationsOffsetForThisCollection = 0;
@@ -451,47 +451,23 @@ void MarkedSpace::shrink()
         });
 }
 
-void MarkedSpace::clearNewlyAllocated()
-{
-    forEachAllocator(
-        [&] (MarkedAllocator& allocator) -> IterationStatus {
-            if (MarkedBlock::Handle* block = allocator.takeLastActiveBlock())
-                block->clearNewlyAllocated();
-            return IterationStatus::Continue;
-        });
-    
-    for (unsigned i = m_largeAllocationsOffsetForThisCollection; i < m_largeAllocations.size(); ++i)
-        m_largeAllocations[i]->clearNewlyAllocated();
-
-    if (!ASSERT_DISABLED) {
-        forEachBlock(
-            [&] (MarkedBlock::Handle* block) {
-                ASSERT_UNUSED(block, !block->clearNewlyAllocated());
-            });
-        
-        for (LargeAllocation* allocation : m_largeAllocations)
-            ASSERT_UNUSED(allocation, !allocation->isNewlyAllocated());
-    }
-}
-
 void MarkedSpace::beginMarking()
 {
-    if (m_heap->operationInProgress() == FullCollection) {
+    if (m_heap->collectionScope() == CollectionScope::Full) {
         forEachAllocator(
             [&] (MarkedAllocator& allocator) -> IterationStatus {
                 allocator.beginMarkingForFullCollection();
                 return IterationStatus::Continue;
             });
 
-        m_markingVersion = nextVersion(m_markingVersion);
-        
-        if (UNLIKELY(m_markingVersion == initialVersion)) {
-            // Oh no! Version wrap-around! We handle this by setting all block versions to null.
+        if (UNLIKELY(nextVersion(m_markingVersion) == initialVersion)) {
             forEachBlock(
                 [&] (MarkedBlock::Handle* handle) {
-                    handle->block().resetMarkingVersion();
+                    handle->block().resetMarks();
                 });
         }
+        
+        m_markingVersion = nextVersion(m_markingVersion);
         
         for (LargeAllocation* allocation : m_largeAllocations)
             allocation->flip();
@@ -511,6 +487,23 @@ void MarkedSpace::beginMarking()
 
 void MarkedSpace::endMarking()
 {
+    if (UNLIKELY(nextVersion(m_newlyAllocatedVersion) == initialVersion)) {
+        forEachBlock(
+            [&] (MarkedBlock::Handle* handle) {
+                handle->resetAllocated();
+            });
+    }
+        
+    m_newlyAllocatedVersion = nextVersion(m_newlyAllocatedVersion);
+    
+    for (unsigned i = m_largeAllocationsOffsetForThisCollection; i < m_largeAllocations.size(); ++i)
+        m_largeAllocations[i]->clearNewlyAllocated();
+
+    if (!ASSERT_DISABLED) {
+        for (LargeAllocation* allocation : m_largeAllocations)
+            ASSERT_UNUSED(allocation, !allocation->isNewlyAllocated());
+    }
+
     forEachAllocator(
         [&] (MarkedAllocator& allocator) -> IterationStatus {
             allocator.endMarking();
@@ -604,7 +597,7 @@ MarkedBlock::Handle* MarkedSpace::findEmptyBlockToSteal()
 
 void MarkedSpace::snapshotUnswept()
 {
-    if (m_heap->operationInProgress() == EdenCollection) {
+    if (m_heap->collectionScope() == CollectionScope::Eden) {
         forEachAllocator(
             [&] (MarkedAllocator& allocator) -> IterationStatus {
                 allocator.snapshotUnsweptForEdenCollection();

@@ -49,7 +49,6 @@ public:
     }
 
     static JSC::JSValue getConstructor(JSC::VM&, const JSC::JSGlobalObject*);
-    static JSTestNondeterministic* castForAttribute(JSC::ExecState*, JSC::EncodedJSValue);
 protected:
     JSTestNondeterministic(JSC::Structure*, JSDOMGlobalObject&, Ref<TestNondeterministic>&&);
 
@@ -85,6 +84,7 @@ inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* g
 
 template<> struct JSDOMWrapperConverterTraits<TestNondeterministic> {
     using WrapperClass = JSTestNondeterministic;
+    using ToWrappedReturnType = TestNondeterministic*;
 };
 
 } // namespace WebCore

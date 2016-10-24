@@ -411,16 +411,21 @@ static inline bool mightBeRGB(const CharacterType* characters, unsigned length)
 }
 
 template <typename CharacterType>
-static bool fastParseColorInternal(RGBA32& rgb, const CharacterType* characters, unsigned length, bool quirksMode)
+static Color fastParseColorInternal(const CharacterType* characters, unsigned length, bool quirksMode)
 {
     CSSPrimitiveValue::UnitTypes expect = CSSPrimitiveValue::UnitTypes::CSS_UNKNOWN;
 
-    if (length >= 4 && characters[0] == '#')
-        return Color::parseHexColor(characters + 1, length - 1, rgb);
+    if (length >= 4 && characters[0] == '#') {
+        // FIXME: Why doesn't this check if the parse worked? Is the fallback black?
+        RGBA32 rgb;
+        Color::parseHexColor(characters + 1, length - 1, rgb);
+        return Color(rgb);
+    }
 
     if (quirksMode && (length == 3 || length == 6)) {
+        RGBA32 rgb;
         if (Color::parseHexColor(characters, length, rgb))
-            return true;
+            return Color(rgb);
     }
 
     // Try rgba() syntax.
@@ -433,17 +438,16 @@ static bool fastParseColorInternal(RGBA32& rgb, const CharacterType* characters,
         int alpha;
 
         if (!parseColorIntOrPercentage(current, end, ',', expect, red))
-            return false;
+            return Color();
         if (!parseColorIntOrPercentage(current, end, ',', expect, green))
-            return false;
+            return Color();
         if (!parseColorIntOrPercentage(current, end, ',', expect, blue))
-            return false;
+            return Color();
         if (!parseAlphaValue(current, end, ')', alpha))
-            return false;
+            return Color();
         if (current != end)
-            return false;
-        rgb = makeRGBA(red, green, blue, alpha);
-        return true;
+            return Color();
+        return Color(makeRGBA(red, green, blue, alpha));
     }
 
     // Try rgb() syntax.
@@ -454,18 +458,17 @@ static bool fastParseColorInternal(RGBA32& rgb, const CharacterType* characters,
         int green;
         int blue;
         if (!parseColorIntOrPercentage(current, end, ',', expect, red))
-            return false;
+            return Color();
         if (!parseColorIntOrPercentage(current, end, ',', expect, green))
-            return false;
+            return Color();
         if (!parseColorIntOrPercentage(current, end, ')', expect, blue))
-            return false;
+            return Color();
         if (current != end)
-            return false;
-        rgb = makeRGB(red, green, blue);
-        return true;
+            return Color();
+        return Color(makeRGB(red, green, blue));
     }
 
-    return false;
+    return Color();
 }
 
 RefPtr<CSSValue> CSSParserFastPaths::parseColor(const String& string, CSSParserMode parserMode)
@@ -478,16 +481,15 @@ RefPtr<CSSValue> CSSParserFastPaths::parseColor(const String& string, CSSParserM
         return CSSPrimitiveValue::createIdentifier(valueID);
     }
 
-    RGBA32 color;
     bool quirksMode = isQuirksModeBehavior(parserMode);
 
     // Fast path for hex colors and rgb()/rgba() colors
-    bool parseResult;
+    Color color;
     if (string.is8Bit())
-        parseResult = fastParseColorInternal(color, string.characters8(), string.length(), quirksMode);
+        color = fastParseColorInternal(string.characters8(), string.length(), quirksMode);
     else
-        parseResult = fastParseColorInternal(color, string.characters16(), string.length(), quirksMode);
-    if (!parseResult)
+        color = fastParseColorInternal(string.characters16(), string.length(), quirksMode);
+    if (!color.isValid())
         return nullptr;
     return CSSValuePool::singleton().createColorValue(color);
 }
@@ -594,9 +596,17 @@ bool CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyID propertyId
         return valueID == CSSValueVisible || valueID == CSSValueHidden || valueID == CSSValueScroll || valueID == CSSValueAuto || valueID == CSSValueOverlay || valueID == CSSValueWebkitPagedX || valueID == CSSValueWebkitPagedY;
     case CSSPropertyBreakAfter:
     case CSSPropertyBreakBefore:
-        return valueID == CSSValueAuto || valueID == CSSValueAvoid || valueID == CSSValueAvoidPage || valueID == CSSValuePage || valueID == CSSValueLeft || valueID == CSSValueRight || valueID == CSSValueRecto || valueID == CSSValueVerso || valueID == CSSValueAvoidColumn || valueID == CSSValueColumn;
+        return valueID == CSSValueAuto || valueID == CSSValueAvoid || valueID == CSSValueAvoidPage || valueID == CSSValuePage || valueID == CSSValueLeft || valueID == CSSValueRight || valueID == CSSValueRecto || valueID == CSSValueVerso || valueID == CSSValueAvoidColumn || valueID == CSSValueColumn
+#if ENABLE(CSS_REGIONS)
+            || valueID == CSSValueRegion || valueID == CSSValueAvoidRegion
+#endif
+        ;
     case CSSPropertyBreakInside:
-        return valueID == CSSValueAuto || valueID == CSSValueAvoid || valueID == CSSValueAvoidPage || valueID == CSSValueAvoidColumn;
+        return valueID == CSSValueAuto || valueID == CSSValueAvoid || valueID == CSSValueAvoidPage || valueID == CSSValueAvoidColumn
+#if ENABLE(CSS_REGIONS)
+            || valueID == CSSValueAvoidRegion
+#endif
+        ;
     case CSSPropertyPointerEvents:
         // none | visiblePainted | visibleFill | visibleStroke | visible |
         // painted | fill | stroke | auto | all | bounding-box
@@ -723,6 +733,7 @@ bool CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyID propertyId
     case CSSPropertyWebkitTextSecurity: // disc | circle | square | none
         return valueID == CSSValueDisc || valueID == CSSValueCircle || valueID == CSSValueSquare || valueID == CSSValueNone;
     case CSSPropertyTransformStyle:
+    case CSSPropertyWebkitTransformStyle:
         return valueID == CSSValueFlat || valueID == CSSValuePreserve3d;
     case CSSPropertyWebkitUserDrag: // auto | none | element
         return valueID == CSSValueAuto || valueID == CSSValueNone || valueID == CSSValueElement;
@@ -731,7 +742,7 @@ bool CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyID propertyId
     case CSSPropertyWebkitUserSelect: // auto | none | text | all
         return valueID == CSSValueAuto || valueID == CSSValueNone || valueID == CSSValueText || valueID == CSSValueAll;
     case CSSPropertyWebkitWritingMode:
-        return valueID >= CSSValueHorizontalTb && valueID <= CSSValueVerticalLr;
+        return valueID >= CSSValueHorizontalTb && valueID <= CSSValueHorizontalBt;
     case CSSPropertyWritingMode:
         return valueID == CSSValueHorizontalTb
             || valueID == CSSValueVerticalRl || valueID == CSSValueVerticalLr
@@ -741,6 +752,12 @@ bool CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyID propertyId
         return valueID == CSSValueNormal || valueID == CSSValuePre || valueID == CSSValuePreWrap || valueID == CSSValuePreLine || valueID == CSSValueNowrap;
     case CSSPropertyWordBreak: // normal | break-all | keep-all | break-word (this is a custom extension)
         return valueID == CSSValueNormal || valueID == CSSValueBreakAll || valueID == CSSValueKeepAll || valueID == CSSValueBreakWord;
+    case CSSPropertyWebkitBorderFit:
+        return valueID == CSSValueBorder || valueID == CSSValueLines;
+#if ENABLE(CSS_REGIONS)
+    case CSSPropertyWebkitRegionFragment:
+        return valueID == CSSValueAuto || valueID == CSSValueBreak;
+#endif
 #if ENABLE(CSS_SCROLL_SNAP)
     case CSSPropertyWebkitScrollSnapType: // none | mandatory | proximity
         return valueID == CSSValueNone || valueID == CSSValueMandatory || valueID == CSSValueProximity;
@@ -835,9 +852,6 @@ bool CSSParserFastPaths::isKeywordPropertyID(CSSPropertyID propertyId)
     case CSSPropertyWebkitBoxOrient:
     case CSSPropertyWebkitBoxPack:
     case CSSPropertyWebkitColumnAxis:
-    case CSSPropertyWebkitColumnBreakAfter:
-    case CSSPropertyWebkitColumnBreakBefore:
-    case CSSPropertyWebkitColumnBreakInside:
     case CSSPropertyWebkitFontKerning:
     case CSSPropertyWebkitFontSmoothing:
     case CSSPropertyWebkitHyphens:
@@ -926,9 +940,6 @@ bool CSSParserFastPaths::isKeywordPropertyID(CSSPropertyID propertyId)
     case CSSPropertyWebkitOverflowScrolling:
 #endif
 #if ENABLE(CSS_REGIONS)
-    case CSSPropertyWebkitRegionBreakAfter:
-    case CSSPropertyWebkitRegionBreakBefore:
-    case CSSPropertyWebkitRegionBreakInside:
     case CSSPropertyWebkitRegionFragment:
 #endif
 #if ENABLE(CSS3_TEXT)

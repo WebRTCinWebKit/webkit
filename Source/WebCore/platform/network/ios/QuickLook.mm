@@ -185,7 +185,7 @@ const char* WebCore::QLPreviewProtocol()
     return previewProtocol.get().data();
 }
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 // The way QuickLook works is we pass it an NSURLConnectionDelegate callback object at creation
 // time. Then we pass it all the data as we receive it. Once we've downloaded the full URL,
 // QuickLook turns around and send us, through this delegate, the HTML version of the file which we
@@ -287,15 +287,18 @@ const char* WebCore::QLPreviewProtocol()
 
     // QuickLook might fail to convert a document without calling connection:didFailWithError: (see <rdar://problem/17927972>).
     // A nil MIME type is an indication of such a failure, so stop loading the resource and ignore subsequent delegate messages.
-    NSURLResponse *previewResponse = _quickLookHandle->nsResponse();
-    if (![previewResponse MIMEType]) {
+    NSURLResponse *nsResponse = _quickLookHandle->nsResponse();
+    if (![nsResponse MIMEType]) {
         _hasFailed = YES;
         _resourceLoader->didFail(_resourceLoader->cannotShowURLError());
         return;
     }
 
+    ResourceResponse response(nsResponse);
+    response.setIsQuickLook(true);
+
     _hasSentDidReceiveResponse = YES;
-    _resourceLoader->didReceiveResponse(previewResponse);
+    _resourceLoader->didReceiveResponse(response);
 }
 
 #if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
@@ -411,7 +414,7 @@ std::unique_ptr<QuickLookHandle> QuickLookHandle::create(ResourceHandle* handle,
     return quickLookHandle;
 }
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 std::unique_ptr<QuickLookHandle> QuickLookHandle::create(ResourceHandle* handle, SynchronousResourceHandleCFURLConnectionDelegate* connectionDelegate, CFURLResponseRef cfResponse)
 {
     ASSERT_ARG(handle, handle);

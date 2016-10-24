@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "StaticRange.h"
 #include "UIEvent.h"
 
 namespace WebCore {
@@ -32,25 +33,24 @@ namespace WebCore {
 class DOMWindow;
 class DataTransfer;
 
-struct InputEventInit : UIEventInit {
-    String data;
-    bool isComposing;
-};
-
 class InputEvent final : public UIEvent {
 public:
-    static Ref<InputEvent> create(const AtomicString& eventType, const String& inputType, bool canBubble, bool cancelable, DOMWindow* view, const String& data, int detail)
+    static Ref<InputEvent> create(const AtomicString& eventType, const String& inputType, bool canBubble, bool cancelable, DOMWindow* view, const String& data, const Vector<RefPtr<StaticRange>>& targetRanges, int detail)
     {
-        return adoptRef(*new InputEvent(eventType, inputType, canBubble, cancelable, view, data, detail));
+        return adoptRef(*new InputEvent(eventType, inputType, canBubble, cancelable, view, data, targetRanges, detail));
     }
 
-    static Ref<InputEvent> createForBindings(const AtomicString& type, const InputEventInit& initializer)
+    struct Init : UIEventInit {
+        String data;
+    };
+
+    static Ref<InputEvent> create(const AtomicString& type, const Init& initializer, IsTrusted isTrusted = IsTrusted::No)
     {
-        return adoptRef(*new InputEvent(type, initializer));
+        return adoptRef(*new InputEvent(type, initializer, isTrusted));
     }
 
-    InputEvent(const AtomicString& eventType, const String& inputType, bool canBubble, bool cancelable, DOMWindow*, const String& data, int detail);
-    InputEvent(const AtomicString& eventType, const InputEventInit&);
+    InputEvent(const AtomicString& eventType, const String& inputType, bool canBubble, bool cancelable, DOMWindow*, const String& data, const Vector<RefPtr<StaticRange>>& targetRanges, int detail);
+    InputEvent(const AtomicString& eventType, const Init&, IsTrusted);
 
     virtual ~InputEvent() { }
 
@@ -58,10 +58,12 @@ public:
     EventInterface eventInterface() const final { return InputEventInterfaceType; }
     const String& inputType() const { return m_inputType; }
     const String& data() const { return m_data; }
+    const Vector<RefPtr<StaticRange>>& getTargetRanges() { return m_targetRanges; }
 
 private:
     String m_inputType;
     String m_data;
+    Vector<RefPtr<StaticRange>> m_targetRanges;
 };
 
 } // namespace WebCore

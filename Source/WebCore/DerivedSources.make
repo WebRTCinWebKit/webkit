@@ -294,6 +294,12 @@ JS_BINDING_IDLS = \
     $(WebCore)/dom/DOMError.idl \
     $(WebCore)/dom/DOMImplementation.idl \
     $(WebCore)/dom/DOMNamedFlowCollection.idl \
+    $(WebCore)/dom/DOMPoint.idl \
+    $(WebCore)/dom/DOMPointInit.idl \
+    $(WebCore)/dom/DOMPointReadOnly.idl \
+    $(WebCore)/dom/DOMRect.idl \
+    $(WebCore)/dom/DOMRectInit.idl \
+    $(WebCore)/dom/DOMRectReadOnly.idl \
     $(WebCore)/dom/DOMStringList.idl \
     $(WebCore)/dom/DOMStringMap.idl \
     $(WebCore)/dom/DataTransfer.idl \
@@ -344,6 +350,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/dom/SecurityPolicyViolationEvent.idl \
     $(WebCore)/dom/ShadowRoot.idl \
     $(WebCore)/dom/Slotable.idl \
+    $(WebCore)/dom/StaticRange.idl \
     $(WebCore)/dom/StringCallback.idl \
     $(WebCore)/dom/Text.idl \
     $(WebCore)/dom/TextEvent.idl \
@@ -1016,6 +1023,10 @@ endif
 
 ifeq ($(OS), Windows_NT)
     USER_AGENT_STYLE_SHEETS := $(USER_AGENT_STYLE_SHEETS) $(WebCore)/css/themeWin.css $(WebCore)/css/themeWinQuirks.css
+endif
+
+ifeq ($(findstring ENABLE_METER_ELEMENT,$(FEATURE_DEFINES)), ENABLE_METER_ELEMENT)
+	USER_AGENT_STYLE_SHEETS := $(USER_AGENT_STYLE_SHEETS) $(WebCore)/html/shadow/meterElementShadow.css
 endif
 
 UserAgentStyleSheets.h : css/make-css-file-arrays.pl bindings/scripts/preprocessor.pm $(USER_AGENT_STYLE_SHEETS) $(PLATFORM_FEATURE_DEFINES)

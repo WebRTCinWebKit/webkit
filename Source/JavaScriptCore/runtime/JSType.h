@@ -65,7 +65,7 @@ enum JSType : uint8_t {
     ArrayType,
     DerivedArrayType,
 
-    Int8ArrayType = 100,
+    Int8ArrayType,
     Int16ArrayType,
     Int32ArrayType,
     Uint8ArrayType,
@@ -77,18 +77,25 @@ enum JSType : uint8_t {
     DataViewType,
 
     GetterSetterType,
+
+    // Start environment record types.
     GlobalObjectType,
     LexicalEnvironmentType,
     GlobalLexicalEnvironmentType,
     ModuleEnvironmentType,
+    StrictEvalActivationType,
+    // End environment record types.
+
     RegExpObjectType,
     ProxyObjectType,
     JSMapType,
     JSSetType,
 
     LastJSCObjectType = JSSetType,
+    MaxJSType = 0b11111111,
 };
 
-COMPILE_ASSERT(sizeof(JSType) == sizeof(uint8_t), sizeof_jstype_is_one_byte);
+static_assert(sizeof(JSType) == sizeof(uint8_t), "sizeof(JSType) is one byte.");
+static_assert(LastJSCObjectType < 128, "The highest bit is reserved for embedder's extension.");
 
 } // namespace JSC

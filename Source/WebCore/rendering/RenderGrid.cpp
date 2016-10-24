@@ -460,6 +460,19 @@ void RenderGrid::layoutBlock(bool relayoutChildren, LayoutUnit)
 
     LayoutSize previousSize = size();
 
+    // We need to clear both own and containingBlock override sizes of orthogonal items to ensure we get the
+    // same result when grid's intrinsic size is computed again in the updateLogicalWidth call bellow.
+    if (sizesLogicalWidthToFitContent(MaxSize) || style().logicalWidth().isIntrinsicOrAuto()) {
+        for (auto* child = firstChildBox(); child; child = child->nextSiblingBox()) {
+            if (child->isOutOfFlowPositioned() || !isOrthogonalChild(*child))
+                continue;
+            child->clearOverrideSize();
+            child->clearContainingBlockOverrideSize();
+            child->setNeedsLayout();
+            child->layoutIfNeeded();
+        }
+    }
+
     setLogicalHeight(0);
     updateLogicalWidth();
 
@@ -481,10 +494,16 @@ void RenderGrid::layoutBlock(bool relayoutChildren, LayoutUnit)
         computeIntrinsicLogicalHeight(sizingData);
     else
         computeTrackSizesForDirection(ForRows, sizingData, availableLogicalHeight(ExcludeMarginBorderPadding));
-    setLogicalHeight(computeTrackBasedLogicalHeight(sizingData) + borderAndPaddingLogicalHeight() + scrollbarLogicalHeight());
+    LayoutUnit trackBasedLogicalHeight = computeTrackBasedLogicalHeight(sizingData) + borderAndPaddingLogicalHeight() + scrollbarLogicalHeight();
+    setLogicalHeight(trackBasedLogicalHeight);
 
     LayoutUnit oldClientAfterEdge = clientLogicalBottom();
     updateLogicalHeight();
+
+    // Once grid's indefinite height is resolved, we can compute the
+    // available free space for Content Alignment.
+    if (!hasDefiniteLogicalHeight)
+        sizingData.setFreeSpace(ForRows, logicalHeight() - trackBasedLogicalHeight);
 
     // 3- If the min-content contribution of any grid items have changed based on the row
     // sizes calculated in step 2, steps 1 and 2 are repeated with the new min-content
@@ -1212,7 +1231,7 @@ bool RenderGrid::shouldProcessTrackForTrackSizeComputationPhase(TrackSizeComputa
     case ResolveMaxContentMinimums:
         return trackSize.hasMaxContentMinTrackBreadth();
     case ResolveIntrinsicMaximums:
-        return trackSize.hasMinOrMaxContentMaxTrackBreadth();
+        return trackSize.hasIntrinsicMaxTrackBreadth();
     case ResolveMaxContentMaximums:
         return trackSize.hasMaxContentOrAutoMaxTrackBreadth();
     case MaximizeTracks:
@@ -1291,9 +1310,9 @@ LayoutUnit RenderGrid::currentItemSizeForTrackSizeComputationPhase(TrackSizeComp
 {
     switch (phase) {
     case ResolveIntrinsicMinimums:
+    case ResolveIntrinsicMaximums:
         return minSizeForChild(gridItem, direction, sizingData);
     case ResolveContentBasedMinimums:
-    case ResolveIntrinsicMaximums:
         return minContentForChild(gridItem, direction, sizingData);
     case ResolveMaxContentMinimums:
     case ResolveMaxContentMaximums:
@@ -1488,14 +1507,14 @@ unsigned RenderGrid::computeAutoRepeatTracksCount(GridTrackSizingDirection direc
         if (sizingOperation != IntrinsicSizeComputation)
             availableSize =  availableLogicalWidth();
     } else {
-        availableSize = computeContentLogicalHeight(MainOrPreferredSize, style().logicalHeight(), LayoutUnit(-1));
+        availableSize = computeContentLogicalHeight(MainOrPreferredSize, style().logicalHeight(), Nullopt);
         if (!availableSize) {
             const Length& maxLength = style().logicalMaxHeight();
             if (!maxLength.isUndefined())
-                availableSize = computeContentLogicalHeight(MaxSize, maxLength, LayoutUnit(-1));
-        } else {
-            availableSize = constrainLogicalHeightByMinMax(availableSize.value(), LayoutUnit(-1));
+                availableSize = computeContentLogicalHeight(MaxSize, maxLength, Nullopt);
         }
+        if (availableSize)
+            availableSize = constrainContentBoxLogicalHeightByMinMax(availableSize.value(), Nullopt);
     }
 
     bool needsToFulfillMinimumSize = false;

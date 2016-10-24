@@ -32,6 +32,7 @@
 #if USE(CG)
 #include "ImageDecoderCG.h"
 #elif USE(DIRECT2D)
+#include "GraphicsContext.h"
 #include "ImageDecoderDirect2D.h"
 #include <WinCodec.h>
 #else
@@ -114,6 +115,19 @@ bool ImageSource::ensureDecoderAvailable(SharedBuffer* data)
     return true;
 }
 
+void ImageSource::setDecoderTargetContext(const GraphicsContext* targetContext)
+{
+#if USE(DIRECT2D)
+    if (!isDecoderAvailable())
+        return;
+
+    if (targetContext)
+        m_decoder->setTargetContext(targetContext->platformContext());
+#else
+    UNUSED_PARAM(targetContext);
+#endif
+}
+
 void ImageSource::setData(SharedBuffer* data, bool allDataReceived)
 {
     if (!data || !ensureDecoderAvailable(data))
@@ -176,7 +190,7 @@ SubsamplingLevel ImageSource::maximumSubsamplingLevel()
     SubsamplingLevel level = SubsamplingLevel::First;
 
     for (; level < SubsamplingLevel::Last; ++level) {
-        if (frameSizeAtIndex(0, level).area() < maximumImageAreaBeforeSubsampling)
+        if (frameSizeAtIndex(0, level).area().unsafeGet() < maximumImageAreaBeforeSubsampling)
             break;
     }
 
@@ -196,6 +210,13 @@ SubsamplingLevel ImageSource::subsamplingLevelForScale(float scale)
 NativeImagePtr ImageSource::createFrameImageAtIndex(size_t index, SubsamplingLevel subsamplingLevel)
 {
     return isDecoderAvailable() ? m_decoder->createFrameImageAtIndex(index, subsamplingLevel) : nullptr;
+}
+
+NativeImagePtr ImageSource::frameImageAtIndex(size_t index, SubsamplingLevel subsamplingLevel, const GraphicsContext* targetContext)
+{
+    setDecoderTargetContext(targetContext);
+
+    return m_frameCache.frameImageAtIndex(index, subsamplingLevel);
 }
 
 void ImageSource::dump(TextStream& ts)

@@ -42,6 +42,7 @@ typedef struct CGContext PlatformGraphicsContext;
 interface ID2D1DCRenderTarget;
 interface ID2D1RenderTarget;
 interface ID2D1Factory;
+interface ID2D1SolidColorBrush;
 typedef ID2D1RenderTarget PlatformGraphicsContext;
 #elif USE(CAIRO)
 namespace WebCore {
@@ -555,8 +556,12 @@ public:
     WEBCORE_EXPORT bool didBeginDraw() const;
     D2D1_COLOR_F colorWithGlobalAlpha(const Color&) const;
 
-    ID2D1SolidColorBrush* solidStrokeBrush();
-    ID2D1SolidColorBrush* solidFillBrush();
+    ID2D1Brush* solidStrokeBrush() const;
+    ID2D1Brush* solidFillBrush() const;
+    ID2D1Brush* patternStrokeBrush() const;
+    ID2D1Brush* patternFillBrush() const;
+
+    ID2D1SolidColorBrush* brushWithColor(const Color&);
 #endif
 #else // PLATFORM(WIN)
     bool shouldIncludeChildWindows() const { return false; }

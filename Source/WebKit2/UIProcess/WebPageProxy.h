@@ -156,6 +156,7 @@ enum class HasInsecureContent;
 struct DictionaryPopupInfo;
 struct ExceptionDetails;
 struct FileChooserSettings;
+struct MediaConstraintsData;
 struct SecurityOriginData;
 struct TextAlternativeWithRange;
 struct TextCheckingResult;
@@ -945,6 +946,11 @@ public:
     void handleMediaEvent(WebCore::MediaEventType);
     void setVolumeOfMediaElement(double, uint64_t);
 #endif
+        
+#if ENABLE(POINTER_LOCK)
+    void didAllowPointerLock();
+    void didDenyPointerLock();
+#endif
 
     // WebPopupMenuProxy::Client
     NativeWebMouseEvent* currentlyProcessedMouseDownEvent() override;
@@ -1132,13 +1138,14 @@ public:
         
     WeakPtr<WebPageProxy> createWeakPtr() const { return m_weakPtrFactory.createWeakPtr(); }
 
+    void isLoadingChanged() { updateThrottleState(); }
+
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, Ref<API::PageConfiguration>&&);
     void platformInitialize();
 
     void updateViewState(WebCore::ViewState::Flags flagsToUpdate = WebCore::ViewState::AllFlags);
-    void updateActivityToken();
-    void updateProccessSuppressionState();
+    void updateThrottleState();
     void updateHiddenPageThrottlingAutoIncreases();
 
     enum class ResetStateReason {
@@ -1166,6 +1173,11 @@ private:
     void setTextFromItemForPopupMenu(WebPopupMenuProxy*, int32_t index) override;
 #if PLATFORM(GTK)
     void failedToShowPopupMenu() override;
+#endif
+
+#if ENABLE(POINTER_LOCK)
+    void requestPointerLock();
+    void requestPointerUnlock();
 #endif
 
     void didCreateMainFrame(uint64_t frameID);
@@ -1250,8 +1262,8 @@ private:
     void reachedApplicationCacheOriginQuota(const String& originIdentifier, uint64_t currentQuota, uint64_t totalBytesNeeded, PassRefPtr<Messages::WebPageProxy::ReachedApplicationCacheOriginQuota::DelayedReply>);
     void requestGeolocationPermissionForFrame(uint64_t geolocationID, uint64_t frameID, String originIdentifier);
 
-    void requestUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String userMediaDocumentOriginIdentifier, String topLevelDocumentOriginIdentifier, const Vector<String>& audioDeviceUIDs, const Vector<String>& videoDeviceUIDs);
-    void checkUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String userMediaDocumentOriginIdentifier, String topLevelDocumentOriginIdentifier);
+    void requestUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String userMediaDocumentOriginIdentifier, String topLevelDocumentOriginIdentifier, const WebCore::MediaConstraintsData& audioConstraints, const WebCore::MediaConstraintsData& videoConstraints);
+    void enumerateMediaDevicesForFrame(uint64_t userMediaID, uint64_t frameID, String userMediaDocumentOriginIdentifier, String topLevelDocumentOriginIdentifier);
 
     void runModal();
     void notifyScrollerThumbIsVisibleInRect(const WebCore::IntRect&);
@@ -1653,6 +1665,8 @@ private:
         
     bool m_maintainsInactiveSelection;
 
+    bool m_waitsForPaintAfterViewDidMoveToWindow;
+
     String m_toolTip;
 
     EditorState m_editorState;
@@ -1711,6 +1725,7 @@ private:
     WebCore::PolicyAction m_syncNavigationActionPolicyAction;
     DownloadID m_syncNavigationActionPolicyDownloadID;
     bool m_shouldSuppressAppLinksInNextNavigationPolicyDecision { false };
+    bool m_pageSuppressed { false };
 
     Deque<NativeWebKeyboardEvent> m_keyEventQueue;
     Deque<NativeWebWheelEvent> m_wheelEventQueue;

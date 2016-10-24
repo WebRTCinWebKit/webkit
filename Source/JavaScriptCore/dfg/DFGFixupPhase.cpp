@@ -209,7 +209,7 @@ private:
         }
             
         case ArithNegate: {
-            if (m_graph.unaryArithShouldSpeculateInt32(node, FixupPass)) {
+            if (node->child1()->shouldSpeculateInt32OrBoolean() && node->canSpeculateInt32(FixupPass)) {
                 fixIntOrBooleanEdge(node->child1());
                 if (bytecodeCanTruncateInteger(node->arithNodeFlags()))
                     node->setArithMode(Arith::Unchecked);
@@ -217,6 +217,8 @@ private:
                     node->setArithMode(Arith::CheckOverflow);
                 else
                     node->setArithMode(Arith::CheckOverflowAndNegativeZero);
+                node->setResult(NodeResultInt32);
+                node->clearFlags(NodeMustGenerate);
                 break;
             }
             if (m_graph.unaryArithShouldSpeculateAnyInt(node, FixupPass)) {
@@ -226,10 +228,15 @@ private:
                 else
                     node->setArithMode(Arith::CheckOverflowAndNegativeZero);
                 node->setResult(NodeResultInt52);
+                node->clearFlags(NodeMustGenerate);
                 break;
             }
-            fixDoubleOrBooleanEdge(node->child1());
-            node->setResult(NodeResultDouble);
+            if (node->child1()->shouldSpeculateNotCell()) {
+                fixDoubleOrBooleanEdge(node->child1());
+                node->setResult(NodeResultDouble);
+                node->clearFlags(NodeMustGenerate);
+            } else
+                fixEdge<UntypedUse>(node->child1());
             break;
         }
             
@@ -1703,10 +1710,14 @@ private:
             fixEdge<CellUse>(node->child1());
             break;
 
-        case CallDOM:
-            fixEdge<KnownCellUse>(m_graph.varArgChild(node, 0)); // GlobalObject.
-            fixEdge<CellUse>(m_graph.varArgChild(node, 1)); // DOM.
+        case CallDOM: {
+            int childIndex = 0;
+            DOMJIT::CallDOMPatchpoint* patchpoint = node->callDOMPatchpoint();
+            if (patchpoint->requireGlobalObject)
+                fixEdge<KnownCellUse>(m_graph.varArgChild(node, childIndex++)); // GlobalObject.
+            fixEdge<CellUse>(m_graph.varArgChild(node, childIndex++)); // DOM.
             break;
+        }
 
 #if !ASSERT_DISABLED
         // Have these no-op cases here to ensure that nobody forgets to add handlers for new opcodes.
@@ -1725,9 +1736,12 @@ private:
         case GetGlobalLexicalVariable:
         case NotifyWrite:
         case Call:
+        case DirectCall:
         case CheckTypeInfoFlags:
         case TailCallInlinedCaller:
+        case DirectTailCallInlinedCaller:
         case Construct:
+        case DirectConstruct:
         case CallVarargs:
         case CallEval:
         case TailCallVarargsInlinedCaller:
@@ -1755,6 +1769,7 @@ private:
         case Jump:
         case Return:
         case TailCall:
+        case DirectTailCall:
         case TailCallVarargs:
         case Throw:
         case ThrowStaticError:

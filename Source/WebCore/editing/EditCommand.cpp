@@ -56,6 +56,8 @@ String inputTypeNameForEditingAction(EditAction action)
         return ASCIILiteral("formatSuperscript");
     case EditActionUnderline:
         return ASCIILiteral("formatUnderline");
+    case EditActionSetColor:
+        return ASCIILiteral("formatForeColor");
     case EditActionDrag:
         return ASCIILiteral("deleteByDrag");
     case EditActionCut:
@@ -81,6 +83,10 @@ String inputTypeNameForEditingAction(EditAction action)
         return ASCIILiteral("deleteHardLineBackward");
     case EditActionTypingDeleteLineForward:
         return ASCIILiteral("deleteHardLineForward");
+    case EditActionTypingDeletePendingComposition:
+        return ASCIILiteral("deleteCompositionText");
+    case EditActionTypingDeleteFinalComposition:
+        return ASCIILiteral("deleteByComposition");
     case EditActionInsert:
     case EditActionTypingInsertText:
         return ASCIILiteral("insertText");
@@ -94,6 +100,10 @@ String inputTypeNameForEditingAction(EditAction action)
         return ASCIILiteral("insertOrderedList");
     case EditActionInsertUnorderedList:
         return ASCIILiteral("insertUnorderedList");
+    case EditActionTypingInsertPendingComposition:
+        return ASCIILiteral("insertCompositionText");
+    case EditActionTypingInsertFinalComposition:
+        return ASCIILiteral("insertFromComposition");
     case EditActionIndent:
         return ASCIILiteral("formatIndent");
     case EditActionOutdent:
@@ -125,6 +135,12 @@ EditCommand::~EditCommand()
 }
 
 Frame& EditCommand::frame()
+{
+    ASSERT(document().frame());
+    return *document().frame();
+}
+
+const Frame& EditCommand::frame() const
 {
     ASSERT(document().frame());
     return *document().frame();

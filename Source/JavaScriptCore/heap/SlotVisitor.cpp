@@ -96,7 +96,7 @@ SlotVisitor::~SlotVisitor()
 
 void SlotVisitor::didStartMarking()
 {
-    if (heap()->operationInProgress() == FullCollection)
+    if (heap()->collectionScope() == CollectionScope::Full)
         ASSERT(m_opaqueRoots.isEmpty()); // Should have merged by now.
     else
         reset();
@@ -191,8 +191,6 @@ void SlotVisitor::setMarkedAndAppendToMarkStack(JSCell* cell)
     validate(cell);
 #endif
     
-    //dataLog("    Marking ", RawPointer(cell), "\n");
-    
     if (cell->isLargeAllocation())
         setMarkedAndAppendToMarkStack(cell->largeAllocation(), cell);
     else
@@ -230,6 +228,7 @@ ALWAYS_INLINE void SlotVisitor::appendToMarkStack(ContainerType& container, JSCe
 {
     ASSERT(Heap::isMarkedConcurrently(cell));
     ASSERT(!cell->isZapped());
+    ASSERT(cell->cellState() == CellState::NewGrey || cell->cellState() == CellState::OldGrey);
     
     container.noteMarked();
     
@@ -239,9 +238,6 @@ ALWAYS_INLINE void SlotVisitor::appendToMarkStack(ContainerType& container, JSCe
     m_bytesVisited += container.cellSize();
     
     m_stack.append(cell);
-
-    if (UNLIKELY(m_heapSnapshotBuilder))
-        m_heapSnapshotBuilder->appendNode(cell);
 }
 
 void SlotVisitor::markAuxiliary(const void* base)
@@ -298,7 +294,14 @@ ALWAYS_INLINE void SlotVisitor::visitChildren(const JSCell* cell)
     
     SetCurrentCellScope currentCellScope(*this, cell);
     
-    cell->setCellState(blacken(cell->cellState()));
+    m_oldCellState = cell->cellState();
+    
+    // There is no race here - the cell state cannot change right now. Grey objects can only be
+    // visited by one marking thread. Neither the barrier nor marking will change the state of an
+    // object that is already grey.
+    ASSERT(m_oldCellState == CellState::OldGrey || m_oldCellState == CellState::NewGrey);
+    
+    cell->setCellState(CellState::AnthraciteOrBlack);
     
     WTF::storeLoadFence();
     
@@ -320,6 +323,11 @@ ALWAYS_INLINE void SlotVisitor::visitChildren(const JSCell* cell)
         // https://bugs.webkit.org/show_bug.cgi?id=162462
         cell->methodTable()->visitChildren(const_cast<JSCell*>(cell), *this);
         break;
+    }
+    
+    if (UNLIKELY(m_heapSnapshotBuilder)) {
+        if (m_oldCellState == CellState::NewGrey)
+            m_heapSnapshotBuilder->appendNode(const_cast<JSCell*>(cell));
     }
 }
 

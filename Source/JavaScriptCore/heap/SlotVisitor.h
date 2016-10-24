@@ -37,7 +37,6 @@ class GCThreadSharedData;
 class Heap;
 class HeapCell;
 class HeapSnapshotBuilder;
-template<typename T> class JITWriteBarrier;
 class MarkedBlock;
 class UnconditionalFinalizer;
 template<typename T> class Weak;
@@ -166,6 +165,7 @@ private:
 
     HeapSnapshotBuilder* m_heapSnapshotBuilder { nullptr };
     JSCell* m_currentCell { nullptr };
+    CellState m_oldCellState;
 
 public:
 #if !ASSERT_DISABLED

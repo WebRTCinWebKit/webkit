@@ -1020,7 +1020,7 @@ void SpeculativeJIT::compileTryGetById(Node* node)
 
         JITCompiler::Jump notCell = m_jit.branchIfNotCell(baseRegs);
 
-        cachedGetById(node->origin.semantic, baseRegs, resultRegs, node->identifierNumber(), notCell, DontSpill, AccessType::GetPure);
+        cachedGetById(node->origin.semantic, baseRegs, resultRegs, node->identifierNumber(), notCell, NeedToSpill, AccessType::GetPure);
 
         jsValueResult(resultRegs, node, DataFormatJS, UseChildrenCalledExplicitly);
         break;
@@ -4237,11 +4237,106 @@ void SpeculativeJIT::compileArithNegate(Node* node)
         return;
     }
         
-    default:
-        RELEASE_ASSERT_NOT_REACHED();
+    default: {
+        ArithProfile* arithProfile = m_jit.graph().baselineCodeBlockFor(node->origin.semantic)->arithProfileForBytecodeOffset(node->origin.semantic.bytecodeIndex);
+        JITNegIC* negIC = m_jit.codeBlock()->addJITNegIC(arithProfile);
+        auto repatchingFunction = operationArithNegateOptimize;
+        auto nonRepatchingFunction = operationArithNegate;
+        bool needsScratchGPRReg = true;
+        compileMathIC(node, negIC, needsScratchGPRReg, repatchingFunction, nonRepatchingFunction);
         return;
     }
+    }
 }
+
+template <typename Generator, typename RepatchingFunction, typename NonRepatchingFunction>
+void SpeculativeJIT::compileMathIC(Node* node, JITUnaryMathIC<Generator>* mathIC, bool needsScratchGPRReg, RepatchingFunction repatchingFunction, NonRepatchingFunction nonRepatchingFunction)
+{
+    GPRReg scratchGPR = InvalidGPRReg;
+    Optional<GPRTemporary> gprScratch;
+    if (needsScratchGPRReg) {
+        gprScratch = GPRTemporary(this);
+        scratchGPR = gprScratch->gpr();
+    }
+    JSValueOperand childOperand(this, node->child1());
+    JSValueRegs childRegs = childOperand.jsValueRegs();
+#if USE(JSVALUE64)
+    GPRTemporary result(this, Reuse, childOperand);
+    JSValueRegs resultRegs(result.gpr());
+#else
+    GPRTemporary resultTag(this);
+    GPRTemporary resultPayload(this);
+    JSValueRegs resultRegs(resultPayload.gpr(), resultTag.gpr());
+#endif
+
+#if ENABLE(MATH_IC_STATS)
+    auto inlineStart = m_jit.label();
+#endif
+
+    Box<MathICGenerationState> icGenerationState = Box<MathICGenerationState>::create();
+    mathIC->m_generator = Generator(resultRegs, childRegs, scratchGPR);
+
+    bool shouldEmitProfiling = false;
+    bool generatedInline = mathIC->generateInline(m_jit, *icGenerationState, shouldEmitProfiling);
+
+    if (generatedInline) {
+        ASSERT(!icGenerationState->slowPathJumps.empty());
+
+        Vector<SilentRegisterSavePlan> savePlans;
+        silentSpillAllRegistersImpl(false, savePlans, resultRegs);
+
+        auto done = m_jit.label();
+
+        addSlowPathGenerator([=, savePlans = WTFMove(savePlans)] () {
+            icGenerationState->slowPathJumps.link(&m_jit);
+            icGenerationState->slowPathStart = m_jit.label();
+#if ENABLE(MATH_IC_STATS)
+            auto slowPathStart = m_jit.label();
+#endif
+
+            silentSpill(savePlans);
+
+            if (icGenerationState->shouldSlowPathRepatch)
+                icGenerationState->slowPathCall = callOperation(bitwise_cast<J_JITOperation_EJMic>(repatchingFunction), resultRegs, childRegs, TrustedImmPtr(mathIC));
+            else
+                icGenerationState->slowPathCall = callOperation(nonRepatchingFunction, resultRegs, childRegs);
+
+            silentFill(savePlans);
+            m_jit.exceptionCheck();
+            m_jit.jump().linkTo(done, &m_jit);
+
+            m_jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
+                mathIC->finalizeInlineCode(*icGenerationState, linkBuffer);
+            });
+
+#if ENABLE(MATH_IC_STATS)
+            auto slowPathEnd = m_jit.label();
+            m_jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
+                size_t size = static_cast<char*>(linkBuffer.locationOf(slowPathEnd).executableAddress()) - static_cast<char*>(linkBuffer.locationOf(slowPathStart).executableAddress());
+                mathIC->m_generatedCodeSize += size;
+            });
+#endif
+
+        });
+    } else {
+        flushRegisters();
+        callOperation(nonRepatchingFunction, resultRegs, childRegs);
+        m_jit.exceptionCheck();
+    }
+
+#if ENABLE(MATH_IC_STATS)
+    auto inlineEnd = m_jit.label();
+    m_jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
+        size_t size = static_cast<char*>(linkBuffer.locationOf(inlineEnd).executableAddress()) - static_cast<char*>(linkBuffer.locationOf(inlineStart).executableAddress());
+        mathIC->m_generatedCodeSize += size;
+    });
+#endif
+
+    jsValueResult(resultRegs, node);
+    return;
+}
+
+
 void SpeculativeJIT::compileArithMul(Node* node)
 {
     switch (node->binaryUseKind()) {
@@ -7130,29 +7225,31 @@ static void allocateTemporaryRegistersForPatchpoint(SpeculativeJIT* jit, Vector<
 
 void SpeculativeJIT::compileCallDOM(Node* node)
 {
-    Ref<DOMJIT::Patchpoint> patchpoint = node->domJIT()->callDOM();
+    DOMJIT::CallDOMPatchpoint* patchpoint = node->callDOMPatchpoint();
 
     Vector<GPRReg> gpScratch;
     Vector<FPRReg> fpScratch;
-    Vector<DOMJIT::Reg> regs;
+    Vector<DOMJIT::Value> regs;
 
-    // FIXME: patchpoint should have a way to tell this can reuse "base" register.
-    // Teaching DFG about DOMJIT::Patchpoint clobber information is nice.
-    SpeculateCellOperand globalObject(this, m_jit.graph().varArgChild(node, 0));
-    SpeculateCellOperand base(this, m_jit.graph().varArgChild(node, 1));
     JSValueRegsTemporary result(this);
-
     regs.append(result.regs());
-    regs.append(globalObject.gpr());
-    regs.append(base.gpr());
-#if USE(JSVALUE64)
-    regs.append(static_cast<GPRReg>(GPRInfo::tagMaskRegister));
-    regs.append(static_cast<GPRReg>(GPRInfo::tagTypeNumberRegister));
-#endif
+
+    int childIndex = 0;
+
+    Optional<SpeculateCellOperand> globalObject;
+    if (patchpoint->requireGlobalObject) {
+        Edge& globalObjectEdge = m_jit.graph().varArgChild(node, childIndex++);
+        globalObject = SpeculateCellOperand(this, globalObjectEdge);
+        regs.append(DOMJIT::Value(globalObject->gpr(), m_state.forNode(globalObjectEdge).value()));
+    }
+
+    Edge& baseEdge = m_jit.graph().varArgChild(node, childIndex++);
+    SpeculateCellOperand base(this, baseEdge);
+    regs.append(DOMJIT::Value(base.gpr(), m_state.forNode(baseEdge).value()));
 
     Vector<GPRTemporary> gpTempraries;
     Vector<FPRTemporary> fpTempraries;
-    allocateTemporaryRegistersForPatchpoint(this, gpTempraries, fpTempraries, gpScratch, fpScratch, patchpoint.get());
+    allocateTemporaryRegistersForPatchpoint(this, gpTempraries, fpTempraries, gpScratch, fpScratch, *patchpoint);
     DOMJITPatchpointParams params(this, WTFMove(regs), WTFMove(gpScratch), WTFMove(fpScratch));
     patchpoint->generator()->run(m_jit, params);
     jsValueResult(result.regs(), node);
@@ -7161,19 +7258,19 @@ void SpeculativeJIT::compileCallDOM(Node* node)
 void SpeculativeJIT::compileCheckDOM(Node* node)
 {
     // FIXME: We can add the fallback implementation that inlines jsDynamicCast things here.
-    Ref<DOMJIT::Patchpoint> patchpoint = node->domJIT()->checkDOM();
+    DOMJIT::Patchpoint* patchpoint = node->checkDOMPatchpoint();
 
     Vector<GPRReg> gpScratch;
     Vector<FPRReg> fpScratch;
-    Vector<DOMJIT::Reg> regs;
+    Vector<DOMJIT::Value> regs;
 
     SpeculateCellOperand base(this, node->child1());
     GPRReg baseGPR = base.gpr();
-    regs.append(baseGPR);
+    regs.append(DOMJIT::Value(baseGPR, m_state.forNode(node->child1()).value()));
 
     Vector<GPRTemporary> gpTempraries;
     Vector<FPRTemporary> fpTempraries;
-    allocateTemporaryRegistersForPatchpoint(this, gpTempraries, fpTempraries, gpScratch, fpScratch, patchpoint.get());
+    allocateTemporaryRegistersForPatchpoint(this, gpTempraries, fpTempraries, gpScratch, fpScratch, *patchpoint);
 
     DOMJITPatchpointParams params(this, WTFMove(regs), WTFMove(gpScratch), WTFMove(fpScratch));
     CCallHelpers::JumpList failureCases = patchpoint->generator()->run(m_jit, params);

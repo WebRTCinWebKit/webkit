@@ -28,21 +28,23 @@
 
 #include "DOMWindow.h"
 #include "EventNames.h"
+#include "Node.h"
 #include "NotImplemented.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
-InputEvent::InputEvent(const AtomicString& eventType, const String& inputType, bool canBubble, bool cancelable, DOMWindow* view, const String& data, int detail)
+InputEvent::InputEvent(const AtomicString& eventType, const String& inputType, bool canBubble, bool cancelable, DOMWindow* view, const String& data, const Vector<RefPtr<StaticRange>>& targetRanges, int detail)
     : UIEvent(eventType, canBubble, cancelable, view, detail)
     , m_inputType(inputType)
     , m_data(data)
+    , m_targetRanges(targetRanges)
 {
 }
 
-InputEvent::InputEvent(const AtomicString& eventType, const InputEventInit& initializer)
-    : UIEvent(eventType, initializer)
+InputEvent::InputEvent(const AtomicString& eventType, const Init& initializer, IsTrusted isTrusted)
+    : UIEvent(eventType, initializer, isTrusted)
     , m_inputType(emptyString())
     , m_data(initializer.data)
 {

@@ -53,7 +53,6 @@ public:
 
     static void getOwnPropertyNames(JSC::JSObject*, JSC::ExecState*, JSC::PropertyNameArray&, JSC::EnumerationMode = JSC::EnumerationMode());
     static JSC::JSValue getConstructor(JSC::VM&, const JSC::JSGlobalObject*);
-    static JSTestObj* castForAttribute(JSC::ExecState*, JSC::EncodedJSValue);
     mutable JSC::WriteBarrier<JSC::Unknown> m_cachedAttribute1;
     mutable JSC::WriteBarrier<JSC::Unknown> m_cachedAttribute2;
     static void visitChildren(JSCell*, JSC::SlotVisitor&);
@@ -105,120 +104,85 @@ inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* g
 
 template<> struct JSDOMWrapperConverterTraits<TestObj> {
     using WrapperClass = JSTestObj;
+    using ToWrappedReturnType = TestObj*;
 };
-JSC::JSString* jsStringWithCache(JSC::ExecState*, TestObj::EnumType);
+template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, TestObj::EnumType);
 
-template<> struct JSValueTraits<TestObj::EnumType> {
-    static JSC::JSString* arrayJSValue(JSC::ExecState* state, JSDOMGlobalObject*, TestObj::EnumType value) { return jsStringWithCache(state, value); }
-};
-
-template<> Optional<TestObj::EnumType> parse<TestObj::EnumType>(JSC::ExecState&, JSC::JSValue);
-template<> TestObj::EnumType convert<TestObj::EnumType>(JSC::ExecState&, JSC::JSValue);
+template<> Optional<TestObj::EnumType> parseEnumeration<TestObj::EnumType>(JSC::ExecState&, JSC::JSValue);
+template<> TestObj::EnumType convertEnumeration<TestObj::EnumType>(JSC::ExecState&, JSC::JSValue);
 template<> const char* expectedEnumerationValues<TestObj::EnumType>();
 
-JSC::JSString* jsStringWithCache(JSC::ExecState*, TestObj::Optional);
+template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, TestObj::Optional);
 
-template<> struct JSValueTraits<TestObj::Optional> {
-    static JSC::JSString* arrayJSValue(JSC::ExecState* state, JSDOMGlobalObject*, TestObj::Optional value) { return jsStringWithCache(state, value); }
-};
-
-template<> Optional<TestObj::Optional> parse<TestObj::Optional>(JSC::ExecState&, JSC::JSValue);
-template<> TestObj::Optional convert<TestObj::Optional>(JSC::ExecState&, JSC::JSValue);
+template<> Optional<TestObj::Optional> parseEnumeration<TestObj::Optional>(JSC::ExecState&, JSC::JSValue);
+template<> TestObj::Optional convertEnumeration<TestObj::Optional>(JSC::ExecState&, JSC::JSValue);
 template<> const char* expectedEnumerationValues<TestObj::Optional>();
 
-JSC::JSString* jsStringWithCache(JSC::ExecState*, AlternateEnumName);
+template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, AlternateEnumName);
 
-template<> struct JSValueTraits<AlternateEnumName> {
-    static JSC::JSString* arrayJSValue(JSC::ExecState* state, JSDOMGlobalObject*, AlternateEnumName value) { return jsStringWithCache(state, value); }
-};
-
-template<> Optional<AlternateEnumName> parse<AlternateEnumName>(JSC::ExecState&, JSC::JSValue);
-template<> AlternateEnumName convert<AlternateEnumName>(JSC::ExecState&, JSC::JSValue);
+template<> Optional<AlternateEnumName> parseEnumeration<AlternateEnumName>(JSC::ExecState&, JSC::JSValue);
+template<> AlternateEnumName convertEnumeration<AlternateEnumName>(JSC::ExecState&, JSC::JSValue);
 template<> const char* expectedEnumerationValues<AlternateEnumName>();
 
 #if ENABLE(Condition1)
 
-JSC::JSString* jsStringWithCache(JSC::ExecState*, TestObj::EnumA);
+template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, TestObj::EnumA);
 
-template<> struct JSValueTraits<TestObj::EnumA> {
-    static JSC::JSString* arrayJSValue(JSC::ExecState* state, JSDOMGlobalObject*, TestObj::EnumA value) { return jsStringWithCache(state, value); }
-};
-
-template<> Optional<TestObj::EnumA> parse<TestObj::EnumA>(JSC::ExecState&, JSC::JSValue);
-template<> TestObj::EnumA convert<TestObj::EnumA>(JSC::ExecState&, JSC::JSValue);
+template<> Optional<TestObj::EnumA> parseEnumeration<TestObj::EnumA>(JSC::ExecState&, JSC::JSValue);
+template<> TestObj::EnumA convertEnumeration<TestObj::EnumA>(JSC::ExecState&, JSC::JSValue);
 template<> const char* expectedEnumerationValues<TestObj::EnumA>();
 
 #endif
 
 #if ENABLE(Condition1) && ENABLE(Condition2)
 
-JSC::JSString* jsStringWithCache(JSC::ExecState*, TestObj::EnumB);
+template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, TestObj::EnumB);
 
-template<> struct JSValueTraits<TestObj::EnumB> {
-    static JSC::JSString* arrayJSValue(JSC::ExecState* state, JSDOMGlobalObject*, TestObj::EnumB value) { return jsStringWithCache(state, value); }
-};
-
-template<> Optional<TestObj::EnumB> parse<TestObj::EnumB>(JSC::ExecState&, JSC::JSValue);
-template<> TestObj::EnumB convert<TestObj::EnumB>(JSC::ExecState&, JSC::JSValue);
+template<> Optional<TestObj::EnumB> parseEnumeration<TestObj::EnumB>(JSC::ExecState&, JSC::JSValue);
+template<> TestObj::EnumB convertEnumeration<TestObj::EnumB>(JSC::ExecState&, JSC::JSValue);
 template<> const char* expectedEnumerationValues<TestObj::EnumB>();
 
 #endif
 
 #if ENABLE(Condition1) || ENABLE(Condition2)
 
-JSC::JSString* jsStringWithCache(JSC::ExecState*, TestObj::EnumC);
+template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, TestObj::EnumC);
 
-template<> struct JSValueTraits<TestObj::EnumC> {
-    static JSC::JSString* arrayJSValue(JSC::ExecState* state, JSDOMGlobalObject*, TestObj::EnumC value) { return jsStringWithCache(state, value); }
-};
-
-template<> Optional<TestObj::EnumC> parse<TestObj::EnumC>(JSC::ExecState&, JSC::JSValue);
-template<> TestObj::EnumC convert<TestObj::EnumC>(JSC::ExecState&, JSC::JSValue);
+template<> Optional<TestObj::EnumC> parseEnumeration<TestObj::EnumC>(JSC::ExecState&, JSC::JSValue);
+template<> TestObj::EnumC convertEnumeration<TestObj::EnumC>(JSC::ExecState&, JSC::JSValue);
 template<> const char* expectedEnumerationValues<TestObj::EnumC>();
 
 #endif
 
-JSC::JSString* jsStringWithCache(JSC::ExecState*, TestObj::Kind);
+template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, TestObj::Kind);
 
-template<> struct JSValueTraits<TestObj::Kind> {
-    static JSC::JSString* arrayJSValue(JSC::ExecState* state, JSDOMGlobalObject*, TestObj::Kind value) { return jsStringWithCache(state, value); }
-};
-
-template<> Optional<TestObj::Kind> parse<TestObj::Kind>(JSC::ExecState&, JSC::JSValue);
-template<> TestObj::Kind convert<TestObj::Kind>(JSC::ExecState&, JSC::JSValue);
+template<> Optional<TestObj::Kind> parseEnumeration<TestObj::Kind>(JSC::ExecState&, JSC::JSValue);
+template<> TestObj::Kind convertEnumeration<TestObj::Kind>(JSC::ExecState&, JSC::JSValue);
 template<> const char* expectedEnumerationValues<TestObj::Kind>();
 
-JSC::JSString* jsStringWithCache(JSC::ExecState*, TestObj::Size);
+template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, TestObj::Size);
 
-template<> struct JSValueTraits<TestObj::Size> {
-    static JSC::JSString* arrayJSValue(JSC::ExecState* state, JSDOMGlobalObject*, TestObj::Size value) { return jsStringWithCache(state, value); }
-};
-
-template<> Optional<TestObj::Size> parse<TestObj::Size>(JSC::ExecState&, JSC::JSValue);
-template<> TestObj::Size convert<TestObj::Size>(JSC::ExecState&, JSC::JSValue);
+template<> Optional<TestObj::Size> parseEnumeration<TestObj::Size>(JSC::ExecState&, JSC::JSValue);
+template<> TestObj::Size convertEnumeration<TestObj::Size>(JSC::ExecState&, JSC::JSValue);
 template<> const char* expectedEnumerationValues<TestObj::Size>();
 
-JSC::JSString* jsStringWithCache(JSC::ExecState*, TestObj::Confidence);
+template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, TestObj::Confidence);
 
-template<> struct JSValueTraits<TestObj::Confidence> {
-    static JSC::JSString* arrayJSValue(JSC::ExecState* state, JSDOMGlobalObject*, TestObj::Confidence value) { return jsStringWithCache(state, value); }
-};
-
-template<> Optional<TestObj::Confidence> parse<TestObj::Confidence>(JSC::ExecState&, JSC::JSValue);
-template<> TestObj::Confidence convert<TestObj::Confidence>(JSC::ExecState&, JSC::JSValue);
+template<> Optional<TestObj::Confidence> parseEnumeration<TestObj::Confidence>(JSC::ExecState&, JSC::JSValue);
+template<> TestObj::Confidence convertEnumeration<TestObj::Confidence>(JSC::ExecState&, JSC::JSValue);
 template<> const char* expectedEnumerationValues<TestObj::Confidence>();
 
-template<> Optional<TestObj::Dictionary> convertDictionary<TestObj::Dictionary>(JSC::ExecState&, JSC::JSValue);
+template<> TestObj::Dictionary convertDictionary<TestObj::Dictionary>(JSC::ExecState&, JSC::JSValue);
 
-template<> Optional<TestObj::DictionaryThatShouldNotTolerateNull> convertDictionary<TestObj::DictionaryThatShouldNotTolerateNull>(JSC::ExecState&, JSC::JSValue);
+template<> TestObj::DictionaryThatShouldNotTolerateNull convertDictionary<TestObj::DictionaryThatShouldNotTolerateNull>(JSC::ExecState&, JSC::JSValue);
 
-template<> Optional<TestObj::DictionaryThatShouldTolerateNull> convertDictionary<TestObj::DictionaryThatShouldTolerateNull>(JSC::ExecState&, JSC::JSValue);
+template<> TestObj::DictionaryThatShouldTolerateNull convertDictionary<TestObj::DictionaryThatShouldTolerateNull>(JSC::ExecState&, JSC::JSValue);
 
-template<> Optional<AlternateDictionaryName> convertDictionary<AlternateDictionaryName>(JSC::ExecState&, JSC::JSValue);
+template<> AlternateDictionaryName convertDictionary<AlternateDictionaryName>(JSC::ExecState&, JSC::JSValue);
 
-template<> Optional<TestObj::ParentDictionary> convertDictionary<TestObj::ParentDictionary>(JSC::ExecState&, JSC::JSValue);
+template<> TestObj::ParentDictionary convertDictionary<TestObj::ParentDictionary>(JSC::ExecState&, JSC::JSValue);
 
-template<> Optional<TestObj::ChildDictionary> convertDictionary<TestObj::ChildDictionary>(JSC::ExecState&, JSC::JSValue);
+template<> TestObj::ChildDictionary convertDictionary<TestObj::ChildDictionary>(JSC::ExecState&, JSC::JSValue);
 
 
 } // namespace WebCore

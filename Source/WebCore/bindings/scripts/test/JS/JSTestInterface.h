@@ -54,7 +54,6 @@ public:
     }
 
     static JSC::JSValue getConstructor(JSC::VM&, const JSC::JSGlobalObject*);
-    static JSTestInterface* castForAttribute(JSC::ExecState*, JSC::EncodedJSValue);
 
     // Custom attributes
 #if ENABLE(Condition22) || ENABLE(Condition23)
@@ -112,6 +111,7 @@ inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* g
 
 template<> struct JSDOMWrapperConverterTraits<TestInterface> {
     using WrapperClass = JSTestInterface;
+    using ToWrappedReturnType = TestInterface*;
 };
 
 } // namespace WebCore

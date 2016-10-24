@@ -36,7 +36,7 @@ class State;
 
 class DOMJITPatchpointParams : public DOMJIT::PatchpointParams {
 public:
-    DOMJITPatchpointParams(State& state, const B3::StackmapGenerationParams& params, DFG::Node* node, Box<CCallHelpers::JumpList> exceptions, Vector<DOMJIT::Reg>&& regs, Vector<GPRReg>&& gpScratch, Vector<FPRReg>&& fpScratch)
+    DOMJITPatchpointParams(State& state, const B3::StackmapGenerationParams& params, DFG::Node* node, Box<CCallHelpers::JumpList> exceptions, Vector<DOMJIT::Value>&& regs, Vector<GPRReg>&& gpScratch, Vector<FPRReg>&& fpScratch)
         : DOMJIT::PatchpointParams(WTFMove(regs), WTFMove(gpScratch), WTFMove(fpScratch))
         , m_state(state)
         , m_params(params)
@@ -46,7 +46,7 @@ public:
     }
 
 private:
-#define JSC_DEFINE_CALL_OPERATIONS(OperationType, ResultType, ...) void addSlowPathCallImpl(CCallHelpers::JumpList, CCallHelpers&, OperationType, ResultType, std::tuple<__VA_ARGS__> args) const override;
+#define JSC_DEFINE_CALL_OPERATIONS(OperationType, ResultType, ...) void addSlowPathCallImpl(CCallHelpers::JumpList, CCallHelpers&, OperationType, ResultType, std::tuple<__VA_ARGS__> args) override;
     DOMJIT_SLOW_PATH_CALLS(JSC_DEFINE_CALL_OPERATIONS)
 #undef JSC_DEFINE_CALL_OPERATIONS
 

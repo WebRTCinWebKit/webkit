@@ -188,7 +188,7 @@ unsigned ImageDecoder::frameBytesAtIndex(size_t index) const
     if (m_frameBufferCache.size() <= index)
         return 0;
     // FIXME: Use the dimension of the requested frame.
-    return m_size.area() * sizeof(RGBA32);
+    return (m_size.area() * sizeof(RGBA32)).unsafeGet();
 }
 
 float ImageDecoder::frameDurationAtIndex(size_t index)
@@ -207,7 +207,7 @@ float ImageDecoder::frameDurationAtIndex(size_t index)
     return duration;
 }
 
-NativeImagePtr ImageDecoder::createFrameImageAtIndex(size_t index, SubsamplingLevel)
+NativeImagePtr ImageDecoder::createFrameImageAtIndex(size_t index, SubsamplingLevel, DecodingMode)
 {
     // Zero-height images can cause problems for some ports. If we have an empty image dimension, just bail.
     if (size().isEmpty())

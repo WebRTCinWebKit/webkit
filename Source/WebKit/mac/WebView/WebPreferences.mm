@@ -545,6 +545,7 @@ public:
 #if HAVE(AVKIT)
         [NSNumber numberWithBool:YES],  WebKitAVKitEnabled,
 #endif
+        [NSNumber numberWithBool:YES],  WebKitRequiresUserGestureForMediaPlaybackPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitRequiresUserGestureForVideoPlaybackPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitRequiresUserGestureForAudioPlaybackPreferenceKey,
         [NSNumber numberWithLongLong:WebCore::ApplicationCacheStorage::noQuota()], WebKitApplicationCacheTotalQuota,
@@ -1800,7 +1801,7 @@ static NSString *classIBCreatorID = nil;
 + (void)_setCurrentNetworkLoaderSessionCookieAcceptPolicy:(NSHTTPCookieAcceptPolicy)policy
 {
     RetainPtr<CFHTTPCookieStorageRef> cookieStorage = NetworkStorageSession::defaultStorageSession().cookieStorage();
-    ASSERT(cookieStorage); // Will fail when building without USE(CFNETWORK) and NetworkStorageSession::switchToNewTestingSession() was not called beforehand.
+    ASSERT(cookieStorage); // Will fail when building without USE(CFURLCONNECTION) and NetworkStorageSession::switchToNewTestingSession() was not called beforehand.
     CFHTTPCookieStorageSetCookieAcceptPolicy(cookieStorage.get(), policy);
 }
 

@@ -59,7 +59,8 @@
 namespace JSC {
 
 namespace DOMJIT {
-class GetterSetter;
+class Patchpoint;
+class CallDOMPatchpoint;
 }
 
 namespace Profiler {
@@ -641,6 +642,8 @@ public:
         ASSERT(m_op == ArithAbs && child1().useKind() == Int32Use);
         m_op = ArithNegate;
     }
+    
+    void convertToDirectCall(FrozenValue*);
     
     JSValue asJSValue()
     {
@@ -1253,6 +1256,7 @@ public:
         case Switch:
         case Return:
         case TailCall:
+        case DirectTailCall:
         case TailCallVarargs:
         case TailCallForwardVarargs:
         case Unreachable:
@@ -1424,8 +1428,11 @@ public:
         case GetByVal:
         case GetByValWithThis:
         case Call:
+        case DirectCall:
         case TailCallInlinedCaller:
+        case DirectTailCallInlinedCaller:
         case Construct:
+        case DirectConstruct:
         case CallVarargs:
         case CallEval:
         case TailCallVarargsInlinedCaller:
@@ -1476,6 +1483,10 @@ public:
         case MaterializeCreateActivation:
         case NewRegexp:
         case CompareEqPtr:
+        case DirectCall:
+        case DirectTailCall:
+        case DirectConstruct:
+        case DirectTailCallInlinedCaller:
             return true;
         default:
             return false;
@@ -2314,15 +2325,26 @@ public:
         return m_opInfo.as<BasicBlockLocation*>();
     }
 
-    bool hasDOMJIT() const
+    bool hasCheckDOMPatchpoint() const
     {
-        return op() == CheckDOM || op() == CallDOM;
+        return op() == CheckDOM;
     }
 
-    DOMJIT::GetterSetter* domJIT()
+    DOMJIT::Patchpoint* checkDOMPatchpoint()
     {
-        ASSERT(hasDOMJIT());
-        return m_opInfo.as<DOMJIT::GetterSetter*>();
+        ASSERT(hasCheckDOMPatchpoint());
+        return m_opInfo.as<DOMJIT::Patchpoint*>();
+    }
+
+    bool hasCallDOMPatchpoint() const
+    {
+        return op() == CallDOM;
+    }
+
+    DOMJIT::CallDOMPatchpoint* callDOMPatchpoint()
+    {
+        ASSERT(hasCallDOMPatchpoint());
+        return m_opInfo.as<DOMJIT::CallDOMPatchpoint*>();
     }
 
     bool hasClassInfo() const
@@ -2393,8 +2415,7 @@ private:
     unsigned m_refCount;
     // The prediction ascribed to this node after propagation.
     SpeculatedType m_prediction { SpecNone };
-    // Immediate values, accesses type-checked via accessors above. The first one is
-    // big enough to store a pointer.
+    // Immediate values, accesses type-checked via accessors above.
     struct OpInfoWrapper {
         OpInfoWrapper()
         {

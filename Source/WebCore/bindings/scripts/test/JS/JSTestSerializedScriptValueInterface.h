@@ -51,7 +51,6 @@ public:
     }
 
     static JSC::JSValue getConstructor(JSC::VM&, const JSC::JSGlobalObject*);
-    static JSTestSerializedScriptValueInterface* castForAttribute(JSC::ExecState*, JSC::EncodedJSValue);
     mutable JSC::WriteBarrier<JSC::Unknown> m_cachedValue;
     mutable JSC::WriteBarrier<JSC::Unknown> m_cachedReadonlyValue;
     static void visitChildren(JSCell*, JSC::SlotVisitor&);
@@ -91,6 +90,7 @@ inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* g
 
 template<> struct JSDOMWrapperConverterTraits<TestSerializedScriptValueInterface> {
     using WrapperClass = JSTestSerializedScriptValueInterface;
+    using ToWrappedReturnType = TestSerializedScriptValueInterface*;
 };
 
 } // namespace WebCore

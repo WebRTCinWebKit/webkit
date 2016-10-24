@@ -51,14 +51,13 @@ public:
 private:
     URL m_url;
     Vector<LChar> m_asciiBuffer;
-    Vector<UChar> m_unicodeFragmentBuffer;
-    bool m_didSeeUnicodeFragmentCodePoint { false };
     bool m_urlIsSpecial { false };
     bool m_hostHasPercentOrNonASCII { false };
     String m_inputString;
     const void* m_inputBegin { nullptr };
 
     bool m_didSeeSyntaxViolation { false };
+    const static size_t defaultInlineBufferSize = 2048;
 
     template<typename CharacterType> void parse(const CharacterType*, const unsigned length, const URL&, const TextEncoding&);
     template<typename CharacterType> void parseAuthority(CodePointIterator<CharacterType>);
@@ -73,7 +72,6 @@ private:
     void advance(CodePointIterator<CharacterType>&, const CodePointIterator<CharacterType>& iteratorForSyntaxViolationPosition);
     template<typename CharacterType> bool takesTwoAdvancesUntilEnd(CodePointIterator<CharacterType>);
     template<typename CharacterType> void syntaxViolation(const CodePointIterator<CharacterType>&);
-    template<typename CharacterType> void fragmentSyntaxViolation(const CodePointIterator<CharacterType>&);
     template<typename CharacterType> bool isPercentEncodedDot(CodePointIterator<CharacterType>);
     template<typename CharacterType> bool isWindowsDriveLetter(CodePointIterator<CharacterType>);
     template<typename CharacterType> bool isSingleDotPathSegment(CodePointIterator<CharacterType>);
@@ -89,6 +87,11 @@ private:
     template<typename UnsignedIntegerType> void appendNumberToASCIIBuffer(UnsignedIntegerType);
     template<bool(*isInCodeSet)(UChar32), typename CharacterType> void utf8PercentEncode(const CodePointIterator<CharacterType>&);
     template<typename CharacterType> void utf8QueryEncode(const CodePointIterator<CharacterType>&);
+    template<typename CharacterType> Optional<Vector<LChar, defaultInlineBufferSize>> domainToASCII(const String&, const CodePointIterator<CharacterType>& iteratorForSyntaxViolationPosition);
+    template<typename CharacterType> Vector<LChar, defaultInlineBufferSize> percentDecode(const LChar*, size_t, const CodePointIterator<CharacterType>& iteratorForSyntaxViolationPosition);
+    static Vector<LChar, defaultInlineBufferSize> percentDecode(const LChar*, size_t);
+    static Optional<String> formURLDecode(StringView input);
+    static bool hasInvalidDomainCharacter(const Vector<LChar, defaultInlineBufferSize>&);
     void percentEncodeByte(uint8_t);
     void appendToASCIIBuffer(UChar32);
     void appendToASCIIBuffer(const char*, size_t);

@@ -26,7 +26,9 @@
 #include "config.h"
 #include "JSDOMStringMap.h"
 
+#include "CustomElementReactionQueue.h"
 #include "DOMStringMap.h"
+#include "JSDOMConvert.h"
 #include "JSNode.h"
 #include <runtime/IdentifierInlines.h>
 #include <wtf/text/AtomicString.h>
@@ -42,7 +44,7 @@ bool JSDOMStringMap::getOwnPropertySlotDelegate(ExecState* exec, PropertyName pr
     bool nameIsValid;
     const AtomicString& item = wrapped().item(propertyNameToString(propertyName), nameIsValid);
     if (nameIsValid) {
-        slot.setValue(this, ReadOnly | DontDelete | DontEnum, toJS(exec, globalObject(), item));
+        slot.setValue(this, ReadOnly | DontDelete | DontEnum, toJS<IDLDOMString>(*exec, item));
         return true;
     }
     return false;
@@ -62,6 +64,10 @@ void JSDOMStringMap::getOwnPropertyNames(JSObject* object, ExecState* exec, Prop
 
 bool JSDOMStringMap::deleteProperty(JSCell* cell, ExecState* exec, PropertyName propertyName)
 {
+#if ENABLE(CUSTOM_ELEMENTS)
+    CustomElementReactionStack customElementReactionStack;
+#endif
+
     JSDOMStringMap* thisObject = jsCast<JSDOMStringMap*>(cell);
     if (propertyName.isSymbol())
         return Base::deleteProperty(thisObject, exec, propertyName);
@@ -80,6 +86,10 @@ bool JSDOMStringMap::putDelegate(ExecState* exec, PropertyName propertyName, JSV
 
     if (propertyName.isSymbol())
         return false;
+
+#if ENABLE(CUSTOM_ELEMENTS)
+    CustomElementReactionStack customElementReactionStack;
+#endif
 
     String stringValue = value.toString(exec)->value(exec);
     RETURN_IF_EXCEPTION(scope, false);

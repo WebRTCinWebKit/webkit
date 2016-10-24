@@ -50,7 +50,6 @@ public:
     }
 
     static JSC::JSValue getConstructor(JSC::VM&, const JSC::JSGlobalObject*);
-    static JSattribute* castForAttribute(JSC::ExecState*, JSC::EncodedJSValue);
 public:
     static const unsigned StructureFlags = JSC::HasStaticPropertyTable | Base::StructureFlags;
 protected:
@@ -88,6 +87,7 @@ inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* g
 
 template<> struct JSDOMWrapperConverterTraits<attribute> {
     using WrapperClass = JSattribute;
+    using ToWrappedReturnType = attribute*;
 };
 
 } // namespace WebCore

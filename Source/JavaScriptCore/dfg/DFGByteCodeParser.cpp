@@ -239,7 +239,7 @@ private:
     Node* store(Node* base, unsigned identifier, const PutByIdVariant&, Node* value);
 
     void handleGetById(
-        int destinationOperand, SpeculatedType, Node* base, unsigned identifierNumber, GetByIdStatus, AccessType);
+        int destinationOperand, SpeculatedType, Node* base, unsigned identifierNumber, GetByIdStatus, AccessType, unsigned instructionSize);
     void emitPutById(
         Node* base, unsigned identifierNumber, Node* value,  const PutByIdStatus&, bool isDirect);
     void handlePutById(
@@ -805,9 +805,7 @@ private:
         OpInfo prediction)
     {
         addVarArgChild(callee);
-        size_t frameSize = CallFrame::headerSizeInRegisters + argCount;
-        size_t alignedFrameSize = WTF::roundUpToMultipleOf(stackAlignmentRegisters(), frameSize);
-        size_t parameterSlots = alignedFrameSize - CallerFrameAndPC::sizeInRegisters;
+        size_t parameterSlots = Graph::parameterSlotsForArgCount(argCount);
 
         if (parameterSlots > m_parameterSlots)
             m_parameterSlots = parameterSlots;
@@ -974,6 +972,17 @@ private:
                         node->mergeFlags(NodeMayHaveNonNumberResult);
                     break;
                 }
+                case ArithNegate: {
+                    ASSERT_WITH_MESSAGE(!arithProfile->didObserveNonNumber(), "op_negate starts with a toNumber() on the argument, it should only produce numbers.");
+
+                    if (arithProfile->lhsObservedType().sawNumber() || arithProfile->didObserveDouble())
+                        node->mergeFlags(NodeMayHaveDoubleResult);
+                    if (arithProfile->didObserveNegZeroDouble() || m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, NegativeZero))
+                        node->mergeFlags(NodeMayNegZeroInBaseline);
+                    if (arithProfile->didObserveInt32Overflow() || m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, Overflow))
+                        node->mergeFlags(NodeMayOverflowInt32InBaseline);
+                    break;
+                }
                 
                 default:
                     break;
@@ -989,14 +998,6 @@ private:
             case ValueAdd:
             case ArithMod: // for ArithMod "MayOverflow" means we tried to divide by zero, or we saw double.
                 node->mergeFlags(NodeMayOverflowInt32InBaseline);
-                break;
-                
-            case ArithNegate:
-                // Currently we can't tell the difference between a negation overflowing
-                // (i.e. -(1 << 31)) or generating negative zero (i.e. -0). If it took slow
-                // path then we assume that it did both of those things.
-                node->mergeFlags(NodeMayOverflowInt32InBaseline);
-                node->mergeFlags(NodeMayNegZeroInBaseline);
                 break;
                 
             default:
@@ -1291,15 +1292,13 @@ ByteCodeParser::Terminality ByteCodeParser::handleCall(
     
     unsigned nextOffset = m_currentIndex + instructionSize;
     
-    OpInfo callOpInfo;
-    
     if (handleInlining(callTarget, result, callLinkStatus, registerOffset, virtualRegisterForArgument(0, registerOffset), VirtualRegister(), 0, argumentCountIncludingThis, nextOffset, op, kind, prediction)) {
         if (m_graph.compilation())
             m_graph.compilation()->noticeInlinedCall();
         return NonTerminal;
     }
     
-    Node* callNode = addCall(result, op, callOpInfo, callTarget, argumentCountIncludingThis, registerOffset, prediction);
+    Node* callNode = addCall(result, op, OpInfo(), callTarget, argumentCountIncludingThis, registerOffset, prediction);
     if (callNode->op() == TailCall)
         return Terminal;
     ASSERT(callNode->op() != TailCallVarargs && callNode->op() != TailCallForwardVarargs);
@@ -2687,12 +2686,19 @@ bool ByteCodeParser::handleDOMJITGetter(int resultOperand, const GetByIdVariant&
         return false;
     addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(variant.structureSet())), thisNode);
 
+    Ref<DOMJIT::Patchpoint> checkDOMPatchpoint = domJIT->checkDOM();
+    m_graph.m_domJITPatchpoints.append(checkDOMPatchpoint.ptr());
     // We do not need to emit CheckCell thingy here. When the custom accessor is replaced to different one, Structure transition occurs.
-    addToGraph(CheckDOM, OpInfo(domJIT), OpInfo(domJIT->thisClassInfo()), thisNode);
-    Node* globalObject = addToGraph(GetGlobalObject, thisNode);
-    addVarArgChild(globalObject); // GlobalObject of thisNode is always used to create a DOMWrapper.
+    addToGraph(CheckDOM, OpInfo(checkDOMPatchpoint.ptr()), OpInfo(domJIT->thisClassInfo()), thisNode);
+
+    Ref<DOMJIT::CallDOMPatchpoint> callDOMPatchpoint = domJIT->callDOM();
+    m_graph.m_domJITPatchpoints.append(callDOMPatchpoint.ptr());
+    if (callDOMPatchpoint->requireGlobalObject) {
+        Node* globalObject = addToGraph(GetGlobalObject, thisNode);
+        addVarArgChild(globalObject); // GlobalObject of thisNode is always used to create a DOMWrapper.
+    }
     addVarArgChild(thisNode);
-    set(VirtualRegister(resultOperand), addToGraph(Node::VarArg, CallDOM, OpInfo(domJIT), OpInfo(prediction)));
+    set(VirtualRegister(resultOperand), addToGraph(Node::VarArg, CallDOM, OpInfo(callDOMPatchpoint.ptr()), OpInfo(prediction)));
     return true;
 }
 
@@ -3266,7 +3272,7 @@ Node* ByteCodeParser::store(Node* base, unsigned identifier, const PutByIdVarian
 
 void ByteCodeParser::handleGetById(
     int destinationOperand, SpeculatedType prediction, Node* base, unsigned identifierNumber,
-    GetByIdStatus getByIdStatus, AccessType type)
+    GetByIdStatus getByIdStatus, AccessType type, unsigned instructionSize)
 {
     // Attempt to reduce the set of things in the GetByIdStatus.
     if (base->op() == NewObject) {
@@ -3292,7 +3298,7 @@ void ByteCodeParser::handleGetById(
 
     // Special path for custom accessors since custom's offset does not have any meanings.
     // So, this is completely different from Simple one. But we have a chance to optimize it when we use DOMJIT.
-    if (getByIdStatus.isCustom()) {
+    if (Options::useDOMJIT() && getByIdStatus.isCustom()) {
         ASSERT(getByIdStatus.numVariants() == 1);
         ASSERT(!getByIdStatus.makesCalls());
         GetByIdVariant variant = getByIdStatus[0];
@@ -3428,7 +3434,7 @@ void ByteCodeParser::handleGetById(
     addToGraph(ExitOK);
     
     handleCall(
-        destinationOperand, Call, InlineCallFrame::GetterCall, OPCODE_LENGTH(op_get_by_id),
+        destinationOperand, Call, InlineCallFrame::GetterCall, instructionSize,
         getter, numberOfParameters - 1, registerOffset, *variant.callLinkStatus(), prediction);
 }
 
@@ -4204,7 +4210,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             }
 
             if (compiledAsGetById)
-                handleGetById(currentInstruction[1].u.operand, prediction, base, identifierNumber, getByIdStatus, AccessType::Get);
+                handleGetById(currentInstruction[1].u.operand, prediction, base, identifierNumber, getByIdStatus, AccessType::Get, OPCODE_LENGTH(op_get_by_val));
             else {
                 ArrayMode arrayMode = getArrayMode(currentInstruction[4].u.arrayProfile, Array::Read);
                 Node* getByVal = addToGraph(GetByVal, OpInfo(arrayMode.asWord()), OpInfo(prediction), base, property);
@@ -4239,7 +4245,12 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 ByValInfo* byValInfo = m_inlineStackTop->m_byValInfos.get(CodeOrigin(currentCodeOrigin().bytecodeIndex));
                 // FIXME: When the bytecode is not compiled in the baseline JIT, byValInfo becomes null.
                 // At that time, there is no information.
-                if (byValInfo && byValInfo->stubInfo && !byValInfo->tookSlowPath && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadIdent) && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadCell)) {
+                if (byValInfo 
+                    && byValInfo->stubInfo
+                    && !byValInfo->tookSlowPath
+                    && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadIdent)
+                    && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType)
+                    && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadCell)) {
                     compiledAsPutById = true;
                     unsigned identifierNumber = m_graph.identifiers().ensure(byValInfo->cachedId.impl());
                     UniquedStringImpl* uid = m_graph.identifiers()[identifierNumber];
@@ -4337,9 +4348,11 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 m_inlineStackTop->m_stubInfos, m_dfgStubInfos,
                 currentCodeOrigin(), uid);
             AccessType type = op_try_get_by_id == opcodeID ? AccessType::GetPure : AccessType::Get;
-            
+
+            unsigned opcodeLength = opcodeID == op_try_get_by_id ? OPCODE_LENGTH(op_try_get_by_id) : OPCODE_LENGTH(op_get_by_id);
+
             handleGetById(
-                currentInstruction[1].u.operand, prediction, base, identifierNumber, getByIdStatus, type);
+                currentInstruction[1].u.operand, prediction, base, identifierNumber, getByIdStatus, type, opcodeLength);
 
             if (op_try_get_by_id == opcodeID)
                 NEXT_OPCODE(op_try_get_by_id); // Opcode's length is different from others in this case.
