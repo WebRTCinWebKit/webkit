@@ -28,16 +28,18 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaEndpointOwr_h
-#define MediaEndpointOwr_h
+#pragma once
 
 #if ENABLE(WEB_RTC)
 
 #include "MediaEndpoint.h"
-#include <owr/owr_media_session.h>
-#include <owr/owr_transport_agent.h>
+#include <owr/owr_session.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
+
+typedef struct _OwrMediaSession OwrMediaSession;
+typedef struct _OwrMediaSource OwrMediaSource;
+typedef struct _OwrTransportAgent OwrTransportAgent;
 
 namespace WebCore {
 
@@ -120,7 +122,7 @@ private:
     void prepareSession(OwrSession*, PeerMediaDescription*);
     void prepareMediaSession(OwrMediaSession*, PeerMediaDescription*, bool isInitiator);
 
-    void ensureTransportAgentAndTransceivers(bool isInitiator, const Vector<TransceiverConfig>& transceiverConfigs);
+    void ensureTransportAgentAndTransceivers(bool isInitiator, const Vector<TransceiverConfig>&);
     void internalAddRemoteCandidate(OwrSession*, IceCandidate&, const String& ufrag, const String& password);
 
     RefPtr<MediaEndpointConfiguration> m_configuration;
@@ -135,12 +137,10 @@ private:
     unsigned m_numberOfReceivePreparedSessions;
     unsigned m_numberOfSendPreparedSessions;
 
-    gchar* m_dtlsPrivateKey;
-    gchar* m_dtlsCertificate;
+    String m_dtlsPrivateKey;
+    String m_dtlsCertificate;
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(WEB_RTC)
-
-#endif // MediaEndpointOwr_h

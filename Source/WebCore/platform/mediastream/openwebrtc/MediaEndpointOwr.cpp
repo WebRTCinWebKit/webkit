@@ -35,11 +35,14 @@
 
 #include "MediaEndpointSessionConfiguration.h"
 #include "MediaPayload.h"
+#include "NotImplemented.h"
 #include "OpenWebRTCUtilities.h"
 #include "RealtimeMediaSourceOwr.h"
 #include <owr/owr.h>
 #include <owr/owr_audio_payload.h>
 #include <owr/owr_crypto_utils.h>
+#include <owr/owr_media_session.h>
+#include <owr/owr_transport_agent.h>
 #include <owr/owr_video_payload.h>
 #include <wtf/text/CString.h>
 
@@ -56,6 +59,9 @@ static const Vector<String> codecTypes = { "NONE", "PCMU", "PCMA", "OPUS", "H264
 
 static const char* helperServerRegEx = "(turn|stun):([\\w\\.\\-]+|\\[[\\w\\:]+\\])(:\\d+)?(\\?.+)?";
 
+static const unsigned short helperServerDefaultPort = 3478;
+static const unsigned short candidateDefaultPort = 9;
+
 static std::unique_ptr<MediaEndpoint> createMediaEndpointOwr(MediaEndpointClient& client)
 {
     return std::unique_ptr<MediaEndpoint>(new MediaEndpointOwr(client));
@@ -68,8 +74,6 @@ MediaEndpointOwr::MediaEndpointOwr(MediaEndpointClient& client)
     , m_client(client)
     , m_numberOfReceivePreparedSessions(0)
     , m_numberOfSendPreparedSessions(0)
-    , m_dtlsPrivateKey(nullptr)
-    , m_dtlsCertificate(nullptr)
 {
     initializeOpenWebRTC();
 
@@ -81,9 +85,6 @@ MediaEndpointOwr::MediaEndpointOwr(MediaEndpointClient& client)
 MediaEndpointOwr::~MediaEndpointOwr()
 {
     stop();
-
-    g_free(m_dtlsPrivateKey);
-    g_free(m_dtlsCertificate);
 
     g_regex_unref(m_helperServerRegEx);
 }
@@ -108,6 +109,7 @@ MediaPayloadVector MediaEndpointOwr::getDefaultAudioPayloads()
 {
     MediaPayloadVector payloads;
 
+    // FIXME: This list should be based on what is available in the platform (bug: http://webkit.org/b/163723)
     RefPtr<MediaPayload> payload = MediaPayload::create();
     payload->setType(111);
     payload->setEncodingName("OPUS");
@@ -136,6 +138,7 @@ MediaPayloadVector MediaEndpointOwr::getDefaultVideoPayloads()
 {
     MediaPayloadVector payloads;
 
+    // FIXME: This list should be based on what is available in the platform (bug: http://webkit.org/b/163723)
     RefPtr<MediaPayload> payload = MediaPayload::create();
     payload->setType(103);
     payload->setEncodingName("H264");
@@ -198,7 +201,7 @@ MediaPayloadVector MediaEndpointOwr::filterPayloads(const MediaPayloadVector& re
 
     MediaPayloadVector filteredAptPayloads;
 
-    for (auto& filteredPayload: filteredPayloads) {
+    for (auto& filteredPayload : filteredPayloads) {
         if (filteredPayload->parameters().contains("apt") && (!payloadsContainType(filteredPayloads, filteredPayload->parameters().get("apt"))))
             continue;
         filteredAptPayloads.append(filteredPayload);
@@ -256,9 +259,6 @@ MediaEndpoint::UpdateResult MediaEndpointOwr::updateSendConfiguration(MediaEndpo
     ensureTransportAgentAndTransceivers(isInitiator, transceiverConfigs);
 
     for (unsigned i = 0; i < m_transceivers.size(); ++i) {
-        if (i >= configuration->mediaDescriptions().size())
-            printf("updateSendConfiguration: BAD missing configuration element for %d\n", i);
-
         OwrSession* session = m_transceivers[i]->session();
         PeerMediaDescription& mdesc = *configuration->mediaDescriptions()[i];
 
@@ -284,10 +284,8 @@ MediaEndpoint::UpdateResult MediaEndpointOwr::updateSendConfiguration(MediaEndpo
             }
         }
 
-        if (!payload) {
-            printf("updateSendConfiguration: no payloads\n");
+        if (!payload)
             return UpdateResult::Failed;
-        }
 
         RefPtr<MediaPayload> rtxPayload = findRtxPayload(mdesc.payloads(), payload->type());
         RealtimeMediaSourceOwr* source = static_cast<RealtimeMediaSourceOwr*>(sendSourceMap.get(mdesc.mid()));
@@ -443,8 +441,11 @@ void MediaEndpointOwr::processIceTransportStateChange(OwrSession* session)
 
 void MediaEndpointOwr::dispatchDtlsFingerprint(gchar* privateKey, gchar* certificate, const String& fingerprint, const String& fingerprintFunction)
 {
-    m_dtlsPrivateKey = privateKey;
-    m_dtlsCertificate = certificate;
+    m_dtlsPrivateKey = String(privateKey);
+    m_dtlsCertificate = String(certificate);
+
+    g_free(privateKey);
+    g_free(certificate);
 
     m_client.gotDtlsFingerprint(fingerprint, fingerprintFunction);
 }
@@ -475,8 +476,8 @@ void MediaEndpointOwr::prepareMediaSession(OwrMediaSession* mediaSession, PeerMe
 {
     prepareSession(OWR_SESSION(mediaSession), mediaDescription);
 
-    bool useRtpMux = !isInitiator && mediaDescription->rtcpMux();
-    g_object_set(mediaSession, "rtcp-mux", useRtpMux, nullptr);
+    bool useRtcpMux = !isInitiator && mediaDescription->rtcpMux();
+    g_object_set(mediaSession, "rtcp-mux", useRtcpMux, nullptr);
 
     if (!mediaDescription->cname().isEmpty() && mediaDescription->ssrcs().size()) {
         g_object_set(mediaSession, "cname", mediaDescription->cname().ascii().data(),
@@ -515,11 +516,11 @@ struct HelperServerUrl {
     String query;
 };
 
-static void parseHelperServerUrl(GRegex* regex, const URL& url, HelperServerUrl& outUrl)
+static void parseHelperServerUrl(GRegex& regex, const URL& url, HelperServerUrl& outUrl)
 {
-    GMatchInfo *matchInfo;
+    GMatchInfo* matchInfo;
 
-    if (g_regex_match(regex, url.string().ascii().data(), static_cast<GRegexMatchFlags>(0), &matchInfo)) {
+    if (g_regex_match(&regex, url.string().ascii().data(), static_cast<GRegexMatchFlags>(0), &matchInfo)) {
         gchar** matches =  g_match_info_fetch_all(matchInfo);
         gint matchCount = g_strv_length(matches);
 
@@ -554,9 +555,9 @@ void MediaEndpointOwr::ensureTransportAgentAndTransceivers(bool isInitiator, con
             for (auto& webkitUrl : server->urls()) {
                 HelperServerUrl url;
                 // WebKit's URL class can't handle ICE helper server urls properly
-                parseHelperServerUrl(m_helperServerRegEx, webkitUrl, url);
+                parseHelperServerUrl(*m_helperServerRegEx, webkitUrl, url);
 
-                unsigned short port = url.port ? url.port : 3478;
+                unsigned short port = url.port ? url.port : helperServerDefaultPort;
 
                 if (url.protocol == "stun") {
                     owr_transport_agent_add_helper_server(m_transportAgent, OWR_HELPER_SERVER_TYPE_STUN,
@@ -579,8 +580,8 @@ void MediaEndpointOwr::ensureTransportAgentAndTransceivers(bool isInitiator, con
 
     for (auto& config : transceiverConfigs) {
         OwrSession* session = OWR_SESSION(owr_media_session_new(config.isDtlsClient));
-        g_object_set(session, "dtls-certificate", m_dtlsCertificate,
-            "dtls-key", m_dtlsPrivateKey,
+        g_object_set(session, "dtls-certificate", m_dtlsCertificate.utf8().data(),
+            "dtls-key", m_dtlsPrivateKey.utf8().data(),
             nullptr);
 
         m_transceivers.append(OwrTransceiver::create(config.mid, session));
@@ -655,7 +656,7 @@ static void gotCandidate(OwrSession* session, OwrCandidate* candidate, MediaEndp
     iceCandidate->setComponentId(componentId);
     iceCandidate->setPriority(priority);
     iceCandidate->setAddress(address);
-    iceCandidate->setPort(port ? port : 9);
+    iceCandidate->setPort(port ? port : candidateDefaultPort);
 
     if (transportType == OWR_TRANSPORT_TYPE_UDP)
         iceCandidate->setTransport("UDP");
@@ -666,7 +667,7 @@ static void gotCandidate(OwrSession* session, OwrCandidate* candidate, MediaEndp
 
     if (candidateType != OWR_CANDIDATE_TYPE_HOST) {
         iceCandidate->setRelatedAddress(relatedAddress);
-        iceCandidate->setRelatedPort(relatedPort ? relatedPort : 9);
+        iceCandidate->setRelatedPort(relatedPort ? relatedPort : candidateDefaultPort);
     }
 
     g_object_set(G_OBJECT(candidate), "ufrag", g_object_get_data(G_OBJECT(session), "ice-ufrag"),
