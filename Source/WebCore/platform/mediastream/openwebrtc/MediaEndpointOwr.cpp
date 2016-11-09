@@ -57,7 +57,7 @@ static void gotIncomingSource(OwrMediaSession*, OwrMediaSource*, MediaEndpointOw
 
 static const Vector<String> candidateTypes = { "host", "srflx", "prflx", "relay" };
 static const Vector<String> candidateTcpTypes = { "", "active", "passive", "so" };
-static const Vector<String> codecTypes = { "NONE", "PCMU", "PCMA", "OPUS", "H264", "VP8" };
+static const Vector<String> codecTypes = { "NONE", "PCMU", "PCMA", "OPUS", "H264", "VP8", "VP9" };
 
 static const char* helperServerRegEx = "(turn|stun):([\\w\\.\\-]+|\\[[\\w\\:]+\\])(:\\d+)?(\\?.+)?";
 
@@ -167,12 +167,21 @@ MediaPayloadVector MediaEndpointOwr::getDefaultVideoPayloads()
     payloads.append(WTFMove(payload2));
 
     MediaPayload payload3;
-    payload3.type = 120;
-    payload3.encodingName = "RTX";
+    payload3.type = 101;
+    payload3.encodingName = "VP9";
     payload3.clockRate = 90000;
-    payload3.addParameter("apt", 100);
-    payload3.addParameter("rtxTime", 200);
+    payload3.ccmfir = true;
+    payload3.nackpli = true;
+    payload3.nack = true;
     payloads.append(WTFMove(payload3));
+
+    MediaPayload payload4;
+    payload4.type = 120;
+    payload4.encodingName = "RTX";
+    payload4.clockRate = 90000;
+    payload4.addParameter("apt", 100);
+    payload4.addParameter("rtxTime", 200);
+    payloads.append(WTFMove(payload4));
 
     return payloads;
 }
